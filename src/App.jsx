@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MapPin, Home, Coffee, Mountain, Star, Calendar, X, Plus, Image } from 'lucide-react';
+import { MapPin, Home, Coffee, Mountain, Star, Calendar, X, Plus, Image, Edit2, Trash2 } from 'lucide-react';
 
 const PREDEFINED_ICONS = {
   '🏡': { icon: Home, label: 'Fastighet' },
@@ -117,55 +117,137 @@ const ObjectCard = ({ object, onClick }) => {
   );
 };
 
-const ObjectDetail = ({ object, onClose }) => {
-  const IconComponent = PREDEFINED_ICONS[object.type]?.icon || Home;
+const DeleteConfirmModal = ({ object, onConfirm, onCancel }) => {
+  const titleBlock = object.blocks.find(b => b.type === 'title');
   
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 overflow-y-auto">
-      <div className="min-h-screen p-4 flex items-start justify-center pt-20">
-        <div className="bg-gray-900/95 backdrop-blur-xl rounded-3xl border border-white/10 max-w-2xl w-full p-6 shadow-2xl">
-          <div className="flex justify-between items-center mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
-                <IconComponent size={24} className="text-blue-400" />
-              </div>
-              <span className="text-gray-400 text-sm">{PREDEFINED_ICONS[object.type]?.label}</span>
-            </div>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-white text-2xl leading-none"
-            >
-              ×
-            </button>
+    <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+      <div className="bg-gray-900/95 backdrop-blur-xl rounded-2xl border border-red-500/30 max-w-md w-full p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center">
+            <Trash2 size={24} className="text-red-400" />
           </div>
-
-          <div className="space-y-4">
-            {object.blocks.map((block, index) => {
-              const BlockComponent = blockComponents[block.type];
-              return BlockComponent ? (
-                <BlockComponent key={index} data={block.data} />
-              ) : null;
-            })}
-          </div>
-
-          <div className="mt-6 pt-6 border-t border-white/10">
-            <div className="text-xs text-gray-500 space-y-1">
-              <div>Objekt-ID: {object.id}</div>
-              <div>Layer: {object.layerId}</div>
-            </div>
-          </div>
+          <h3 className="text-xl font-bold text-white">Ta bort objekt?</h3>
+        </div>
+        
+        <p className="text-gray-300 mb-6">
+          Är du säker på att du vill ta bort <span className="font-semibold text-white">"{titleBlock?.data?.text || 'detta objekt'}"</span>? 
+          Detta kan inte ångras.
+        </p>
+        
+        <div className="flex gap-3">
+          <button
+            onClick={onCancel}
+            className="flex-1 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 transition-all"
+          >
+            Avbryt
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 px-4 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white font-medium transition-all"
+          >
+            Ta bort
+          </button>
         </div>
       </div>
     </div>
   );
 };
 
-const CreateObjectModal = ({ onClose, onSave }) => {
-  const [selectedType, setSelectedType] = useState('🏡');
-  const [title, setTitle] = useState('');
-  const [address, setAddress] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
-  const [description, setDescription] = useState('');
+const ObjectDetail = ({ object, onClose, onEdit, onDelete }) => {
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const IconComponent = PREDEFINED_ICONS[object.type]?.icon || Home;
+  
+  const handleDelete = () => {
+    onDelete(object.id);
+    onClose();
+  };
+  
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 overflow-y-auto">
+        <div className="min-h-screen p-4 flex items-start justify-center pt-20">
+          <div className="bg-gray-900/95 backdrop-blur-xl rounded-3xl border border-white/10 max-w-2xl w-full p-6 shadow-2xl">
+            <div className="flex justify-between items-center mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                  <IconComponent size={24} className="text-blue-400" />
+                </div>
+                <span className="text-gray-400 text-sm">{PREDEFINED_ICONS[object.type]?.label}</span>
+              </div>
+              <button
+                onClick={onClose}
+                className="text-gray-400 hover:text-white text-2xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {object.blocks.map((block, index) => {
+                const BlockComponent = blockComponents[block.type];
+                return BlockComponent ? (
+                  <BlockComponent key={index} data={block.data} />
+                ) : null;
+              })}
+            </div>
+
+            <div className="mt-6 pt-6 border-t border-white/10 space-y-4">
+              <div className="flex gap-3">
+                <button
+                  onClick={() => onEdit(object)}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 transition-all"
+                >
+                  <Edit2 size={18} />
+                  <span className="font-medium">Redigera</span>
+                </button>
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30 transition-all"
+                >
+                  <Trash2 size={18} />
+                  <span className="font-medium">Ta bort</span>
+                </button>
+              </div>
+              
+              <div className="text-xs text-gray-500 space-y-1">
+                <div>Objekt-ID: {object.id}</div>
+                <div>Layer: {object.layerId}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {showDeleteConfirm && (
+        <DeleteConfirmModal
+          object={object}
+          onConfirm={handleDelete}
+          onCancel={() => setShowDeleteConfirm(false)}
+        />
+      )}
+    </>
+  );
+};
+
+const CreateObjectModal = ({ onClose, onSave, editObject }) => {
+  const isEdit = !!editObject;
+  
+  const [selectedType, setSelectedType] = useState(
+    editObject?.type || '🏡'
+  );
+  const [title, setTitle] = useState(
+    editObject?.blocks?.find(b => b.type === 'title')?.data?.text || ''
+  );
+  const [address, setAddress] = useState(
+    editObject?.blocks?.find(b => b.type === 'location')?.data?.address || ''
+  );
+  const [imageUrl, setImageUrl] = useState(
+    editObject?.blocks?.find(b => b.type === 'image')?.data?.url || ''
+  );
+  const [description, setDescription] = useState(
+    editObject?.blocks?.find(b => b.type === 'text')?.data?.content || ''
+  );
 
   const handleSubmit = () => {
     if (!title.trim()) {
@@ -198,18 +280,18 @@ const CreateObjectModal = ({ onClose, onSave }) => {
       });
     }
 
-    const newObject = {
-      id: `obj-${Date.now()}`,
+    const objectData = {
+      id: editObject?.id || `obj-${Date.now()}`,
       type: selectedType,
       layerId: 'default',
       blocks: blocks,
       metadata: {
-        createdAt: new Date(),
+        createdAt: editObject?.metadata?.createdAt || new Date(),
         updatedAt: new Date()
       }
     };
 
-    onSave(newObject);
+    onSave(objectData, isEdit);
   };
 
   return (
@@ -217,7 +299,9 @@ const CreateObjectModal = ({ onClose, onSave }) => {
       <div className="min-h-screen p-4 flex items-start justify-center pt-10">
         <div className="bg-gray-900/95 backdrop-blur-xl rounded-3xl border border-white/10 max-w-2xl w-full p-6 shadow-2xl">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-white">Skapa nytt objekt</h2>
+            <h2 className="text-2xl font-bold text-white">
+              {isEdit ? 'Redigera objekt' : 'Skapa nytt objekt'}
+            </h2>
             <button
               onClick={onClose}
               className="text-gray-400 hover:text-white"
@@ -321,7 +405,7 @@ const CreateObjectModal = ({ onClose, onSave }) => {
                 onClick={handleSubmit}
                 className="flex-1 px-6 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all"
               >
-                Skapa objekt
+                {isEdit ? 'Spara ändringar' : 'Skapa objekt'}
               </button>
             </div>
           </div>
@@ -336,6 +420,7 @@ function App() {
   const [selectedObject, setSelectedObject] = useState(null);
   const [activeCategory, setActiveCategory] = useState('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingObject, setEditingObject] = useState(null);
 
   const categories = [
     { id: 'all', label: 'Alla', icon: Star },
@@ -348,9 +433,25 @@ function App() {
     ? objects
     : objects.filter(obj => obj.type === activeCategory);
 
-  const handleSaveObject = (newObject) => {
-    setObjects([...objects, newObject]);
+  const handleSaveObject = (objectData, isEdit) => {
+    if (isEdit) {
+      setObjects(objects.map(obj => obj.id === objectData.id ? objectData : obj));
+    } else {
+      setObjects([...objects, objectData]);
+    }
     setShowCreateModal(false);
+    setEditingObject(null);
+    setSelectedObject(null);
+  };
+
+  const handleDeleteObject = (id) => {
+    setObjects(objects.filter(obj => obj.id !== id));
+  };
+
+  const handleEdit = (object) => {
+    setEditingObject(object);
+    setShowCreateModal(true);
+    setSelectedObject(null);
   };
 
   return (
@@ -403,7 +504,10 @@ function App() {
       </main>
 
       <button
-        onClick={() => setShowCreateModal(true)}
+        onClick={() => {
+          setEditingObject(null);
+          setShowCreateModal(true);
+        }}
         className="fixed bottom-6 right-6 w-14 h-14 bg-blue-500 hover:bg-blue-600 rounded-full shadow-2xl flex items-center justify-center text-white transition-all hover:scale-110 z-40"
       >
         <Plus size={28} />
@@ -413,13 +517,19 @@ function App() {
         <ObjectDetail
           object={selectedObject}
           onClose={() => setSelectedObject(null)}
+          onEdit={handleEdit}
+          onDelete={handleDeleteObject}
         />
       )}
 
       {showCreateModal && (
         <CreateObjectModal
-          onClose={() => setShowCreateModal(false)}
+          onClose={() => {
+            setShowCreateModal(false);
+            setEditingObject(null);
+          }}
           onSave={handleSaveObject}
+          editObject={editingObject}
         />
       )}
     </div>
