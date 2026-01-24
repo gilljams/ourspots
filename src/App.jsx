@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MapPin, Home, Coffee, Mountain, Star, Calendar } from 'lucide-react';
+import { MapPin, Home, Coffee, Mountain, Star, Calendar, X, Plus, Image } from 'lucide-react';
 
 const PREDEFINED_ICONS = {
   '🏡': { icon: Home, label: 'Fastighet' },
@@ -10,7 +10,7 @@ const PREDEFINED_ICONS = {
   '✈️': { icon: Calendar, label: 'Resa' }
 };
 
-const exampleObjects = [
+const initialObjects = [
   {
     id: 'obj-1',
     type: '🏡',
@@ -160,9 +160,182 @@ const ObjectDetail = ({ object, onClose }) => {
   );
 };
 
+const CreateObjectModal = ({ onClose, onSave }) => {
+  const [selectedType, setSelectedType] = useState('🏡');
+  const [title, setTitle] = useState('');
+  const [address, setAddress] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [description, setDescription] = useState('');
+
+  const handleSubmit = () => {
+    if (!title.trim()) {
+      alert('Titel måste fyllas i!');
+      return;
+    }
+
+    const blocks = [
+      { type: 'title', data: { text: title } }
+    ];
+
+    if (address.trim()) {
+      blocks.push({
+        type: 'location',
+        data: { lat: 59.33, lng: 18.06, address: address }
+      });
+    }
+
+    if (imageUrl.trim()) {
+      blocks.push({
+        type: 'image',
+        data: { url: imageUrl }
+      });
+    }
+
+    if (description.trim()) {
+      blocks.push({
+        type: 'text',
+        data: { content: description }
+      });
+    }
+
+    const newObject = {
+      id: `obj-${Date.now()}`,
+      type: selectedType,
+      layerId: 'default',
+      blocks: blocks,
+      metadata: {
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    };
+
+    onSave(newObject);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 overflow-y-auto">
+      <div className="min-h-screen p-4 flex items-start justify-center pt-10">
+        <div className="bg-gray-900/95 backdrop-blur-xl rounded-3xl border border-white/10 max-w-2xl w-full p-6 shadow-2xl">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-white">Skapa nytt objekt</h2>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-white"
+            >
+              <X size={24} />
+            </button>
+          </div>
+
+          <div className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-3">
+                Välj typ
+              </label>
+              <div className="grid grid-cols-3 gap-3">
+                {Object.entries(PREDEFINED_ICONS).map(([emoji, { icon: Icon, label }]) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => setSelectedType(emoji)}
+                    className={`p-4 rounded-xl border-2 transition-all ${
+                      selectedType === emoji
+                        ? 'border-blue-500 bg-blue-500/20'
+                        : 'border-white/10 bg-white/5 hover:border-white/20'
+                    }`}
+                  >
+                    <Icon size={24} className="mx-auto mb-2 text-blue-400" />
+                    <div className="text-xs text-gray-300">{label}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Titel *
+              </label>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="T.ex. Sommarstugan i Dalarna"
+                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Plats/Adress
+              </label>
+              <input
+                type="text"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="T.ex. Siljan, Dalarna"
+                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Bild-URL
+              </label>
+              <div className="flex gap-2">
+                <Image size={20} className="text-gray-400 mt-3" />
+                <input
+                  type="url"
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  placeholder="https://images.unsplash.com/photo-..."
+                  className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Tips: Använd Unsplash för gratis bilder
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Beskrivning
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Beskriv platsen..."
+                rows={4}
+                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors resize-none"
+              />
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 transition-all"
+              >
+                Avbryt
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmit}
+                className="flex-1 px-6 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all"
+              >
+                Skapa objekt
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 function App() {
+  const [objects, setObjects] = useState(initialObjects);
   const [selectedObject, setSelectedObject] = useState(null);
   const [activeCategory, setActiveCategory] = useState('all');
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const categories = [
     { id: 'all', label: 'Alla', icon: Star },
@@ -172,8 +345,13 @@ function App() {
   ];
 
   const filteredObjects = activeCategory === 'all'
-    ? exampleObjects
-    : exampleObjects.filter(obj => obj.type === activeCategory);
+    ? objects
+    : objects.filter(obj => obj.type === activeCategory);
+
+  const handleSaveObject = (newObject) => {
+    setObjects([...objects, newObject]);
+    setShowCreateModal(false);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900/20 to-gray-900">
@@ -224,14 +402,24 @@ function App() {
         )}
       </main>
 
-      <button className="fixed bottom-6 right-6 w-14 h-14 bg-blue-500 hover:bg-blue-600 rounded-full shadow-2xl flex items-center justify-center text-white text-3xl transition-all hover:scale-110 z-40">
-        +
+      <button
+        onClick={() => setShowCreateModal(true)}
+        className="fixed bottom-6 right-6 w-14 h-14 bg-blue-500 hover:bg-blue-600 rounded-full shadow-2xl flex items-center justify-center text-white transition-all hover:scale-110 z-40"
+      >
+        <Plus size={28} />
       </button>
 
       {selectedObject && (
         <ObjectDetail
           object={selectedObject}
           onClose={() => setSelectedObject(null)}
+        />
+      )}
+
+      {showCreateModal && (
+        <CreateObjectModal
+          onClose={() => setShowCreateModal(false)}
+          onSave={handleSaveObject}
         />
       )}
     </div>
