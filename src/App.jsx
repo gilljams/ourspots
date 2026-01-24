@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import { MapPin, Home, Coffee, Mountain, Star, Calendar, X, Plus, Image, Edit2, Trash2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { MapPin, Home, Coffee, Mountain, Star, Calendar, X, Plus, Image, Edit2, Trash2, Loader } from 'lucide-react';
+import { db } from './firebase';
+import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, Timestamp } from 'firebase/firestore';
 
 const PREDEFINED_ICONS = {
   '🏡': { icon: Home, label: 'Fastighet' },
@@ -9,45 +11,6 @@ const PREDEFINED_ICONS = {
   '⭐': { icon: Star, label: 'Favorit' },
   '✈️': { icon: Calendar, label: 'Resa' }
 };
-
-const initialObjects = [
-  {
-    id: 'obj-1',
-    type: '🏡',
-    layerId: 'default',
-    blocks: [
-      { type: 'title', data: { text: 'Sommarstugan i Dalarna' } },
-      { type: 'location', data: { lat: 61.0, lng: 14.5, address: 'Siljan, Dalarna' } },
-      { type: 'image', data: { url: 'https://images.unsplash.com/photo-1542718610-a1d656d1884c?w=800' } },
-      { type: 'text', data: { content: 'Mysig stuga vid sjön med egen brygga och bastu.' } }
-    ],
-    metadata: { createdAt: new Date(), updatedAt: new Date() }
-  },
-  {
-    id: 'obj-2',
-    type: '☕',
-    layerId: 'default',
-    blocks: [
-      { type: 'title', data: { text: 'Café Lyktan' } },
-      { type: 'location', data: { lat: 59.33, lng: 18.06, address: 'Södermalm, Stockholm' } },
-      { type: 'image', data: { url: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=800' } },
-      { type: 'text', data: { content: 'Underbart fik med bästa kanelbullarna!' } }
-    ],
-    metadata: { createdAt: new Date(), updatedAt: new Date() }
-  },
-  {
-    id: 'obj-3',
-    type: '🏞️',
-    layerId: 'default',
-    blocks: [
-      { type: 'title', data: { text: 'Tyresta Nationalpark' } },
-      { type: 'location', data: { lat: 59.18, lng: 18.28, address: 'Tyresta, Stockholm' } },
-      { type: 'image', data: { url: 'https://images.unsplash.com/photo-1511497584788-876760111969?w=800' } },
-      { type: 'text', data: { content: 'Vacker naturreservat perfekt för vandring.' } }
-    ],
-    metadata: { createdAt: new Date(), updatedAt: new Date() }
-  }
-];
 
 const TitleBlock = ({ data }) => (
   <h2 className="text-2xl font-bold text-white mb-2">{data.text}</h2>
@@ -158,8 +121,8 @@ const ObjectDetail = ({ object, onClose, onEdit, onDelete }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const IconComponent = PREDEFINED_ICONS[object.type]?.icon || Home;
   
-  const handleDelete = () => {
-    onDelete(object.id);
+  const handleDelete = async () => {
+    await onDelete(object.id);
     onClose();
   };
   
@@ -230,7 +193,7 @@ const ObjectDetail = ({ object, onClose, onEdit, onDelete }) => {
   );
 };
 
-const CreateObjectModal = ({ onClose, onSave, editObject }) => {
+const CreateObjectModal = ({ onClose, onSave, editObject, saving }) => {
   const isEdit = !!editObject;
   
   const [selectedType, setSelectedType] = useState(
@@ -281,17 +244,12 @@ const CreateObjectModal = ({ onClose, onSave, editObject }) => {
     }
 
     const objectData = {
-      id: editObject?.id || `obj-${Date.now()}`,
       type: selectedType,
       layerId: 'default',
-      blocks: blocks,
-      metadata: {
-        createdAt: editObject?.metadata?.createdAt || new Date(),
-        updatedAt: new Date()
-      }
+      blocks: blocks
     };
 
-    onSave(objectData, isEdit);
+    onSave(objectData, isEdit ? editObject.id : null);
   };
 
   return (
@@ -305,6 +263,7 @@ const CreateObjectModal = ({ onClose, onSave, editObject }) => {
             <button
               onClick={onClose}
               className="text-gray-400 hover:text-white"
+              disabled={saving}
             >
               <X size={24} />
             </button>
@@ -321,11 +280,12 @@ const CreateObjectModal = ({ onClose, onSave, editObject }) => {
                     key={emoji}
                     type="button"
                     onClick={() => setSelectedType(emoji)}
+                    disabled={saving}
                     className={`p-4 rounded-xl border-2 transition-all ${
                       selectedType === emoji
                         ? 'border-blue-500 bg-blue-500/20'
                         : 'border-white/10 bg-white/5 hover:border-white/20'
-                    }`}
+                    } ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     <Icon size={24} className="mx-auto mb-2 text-blue-400" />
                     <div className="text-xs text-gray-300">{label}</div>
@@ -343,7 +303,8 @@ const CreateObjectModal = ({ onClose, onSave, editObject }) => {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="T.ex. Sommarstugan i Dalarna"
-                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors"
+                disabled={saving}
+                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-50"
               />
             </div>
 
@@ -356,7 +317,8 @@ const CreateObjectModal = ({ onClose, onSave, editObject }) => {
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 placeholder="T.ex. Siljan, Dalarna"
-                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors"
+                disabled={saving}
+                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-50"
               />
             </div>
 
@@ -371,7 +333,8 @@ const CreateObjectModal = ({ onClose, onSave, editObject }) => {
                   value={imageUrl}
                   onChange={(e) => setImageUrl(e.target.value)}
                   placeholder="https://images.unsplash.com/photo-..."
-                  className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors"
+                  disabled={saving}
+                  className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-50"
                 />
               </div>
               <p className="text-xs text-gray-500 mt-1">
@@ -388,7 +351,8 @@ const CreateObjectModal = ({ onClose, onSave, editObject }) => {
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Beskriv platsen..."
                 rows={4}
-                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors resize-none"
+                disabled={saving}
+                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors resize-none disabled:opacity-50"
               />
             </div>
 
@@ -396,16 +360,25 @@ const CreateObjectModal = ({ onClose, onSave, editObject }) => {
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 transition-all"
+                disabled={saving}
+                className="flex-1 px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Avbryt
               </button>
               <button
                 type="button"
                 onClick={handleSubmit}
-                className="flex-1 px-6 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all"
+                disabled={saving}
+                className="flex-1 px-6 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                {isEdit ? 'Spara ändringar' : 'Skapa objekt'}
+                {saving ? (
+                  <>
+                    <Loader size={18} className="animate-spin" />
+                    <span>Sparar...</span>
+                  </>
+                ) : (
+                  <span>{isEdit ? 'Spara ändringar' : 'Skapa objekt'}</span>
+                )}
               </button>
             </div>
           </div>
@@ -416,7 +389,9 @@ const CreateObjectModal = ({ onClose, onSave, editObject }) => {
 };
 
 function App() {
-  const [objects, setObjects] = useState(initialObjects);
+  const [objects, setObjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [selectedObject, setSelectedObject] = useState(null);
   const [activeCategory, setActiveCategory] = useState('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -429,23 +404,56 @@ function App() {
     { id: '🏞️', label: 'Natur', icon: Mountain }
   ];
 
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, 'objects'), (snapshot) => {
+      const objectsData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setObjects(objectsData);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   const filteredObjects = activeCategory === 'all'
     ? objects
     : objects.filter(obj => obj.type === activeCategory);
 
-  const handleSaveObject = (objectData, isEdit) => {
-    if (isEdit) {
-      setObjects(objects.map(obj => obj.id === objectData.id ? objectData : obj));
-    } else {
-      setObjects([...objects, objectData]);
+  const handleSaveObject = async (objectData, editId) => {
+    setSaving(true);
+    try {
+      if (editId) {
+        await updateDoc(doc(db, 'objects', editId), {
+          ...objectData,
+          updatedAt: Timestamp.now()
+        });
+      } else {
+        await addDoc(collection(db, 'objects'), {
+          ...objectData,
+          createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now()
+        });
+      }
+      setShowCreateModal(false);
+      setEditingObject(null);
+      setSelectedObject(null);
+    } catch (error) {
+      console.error('Error saving object:', error);
+      alert('Kunde inte spara objektet. Försök igen!');
+    } finally {
+      setSaving(false);
     }
-    setShowCreateModal(false);
-    setEditingObject(null);
-    setSelectedObject(null);
   };
 
-  const handleDeleteObject = (id) => {
-    setObjects(objects.filter(obj => obj.id !== id));
+  const handleDeleteObject = async (id) => {
+    try {
+      await deleteDoc(doc(db, 'objects', id));
+    } catch (error) {
+      console.error('Error deleting object:', error);
+      alert('Kunde inte ta bort objektet. Försök igen!');
+    }
   };
 
   const handleEdit = (object) => {
@@ -453,6 +461,17 @@ function App() {
     setShowCreateModal(true);
     setSelectedObject(null);
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900/20 to-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <Loader size={48} className="animate-spin text-blue-400 mx-auto mb-4" />
+          <p className="text-gray-400">Laddar dina platser...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900/20 to-gray-900">
@@ -499,6 +518,7 @@ function App() {
         {filteredObjects.length === 0 && (
           <div className="text-center py-20 text-gray-500">
             <p>Inga objekt hittades i denna kategori</p>
+            <p className="text-sm mt-2">Klicka på + knappen för att skapa ditt första objekt!</p>
           </div>
         )}
       </main>
@@ -530,6 +550,7 @@ function App() {
           }}
           onSave={handleSaveObject}
           editObject={editingObject}
+          saving={saving}
         />
       )}
     </div>
