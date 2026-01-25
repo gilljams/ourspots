@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { MapPin, Home, Coffee, Mountain, Star, Calendar, X, Plus, Image, Edit2, Trash2, Loader, LogOut, LogIn, Check, Circle, Upload } from 'lucide-react';
+import { MapPin, Home, Coffee, Mountain, Star, Calendar, X, Plus, Image, Edit2, Trash2, Loader, LogOut, LogIn, Check, Circle, Upload, Folder } from 'lucide-react';
 import { db, auth, googleProvider } from './firebase';
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, Timestamp } from 'firebase/firestore';
 import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
@@ -165,8 +165,9 @@ function ObjectCard({ object, onClick, currentUser, childCount }) {
       )}
       {childCount > 0 && (
         <div className="absolute top-2 left-2 z-10">
-          <div className="bg-white/10 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-full border border-white/20 flex items-center gap-1">
-            📁 {childCount}
+          <div className="bg-white/10 backdrop-blur-sm text-gray-200 text-xs px-2 py-1 rounded-full border border-white/15 flex items-center gap-1">
+            <Folder size={12} className="text-gray-300" />
+            {childCount}
           </div>
         </div>
       )}
@@ -305,10 +306,10 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
                   {isOwner && (
                     <button
                       onClick={() => onEdit({ parentId: object.id })}
-                      className="w-full h-16 bg-blue-500 hover:bg-blue-600 rounded-lg shadow-lg flex items-center justify-center text-white transition-all hover:scale-105 col-span-1"
+                      className="w-full h-10 sm:h-16 bg-blue-500 hover:bg-blue-600 rounded-md sm:rounded-lg shadow-lg flex items-center justify-center text-white transition-all hover:scale-105 col-span-1"
                       title="Lägg till underobjekt"
                     >
-                      <Plus size={20} />
+                      <Plus size={16} />
                     </button>
                   )}
                 </div>
@@ -319,10 +320,10 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
                 <p className="text-gray-400 text-sm flex-1">Lägg till underobjekt:</p>
                 <button
                   onClick={() => onEdit({ parentId: object.id })}
-                  className="w-12 h-12 bg-blue-500 hover:bg-blue-600 rounded-lg shadow-lg flex items-center justify-center text-white transition-all hover:scale-105"
+                  className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-500 hover:bg-blue-600 rounded-md sm:rounded-lg shadow-lg flex items-center justify-center text-white transition-all hover:scale-105"
                   title="Lägg till underobjekt"
                 >
-                  <Plus size={20} />
+                  <Plus size={16} />
                 </button>
               </div>
             )}
@@ -356,7 +357,9 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
 
 function CreateObjectModal({ onClose, onSave, editObject, saving, availableParents, defaultParentId }) {
   const isEdit = !!editObject;
-  const [selectedType, setSelectedType] = useState(editObject?.type || '🏡');
+  // Default type: use parent's type if defaultParentId is provided (for add-child flow)
+  const defaultTypeFromParent = defaultParentId ? (availableParents.find(p => p.id === defaultParentId)?.type || '🏡') : '🏡';
+  const [selectedType, setSelectedType] = useState(editObject?.type || defaultTypeFromParent);
   const [parentId, setParentId] = useState(editObject?.parentId || defaultParentId || '');
   const [inheritLocation, setInheritLocation] = useState(false);
   const [title, setTitle] = useState(editObject?.blocks?.find(b => b.type === 'title')?.data?.text || '');
