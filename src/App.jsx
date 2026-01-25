@@ -492,7 +492,6 @@ function App() {
         <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold text-white">OurSpots</h1>
-            <p className="text-gray-400 text-sm">Din personliga platsbok</p>
           </div>
           <div>
             {user ? (
@@ -518,7 +517,7 @@ function App() {
                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500 hover:bg-blue-600 text-white transition-all"
               >
                 <LogIn size={18} />
-                <span>Logga in med Google</span>
+                <span>Logga in</span>
               </button>
             )}
           </div>
