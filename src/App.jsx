@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { MapPin, Home, Coffee, Mountain, Star, Calendar, X, Plus, Image, Edit2, Trash2, Loader, LogOut, LogIn, Check, Circle, Upload, Folder, Navigation, Map as MapIcon, List, ChevronDown } from 'lucide-react';
+import { MapPin, Home, Coffee, Mountain, Star, Calendar, X, Plus, Image, Edit2, Trash2, Loader, LogOut, LogIn, Check, Circle, Upload, Folder, Navigation, Map as MapIcon, List, ChevronDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMapEvents, Tooltip, Popup } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
@@ -24,6 +24,21 @@ const createColoredIcon = (color) => {
     iconSize: [25, 25],
     iconAnchor: [12, 24],
     popupAnchor: [0, -24],
+  });
+};
+
+const createUserIcon = () => {
+  return L.divIcon({
+    html: `<div style="width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); border: 3px solid white; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4), inset 0 0 0 2px #1E40AF; display: flex; align-items: center; justify-content: center; position: relative;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" style="position: absolute;">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+        <circle cx="12" cy="7" r="4"></circle>
+      </svg>
+    </div>`,
+    className: 'user-position-icon',
+    iconSize: [30, 30],
+    iconAnchor: [15, 30],
+    popupAnchor: [0, -30],
   });
 };
 
@@ -281,9 +296,9 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
   
   return (
     <>
-      <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-[1000] overflow-hidden">
+      <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-[1000] overflow-hidden" onClick={onClose}>
         <div className="min-h-screen p-4 flex items-start justify-center pt-20">
-            <div className="bg-gray-950/95 backdrop-blur-xl rounded-3xl border border-white/15 max-w-2xl w-full p-6 shadow-[0_24px_64px_-24px_rgba(0,0,0,0.8)] max-h-[80vh] overflow-y-auto pr-2">
+            <div className="bg-gray-950/95 backdrop-blur-xl rounded-3xl border border-white/15 max-w-2xl w-full p-6 shadow-[0_24px_64px_-24px_rgba(0,0,0,0.8)] max-h-[80vh] overflow-y-auto pr-2" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-6">
               <div className="flex items-center gap-3">
                 {parentObject && (
@@ -454,7 +469,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
   );
 }
 
-function MapView({ objects, onSelectObject, currentUser }) {
+function MapView({ objects, onSelectObject, currentUser, userLocation }) {
   const [hasRequestedPermission, setHasRequestedPermission] = useState(false);
 
   const objectsWithLocation = objects.filter(obj => {
@@ -626,6 +641,11 @@ function MapView({ objects, onSelectObject, currentUser }) {
           attribution='&copy; <a href="https://carto.com/">CARTO</a>'
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
         />
+        {userLocation && (
+          <Marker position={[userLocation.lat, userLocation.lng]} icon={createUserIcon()}>
+            <Tooltip permanent={false} direction="top">Din plats</Tooltip>
+          </Marker>
+        )}
         <MarkerClusterGroup
           chunkedLoading
           maxClusterRadius={60}
@@ -669,6 +689,11 @@ function MapPicker({ onSelect, onClose, initialPosition }) {
               attribution='&copy; <a href="https://carto.com/">CARTO</a>'
               url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
             />
+            {userLocation && (
+              <Marker position={[userLocation.lat, userLocation.lng]} icon={createUserIcon()}>
+                <Tooltip permanent={false} direction="top">Din plats</Tooltip>
+              </Marker>
+            )}
             <LocationMarker />
           </MapContainer>
           
@@ -683,7 +708,7 @@ function MapPicker({ onSelect, onClose, initialPosition }) {
   );
 }
 
-function CreateObjectModal({ onClose, onSave, editObject, saving, availableParents, defaultParentId }) {
+function CreateObjectModal({ onClose, onSave, editObject, saving, availableParents, defaultParentId, userLocation }) {
   const isEdit = !!editObject;
   // Default type: use parent's type if defaultParentId is provided (for add-child flow)
   const defaultTypeFromParent = defaultParentId ? (availableParents.find(p => p.id === defaultParentId)?.type || '🏡') : '🏡';
@@ -710,6 +735,8 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
         content: b.type === 'text' ? b.data.content : b.data.items.map(i => i.text).join('\n')
       }));
   });
+  const [draggingBlockId, setDraggingBlockId] = useState(null);
+  const [dragOverBlockId, setDragOverBlockId] = useState(null);
   const fileInputRef = useRef(null);
 
   const selectedParent = availableParents.find(p => p.id === parentId);
@@ -967,41 +994,105 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
             
             {/* Dynamic custom blocks */}
             <div className="space-y-4">
-              {customBlocks.map((block) => (
-                <div key={block.id}>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-sm font-medium text-gray-300 flex items-center gap-2">
-                      {block.type === 'text' && <>📝 Anteckning</>}
-                      {block.type === 'checklist' && <><Check size={14} className="text-blue-400" /> Checklista</>}
-                      {block.type === 'todo' && <><Circle size={14} className="text-green-400" /> Att göra</>}
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setCustomBlocks(customBlocks.filter(b => b.id !== block.id))}
+              {customBlocks.map((block) => {
+                const isDragging = draggingBlockId === block.id;
+                const isDragOver = dragOverBlockId === block.id && draggingBlockId !== block.id;
+
+                const handleDrop = (targetId) => {
+                  if (!draggingBlockId || draggingBlockId === targetId) return;
+                  setCustomBlocks(prev => {
+                    const items = [...prev];
+                    const from = items.findIndex(b => b.id === draggingBlockId);
+                    const to = items.findIndex(b => b.id === targetId);
+                    if (from === -1 || to === -1) return prev;
+                    const [moved] = items.splice(from, 1);
+                    items.splice(to, 0, moved);
+                    return items;
+                  });
+                };
+
+                const handleMove = (delta) => {
+                  setCustomBlocks(prev => {
+                    const items = [...prev];
+                    const from = items.findIndex(b => b.id === block.id);
+                    const to = from + delta;
+                    if (from === -1 || to < 0 || to >= items.length) return prev;
+                    const [moved] = items.splice(from, 1);
+                    items.splice(to, 0, moved);
+                    return items;
+                  });
+                };
+
+                return (
+                  <div
+                    key={block.id}
+                    draggable
+                    onDragStart={() => setDraggingBlockId(block.id)}
+                    onDragEnd={() => { setDraggingBlockId(null); setDragOverBlockId(null); }}
+                    onDragOver={(e) => { e.preventDefault(); setDragOverBlockId(block.id); }}
+                    onDragLeave={() => setDragOverBlockId(null)}
+                    onDrop={(e) => { e.preventDefault(); setDragOverBlockId(null); handleDrop(block.id); }}
+                    className={`rounded-xl border border-white/10 p-3 bg-white/5 transition-all ${isDragging ? 'opacity-70 border-blue-400' : ''} ${isDragOver ? 'ring-2 ring-blue-400 ring-offset-0 ring-offset-transparent' : ''}`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <label className="text-sm font-medium text-gray-300 flex items-center gap-2">
+                          {block.type === 'text' && <>📝 Anteckning</>}
+                          {block.type === 'checklist' && <><Check size={14} className="text-blue-400" /> Checklista</>}
+                          {block.type === 'todo' && <><Circle size={14} className="text-green-400" /> Att göra</>}
+                          <span className="text-gray-500 text-xs">(dra eller använd pilar)</span>
+                        </label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleMove(-1)}
+                            disabled={saving}
+                            className="w-7 h-7 rounded-md bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 transition-all disabled:opacity-50 flex items-center justify-center"
+                            title="Flytta upp"
+                          >
+                            <ArrowUp size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleMove(1)}
+                            disabled={saving}
+                            className="w-7 h-7 rounded-md bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 transition-all disabled:opacity-50 flex items-center justify-center"
+                            title="Flytta ner"
+                          >
+                            <ArrowDown size={14} />
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setCustomBlocks(customBlocks.filter(b => b.id !== block.id))}
+                          disabled={saving}
+                          className="text-red-400 hover:text-red-300 text-sm transition-all disabled:opacity-50"
+                        >
+                          ✕ Ta bort
+                        </button>
+                      </div>
+                    </div>
+                    <input
+                      type="text"
+                      value={block.title}
+                      onChange={(e) => setCustomBlocks(customBlocks.map(b => b.id === block.id ? { ...b, title: e.target.value } : b))}
+                      placeholder={block.type === 'text' ? 'T.ex. Mat plan' : block.type === 'checklist' ? 'T.ex. Före semester' : 'T.ex. Packlista'}
                       disabled={saving}
-                      className="text-red-400 hover:text-red-300 text-sm transition-all disabled:opacity-50"
-                    >
-                      ✕ Ta bort
-                    </button>
+                      className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors mb-2 disabled:opacity-50 text-sm"
+                    />
+                    <textarea 
+                      value={block.content} 
+                      onChange={(e) => setCustomBlocks(customBlocks.map(b => b.id === block.id ? { ...b, content: e.target.value } : b))}
+                      placeholder={block.type === 'text' ? 'Skriv anteckning...' : 'En per rad'}
+                      rows={3} 
+                      disabled={saving}
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors resize-none disabled:opacity-50 font-mono text-sm"
+                    />
                   </div>
-                  <input
-                    type="text"
-                    value={block.title}
-                    onChange={(e) => setCustomBlocks(customBlocks.map(b => b.id === block.id ? { ...b, title: e.target.value } : b))}
-                    placeholder={block.type === 'text' ? 'T.ex. Mat plan' : block.type === 'checklist' ? 'T.ex. Före semester' : 'T.ex. Packlista'}
-                    disabled={saving}
-                    className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors mb-2 disabled:opacity-50 text-sm"
-                  />
-                  <textarea 
-                    value={block.content} 
-                    onChange={(e) => setCustomBlocks(customBlocks.map(b => b.id === block.id ? { ...b, content: e.target.value } : b))}
-                    placeholder={block.type === 'text' ? 'Skriv anteckning...' : 'En per rad'}
-                    rows={3} 
-                    disabled={saving}
-                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors resize-none disabled:opacity-50 font-mono text-sm"
-                  />
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Add block buttons */}
@@ -1352,7 +1443,7 @@ function App() {
             )}
           </>
         ) : (
-          <MapView objects={displayObjects} onSelectObject={setSelectedObject} currentUser={user} />
+          <MapView objects={displayObjects} onSelectObject={setSelectedObject} currentUser={user} userLocation={userLocation} />
         )}
       </main>
 
@@ -1379,7 +1470,7 @@ function App() {
       )}
 
       {showCreateModal && (
-        <CreateObjectModal onClose={() => { setShowCreateModal(false); setEditingObject(null); setDefaultParentId(null); }} onSave={handleSaveObject} editObject={editingObject} saving={saving} availableParents={objects.filter(o => o.id !== editingObject?.id)} defaultParentId={defaultParentId} />
+        <CreateObjectModal onClose={() => { setShowCreateModal(false); setEditingObject(null); setDefaultParentId(null); }} onSave={handleSaveObject} editObject={editingObject} saving={saving} availableParents={objects.filter(o => o.id !== editingObject?.id)} defaultParentId={defaultParentId} userLocation={userLocation} />
       )}
     </div>
   );
