@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { MapPin, Home, Coffee, Mountain, Star, Calendar, X, Plus, Image, Edit2, Trash2, Loader, LogOut, LogIn, Check, Circle } from 'lucide-react';
 import { db, auth, googleProvider } from './firebase';
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, Timestamp } from 'firebase/firestore';
@@ -18,20 +18,24 @@ const TitleBlock = ({ data }) => (
 );
 
 const LocationBlock = ({ data }) => (
-  <div className="flex items-center gap-2 text-gray-300 mb-3">
-    <MapPin size={18} className="text-blue-400" />
-    <span className="text-sm">{data.address}</span>
+  <div className="mb-4 rounded-2xl bg-white/10 border border-white/10 shadow-[0_10px_30px_-16px_rgba(0,0,0,0.7)] p-4">
+    <div className="flex items-center gap-2 text-gray-100">
+      <MapPin size={18} className="text-blue-400" />
+      <span className="text-sm">{data.address}</span>
+    </div>
   </div>
 );
 
 const ImageBlock = ({ data }) => (
-  <div className="w-full h-48 rounded-xl overflow-hidden mb-4">
+  <div className="w-full h-48 rounded-xl overflow-hidden mb-4 border border-white/10 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.7)]">
     <img src={data.url} alt="" className="w-full h-full object-cover" />
   </div>
 );
 
 const TextBlock = ({ data }) => (
-  <p className="text-gray-300 text-sm leading-relaxed mb-4">{data.content}</p>
+  <div className="mb-4 rounded-2xl bg-white/10 border border-white/10 shadow-[0_10px_30px_-16px_rgba(0,0,0,0.7)] p-4">
+    <p className="text-gray-100 text-sm leading-relaxed">{data.content}</p>
+  </div>
 );
 
 const ChecklistBlock = ({ data, objectId, blockIndex, onUpdate }) => {
@@ -44,7 +48,7 @@ const ChecklistBlock = ({ data, objectId, blockIndex, onUpdate }) => {
   };
 
   return (
-    <div className="mb-4">
+    <div className="mb-4 rounded-2xl bg-white/10 border border-white/10 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.7)] p-4">
       <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
         <Check size={18} className="text-blue-400" />
         Checklista
@@ -54,15 +58,15 @@ const ChecklistBlock = ({ data, objectId, blockIndex, onUpdate }) => {
           <div 
             key={i}
             onClick={() => handleToggle(i)}
-            className="flex items-center gap-3 p-3 rounded-lg bg-white/5 hover:bg-white/10 cursor-pointer transition-all group"
+            className="flex items-center gap-3 p-3 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 cursor-pointer transition-all group"
           >
             <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
-              item.checked ? 'bg-blue-500 border-blue-500' : 'border-gray-600 group-hover:border-blue-400'
+              item.checked ? 'bg-blue-500 border-blue-500' : 'border-white/20 group-hover:border-blue-400'
             }`}>
               {item.checked && <Check size={14} className="text-white" />}
             </div>
             <span className={`text-sm flex-1 transition-all ${
-              item.checked ? 'text-gray-500 line-through' : 'text-gray-300'
+              item.checked ? 'text-gray-500 line-through' : 'text-gray-100'
             }`}>
               {item.text}
             </span>
@@ -87,7 +91,7 @@ const TodoBlock = ({ data, objectId, blockIndex, onUpdate }) => {
   const progress = totalItems > 0 ? (doneItems / totalItems) * 100 : 0;
 
   return (
-    <div className="mb-4">
+    <div className="mb-4 rounded-2xl bg-white/10 border border-white/10 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.7)] p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-lg font-semibold text-white flex items-center gap-2">
           <Circle size={18} className="text-green-400" />
@@ -106,15 +110,15 @@ const TodoBlock = ({ data, objectId, blockIndex, onUpdate }) => {
           <div 
             key={i}
             onClick={() => handleToggle(i)}
-            className="flex items-center gap-3 p-3 rounded-lg bg-white/5 hover:bg-white/10 cursor-pointer transition-all group"
+            className="flex items-center gap-3 p-3 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 cursor-pointer transition-all group"
           >
             <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-              item.done ? 'bg-green-500 border-green-500' : 'border-gray-600 group-hover:border-green-400'
+              item.done ? 'bg-green-500 border-green-500' : 'border-white/20 group-hover:border-green-400'
             }`}>
               {item.done && <Check size={14} className="text-white" />}
             </div>
             <span className={`text-sm flex-1 transition-all ${
-              item.done ? 'text-gray-500 line-through' : 'text-gray-300'
+              item.done ? 'text-gray-500 line-through' : 'text-gray-100'
             }`}>
               {item.text}
             </span>
@@ -219,9 +223,9 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
   
   return (
     <>
-      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 overflow-y-auto">
+      <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 overflow-y-auto">
         <div className="min-h-screen p-4 flex items-start justify-center pt-20">
-          <div className="bg-gray-900/95 backdrop-blur-xl rounded-3xl border border-white/10 max-w-2xl w-full p-6 shadow-2xl">
+            <div className="bg-gray-950/95 backdrop-blur-xl rounded-3xl border border-white/15 max-w-2xl w-full p-6 shadow-[0_24px_64px_-24px_rgba(0,0,0,0.8)]">
             <div className="flex justify-between items-center mb-6">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
@@ -368,6 +372,8 @@ function App() {
   const [activeCategory, setActiveCategory] = useState('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingObject, setEditingObject] = useState(null);
+  const headerRef = useRef(null);
+  const [headerHeight, setHeaderHeight] = useState(64);
 
   const categories = [
     { id: 'all', label: 'Alla', icon: Star },
@@ -381,6 +387,18 @@ function App() {
     return () => unsubAuth();
   }, []);
 
+  useLayoutEffect(() => {
+    const updateHeaderHeight = () => {
+      if (headerRef.current) {
+        setHeaderHeight(headerRef.current.getBoundingClientRect().height);
+      }
+    };
+
+    updateHeaderHeight();
+    window.addEventListener('resize', updateHeaderHeight);
+    return () => window.removeEventListener('resize', updateHeaderHeight);
+  }, []);
+
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'objects'), (snap) => {
       setObjects(snap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -388,6 +406,16 @@ function App() {
     });
     return () => unsub();
   }, []);
+
+  useEffect(() => {
+    if (!selectedObject) return;
+    const fresh = objects.find(o => o.id === selectedObject.id);
+    if (fresh) {
+      setSelectedObject(fresh);
+    } else {
+      setSelectedObject(null);
+    }
+  }, [objects, selectedObject ? selectedObject.id : null]);
 
   const filteredObjects = activeCategory === 'all' ? objects : objects.filter(o => o.type === activeCategory);
 
@@ -406,6 +434,14 @@ function App() {
   };
 
   const handleBlockUpdate = async (objectId, blockIndex, newBlockData) => {
+    const applyBlockUpdate = (obj) => ({
+      ...obj,
+      blocks: obj.blocks.map((b, i) => i === blockIndex ? { ...b, data: newBlockData } : b)
+    });
+
+    setObjects(prev => prev.map(obj => obj.id === objectId ? applyBlockUpdate(obj) : obj));
+    setSelectedObject(prev => (prev && prev.id === objectId) ? applyBlockUpdate(prev) : prev);
+
     try {
       const obj = objects.find(o => o.id === objectId);
       if (!obj) return;
@@ -475,8 +511,16 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900/20 to-gray-900">
-      <header className="bg-gray-900/50 backdrop-blur-xl border-b border-white/10 sticky top-0 z-40">
+    <div
+      className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950"
+      style={{
+         backgroundImage: `radial-gradient(circle at 15% 12%, rgba(59,130,246,0.20), transparent 35%),
+                           radial-gradient(circle at 85% 8%, rgba(56,189,248,0.16), transparent 32%),
+                           radial-gradient(circle at 50% 88%, rgba(59,130,246,0.14), transparent 36%),
+                           linear-gradient(to bottom right, #06070c, #0b1220, #06070c)`
+      }}
+    >
+      <header ref={headerRef} className="bg-gray-900/50 backdrop-blur-xl border-b border-white/10 sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold text-white">OurSpots</h1>
@@ -503,12 +547,12 @@ function App() {
         </div>
       </header>
       
-      <div className="bg-gray-900/30 backdrop-blur-md border-b border-white/10 sticky top-[89px] z-30">
+      <div className="bg-gray-900/30 backdrop-blur-md border-b border-white/10 sticky z-30" style={{ top: headerHeight }}>
         <div className="max-w-6xl mx-auto px-4 py-3 flex gap-2 overflow-x-auto">
           {categories.map(cat => {
             const IconComponent = cat.icon;
             return (
-              <button key={cat.id} onClick={() => setActiveCategory(cat.id)} className={`flex items-center gap-2 px-4 py-2 rounded-xl whitespace-nowrap transition-all ${activeCategory === cat.id ? 'bg-blue-500 text-white' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
+              <button key={cat.id} onClick={() => setActiveCategory(cat.id)} className={`flex items-center gap-2 px-4 py-2 rounded-xl whitespace-nowrap transition-all ${activeCategory === cat.id ? 'bg-blue-500 text-white' : 'bg-white/20 text-gray-200 hover:bg-white/30'}`}>
                 <IconComponent size={16} />
                 <span className="text-sm font-medium">{cat.label}</span>
               </button>
