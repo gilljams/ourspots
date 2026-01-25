@@ -480,7 +480,6 @@ function App() {
         <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold text-white">OurSpots</h1>
-            <p className="text-gray-400 text-sm">Din personliga platsbok</p>
           </div>
           <div>
             {user ? (
