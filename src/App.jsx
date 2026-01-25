@@ -20,11 +20,12 @@ const TitleBlock = ({ data }) => (
   <h2 className="text-2xl font-bold text-white mb-2">{data.text}</h2>
 );
 
-const LocationBlock = ({ data }) => (
+const LocationBlock = ({ data, inherited }) => (
   <div className="mb-4 rounded-2xl bg-white/10 border border-white/10 shadow-[0_10px_30px_-16px_rgba(0,0,0,0.7)] p-4">
     <div className="flex items-center gap-2 text-gray-100">
       <MapPin size={18} className="text-blue-400" />
       <span className="text-sm">{data.address}</span>
+      {inherited && <span className="text-xs text-gray-400 ml-auto">(från parent)</span>}
     </div>
   </div>
 );
@@ -141,7 +142,7 @@ const blockComponents = {
   todo: TodoBlock
 };
 
-function ObjectCard({ object, onClick, currentUser }) {
+function ObjectCard({ object, onClick, currentUser, childCount }) {
   const IconComponent = PREDEFINED_ICONS[object.type]?.icon || Home;
   const titleBlock = object.blocks.find(b => b.type === 'title');
   const imageBlock = object.blocks.find(b => b.type === 'image');
@@ -160,6 +161,13 @@ function ObjectCard({ object, onClick, currentUser }) {
       {isOwner && (
         <div className="absolute top-2 right-2 z-10">
           <div className="bg-blue-500/90 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-full">Ditt</div>
+        </div>
+      )}
+      {childCount > 0 && (
+        <div className="absolute top-2 left-2 z-10">
+          <div className="bg-white/10 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-full border border-white/20 flex items-center gap-1">
+            📁 {childCount}
+          </div>
         </div>
       )}
       {imageBlock && (
@@ -214,10 +222,20 @@ function DeleteConfirmModal({ object, onConfirm, onCancel }) {
   );
 }
 
-function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, currentUser }) {
+function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, currentUser, allObjects, onNavigate }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const IconComponent = PREDEFINED_ICONS[object.type]?.icon || Home;
   const isOwner = currentUser && object.ownerId === currentUser.uid;
+  
+  const childObjects = allObjects.filter(o => o.parentId === object.id);
+  const parentObject = object.parentId ? allObjects.find(o => o.id === object.parentId) : null;
+  
+  // Inherit location from parent if child doesn't have one
+  const hasOwnLocation = object.blocks.some(b => b.type === 'location');
+  const parentLocation = parentObject?.blocks?.find(b => b.type === 'location');
+  const blocksToRender = hasOwnLocation || !parentLocation 
+    ? object.blocks 
+    : [...object.blocks, { type: 'location', data: parentLocation.data, inherited: true }];
   
   const handleDelete = async () => {
     await onDelete(object.id);
@@ -226,11 +244,19 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
   
   return (
     <>
-      <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 overflow-y-auto">
+      <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 overflow-hidden">
         <div className="min-h-screen p-4 flex items-start justify-center pt-20">
-            <div className="bg-gray-950/95 backdrop-blur-xl rounded-3xl border border-white/15 max-w-2xl w-full p-6 shadow-[0_24px_64px_-24px_rgba(0,0,0,0.8)]">
+            <div className="bg-gray-950/95 backdrop-blur-xl rounded-3xl border border-white/15 max-w-2xl w-full p-6 shadow-[0_24px_64px_-24px_rgba(0,0,0,0.8)] max-h-[80vh] overflow-y-auto pr-2">
             <div className="flex justify-between items-center mb-6">
               <div className="flex items-center gap-3">
+                {parentObject && (
+                  <button
+                    onClick={() => onNavigate(parentObject)}
+                    className="text-gray-400 hover:text-white transition-all text-sm flex items-center gap-1"
+                  >
+                    ← {parentObject.blocks.find(b => b.type === 'title')?.data?.text || 'Parent'}
+                  </button>
+                )}
                 <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
                   <IconComponent size={24} className="text-blue-400" />
                 </div>
@@ -239,13 +265,67 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
               <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl leading-none">×</button>
             </div>
             <div className="space-y-4">
-              {object.blocks.map((block, index) => {
+              {blocksToRender.map((block, index) => {
                 const BlockComponent = blockComponents[block.type];
                 return BlockComponent ? (
-                  <BlockComponent key={index} data={block.data} objectId={object.id} blockIndex={index} onUpdate={onBlockUpdate} />
+                  <BlockComponent key={index} data={block.data} objectId={object.id} blockIndex={index} onUpdate={onBlockUpdate} inherited={block.inherited} />
                 ) : null;
               })}
             </div>
+            {childObjects.length > 0 && (
+              <div className="mt-6 pt-6 border-t border-white/10">
+                <h3 className="text-lg font-semibold text-white mb-3">Ingår i detta objekt:</h3>
+                <div className="grid grid-cols-3 gap-2 items-end">
+                  {childObjects.map(child => {
+                    const childTitle = child.blocks.find(b => b.type === 'title');
+                    const childImage = child.blocks.find(b => b.type === 'image');
+                    const ChildIcon = PREDEFINED_ICONS[child.type]?.icon || Home;
+                    return (
+                      <button
+                        key={child.id}
+                        onClick={() => onNavigate(child)}
+                        className="flex items-center gap-2 p-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:border-blue-400/50 transition-all text-left col-span-1"
+                      >
+                        {childImage ? (
+                          <div className="w-8 h-8 rounded overflow-hidden flex-shrink-0">
+                            <img src={childImage.data.url} alt="" className="w-full h-full object-cover" />
+                          </div>
+                        ) : (
+                          <div className="w-8 h-8 rounded bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+                            <ChildIcon size={14} className="text-blue-400" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-medium text-white truncate">{childTitle?.data?.text || 'Namnlöst'}</div>
+                          <div className="text-xs text-gray-400 leading-tight">{PREDEFINED_ICONS[child.type]?.label}</div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                  {isOwner && (
+                    <button
+                      onClick={() => onEdit({ parentId: object.id })}
+                      className="w-full h-16 bg-blue-500 hover:bg-blue-600 rounded-lg shadow-lg flex items-center justify-center text-white transition-all hover:scale-105 col-span-1"
+                      title="Lägg till underobjekt"
+                    >
+                      <Plus size={20} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+            {childObjects.length === 0 && isOwner && (
+              <div className="mt-6 pt-6 border-t border-white/10 flex items-center gap-3">
+                <p className="text-gray-400 text-sm flex-1">Lägg till underobjekt:</p>
+                <button
+                  onClick={() => onEdit({ parentId: object.id })}
+                  className="w-12 h-12 bg-blue-500 hover:bg-blue-600 rounded-lg shadow-lg flex items-center justify-center text-white transition-all hover:scale-105"
+                  title="Lägg till underobjekt"
+                >
+                  <Plus size={20} />
+                </button>
+              </div>
+            )}
             <div className="mt-6 pt-6 border-t border-white/10 space-y-4">
               {isOwner ? (
                 <div className="flex gap-3">
@@ -274,9 +354,11 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
   );
 }
 
-function CreateObjectModal({ onClose, onSave, editObject, saving }) {
+function CreateObjectModal({ onClose, onSave, editObject, saving, availableParents, defaultParentId }) {
   const isEdit = !!editObject;
   const [selectedType, setSelectedType] = useState(editObject?.type || '🏡');
+  const [parentId, setParentId] = useState(editObject?.parentId || defaultParentId || '');
+  const [inheritLocation, setInheritLocation] = useState(false);
   const [title, setTitle] = useState(editObject?.blocks?.find(b => b.type === 'title')?.data?.text || '');
   const [address, setAddress] = useState(editObject?.blocks?.find(b => b.type === 'location')?.data?.address || '');
   const [imageUrl, setImageUrl] = useState(editObject?.blocks?.find(b => b.type === 'image')?.data?.url || '');
@@ -286,6 +368,9 @@ function CreateObjectModal({ onClose, onSave, editObject, saving }) {
   const [todoItems, setTodoItems] = useState(editObject?.blocks?.find(b => b.type === 'todo')?.data?.items?.map(i => i.text).join('\n') || '');
   const fileInputRef = useRef(null);
 
+  const selectedParent = availableParents.find(p => p.id === parentId);
+  const parentHasLocation = selectedParent?.blocks?.some(b => b.type === 'location');
+
   const handleSubmit = () => {
     if (!title.trim()) {
       alert('Titel måste fyllas i!');
@@ -293,7 +378,7 @@ function CreateObjectModal({ onClose, onSave, editObject, saving }) {
     }
 
     const blocks = [{ type: 'title', data: { text: title } }];
-    if (address.trim()) blocks.push({ type: 'location', data: { lat: 59.33, lng: 18.06, address } });
+    if (address.trim() && !inheritLocation) blocks.push({ type: 'location', data: { lat: 59.33, lng: 18.06, address } });
     if (imageUrl.trim()) blocks.push({ type: 'image', data: { url: imageUrl } });
     if (description.trim()) blocks.push({ type: 'text', data: { content: description } });
     if (checklistItems.trim()) {
@@ -305,7 +390,14 @@ function CreateObjectModal({ onClose, onSave, editObject, saving }) {
       if (items.length > 0) blocks.push({ type: 'todo', data: { items } });
     }
 
-    onSave({ type: selectedType, layerId: 'default', blocks }, isEdit ? editObject.id : null);
+    const objectData = { 
+      type: selectedType, 
+      layerId: 'default', 
+      blocks,
+      parentId: parentId || null
+    };
+
+    onSave(objectData, isEdit ? editObject.id : null);
   };
 
   const handleImageFile = async (e) => {
@@ -341,7 +433,7 @@ function CreateObjectModal({ onClose, onSave, editObject, saving }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 overflow-y-auto">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 overflow-hidden">
       <div className="min-h-screen p-4 flex items-start justify-center pt-10">
         <div className="bg-gray-900/95 backdrop-blur-xl rounded-3xl border border-white/10 max-w-2xl w-full p-6 shadow-2xl">
           <div className="flex justify-between items-center mb-6">
@@ -361,13 +453,54 @@ function CreateObjectModal({ onClose, onSave, editObject, saving }) {
               </div>
             </div>
             <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Lägg under objekt (valfritt)</label>
+              <select 
+                value={parentId} 
+                onChange={(e) => setParentId(e.target.value)} 
+                disabled={saving}
+                className="w-full px-4 py-3 rounded-xl bg-gray-800 border border-white/10 text-white focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-50"
+                style={{ colorScheme: 'dark' }}
+              >
+                <option value="" className="bg-gray-800 text-white">- Inget parent-objekt -</option>
+                {availableParents.map(obj => {
+                  const titleBlock = obj.blocks.find(b => b.type === 'title');
+                  return (
+                    <option key={obj.id} value={obj.id} className="bg-gray-800 text-white">
+                      {obj.type} {titleBlock?.data?.text || 'Namnlöst'}
+                    </option>
+                  );
+                })}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">T.ex. lägg "Huset" under "Sommarstugan"</p>
+            </div>
+            {parentId && parentHasLocation && (
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                <input 
+                  type="checkbox" 
+                  id="inheritLocation" 
+                  checked={inheritLocation} 
+                  onChange={(e) => {
+                    setInheritLocation(e.target.checked);
+                    if (e.target.checked) setAddress('');
+                  }}
+                  disabled={saving}
+                  className="w-4 h-4 rounded border-blue-500 text-blue-500 focus:ring-blue-500"
+                />
+                <label htmlFor="inheritLocation" className="text-sm text-gray-200 cursor-pointer">
+                  Använd samma plats som {selectedParent?.blocks?.find(b => b.type === 'title')?.data?.text || 'parent-objektet'}
+                </label>
+              </div>
+            )}
+            <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">Titel *</label>
               <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="T.ex. Sommarstugan i Dalarna" disabled={saving} className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-50" />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Plats/Adress</label>
-              <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="T.ex. Siljan, Dalarna" disabled={saving} className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-50" />
-            </div>
+            {!inheritLocation && (
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Plats/Adress</label>
+                <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="T.ex. Siljan, Dalarna" disabled={saving} className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-50" />
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">Bild</label>
               <div className="space-y-3">
@@ -445,6 +578,8 @@ function App() {
   const [activeCategory, setActiveCategory] = useState('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingObject, setEditingObject] = useState(null);
+  const [showAllObjects, setShowAllObjects] = useState(false);
+  const [defaultParentId, setDefaultParentId] = useState(null);
   const headerRef = useRef(null);
   const [headerHeight, setHeaderHeight] = useState(64);
 
@@ -490,7 +625,22 @@ function App() {
     }
   }, [objects, selectedObject ? selectedObject.id : null]);
 
+  // Lock background scroll when any modal is open
+  useEffect(() => {
+    const hasModalOpen = !!selectedObject || !!showCreateModal;
+    const previousOverflow = document.body.style.overflow;
+    if (hasModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [selectedObject, showCreateModal]);
+
   const filteredObjects = activeCategory === 'all' ? objects : objects.filter(o => o.type === activeCategory);
+  const displayObjects = showAllObjects ? filteredObjects : filteredObjects.filter(o => !o.parentId);
 
   const handleLogin = async () => {
     try {
@@ -563,11 +713,14 @@ function App() {
   };
 
   const handleEdit = (obj) => {
-    if (!user || obj.ownerId !== user.uid) {
+    if (!user || (obj.id && obj.ownerId !== user.uid)) {
       alert('Du kan bara redigera dina objekt!');
       return;
     }
-    setEditingObject(obj);
+    if (obj.parentId) {
+      setDefaultParentId(obj.parentId);
+    }
+    setEditingObject(obj.id ? obj : null);
     setShowCreateModal(true);
     setSelectedObject(null);
   };
@@ -621,26 +774,31 @@ function App() {
       </header>
       
       <div className="bg-gray-900/30 backdrop-blur-md border-b border-white/10 sticky z-30" style={{ top: headerHeight }}>
-        <div className="max-w-6xl mx-auto px-4 py-3 flex gap-2 overflow-x-auto">
-          {categories.map(cat => {
-            const IconComponent = cat.icon;
-            return (
-              <button key={cat.id} onClick={() => setActiveCategory(cat.id)} className={`flex items-center gap-2 px-4 py-2 rounded-xl whitespace-nowrap transition-all ${activeCategory === cat.id ? 'bg-blue-500 text-white' : 'bg-white/20 text-gray-200 hover:bg-white/30'}`}>
-                <IconComponent size={16} />
-                <span className="text-sm font-medium">{cat.label}</span>
-              </button>
-            );
-          })}
+        <div className="max-w-6xl mx-auto px-4 py-3">
+          <div className="flex gap-2 overflow-x-auto">
+            {categories.map(cat => {
+              const IconComponent = cat.icon;
+              return (
+                <button key={cat.id} onClick={() => setActiveCategory(cat.id)} className={`flex items-center gap-2 px-4 py-2 rounded-xl whitespace-nowrap transition-all ${activeCategory === cat.id ? 'bg-blue-500 text-white' : 'bg-white/20 text-gray-200 hover:bg-white/30'}`}>
+                  <IconComponent size={16} />
+                  <span className="text-sm font-medium">{cat.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
       
       <main className="max-w-6xl mx-auto px-4 py-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredObjects.map(obj => (
-            <ObjectCard key={obj.id} object={obj} onClick={() => setSelectedObject(obj)} currentUser={user} />
-          ))}
+          {displayObjects.map(obj => {
+            const childCount = objects.filter(o => o.parentId === obj.id).length;
+            return (
+              <ObjectCard key={obj.id} object={obj} onClick={() => setSelectedObject(obj)} currentUser={user} childCount={childCount} />
+            );
+          })}
         </div>
-        {filteredObjects.length === 0 && (
+        {displayObjects.length === 0 && (
           <div className="text-center py-20 text-gray-500">
             <p>Inga objekt hittades i denna kategori</p>
             {user && <p className="text-sm mt-2">Klicka på + knappen för att skapa ditt första objekt!</p>}
@@ -656,11 +814,11 @@ function App() {
       )}
 
       {selectedObject && (
-        <ObjectDetail object={selectedObject} onClose={() => setSelectedObject(null)} onEdit={handleEdit} onDelete={handleDeleteObject} onBlockUpdate={handleBlockUpdate} currentUser={user} />
+        <ObjectDetail object={selectedObject} onClose={() => setSelectedObject(null)} onEdit={handleEdit} onDelete={handleDeleteObject} onBlockUpdate={handleBlockUpdate} currentUser={user} allObjects={objects} onNavigate={(obj) => setSelectedObject(obj)} />
       )}
 
       {showCreateModal && (
-        <CreateObjectModal onClose={() => { setShowCreateModal(false); setEditingObject(null); }} onSave={handleSaveObject} editObject={editingObject} saving={saving} />
+        <CreateObjectModal onClose={() => { setShowCreateModal(false); setEditingObject(null); setDefaultParentId(null); }} onSave={handleSaveObject} editObject={editingObject} saving={saving} availableParents={objects.filter(o => o.id !== editingObject?.id)} defaultParentId={defaultParentId} />
       )}
     </div>
   );
