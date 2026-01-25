@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { MapPin, Home, Coffee, Mountain, Star, Calendar, X, Plus, Image, Edit2, Trash2, Loader, LogOut, LogIn, Check, Circle, Upload, Folder, Navigation, Map as MapIcon, List } from 'lucide-react';
+import { MapPin, Home, Coffee, Mountain, Star, Calendar, X, Plus, Image, Edit2, Trash2, Loader, LogOut, LogIn, Check, Circle, Upload, Folder, Navigation, Map as MapIcon, List, ChevronDown } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMapEvents, Tooltip, Popup } from 'react-leaflet';
+import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { db, auth, googleProvider } from './firebase';
@@ -14,6 +15,26 @@ L.Icon.Default.mergeOptions({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
+
+// Custom colored marker icons per category
+const createColoredIcon = (color) => {
+  return L.divIcon({
+    html: `<div style="background-color: ${color}; width: 25px; height: 25px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"></div>`,
+    className: 'custom-marker-icon',
+    iconSize: [25, 25],
+    iconAnchor: [12, 24],
+    popupAnchor: [0, -24],
+  });
+};
+
+const CATEGORY_COLORS = {
+  '🏡': '#6B7280', // gray
+  '🏠': '#6B7280', // gray
+  '☕': '#92400E', // brown
+  '🏞️': '#065F46', // green
+  '⭐': '#F59E0B', // yellow/amber
+  '✈️': '#3B82F6', // blue
+};
 
 const CLOUDINARY_CLOUD_NAME = 'dkpwqradh';
 const CLOUDINARY_UPLOAD_PRESET = 'ourspots_unsigned';
@@ -32,12 +53,10 @@ const TitleBlock = ({ data }) => (
 );
 
 const LocationBlock = ({ data, inherited }) => (
-  <div className="mb-4 rounded-2xl bg-white/10 border border-white/10 shadow-[0_10px_30px_-16px_rgba(0,0,0,0.7)] p-4">
-    <div className="flex items-center gap-2 text-gray-100">
-      <MapPin size={18} className="text-blue-400" />
-      <span className="text-sm">{data.address}</span>
-      {inherited && <span className="text-xs text-gray-400 ml-auto">(från parent)</span>}
-    </div>
+  <div className="py-2 px-3 rounded-lg bg-white/5 border border-white/10 flex items-center gap-2">
+    <MapPin size={16} className="text-blue-400 flex-shrink-0" />
+    <span className="text-xs text-gray-200">{data.address}</span>
+    {inherited && <span className="text-xs text-gray-500 ml-auto">(från parent)</span>}
   </div>
 );
 
@@ -49,7 +68,7 @@ const ImageBlock = ({ data }) => (
 
 const TextBlock = ({ data }) => (
   <div className="mb-4 rounded-2xl bg-white/10 border border-white/10 shadow-[0_10px_30px_-16px_rgba(0,0,0,0.7)] p-4">
-    <p className="text-gray-100 text-sm leading-relaxed">{data.content}</p>
+    <p className="text-gray-100 text-sm leading-relaxed whitespace-pre-wrap">{data.content}</p>
   </div>
 );
 
@@ -64,10 +83,6 @@ const ChecklistBlock = ({ data, objectId, blockIndex, onUpdate }) => {
 
   return (
     <div className="mb-4 rounded-2xl bg-white/10 border border-white/10 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.7)] p-4">
-      <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-        <Check size={18} className="text-blue-400" />
-        Checklista
-      </h3>
       <div className="space-y-2">
         {data.items.map((item, i) => (
           <div 
@@ -108,10 +123,6 @@ const TodoBlock = ({ data, objectId, blockIndex, onUpdate }) => {
   return (
     <div className="mb-4 rounded-2xl bg-white/10 border border-white/10 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.7)] p-4">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-          <Circle size={18} className="text-green-400" />
-          Att göra
-        </h3>
         <span className="text-xs text-gray-400">{doneItems}/{totalItems} klara</span>
       </div>
       <div className="mb-3 h-2 bg-gray-800 rounded-full overflow-hidden">
@@ -242,6 +253,7 @@ function DeleteConfirmModal({ object, onConfirm, onCancel }) {
 
 function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, currentUser, allObjects, onNavigate }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [expandedBlocks, setExpandedBlocks] = useState(new Set([0])); // First block expanded by default
   const IconComponent = PREDEFINED_ICONS[object.type]?.icon || Home;
   const isOwner = currentUser && object.ownerId === currentUser.uid;
   
@@ -251,9 +263,16 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
   // Inherit location from parent if child doesn't have one
   const hasOwnLocation = object.blocks.some(b => b.type === 'location');
   const parentLocation = parentObject?.blocks?.find(b => b.type === 'location');
-  const blocksToRender = hasOwnLocation || !parentLocation 
+  const rawBlocks = hasOwnLocation || !parentLocation 
     ? object.blocks 
     : [...object.blocks, { type: 'location', data: parentLocation.data, inherited: true }];
+  
+  const blocksToRender = rawBlocks.sort((a, b) => {
+    const order = { 'title': 0, 'image': 1, 'location': 2, 'text': 3, 'checklist': 3, 'todo': 3 };
+    const aOrder = order[a.type] !== undefined ? order[a.type] : 4;
+    const bOrder = order[b.type] !== undefined ? order[b.type] : 4;
+    return aOrder - bOrder;
+  });
   
   const handleDelete = async () => {
     await onDelete(object.id);
@@ -283,16 +302,88 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
               <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl leading-none">×</button>
             </div>
             <div className="space-y-4">
-              {blocksToRender.map((block, index) => {
+              {(() => {
+                const sorted = blocksToRender
+                  .filter(block => blockComponents[block.type]);
+                return sorted.map((block, index) => {
                 const BlockComponent = blockComponents[block.type];
+                const isExpanded = expandedBlocks.has(index);
+                const toggleExpanded = () => {
+                  const newSet = new Set(expandedBlocks);
+                  if (newSet.has(index)) {
+                    newSet.delete(index);
+                  } else {
+                    newSet.add(index);
+                  }
+                  setExpandedBlocks(newSet);
+                };
+                
+                // Count blocks of same type for labeling
+                const sameTypeBlocks = blocksToRender.filter(b => b.type === block.type);
+                const blockNumber = sameTypeBlocks.indexOf(block) + 1;
+                const showBlockLabel = sameTypeBlocks.length > 1;
+                const customTitle = block.data?.title;
+                const shouldShowLabel = customTitle || showBlockLabel;
+                const isCollapsible = ['text', 'checklist', 'todo'].includes(block.type);
+                
                 return BlockComponent ? (
-                  <BlockComponent key={index} data={block.data} objectId={object.id} blockIndex={index} onUpdate={onBlockUpdate} inherited={block.inherited} />
+                  <div key={index}>
+                    {isCollapsible && (
+                      <button
+                        onClick={toggleExpanded}
+                        className="w-full flex items-center gap-2 mb-2 group"
+                      >
+                        <ChevronDown 
+                          size={18} 
+                          className={`text-gray-400 group-hover:text-white transition-all ${isExpanded ? 'rotate-0' : '-rotate-90'}`}
+                        />
+                        {shouldShowLabel && (
+                          <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider group-hover:text-gray-300 transition-colors">
+                            {customTitle ? customTitle : (
+                              <>
+                                {block.type === 'text' && `Anteckning ${blockNumber}`}
+                                {block.type === 'checklist' && `Checklista ${blockNumber}`}
+                                {block.type === 'todo' && `Att göra ${blockNumber}`}
+                                {!['text', 'checklist', 'todo'].includes(block.type) && `${block.type} ${blockNumber}`}
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </button>
+                    )}
+                    {(!isCollapsible || isExpanded) && (
+                      <div className={shouldShowLabel && isCollapsible ? 'border-l-4 border-blue-500/30 pl-4' : ''}>
+                        <BlockComponent 
+                          key={index} 
+                          data={block.data} 
+                          objectId={object.id} 
+                          blockIndex={index} 
+                          onUpdate={onBlockUpdate} 
+                          inherited={block.inherited}
+                          isExpanded={isExpanded}
+                          onToggle={toggleExpanded}
+                        />
+                      </div>
+                    )}
+                  </div>
                 ) : null;
-              })}
+              });
+              })()}
             </div>
             {childObjects.length > 0 && (
               <div className="mt-6 pt-6 border-t border-white/10">
-                <h3 className="text-lg font-semibold text-white mb-3">Ingår i detta objekt:</h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-lg font-semibold text-white">Ingår i detta objekt:</h3>
+                  {isOwner && (
+                    <button
+                      onClick={() => onEdit({ parentId: object.id })}
+                      className="w-8 h-8 bg-blue-500 hover:bg-blue-600 rounded-md flex items-center justify-center text-white transition-all hover:scale-105"
+                      title="Lägg till underobjekt"
+                    >
+                      <Plus size={14} />
+                    </button>
+                  )}
+                </div>
                 <div className="grid grid-cols-3 gap-2 items-end">
                   {childObjects.map(child => {
                     const childTitle = child.blocks.find(b => b.type === 'title');
@@ -320,15 +411,6 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
                       </button>
                     );
                   })}
-                  {isOwner && (
-                    <button
-                      onClick={() => onEdit({ parentId: object.id })}
-                      className="w-10 sm:w-16 h-10 sm:h-16 bg-blue-500 hover:bg-blue-600 rounded-md sm:rounded-lg shadow-lg flex items-center justify-center text-white transition-all hover:scale-105 mx-auto col-span-1"
-                      title="Lägg till underobjekt"
-                    >
-                      <Plus size={16} />
-                    </button>
-                  )}
                 </div>
               </div>
             )}
@@ -373,6 +455,8 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
 }
 
 function MapView({ objects, onSelectObject, currentUser }) {
+  const [hasRequestedPermission, setHasRequestedPermission] = useState(false);
+
   const objectsWithLocation = objects.filter(obj => {
     const locationBlock = obj.blocks.find(b => b.type === 'location');
     return locationBlock && locationBlock.data.lat && locationBlock.data.lng;
@@ -387,21 +471,63 @@ function MapView({ objects, onSelectObject, currentUser }) {
 
   const isTouchDevice = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
 
+  // Request location permission when map view is first opened
+  useEffect(() => {
+    if (!hasRequestedPermission && 'geolocation' in navigator) {
+      setHasRequestedPermission(true);
+      // Trigger permission request silently (will show browser prompt if not yet answered)
+      navigator.geolocation.getCurrentPosition(
+        () => {}, // Success - do nothing, just wanted to trigger the prompt
+        () => {}, // Error - ignore, user will see error message if they click the button
+        { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
+      );
+    }
+  }, [hasRequestedPermission]);
+
   // Component to handle center on user location
   function CenterOnLocationButton() {
     const map = useMapEvents({});
-    const handleCenterOnUser = () => {
-      if ('geolocation' in navigator) {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            const { latitude, longitude } = position.coords;
-            map.setView([latitude, longitude], 13);
-          },
-          () => {
-            alert('Kunde inte hämta din position');
-          }
-        );
+    const handleCenterOnUser = async () => {
+      if (!('geolocation' in navigator)) {
+        alert('Din enhet stöder inte platsåtkomst');
+        return;
       }
+
+      // Check if we can query permissions (not all browsers support this)
+      if ('permissions' in navigator) {
+        try {
+          const result = await navigator.permissions.query({ name: 'geolocation' });
+          if (result.state === 'denied') {
+            alert('Platsåtkomst är blockerad. Gå till Safari-inställningar > Sekretess > Platstjänster och aktivera för denna webbplats.');
+            return;
+          }
+        } catch (e) {
+          // Permissions API not fully supported, continue anyway
+        }
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          map.setView([latitude, longitude], 13);
+        },
+        (error) => {
+          let message = 'Kunde inte hämta din position. ';
+          if (error.code === 1) {
+            message = 'Du nekade platsåtkomst. För att aktivera: gå till Safari-inställningar > denna webbplats > Plats och välj "Fråga" eller "Tillåt".';
+          } else if (error.code === 2) {
+            message += 'Position inte tillgänglig. Kontrollera att Platstjänster är aktiverade i iOS-inställningar.';
+          } else if (error.code === 3) {
+            message += 'Timeout - försök igen om en stund.';
+          }
+          alert(message);
+        },
+        { 
+          enableHighAccuracy: false, 
+          timeout: 20000,
+          maximumAge: 30000
+        }
+      );
     };
     return (
       <button
@@ -418,10 +544,12 @@ function MapView({ objects, onSelectObject, currentUser }) {
     const locationBlock = object.blocks.find(b => b.type === 'location');
     const titleBlock = object.blocks.find(b => b.type === 'title');
     const position = [locationBlock.data.lat, locationBlock.data.lng];
+    const markerColor = CATEGORY_COLORS[object.type] || '#3B82F6';
+    const coloredIcon = createColoredIcon(markerColor);
 
     if (isTouchDevice) {
       return (
-        <Marker position={position}>
+        <Marker position={position} icon={coloredIcon}>
           <Tooltip direction="top" offset={[0, -8]} opacity={0.9}>
             <div className="text-xs">
               <div className="font-semibold">{titleBlock?.data?.text || 'Namnlöst'}</div>
@@ -445,7 +573,7 @@ function MapView({ objects, onSelectObject, currentUser }) {
     }
 
     return (
-      <Marker position={position} eventHandlers={{ click: () => onSelectObject(object) }}>
+      <Marker position={position} icon={coloredIcon} eventHandlers={{ click: () => onSelectObject(object) }}>
         <Tooltip direction="top" offset={[0, -8]} opacity={0.9}>
           <div className="text-xs">
             <div className="font-semibold">{titleBlock?.data?.text || 'Namnlöst'}</div>
@@ -456,6 +584,41 @@ function MapView({ objects, onSelectObject, currentUser }) {
     );
   }
 
+  // Custom cluster icon creator for better visibility
+  const createClusterIcon = (cluster) => {
+    const count = cluster.getChildCount();
+    let size = 40;
+    let fontSize = 16;
+    
+    if (count > 100) {
+      size = 60;
+      fontSize = 20;
+    } else if (count > 20) {
+      size = 50;
+      fontSize = 18;
+    }
+
+    return L.divIcon({
+      html: `<div style="
+        width: ${size}px;
+        height: ${size}px;
+        background-color: #3B82F6;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: ${fontSize}px;
+        color: white;
+        border: 3px solid white;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      ">${count}</div>`,
+      className: 'cluster-icon',
+      iconSize: [size, size],
+      iconAnchor: [size / 2, size / 2],
+    });
+  };
+
   return (
     <div className="h-[calc(100vh-140px)] w-full relative z-0">
       <MapContainer center={center} zoom={objectsWithLocation.length > 0 ? 7 : 6} style={{ height: '100%', width: '100%' }}>
@@ -463,9 +626,18 @@ function MapView({ objects, onSelectObject, currentUser }) {
           attribution='&copy; <a href="https://carto.com/">CARTO</a>'
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
         />
-        {objectsWithLocation.map(obj => (
-          <MarkerWithPopup key={obj.id} object={obj} />
-        ))}
+        <MarkerClusterGroup
+          chunkedLoading
+          maxClusterRadius={60}
+          spiderfyOnMaxZoom={true}
+          showCoverageOnHover={false}
+          zoomToBoundsOnClick={true}
+          iconCreateFunction={createClusterIcon}
+        >
+          {objectsWithLocation.map(obj => (
+            <MarkerWithPopup key={obj.id} object={obj} />
+          ))}
+        </MarkerClusterGroup>
         <CenterOnLocationButton />
       </MapContainer>
     </div>
@@ -526,9 +698,18 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
   const [showMapPicker, setShowMapPicker] = useState(false);
   const [imageUrl, setImageUrl] = useState(editObject?.blocks?.find(b => b.type === 'image')?.data?.url || '');
   const [uploadingImage, setUploadingImage] = useState(false);
-  const [description, setDescription] = useState(editObject?.blocks?.find(b => b.type === 'text')?.data?.content || '');
-  const [checklistItems, setChecklistItems] = useState(editObject?.blocks?.find(b => b.type === 'checklist')?.data?.items?.map(i => i.text).join('\n') || '');
-  const [todoItems, setTodoItems] = useState(editObject?.blocks?.find(b => b.type === 'todo')?.data?.items?.map(i => i.text).join('\n') || '');
+  // Store custom blocks (text, checklist, todo) as array to support multiple
+  const [customBlocks, setCustomBlocks] = useState(() => {
+    if (!editObject) return [];
+    return editObject.blocks
+      .filter(b => ['text', 'checklist', 'todo'].includes(b.type))
+      .map(b => ({
+        id: Math.random().toString(36).substr(2, 9),
+        type: b.type,
+        title: b.data.title || '', // Custom title for the block
+        content: b.type === 'text' ? b.data.content : b.data.items.map(i => i.text).join('\n')
+      }));
+  });
   const fileInputRef = useRef(null);
 
   const selectedParent = availableParents.find(p => p.id === parentId);
@@ -579,15 +760,21 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
       blocks.push({ type: 'location', data: { lat, lng, address: address || `${lat.toFixed(5)}, ${lng.toFixed(5)}` } });
     }
     if (imageUrl.trim()) blocks.push({ type: 'image', data: { url: imageUrl } });
-    if (description.trim()) blocks.push({ type: 'text', data: { content: description } });
-    if (checklistItems.trim()) {
-      const items = checklistItems.split('\n').filter(l => l.trim()).map(text => ({ text: text.trim(), checked: false }));
-      if (items.length > 0) blocks.push({ type: 'checklist', data: { items } });
-    }
-    if (todoItems.trim()) {
-      const items = todoItems.split('\n').filter(l => l.trim()).map(text => ({ text: text.trim(), done: false }));
-      if (items.length > 0) blocks.push({ type: 'todo', data: { items } });
-    }
+    
+    // Add custom blocks (text, checklist, todo) from array
+    customBlocks.forEach(block => {
+      if (block.content.trim()) {
+        if (block.type === 'text') {
+          blocks.push({ type: 'text', data: { title: block.title || 'Anteckning', content: block.content } });
+        } else if (block.type === 'checklist') {
+          const items = block.content.split('\n').filter(l => l.trim()).map(text => ({ text: text.trim(), checked: false }));
+          if (items.length > 0) blocks.push({ type: 'checklist', data: { title: block.title || 'Checklista', items } });
+        } else if (block.type === 'todo') {
+          const items = block.content.split('\n').filter(l => l.trim()).map(text => ({ text: text.trim(), done: false }));
+          if (items.length > 0) blocks.push({ type: 'todo', data: { title: block.title || 'Att göra', items } });
+        }
+      }
+    });
 
     const objectData = { 
       type: selectedType, 
@@ -777,17 +964,72 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
                 </div>
               </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Beskrivning</label>
-              <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Beskriv platsen..." rows={3} disabled={saving} className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors resize-none disabled:opacity-50" />
+            
+            {/* Dynamic custom blocks */}
+            <div className="space-y-4">
+              {customBlocks.map((block) => (
+                <div key={block.id}>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-medium text-gray-300 flex items-center gap-2">
+                      {block.type === 'text' && <>📝 Anteckning</>}
+                      {block.type === 'checklist' && <><Check size={14} className="text-blue-400" /> Checklista</>}
+                      {block.type === 'todo' && <><Circle size={14} className="text-green-400" /> Att göra</>}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setCustomBlocks(customBlocks.filter(b => b.id !== block.id))}
+                      disabled={saving}
+                      className="text-red-400 hover:text-red-300 text-sm transition-all disabled:opacity-50"
+                    >
+                      ✕ Ta bort
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    value={block.title}
+                    onChange={(e) => setCustomBlocks(customBlocks.map(b => b.id === block.id ? { ...b, title: e.target.value } : b))}
+                    placeholder={block.type === 'text' ? 'T.ex. Mat plan' : block.type === 'checklist' ? 'T.ex. Före semester' : 'T.ex. Packlista'}
+                    disabled={saving}
+                    className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors mb-2 disabled:opacity-50 text-sm"
+                  />
+                  <textarea 
+                    value={block.content} 
+                    onChange={(e) => setCustomBlocks(customBlocks.map(b => b.id === block.id ? { ...b, content: e.target.value } : b))}
+                    placeholder={block.type === 'text' ? 'Skriv anteckning...' : 'En per rad'}
+                    rows={3} 
+                    disabled={saving}
+                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors resize-none disabled:opacity-50 font-mono text-sm"
+                  />
+                </div>
+              ))}
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2"><Check size={16} className="text-blue-400" />Checklista (en per rad)</label>
-              <textarea value={checklistItems} onChange={(e) => setChecklistItems(e.target.value)} placeholder="Kontrollera värmepump&#10;Klippa gräsmattan" rows={3} disabled={saving} className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors resize-none disabled:opacity-50 font-mono text-sm" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2"><Circle size={16} className="text-green-400" />Att göra (en per rad)</label>
-              <textarea value={todoItems} onChange={(e) => setTodoItems(e.target.value)} placeholder="Packa sovsäck&#10;Köp mat" rows={3} disabled={saving} className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors resize-none disabled:opacity-50 font-mono text-sm" />
+
+            {/* Add block buttons */}
+            <div className="flex gap-1 flex-nowrap overflow-x-auto">
+              <button
+                type="button"
+                onClick={() => setCustomBlocks([...customBlocks, { id: Math.random().toString(36).substr(2, 9), type: 'text', title: '', content: '' }])}
+                disabled={saving}
+                className="px-3 py-1 rounded-md bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-xs transition-all disabled:opacity-50 whitespace-nowrap flex-shrink-0"
+              >
+                + Anteckning
+              </button>
+              <button
+                type="button"
+                onClick={() => setCustomBlocks([...customBlocks, { id: Math.random().toString(36).substr(2, 9), type: 'checklist', title: '', content: '' }])}
+                disabled={saving}
+                className="px-3 py-1 rounded-md bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-xs transition-all disabled:opacity-50 whitespace-nowrap flex-shrink-0"
+              >
+                + Checklista
+              </button>
+              <button
+                type="button"
+                onClick={() => setCustomBlocks([...customBlocks, { id: Math.random().toString(36).substr(2, 9), type: 'todo', title: '', content: '' }])}
+                disabled={saving}
+                className="px-3 py-1 rounded-md bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-xs transition-all disabled:opacity-50 whitespace-nowrap flex-shrink-0"
+              >
+                + Att göra
+              </button>
             </div>
           </div>
           <div className="flex gap-3 pt-6 border-t border-white/10">
