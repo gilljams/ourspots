@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { MapPin, Home, Coffee, Mountain, Star, Calendar, X, Plus, Image, Edit2, Trash2, Loader, LogOut, LogIn, Check, Circle, Upload } from 'lucide-react';
-import { db, auth, googleProvider, storage } from './firebase';
+import { db, auth, googleProvider } from './firebase';
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, Timestamp } from 'firebase/firestore';
 import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+
+const CLOUDINARY_CLOUD_NAME = 'dkpwqradh';
+const CLOUDINARY_UPLOAD_PRESET = 'ourspots_unsigned';
 
 const PREDEFINED_ICONS = {
   '🏡': { icon: Home, label: 'Fastighet' },
@@ -278,7 +280,6 @@ function CreateObjectModal({ onClose, onSave, editObject, saving }) {
   const [title, setTitle] = useState(editObject?.blocks?.find(b => b.type === 'title')?.data?.text || '');
   const [address, setAddress] = useState(editObject?.blocks?.find(b => b.type === 'location')?.data?.address || '');
   const [imageUrl, setImageUrl] = useState(editObject?.blocks?.find(b => b.type === 'image')?.data?.url || '');
-  const [imageFile, setImageFile] = useState(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [description, setDescription] = useState(editObject?.blocks?.find(b => b.type === 'text')?.data?.content || '');
   const [checklistItems, setChecklistItems] = useState(editObject?.blocks?.find(b => b.type === 'checklist')?.data?.items?.map(i => i.text).join('\n') || '');
@@ -313,19 +314,27 @@ function CreateObjectModal({ onClose, onSave, editObject, saving }) {
 
     setUploadingImage(true);
     try {
-      const timestamp = Date.now();
-      const fileName = `${timestamp}_${file.name}`;
-      const storageRef = ref(storage, `images/${fileName}`);
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+        {
+          method: 'POST',
+          body: formData
+        }
+      );
+
+      if (!response.ok) throw new Error('Upload failed');
       
-      await uploadBytes(storageRef, file);
-      const downloadUrl = await getDownloadURL(storageRef);
+      const data = await response.json();
+      setImageUrl(data.secure_url);
       
-      setImageUrl(downloadUrl);
-      setImageFile(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (err) {
-      alert('Kunde inte ladda upp bild. Försök igen!');
       console.error('Upload error:', err);
+      alert('Kunde inte ladda upp bild. Försök igen!');
     } finally {
       setUploadingImage(false);
     }
@@ -376,7 +385,7 @@ function CreateObjectModal({ onClose, onSave, editObject, saving }) {
                   </div>
                 )}
                 <div className="flex gap-2">
-                  <label className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2">
+                  <label className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center gap-2">
                     <Upload size={18} />
                     <span className="text-sm font-medium">{uploadingImage ? 'Laddar...' : 'Ladda upp bild'}</span>
                     <input
@@ -395,7 +404,7 @@ function CreateObjectModal({ onClose, onSave, editObject, saving }) {
                       if (url?.trim()) setImageUrl(url.trim());
                     }}
                     disabled={uploadingImage || saving}
-                    className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 transition-all disabled:opacity-50 text-sm font-medium"
+                    className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm font-medium"
                   >
                     URL
                   </button>

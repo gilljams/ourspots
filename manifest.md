@@ -126,8 +126,8 @@ Default block sets per typ/kategori (för enkelhet):
 9. TEKNISK STACK (GRATISTJÄNSTER)
 - Frontend: React + Vite, host GitHub Pages
 - Databas: Firebase Firestore
-- Storage: Firebase Storage
-- Auth: Firebase Auth
+- Authentication: Firebase Auth
+- Bilduppladdning: Cloudinary (25GB/månad gratis, unsigned uploads)
 - CI/CD: GitHub Actions
 - PWA möjlig för offline / haptics
 - Design: dark theme, glassmorphism, accentfärger per kategori/typ

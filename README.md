@@ -14,11 +14,14 @@ OurSpots är en platsbaserad app med premium dark theme som låter användare:
 - Se objekt på karta med avstånd och navigation
 - Publik vy för externa användare
 
-## 🏗️ Nuvarande Status (v0.2 - Auth MVP)
+## 🏗️ Nuvarande Status (v0.3 - Block & Upload MVP)
 
 ### ✅ Implementerat
-- **Dark theme med glassmorphism** - Modern, responsiv design
-- **Modulär block-arkitektur** - title, image, location, text
+- **Dark theme med glassmorphism** - Premium design med radial glows
+- **Modulär block-arkitektur** - title, image, location, text, checklist, todo
+- **Checklist block** - Kryssrutor med state-synk i modal
+- **Todo block** - Uppgiftslista med progress-bar
+- **Bilduppladdning** - Cloudinary integration (25GB gratis/månad)
 - **Kategori-navigation** - Swipe-bar för filtrering
 - **Kort-baserad listvy** - Med bilder och platsinformation
 - **Detaljvy** - Modal med komplett objektinformation
@@ -29,8 +32,8 @@ OurSpots är en platsbaserad app med premium dark theme som låter användare:
 - **CRUD-funktionalitet** - Create, Read, Update, Delete
 - **Ägarskap** - Objekt märks med "Ditt" för inloggad användare
 - **GitHub Pages** - Live deployment
-- **Loading states** - Spinner och feedback vid sparande
-- **Error handling** - Användarvänliga felmeddelanden
+- **Optimistic updates** - Omedelbar UI-feedback för checklist/todo
+- **Responsive design** - Mobiloptimerad, testad på iOS/Android
 
 ### 🚧 Kommande Features
 - Kartintegration (Mapbox/Leaflet)
@@ -40,17 +43,17 @@ OurSpots är en platsbaserad app med premium dark theme som låter användare:
 - Filter (avstånd, typ, favoriter)
 - Admin-funktioner
 - Publik vy
-- Fler block-typer (checklist, todo, ratings)
-- Bilduppladdning till Firebase Storage
+- Ratings-block
 - PWA (installera som app)
 
 ## 📦 Tech Stack
 
 - **Frontend:** React 18 + Vite
-- **Styling:** Tailwind CSS v3
+- **Styling:** Tailwind CSS v3 + Glassmorphism
 - **Icons:** Lucide React
 - **Database:** Firebase Firestore (real-time)
 - **Authentication:** Firebase Auth (Google Sign-in)
+- **Image Storage:** Cloudinary (25GB gratis/månad)
 - **Hosting:** GitHub Pages
 - **Version Control:** Git + GitHub
 - **CI/CD:** npm scripts för deployment
@@ -165,6 +168,31 @@ ourspots/
 
 6. **Uppdatera `src/firebase.js`:**
    - Ersätt `firebaseConfig` med din egen från Firebase Console
+
+## 📤 Cloudinary Setup (Image Upload)
+
+### Gratis bilduppladdning:
+
+1. **Skapa Cloudinary-konto:**
+   - Gå till [cloudinary.com](https://cloudinary.com/users/register_free)
+   - Registrera dig (gratis, inget kreditkort)
+
+2. **Få Cloud Name:**
+   - Dashboard → Product Environment Credentials
+   - Kopiera **Cloud Name**
+
+3. **Skapa Upload Preset:**
+   - Settings → Upload → Upload presets
+   - Add upload preset → Sät **Signing Mode: Unsigned**
+   - Kopiera preset-namnet
+
+4. **Uppdatera `src/App.jsx`:**
+   ```javascript
+   const CLOUDINARY_CLOUD_NAME = 'ditt-cloud-name';
+   const CLOUDINARY_UPLOAD_PRESET = 'ditt-preset';
+   ```
+
+**Gratis gränser:** 25GB lagring/månad, obegränsade uploads
 
 ## 🗺️ Datamodell
 
@@ -328,6 +356,15 @@ Detta är en varning från Firebase Auth + GitHub Pages. Kan ignoreras - påverk
 
 ## 📝 Changelog
 
+### v0.3 - Block & Upload MVP (2026-01-25)
+- ✨ Checklist block med checkbox-toggle
+- ✨ Todo block med progress-bar
+- ✨ Cloudinary image upload (25GB gratis/månad)
+- 🔄 Optimistic updates - omedelbar UI-feedback
+- 🎨 Förbättrad kontrast i dark theme
+- 📱 Responsiv kategori-bar
+- 🐛 Sticky header/category bar alignment fix
+
 ### v0.2 - Authentication MVP (2026-01-24)
 - ✨ Firebase Authentication med Google Sign-in
 - 🔒 Security Rules - bara ägare kan redigera
@@ -347,8 +384,10 @@ Detta är en varning från Firebase Auth + GitHub Pages. Kan ignoreras - påverk
 ## 🎯 Roadmap
 
 ### Kort sikt (nästa sprint)
-- [ ] Fler block-typer (checklist, todo, ratings)
-- [ ] Bilduppladdning till Firebase Storage
+- [x] Checklist block med state-synk
+- [x] Todo block med progress-bar
+- [x] Bilduppladdning (Cloudinary)
+- [ ] Ratings-block
 - [ ] Sökning och filtrering
 - [ ] Favoriter/stjärnmarkering
 
