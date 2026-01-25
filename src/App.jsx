@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, Home, Coffee, Mountain, Star, Calendar, X, Plus, Image, Edit2, Trash2, Loader } from 'lucide-react';
-import { db } from './firebase';
-import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, Timestamp } from 'firebase/firestore';
+import { MapPin, Home, Coffee, Mountain, Star, Calendar, X, Plus, Image, Edit2, Trash2, Loader, LogOut, LogIn } from 'lucide-react';
+import { db, auth, googleProvider } from './firebase';
+import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, Timestamp, query, where } from 'firebase/firestore';
+import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
 
 const PREDEFINED_ICONS = {
   '🏡': { icon: Home, label: 'Fastighet' },
@@ -40,17 +41,25 @@ const blockComponents = {
   text: TextBlock
 };
 
-const ObjectCard = ({ object, onClick }) => {
+const ObjectCard = ({ object, onClick, currentUser }) => {
   const IconComponent = PREDEFINED_ICONS[object.type]?.icon || Home;
   const titleBlock = object.blocks.find(b => b.type === 'title');
   const imageBlock = object.blocks.find(b => b.type === 'image');
   const locationBlock = object.blocks.find(b => b.type === 'location');
+  const isOwner = currentUser && object.ownerId === currentUser.uid;
 
   return (
     <div
       onClick={onClick}
-      className="bg-white/5 backdrop-blur-md rounded-2xl overflow-hidden border border-white/10 hover:border-blue-400/50 transition-all cursor-pointer transform hover:scale-[1.02]"
+      className="bg-white/5 backdrop-blur-md rounded-2xl overflow-hidden border border-white/10 hover:border-blue-400/50 transition-all cursor-pointer transform hover:scale-[1.02] relative"
     >
+      {isOwner && (
+        <div className="absolute top-2 right-2 z-10">
+          <div className="bg-blue-500/90 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-full">
+            Ditt
+          </div>
+        </div>
+      )}
       {imageBlock && (
         <div className="w-full h-40 overflow-hidden">
           <img
@@ -117,9 +126,10 @@ const DeleteConfirmModal = ({ object, onConfirm, onCancel }) => {
   );
 };
 
-const ObjectDetail = ({ object, onClose, onEdit, onDelete }) => {
+const ObjectDetail = ({ object, onClose, onEdit, onDelete, currentUser }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const IconComponent = PREDEFINED_ICONS[object.type]?.icon || Home;
+  const isOwner = currentUser && object.ownerId === currentUser.uid;
   
   const handleDelete = async () => {
     await onDelete(object.id);
@@ -156,22 +166,28 @@ const ObjectDetail = ({ object, onClose, onEdit, onDelete }) => {
             </div>
 
             <div className="mt-6 pt-6 border-t border-white/10 space-y-4">
-              <div className="flex gap-3">
-                <button
-                  onClick={() => onEdit(object)}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 transition-all"
-                >
-                  <Edit2 size={18} />
-                  <span className="font-medium">Redigera</span>
-                </button>
-                <button
-                  onClick={() => setShowDeleteConfirm(true)}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30 transition-all"
-                >
-                  <Trash2 size={18} />
-                  <span className="font-medium">Ta bort</span>
-                </button>
-              </div>
+              {isOwner ? (
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => onEdit(object)}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 transition-all"
+                  >
+                    <Edit2 size={18} />
+                    <span className="font-medium">Redigera</span>
+                  </button>
+                  <button
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30 transition-all"
+                  >
+                    <Trash2 size={18} />
+                    <span className="font-medium">Ta bort</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="text-center py-2 text-gray-500 text-sm">
+                  Du kan bara redigera objekt du har skapat
+                </div>
+              )}
               
               <div className="text-xs text-gray-500 space-y-1">
                 <div>Objekt-ID: {object.id}</div>
@@ -196,21 +212,11 @@ const ObjectDetail = ({ object, onClose, onEdit, onDelete }) => {
 const CreateObjectModal = ({ onClose, onSave, editObject, saving }) => {
   const isEdit = !!editObject;
   
-  const [selectedType, setSelectedType] = useState(
-    editObject?.type || '🏡'
-  );
-  const [title, setTitle] = useState(
-    editObject?.blocks?.find(b => b.type === 'title')?.data?.text || ''
-  );
-  const [address, setAddress] = useState(
-    editObject?.blocks?.find(b => b.type === 'location')?.data?.address || ''
-  );
-  const [imageUrl, setImageUrl] = useState(
-    editObject?.blocks?.find(b => b.type === 'image')?.data?.url || ''
-  );
-  const [description, setDescription] = useState(
-    editObject?.blocks?.find(b => b.type === 'text')?.data?.content || ''
-  );
+  const [selectedType, setSelectedType] = useState(editObject?.type || '🏡');
+  const [title, setTitle] = useState(editObject?.blocks?.find(b => b.type === 'title')?.data?.text || '');
+  const [address, setAddress] = useState(editObject?.blocks?.find(b => b.type === 'location')?.data?.address || '');
+  const [imageUrl, setImageUrl] = useState(editObject?.blocks?.find(b => b.type === 'image')?.data?.url || '');
+  const [description, setDescription] = useState(editObject?.blocks?.find(b => b.type === 'text')?.data?.content || '');
 
   const handleSubmit = () => {
     if (!title.trim()) {
@@ -218,29 +224,16 @@ const CreateObjectModal = ({ onClose, onSave, editObject, saving }) => {
       return;
     }
 
-    const blocks = [
-      { type: 'title', data: { text: title } }
-    ];
+    const blocks = [{ type: 'title', data: { text: title } }];
 
     if (address.trim()) {
-      blocks.push({
-        type: 'location',
-        data: { lat: 59.33, lng: 18.06, address: address }
-      });
+      blocks.push({ type: 'location', data: { lat: 59.33, lng: 18.06, address: address } });
     }
-
     if (imageUrl.trim()) {
-      blocks.push({
-        type: 'image',
-        data: { url: imageUrl }
-      });
+      blocks.push({ type: 'image', data: { url: imageUrl } });
     }
-
     if (description.trim()) {
-      blocks.push({
-        type: 'text',
-        data: { content: description }
-      });
+      blocks.push({ type: 'text', data: { content: description } });
     }
 
     const objectData = {
@@ -260,20 +253,14 @@ const CreateObjectModal = ({ onClose, onSave, editObject, saving }) => {
             <h2 className="text-2xl font-bold text-white">
               {isEdit ? 'Redigera objekt' : 'Skapa nytt objekt'}
             </h2>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-white"
-              disabled={saving}
-            >
+            <button onClick={onClose} className="text-gray-400 hover:text-white" disabled={saving}>
               <X size={24} />
             </button>
           </div>
 
           <div className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-3">
-                Välj typ
-              </label>
+              <label className="block text-sm font-medium text-gray-300 mb-3">Välj typ</label>
               <div className="grid grid-cols-3 gap-3">
                 {Object.entries(PREDEFINED_ICONS).map(([emoji, { icon: Icon, label }]) => (
                   <button
@@ -282,9 +269,7 @@ const CreateObjectModal = ({ onClose, onSave, editObject, saving }) => {
                     onClick={() => setSelectedType(emoji)}
                     disabled={saving}
                     className={`p-4 rounded-xl border-2 transition-all ${
-                      selectedType === emoji
-                        ? 'border-blue-500 bg-blue-500/20'
-                        : 'border-white/10 bg-white/5 hover:border-white/20'
+                      selectedType === emoji ? 'border-blue-500 bg-blue-500/20' : 'border-white/10 bg-white/5 hover:border-white/20'
                     } ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     <Icon size={24} className="mx-auto mb-2 text-blue-400" />
@@ -295,9 +280,7 @@ const CreateObjectModal = ({ onClose, onSave, editObject, saving }) => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Titel *
-              </label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Titel *</label>
               <input
                 type="text"
                 value={title}
@@ -309,9 +292,7 @@ const CreateObjectModal = ({ onClose, onSave, editObject, saving }) => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Plats/Adress
-              </label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Plats/Adress</label>
               <input
                 type="text"
                 value={address}
@@ -323,9 +304,7 @@ const CreateObjectModal = ({ onClose, onSave, editObject, saving }) => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Bild-URL
-              </label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Bild-URL</label>
               <div className="flex gap-2">
                 <Image size={20} className="text-gray-400 mt-3" />
                 <input
@@ -337,15 +316,11 @@ const CreateObjectModal = ({ onClose, onSave, editObject, saving }) => {
                   className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-50"
                 />
               </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Tips: Använd Unsplash för gratis bilder
-              </p>
+              <p className="text-xs text-gray-500 mt-1">Tips: Använd Unsplash för gratis bilder</p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Beskrivning
-              </label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Beskrivning</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -361,7 +336,7 @@ const CreateObjectModal = ({ onClose, onSave, editObject, saving }) => {
                 type="button"
                 onClick={onClose}
                 disabled={saving}
-                className="flex-1 px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 transition-all disabled:opacity-50"
               >
                 Avbryt
               </button>
@@ -369,7 +344,7 @@ const CreateObjectModal = ({ onClose, onSave, editObject, saving }) => {
                 type="button"
                 onClick={handleSubmit}
                 disabled={saving}
-                className="flex-1 px-6 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 px-6 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {saving ? (
                   <>
@@ -389,6 +364,7 @@ const CreateObjectModal = ({ onClose, onSave, editObject, saving }) => {
 };
 
 function App() {
+  const [user, setUser] = useState(null);
   const [objects, setObjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -403,6 +379,14 @@ function App() {
     { id: '☕', label: 'Kaféer', icon: Coffee },
     { id: '🏞️', label: 'Natur', icon: Mountain }
   ];
+
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+
+    return () => unsubscribeAuth();
+  }, []);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'objects'), (snapshot) => {
@@ -421,7 +405,29 @@ function App() {
     ? objects
     : objects.filter(obj => obj.type === activeCategory);
 
+  const handleLogin = async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (error) {
+      console.error('Login error:', error);
+      alert('Kunde inte logga in. Försök igen!');
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
   const handleSaveObject = async (objectData, editId) => {
+    if (!user) {
+      alert('Du måste vara inloggad för att skapa objekt!');
+      return;
+    }
+
     setSaving(true);
     try {
       if (editId) {
@@ -432,6 +438,9 @@ function App() {
       } else {
         await addDoc(collection(db, 'objects'), {
           ...objectData,
+          ownerId: user.uid,
+          ownerName: user.displayName,
+          ownerEmail: user.email,
           createdAt: Timestamp.now(),
           updatedAt: Timestamp.now()
         });
@@ -457,6 +466,10 @@ function App() {
   };
 
   const handleEdit = (object) => {
+    if (!user || object.ownerId !== user.uid) {
+      alert('Du kan bara redigera objekt du har skapat!');
+      return;
+    }
     setEditingObject(object);
     setShowCreateModal(true);
     setSelectedObject(null);
@@ -476,13 +489,43 @@ function App() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900/20 to-gray-900">
       <header className="bg-gray-900/50 backdrop-blur-xl border-b border-white/10 sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto px-4 py-4">
-          <h1 className="text-2xl font-bold text-white">OurSpots</h1>
-          <p className="text-gray-400 text-sm">Din personliga platsbok</p>
+        <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-white">OurSpots</h1>
+            <p className="text-gray-400 text-sm">Din personliga platsbok</p>
+          </div>
+          <div>
+            {user ? (
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <div className="text-sm text-white">{user.displayName}</div>
+                  <div className="text-xs text-gray-400">{user.email}</div>
+                </div>
+                {user.photoURL && (
+                  <img src={user.photoURL} alt="Profile" className="w-10 h-10 rounded-full" />
+                )}
+                <button
+                  onClick={handleLogout}
+                  className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all"
+                  title="Logga ut"
+                >
+                  <LogOut size={20} />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={handleLogin}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500 hover:bg-blue-600 text-white transition-all"
+              >
+                <LogIn size={18} />
+                <span>Logga in med Google</span>
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
-      <div className="bg-gray-900/30 backdrop-blur-md border-b border-white/10 sticky top-[73px] z-30">
+      <div className="bg-gray-900/30 backdrop-blur-md border-b border-white/10 sticky top-[89px] z-30">
         <div className="max-w-6xl mx-auto px-4 py-3 flex gap-2 overflow-x-auto">
           {categories.map(cat => {
             const IconComponent = cat.icon;
@@ -491,9 +534,7 @@ function App() {
                 key={cat.id}
                 onClick={() => setActiveCategory(cat.id)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl whitespace-nowrap transition-all ${
-                  activeCategory === cat.id
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                  activeCategory === cat.id ? 'bg-blue-500 text-white' : 'bg-white/5 text-gray-400 hover:bg-white/10'
                 }`}
               >
                 <IconComponent size={16} />
@@ -511,6 +552,7 @@ function App() {
               key={obj.id}
               object={obj}
               onClick={() => setSelectedObject(obj)}
+              currentUser={user}
             />
           ))}
         </div>
@@ -518,20 +560,23 @@ function App() {
         {filteredObjects.length === 0 && (
           <div className="text-center py-20 text-gray-500">
             <p>Inga objekt hittades i denna kategori</p>
-            <p className="text-sm mt-2">Klicka på + knappen för att skapa ditt första objekt!</p>
+            {user && <p className="text-sm mt-2">Klicka på + knappen för att skapa ditt första objekt!</p>}
+            {!user && <p className="text-sm mt-2">Logga in för att skapa objekt!</p>}
           </div>
         )}
       </main>
 
-      <button
-        onClick={() => {
-          setEditingObject(null);
-          setShowCreateModal(true);
-        }}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-blue-500 hover:bg-blue-600 rounded-full shadow-2xl flex items-center justify-center text-white transition-all hover:scale-110 z-40"
-      >
-        <Plus size={28} />
-      </button>
+      {user && (
+        <button
+          onClick={() => {
+            setEditingObject(null);
+            setShowCreateModal(true);
+          }}
+          className="fixed bottom-6 right-6 w-14 h-14 bg-blue-500 hover:bg-blue-600 rounded-full shadow-2xl flex items-center justify-center text-white transition-all hover:scale-110 z-40"
+        >
+          <Plus size={28} />
+        </button>
+      )}
 
       {selectedObject && (
         <ObjectDetail
@@ -539,6 +584,7 @@ function App() {
           onClose={() => setSelectedObject(null)}
           onEdit={handleEdit}
           onDelete={handleDeleteObject}
+          currentUser={user}
         />
       )}
 
