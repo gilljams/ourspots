@@ -14,7 +14,7 @@ OurSpots är en platsbaserad app med premium dark theme som låter användare:
 - Se objekt på karta med avstånd och navigation
 - Publik vy för externa användare
 
-## 🏗️ Nuvarande Status (v0.3 - Block & Upload MVP)
+## 🏗️ Nuvarande Status (v0.5 - Karta & Avstånd)
 
 ### ✅ Implementerat
 - **Dark theme med glassmorphism** - Premium design med radial glows
@@ -34,26 +34,40 @@ OurSpots är en platsbaserad app med premium dark theme som låter användare:
 - **GitHub Pages** - Live deployment
 - **Optimistic updates** - Omedelbar UI-feedback för checklist/todo
 - **Responsive design** - Mobiloptimerad, testad på iOS/Android
+- **Hierarki (Parent-Child)** - Organisera objekt som förälder-barn, dela plats mellan nivåer
+- **Kartintegration** - Leaflet + react-leaflet med CARTO voyager tiles
+- **Fullscreen kartvy** - Floating toggle-knapp för att växla mellan list- och kartvy
+- **Markörtooltips** - Desktop: hover-tooltip, Mobile: tap popup med "Visa detaljer"-knapp
+- **GPS-positionering** - Fångar användares aktuella position automatiskt vid app-start
+- **Interaktiv kartplockning** - Modal för att välja plats genom att klicka på kartan
+- **Avstånd från användare** - Visa km-avstånd till varje objekt (Haversine-formel)
+- **Avståndssorterad lista** - Toggle-knapp för att sortera objekt från närmast till längst bort
+- **Location inheritance** - Barn kan ärva förälderns position om de inte har egen
+- **Breadcrumb-navigering** - Visa hierarki: Alla > Förälder > Barn
+- **Child-count badges** - Visa antal barn på parent-kort
 
-### 🚧 Kommande Features
-- Kartintegration (Mapbox/Leaflet)
-- Hierarki (parent → child objekt)
-- Lager/samlingar för resor och projekt
-- Delningsfunktion mellan användare
-- Filter (avstånd, typ, favoriter)
-- Admin-funktioner
-- Publik vy
-- Ratings-block
-- PWA (installera som app)
+### 🚧 Kommande Features (Prioriterad backlog)
+1. **Marker clustering** - Gruppera markers vid utzooming för bättre kartöversikt
+2. **Markörfärger per kategori** - Visuell kodning per objekttyp på kartan
+3. **Sök & filter** - Sök efter objektnamn, filtrera efter typ/avstånd
+4. **Fler blocktyper** - Betyg, öppettider, kontaktinfo, anteckningar
+5. **Delningsfunktion** - Dela objekt med viewer/editor-roller
+6. **Favoriter** - Markera objekt som favoriter, egen snabbkategori
+7. **Lager/samlingar** - Gruppera objekt för resor och projekt
+8. **Admin-funktioner** - Hantera dold/borttagen innehål
+9. **Publik vy** - Sharable links för externa användare
+10. **PWA** - Installera som app, offline-support
 
 ## 📦 Tech Stack
 
-- **Frontend:** React 18 + Vite
+- **Frontend:** React 18 + Vite (hot reload)
 - **Styling:** Tailwind CSS v3 + Glassmorphism
-- **Icons:** Lucide React
-- **Database:** Firebase Firestore (real-time)
+- **Icons:** Lucide React + Emoji
+- **Maps:** Leaflet + react-leaflet (CARTO tiles, fully free)
+- **Database:** Firebase Firestore (real-time, persistent)
 - **Authentication:** Firebase Auth (Google Sign-in)
-- **Image Storage:** Cloudinary (25GB gratis/månad)
+- **Image Storage:** Cloudinary (unsigned uploads, 25GB gratis/månad)
+- **Geolocation:** Browser Geolocation API (GPS)
 - **Hosting:** GitHub Pages
 - **Version Control:** Git + GitHub
 - **CI/CD:** npm scripts för deployment

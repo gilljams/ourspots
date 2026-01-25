@@ -1,21 +1,23 @@
 ========================
-OurSpots – Komplett Manifest / Blueprint
+OurSpots – Manifest / Blueprint (Updated Jan 2026)
 ========================
+
+🚀 STATUS: v0.5 - Core features functional, map & distance complete
 
 1. VISION
 - Mobilfokuserad app med premium dark theme
 - Hanterar fastigheter, smultronställen/kaféer, resor/projekt
-- Delade objekt (viewer/editor)
-- Objekt + block = återanvändbar struktur
-- Hierarki för objekt (parent → child)
-- Lager/samlingar för resor/projekt
-- Kategorier = vy-filter
-- Kartintegration med position och avstånd
-- Dark theme + glassmorphism + accentfärger
-- Publik vy för gäster eller externa användare
-- Modulära block/förmågor: nya block kan implementeras utan att ändra objektmodell
-- Default block set per typ/kategori för enkelhet
-- Namn: OurSpots – signalerar familjär, delad och personlig platsbok
+- Delade objekt (viewer/editor) - planerad funktion
+- Objekt + block = återanvändbar struktur ✅
+- Hierarki för objekt (parent → child) ✅
+- Lager/samlingar för resor/projekt - planerad funktion
+- Kategorier = vy-filter ✅
+- Kartintegration med position och avstånd ✅
+- Dark theme + glassmorphism + accentfärger ✅
+- Publik vy för gäster eller externa användare - planerad funktion
+- Modulära block/förmågor: nya block kan implementeras utan att ändra objektmodell ✅
+- Default block set per typ/kategori för enkelhet - delvis implementerat
+- Namn: OurSpots – signalerar familjär, delad och personlig platsbok ✅
 
 2. FÖRDEFINIERADE TYP-IKONER
 | Typ / Objekt        | Ikon |
@@ -96,23 +98,31 @@ Default block sets per typ/kategori (för enkelhet):
 - Position-block kan: öppna karta, visa avstånd
 - Publik vy: markerar public=true objekt
 
-6. KARTFUNKTION / POSITION
-- Visa alla objekt med position på kartan
-- Dina egna tips highlightas när du är i närheten
-- Barnobjekt kan ha egen position
-- Tap på marker → öppnar detaljvy
-- Zoom → visa fler barnobjekt / klustring
-- Tryck & håll → skapa nytt objekt på platsen
-- Filter + lager switch uppdaterar karta i realtid
-- Premium dark map style + glow på marker nära användaren
+6. KARTFUNKTION / POSITION (IMPLEMENTERAT) ✅
+- Visa alla objekt med position på kartan ✅
+- Fullscreen kartvy med floating toggle-knapp ✅
+- Markörtooltips desktop/popup mobile ✅
+- Fånga användarens GPS-position automatiskt ✅
+- Interaktiv kartplockning i create-modal ✅
+- Visa avstånd från användare till varje objekt ✅
+- Sortera objekt efter avstånd (toggle) ✅
+- Breadcrumb-navigering för hierarki ✅
+- Location inheritance för barn-objekt ✅
 
-7. DELADE OBJEKT / SHARED OBJECTS
+7. NÄSTA PRIORITERING (Q1 2026)
+- Marker clustering för tät markördensitet
+- Markörfärger per kategori (🏡=grå, ☕=brun, 🏞️=grön)
+- Sök-funktionalitet (namn, innehål)
+- Avancerad filtrering (typ, avstånd, datum)
+- Fler blocktyper (betyg, öppettider, kontakt)
+
+8. DELADE OBJEKT / SHARED OBJECTS (PLANERAD FUNKTION)
 - Owner kan dela objekt med roll: Viewer / Editor
 - Delning ärvs nedåt i hierarki (valfritt override)
 - Endast synligt för användare med access
 - Marker visas på karta för delade användare
 
-8. ADMINISTRATIVA FUNKTIONER
+9. ADMINISTRATIVA FUNKTIONER (PLANERAD FUNKTION)
 - Kategorier: lägg till, redigera, ta bort, sätt swipebar, ikon, färg, filter
 - Lager: lägg till, redigera, ta bort, färg, ikon, typ
 - Objekt: flytta mellan lager, flytta i hierarki, redigera metadata, public flag

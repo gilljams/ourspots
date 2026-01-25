@@ -153,7 +153,7 @@ const blockComponents = {
   todo: TodoBlock
 };
 
-function ObjectCard({ object, onClick, currentUser, childCount }) {
+function ObjectCard({ object, onClick, currentUser, childCount, distance }) {
   const IconComponent = PREDEFINED_ICONS[object.type]?.icon || Home;
   const titleBlock = object.blocks.find(b => b.type === 'title');
   const imageBlock = object.blocks.find(b => b.type === 'image');
@@ -198,6 +198,12 @@ function ObjectCard({ object, onClick, currentUser, childCount }) {
           <div className="flex items-center gap-1 text-gray-400 text-sm mb-2">
             <MapPin size={14} />
             <span>{locationBlock.data.address}</span>
+          </div>
+        )}
+        {distance !== undefined && (
+          <div className="flex items-center gap-1 text-gray-400 text-sm mb-2">
+            <MapPin size={14} />
+            <span className="text-blue-400">{distance.toFixed(1)} km bort</span>
           </div>
         )}
         {todoProgress && (
@@ -381,6 +387,33 @@ function MapView({ objects, onSelectObject, currentUser }) {
 
   const isTouchDevice = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
 
+  // Component to handle center on user location
+  function CenterOnLocationButton() {
+    const map = useMapEvents({});
+    const handleCenterOnUser = () => {
+      if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const { latitude, longitude } = position.coords;
+            map.setView([latitude, longitude], 13);
+          },
+          () => {
+            alert('Kunde inte hämta din position');
+          }
+        );
+      }
+    };
+    return (
+      <button
+        onClick={handleCenterOnUser}
+        className="absolute top-4 right-4 z-[500] p-3 rounded-lg bg-blue-500 hover:bg-blue-600 text-white shadow-lg transition-all flex items-center justify-center"
+        title="Gå till min position"
+      >
+        <Navigation size={20} />
+      </button>
+    );
+  }
+
   function MarkerWithPopup({ object }) {
     const locationBlock = object.blocks.find(b => b.type === 'location');
     const titleBlock = object.blocks.find(b => b.type === 'title');
@@ -433,6 +466,7 @@ function MapView({ objects, onSelectObject, currentUser }) {
         {objectsWithLocation.map(obj => (
           <MarkerWithPopup key={obj.id} object={obj} />
         ))}
+        <CenterOnLocationButton />
       </MapContainer>
     </div>
   );
@@ -598,14 +632,14 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[1000] overflow-hidden">
-      <div className="min-h-screen p-4 flex items-start justify-center pt-10">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[1000] flex flex-col">
+      <div className="flex-1 overflow-y-auto p-4 flex items-start justify-center py-10">
         <div className="bg-gray-900/95 backdrop-blur-xl rounded-3xl border border-white/10 max-w-2xl w-full p-6 shadow-2xl">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold text-white">{isEdit ? 'Redigera objekt' : 'Skapa nytt objekt'}</h2>
             <button onClick={onClose} className="text-gray-400 hover:text-white" disabled={saving}><X size={24} /></button>
           </div>
-          <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
+          <div className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-3">Välj typ</label>
               <div className="grid grid-cols-3 gap-3">
@@ -756,7 +790,7 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
               <textarea value={todoItems} onChange={(e) => setTodoItems(e.target.value)} placeholder="Packa sovsäck&#10;Köp mat" rows={3} disabled={saving} className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors resize-none disabled:opacity-50 font-mono text-sm" />
             </div>
           </div>
-          <div className="flex gap-3 pt-6 mt-6 border-t border-white/10">
+          <div className="flex gap-3 pt-6 border-t border-white/10">
             <button type="button" onClick={onClose} disabled={saving} className="flex-1 px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 transition-all disabled:opacity-50">Avbryt</button>
             <button type="button" onClick={handleSubmit} disabled={saving} className="flex-1 px-6 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2">
               {saving ? <><Loader size={18} className="animate-spin" /><span>Sparar...</span></> : <span>{isEdit ? 'Spara ändringar' : 'Skapa objekt'}</span>}
@@ -787,8 +821,22 @@ function App() {
   const [showAllObjects, setShowAllObjects] = useState(false);
   const [defaultParentId, setDefaultParentId] = useState(null);
   const [viewMode, setViewMode] = useState('list');
+  const [userLocation, setUserLocation] = useState(null);
+  const [sortByDistance, setSortByDistance] = useState(false);
   const headerRef = useRef(null);
   const [headerHeight, setHeaderHeight] = useState(64);
+
+  // Distance helper (Haversine formula)
+  const getDistance = (lat1, lng1, lat2, lng2) => {
+    const R = 6371; // km
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLng = ((lng2 - lng1) * Math.PI) / 180;
+    const a = Math.sin(dLat/2)*Math.sin(dLat/2) + 
+              Math.cos((lat1*Math.PI)/180)*Math.cos((lat2*Math.PI)/180)*
+              Math.sin(dLng/2)*Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  };
 
   const categories = [
     { id: 'all', label: 'Alla', icon: Star },
@@ -812,6 +860,23 @@ function App() {
     updateHeaderHeight();
     window.addEventListener('resize', updateHeaderHeight);
     return () => window.removeEventListener('resize', updateHeaderHeight);
+  }, []);
+
+  // Capture user's location on mount
+  useEffect(() => {
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+        },
+        () => {
+          // User denied or error - just continue without location
+        }
+      );
+    }
   }, []);
 
   useEffect(() => {
@@ -847,7 +912,18 @@ function App() {
   }, [selectedObject, showCreateModal]);
 
   const filteredObjects = activeCategory === 'all' ? objects : objects.filter(o => o.type === activeCategory);
-  const displayObjects = showAllObjects ? filteredObjects : filteredObjects.filter(o => !o.parentId);
+  let displayObjects = showAllObjects ? filteredObjects : filteredObjects.filter(o => !o.parentId);
+  
+  // Apply distance sorting if enabled
+  if (sortByDistance && userLocation) {
+    displayObjects = [...displayObjects].sort((a, b) => {
+      const locBlockA = a.blocks?.find(b => b.type === 'location');
+      const locBlockB = b.blocks?.find(b => b.type === 'location');
+      const distA = (locBlockA?.data?.lat && locBlockA?.data?.lng) ? getDistance(userLocation.lat, userLocation.lng, locBlockA.data.lat, locBlockA.data.lng) : Infinity;
+      const distB = (locBlockB?.data?.lat && locBlockB?.data?.lng) ? getDistance(userLocation.lat, userLocation.lng, locBlockB.data.lat, locBlockB.data.lng) : Infinity;
+      return distA - distB;
+    });
+  }
 
   const handleLogin = async () => {
     try {
@@ -982,16 +1058,27 @@ function App() {
       
       <div className="bg-gray-900/30 backdrop-blur-md border-b border-white/10 sticky z-30" style={{ top: headerHeight }}>
         <div className="max-w-6xl mx-auto px-4 py-3">
-          <div className="flex gap-2 overflow-x-auto">
-            {categories.map(cat => {
-              const IconComponent = cat.icon;
-              return (
-                <button key={cat.id} onClick={() => setActiveCategory(cat.id)} className={`flex items-center gap-2 px-4 py-2 rounded-xl whitespace-nowrap transition-all ${activeCategory === cat.id ? 'bg-blue-500 text-white' : 'bg-white/20 text-gray-200 hover:bg-white/30'}`}>
-                  <IconComponent size={16} />
-                  <span className="text-sm font-medium">{cat.label}</span>
-                </button>
-              );
-            })}
+          <div className="flex gap-2 overflow-x-auto items-center justify-between">
+            <div className="flex gap-2 overflow-x-auto">
+              {categories.map(cat => {
+                const IconComponent = cat.icon;
+                return (
+                  <button key={cat.id} onClick={() => setActiveCategory(cat.id)} className={`flex items-center gap-2 px-4 py-2 rounded-xl whitespace-nowrap transition-all ${activeCategory === cat.id ? 'bg-blue-500 text-white' : 'bg-white/20 text-gray-200 hover:bg-white/30'}`}>
+                    <IconComponent size={16} />
+                    <span className="text-sm font-medium">{cat.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {userLocation && (
+              <button 
+                onClick={() => setSortByDistance(!sortByDistance)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl whitespace-nowrap transition-all text-sm font-medium ${sortByDistance ? 'bg-purple-500/80 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20'}`}
+                title={sortByDistance ? 'Sorterat efter avstånd' : 'Sortera efter avstånd'}
+              >
+                <Navigation size={14} />
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -1002,8 +1089,15 @@ function App() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {displayObjects.map(obj => {
                 const childCount = objects.filter(o => o.parentId === obj.id).length;
+                let distance = undefined;
+                if (userLocation) {
+                  const locBlock = obj.blocks?.find(b => b.type === 'location');
+                  if (locBlock?.data?.lat && locBlock?.data?.lng) {
+                    distance = getDistance(userLocation.lat, userLocation.lng, locBlock.data.lat, locBlock.data.lng);
+                  }
+                }
                 return (
-                  <ObjectCard key={obj.id} object={obj} onClick={() => setSelectedObject(obj)} currentUser={user} childCount={childCount} />
+                  <ObjectCard key={obj.id} object={obj} onClick={() => setSelectedObject(obj)} currentUser={user} childCount={childCount} distance={distance} />
                 );
               })}
             </div>
