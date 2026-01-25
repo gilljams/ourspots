@@ -498,7 +498,7 @@ function App() {
               <div className="flex items-center gap-3">
                 <div className="text-right">
                   <div className="text-sm text-white">{user.displayName}</div>
-                  <div className="text-xs text-gray-400">{user.email}</div>
+                  <div className="text-xs text-gray-400 hidden sm:block">{user.email}</div>
                 </div>
                 {user.photoURL && (
                   <img src={user.photoURL} alt="Profile" className="w-10 h-10 rounded-full" />
