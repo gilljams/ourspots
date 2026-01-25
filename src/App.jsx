@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { MapPin, Home, Coffee, Mountain, Star, Calendar, X, Plus, Image, Edit2, Trash2, Loader, LogOut, LogIn, Check, Circle } from 'lucide-react';
-import { db, auth, googleProvider } from './firebase';
+import { MapPin, Home, Coffee, Mountain, Star, Calendar, X, Plus, Image, Edit2, Trash2, Loader, LogOut, LogIn, Check, Circle, Upload } from 'lucide-react';
+import { db, auth, googleProvider, storage } from './firebase';
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, Timestamp } from 'firebase/firestore';
 import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const PREDEFINED_ICONS = {
   '🏡': { icon: Home, label: 'Fastighet' },
@@ -277,9 +278,12 @@ function CreateObjectModal({ onClose, onSave, editObject, saving }) {
   const [title, setTitle] = useState(editObject?.blocks?.find(b => b.type === 'title')?.data?.text || '');
   const [address, setAddress] = useState(editObject?.blocks?.find(b => b.type === 'location')?.data?.address || '');
   const [imageUrl, setImageUrl] = useState(editObject?.blocks?.find(b => b.type === 'image')?.data?.url || '');
+  const [imageFile, setImageFile] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [description, setDescription] = useState(editObject?.blocks?.find(b => b.type === 'text')?.data?.content || '');
   const [checklistItems, setChecklistItems] = useState(editObject?.blocks?.find(b => b.type === 'checklist')?.data?.items?.map(i => i.text).join('\n') || '');
   const [todoItems, setTodoItems] = useState(editObject?.blocks?.find(b => b.type === 'todo')?.data?.items?.map(i => i.text).join('\n') || '');
+  const fileInputRef = useRef(null);
 
   const handleSubmit = () => {
     if (!title.trim()) {
@@ -301,6 +305,30 @@ function CreateObjectModal({ onClose, onSave, editObject, saving }) {
     }
 
     onSave({ type: selectedType, layerId: 'default', blocks }, isEdit ? editObject.id : null);
+  };
+
+  const handleImageFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    try {
+      const timestamp = Date.now();
+      const fileName = `${timestamp}_${file.name}`;
+      const storageRef = ref(storage, `images/${fileName}`);
+      
+      await uploadBytes(storageRef, file);
+      const downloadUrl = await getDownloadURL(storageRef);
+      
+      setImageUrl(downloadUrl);
+      setImageFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    } catch (err) {
+      alert('Kunde inte ladda upp bild. Försök igen!');
+      console.error('Upload error:', err);
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   return (
@@ -332,10 +360,46 @@ function CreateObjectModal({ onClose, onSave, editObject, saving }) {
               <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="T.ex. Siljan, Dalarna" disabled={saving} className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-50" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Bild-URL</label>
-              <div className="flex gap-2">
-                <Image size={20} className="text-gray-400 mt-3" />
-                <input type="url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://images.unsplash.com/photo-..." disabled={saving} className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-50" />
+              <label className="block text-sm font-medium text-gray-300 mb-2">Bild</label>
+              <div className="space-y-3">
+                {imageUrl && (
+                  <div className="relative w-full h-40 rounded-xl overflow-hidden border border-white/10">
+                    <img src={imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setImageUrl('')}
+                      disabled={uploadingImage || saving}
+                      className="absolute top-2 right-2 bg-red-500/80 hover:bg-red-600 text-white p-2 rounded-lg transition-all disabled:opacity-50"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <label className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2">
+                    <Upload size={18} />
+                    <span className="text-sm font-medium">{uploadingImage ? 'Laddar...' : 'Ladda upp bild'}</span>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageFile}
+                      disabled={uploadingImage || saving}
+                      className="hidden"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const url = prompt('Eller klistra in bild-URL:');
+                      if (url?.trim()) setImageUrl(url.trim());
+                    }}
+                    disabled={uploadingImage || saving}
+                    className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 transition-all disabled:opacity-50 text-sm font-medium"
+                  >
+                    URL
+                  </button>
+                </div>
               </div>
             </div>
             <div>
