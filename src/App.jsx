@@ -1,8 +1,19 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { MapPin, Home, Coffee, Mountain, Star, Calendar, X, Plus, Image, Edit2, Trash2, Loader, LogOut, LogIn, Check, Circle, Upload, Folder } from 'lucide-react';
+import { MapPin, Home, Coffee, Mountain, Star, Calendar, X, Plus, Image, Edit2, Trash2, Loader, LogOut, LogIn, Check, Circle, Upload, Folder, Navigation, Map as MapIcon, List } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, useMapEvents, Tooltip, Popup } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { db, auth, googleProvider } from './firebase';
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, Timestamp } from 'firebase/firestore';
 import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
+
+// Fix Leaflet default marker icon issue with bundlers
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
 
 const CLOUDINARY_CLOUD_NAME = 'dkpwqradh';
 const CLOUDINARY_UPLOAD_PRESET = 'ourspots_unsigned';
@@ -203,7 +214,7 @@ function ObjectCard({ object, onClick, currentUser, childCount }) {
 function DeleteConfirmModal({ object, onConfirm, onCancel }) {
   const titleBlock = object.blocks.find(b => b.type === 'title');
   return (
-    <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[1100] flex items-center justify-center p-4">
       <div className="bg-gray-900/95 backdrop-blur-xl rounded-2xl border border-red-500/30 max-w-md w-full p-6">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center">
@@ -245,7 +256,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
   
   return (
     <>
-      <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 overflow-hidden">
+      <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-[1000] overflow-hidden">
         <div className="min-h-screen p-4 flex items-start justify-center pt-20">
             <div className="bg-gray-950/95 backdrop-blur-xl rounded-3xl border border-white/15 max-w-2xl w-full p-6 shadow-[0_24px_64px_-24px_rgba(0,0,0,0.8)] max-h-[80vh] overflow-y-auto pr-2">
             <div className="flex justify-between items-center mb-6">
@@ -306,7 +317,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
                   {isOwner && (
                     <button
                       onClick={() => onEdit({ parentId: object.id })}
-                      className="w-full h-10 sm:h-16 bg-blue-500 hover:bg-blue-600 rounded-md sm:rounded-lg shadow-lg flex items-center justify-center text-white transition-all hover:scale-105 col-span-1"
+                      className="w-10 sm:w-16 h-10 sm:h-16 bg-blue-500 hover:bg-blue-600 rounded-md sm:rounded-lg shadow-lg flex items-center justify-center text-white transition-all hover:scale-105 mx-auto col-span-1"
                       title="Lägg till underobjekt"
                     >
                       <Plus size={16} />
@@ -355,6 +366,117 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
   );
 }
 
+function MapView({ objects, onSelectObject, currentUser }) {
+  const objectsWithLocation = objects.filter(obj => {
+    const locationBlock = obj.blocks.find(b => b.type === 'location');
+    return locationBlock && locationBlock.data.lat && locationBlock.data.lng;
+  });
+
+  const center = objectsWithLocation.length > 0
+    ? [
+        objectsWithLocation.reduce((sum, obj) => sum + obj.blocks.find(b => b.type === 'location').data.lat, 0) / objectsWithLocation.length,
+        objectsWithLocation.reduce((sum, obj) => sum + obj.blocks.find(b => b.type === 'location').data.lng, 0) / objectsWithLocation.length
+      ]
+    : [59.33, 18.06];
+
+  const isTouchDevice = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+
+  function MarkerWithPopup({ object }) {
+    const locationBlock = object.blocks.find(b => b.type === 'location');
+    const titleBlock = object.blocks.find(b => b.type === 'title');
+    const position = [locationBlock.data.lat, locationBlock.data.lng];
+
+    if (isTouchDevice) {
+      return (
+        <Marker position={position}>
+          <Tooltip direction="top" offset={[0, -8]} opacity={0.9}>
+            <div className="text-xs">
+              <div className="font-semibold">{titleBlock?.data?.text || 'Namnlöst'}</div>
+              <div className="text-gray-500">{PREDEFINED_ICONS[object.type]?.label}</div>
+            </div>
+          </Tooltip>
+          <Popup>
+            <div className="min-w-[180px]">
+              <div className="text-sm font-semibold mb-1">{titleBlock?.data?.text || 'Namnlöst'}</div>
+              <div className="text-xs text-gray-600 mb-2">{PREDEFINED_ICONS[object.type]?.label}</div>
+              <button
+                onClick={() => onSelectObject(object)}
+                className="px-3 py-1 rounded bg-blue-500 hover:bg-blue-600 text-white text-xs"
+              >
+                Visa detaljer
+              </button>
+            </div>
+          </Popup>
+        </Marker>
+      );
+    }
+
+    return (
+      <Marker position={position} eventHandlers={{ click: () => onSelectObject(object) }}>
+        <Tooltip direction="top" offset={[0, -8]} opacity={0.9}>
+          <div className="text-xs">
+            <div className="font-semibold">{titleBlock?.data?.text || 'Namnlöst'}</div>
+            <div className="text-gray-500">{PREDEFINED_ICONS[object.type]?.label}</div>
+          </div>
+        </Tooltip>
+      </Marker>
+    );
+  }
+
+  return (
+    <div className="h-[calc(100vh-140px)] w-full relative z-0">
+      <MapContainer center={center} zoom={objectsWithLocation.length > 0 ? 7 : 6} style={{ height: '100%', width: '100%' }}>
+        <TileLayer
+          attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+        />
+        {objectsWithLocation.map(obj => (
+          <MarkerWithPopup key={obj.id} object={obj} />
+        ))}
+      </MapContainer>
+    </div>
+  );
+}
+
+function MapPicker({ onSelect, onClose, initialPosition }) {
+  const [position, setPosition] = useState(initialPosition || [59.33, 18.06]);
+
+  function LocationMarker() {
+    useMapEvents({
+      click(e) {
+        setPosition([e.latlng.lat, e.latlng.lng]);
+      },
+    });
+    return position ? <Marker position={position} /> : null;
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+      <div className="bg-gray-900/95 backdrop-blur-xl rounded-3xl border border-white/10 max-w-4xl w-full p-6 shadow-2xl">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-xl font-bold text-white">Markera plats på kartan</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-white"><X size={24} /></button>
+        </div>
+        <div className="h-[60vh] rounded-xl overflow-hidden border border-white/10 mb-4 relative">
+          <MapContainer center={position} zoom={13} style={{ height: '100%', width: '100%' }}>
+            <TileLayer
+              attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+              url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+            />
+            <LocationMarker />
+          </MapContainer>
+          
+        </div>
+        <p className="text-sm text-gray-400 mb-4">Klicka på kartan för att placera markören</p>
+        <div className="flex gap-3">
+          <button onClick={onClose} className="flex-1 px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 transition-all">Avbryt</button>
+          <button onClick={() => onSelect(position[0], position[1])} className="flex-1 px-6 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all">Använd denna plats</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CreateObjectModal({ onClose, onSave, editObject, saving, availableParents, defaultParentId }) {
   const isEdit = !!editObject;
   // Default type: use parent's type if defaultParentId is provided (for add-child flow)
@@ -364,6 +486,10 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
   const [inheritLocation, setInheritLocation] = useState(false);
   const [title, setTitle] = useState(editObject?.blocks?.find(b => b.type === 'title')?.data?.text || '');
   const [address, setAddress] = useState(editObject?.blocks?.find(b => b.type === 'location')?.data?.address || '');
+  const [lat, setLat] = useState(editObject?.blocks?.find(b => b.type === 'location')?.data?.lat || null);
+  const [lng, setLng] = useState(editObject?.blocks?.find(b => b.type === 'location')?.data?.lng || null);
+  const [capturingGPS, setCapturingGPS] = useState(false);
+  const [showMapPicker, setShowMapPicker] = useState(false);
   const [imageUrl, setImageUrl] = useState(editObject?.blocks?.find(b => b.type === 'image')?.data?.url || '');
   const [uploadingImage, setUploadingImage] = useState(false);
   const [description, setDescription] = useState(editObject?.blocks?.find(b => b.type === 'text')?.data?.content || '');
@@ -374,6 +500,40 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
   const selectedParent = availableParents.find(p => p.id === parentId);
   const parentHasLocation = selectedParent?.blocks?.some(b => b.type === 'location');
 
+  const handleGPSCapture = () => {
+    if (!navigator.geolocation) {
+      alert('GPS stöds inte av din enhet');
+      return;
+    }
+    setCapturingGPS(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLat(position.coords.latitude);
+        setLng(position.coords.longitude);
+        // Only set address if user hasn't entered one
+        if (!address.trim()) {
+          setAddress(`GPS: ${position.coords.latitude.toFixed(5)}, ${position.coords.longitude.toFixed(5)}`);
+        }
+        setCapturingGPS(false);
+      },
+      (error) => {
+        alert('Kunde inte hämta position: ' + error.message);
+        setCapturingGPS(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
+  const handleMapSelect = (latitude, longitude) => {
+    setLat(latitude);
+    setLng(longitude);
+    // Only set address if user hasn't entered one
+    if (!address.trim()) {
+      setAddress(`Karta: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
+    }
+    setShowMapPicker(false);
+  };
+
   const handleSubmit = () => {
     if (!title.trim()) {
       alert('Titel måste fyllas i!');
@@ -381,7 +541,9 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
     }
 
     const blocks = [{ type: 'title', data: { text: title } }];
-    if (address.trim() && !inheritLocation) blocks.push({ type: 'location', data: { lat: 59.33, lng: 18.06, address } });
+    if ((lat && lng) && !inheritLocation) {
+      blocks.push({ type: 'location', data: { lat, lng, address: address || `${lat.toFixed(5)}, ${lng.toFixed(5)}` } });
+    }
     if (imageUrl.trim()) blocks.push({ type: 'image', data: { url: imageUrl } });
     if (description.trim()) blocks.push({ type: 'text', data: { content: description } });
     if (checklistItems.trim()) {
@@ -436,7 +598,7 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 overflow-hidden">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[1000] overflow-hidden">
       <div className="min-h-screen p-4 flex items-start justify-center pt-10">
         <div className="bg-gray-900/95 backdrop-blur-xl rounded-3xl border border-white/10 max-w-2xl w-full p-6 shadow-2xl">
           <div className="flex justify-between items-center mb-6">
@@ -500,8 +662,42 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
             </div>
             {!inheritLocation && (
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Plats/Adress</label>
-                <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="T.ex. Siljan, Dalarna" disabled={saving} className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-50" />
+                <label className="block text-sm font-medium text-gray-300 mb-2">Plats</label>
+                <div className="space-y-3">
+                  <input 
+                    type="text" 
+                    value={address} 
+                    onChange={(e) => setAddress(e.target.value)} 
+                    placeholder="Skriv plats/beskrivning (t.ex. Kantarellstället vid stigen)" 
+                    disabled={saving} 
+                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-50" 
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleGPSCapture}
+                      disabled={saving || capturingGPS}
+                      className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                    >
+                      <Navigation size={18} className={capturingGPS ? 'animate-pulse' : ''} />
+                      <span className="text-sm font-medium">{capturingGPS ? 'Hämtar...' : 'Använd min plats'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowMapPicker(true)}
+                      disabled={saving}
+                      className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                    >
+                      <MapIcon size={18} />
+                      <span className="text-sm font-medium">Markera på karta</span>
+                    </button>
+                  </div>
+                  {lat && lng && (
+                    <div className="text-xs text-gray-500 bg-white/5 p-2 rounded-lg">
+                      📍 Koordinater: {lat.toFixed(5)}, {lng.toFixed(5)}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
             <div>
@@ -568,6 +764,13 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
           </div>
         </div>
       </div>
+      {showMapPicker && (
+        <MapPicker
+          onSelect={handleMapSelect}
+          onClose={() => setShowMapPicker(false)}
+          initialPosition={lat && lng ? [lat, lng] : null}
+        />
+      )}
     </div>
   );
 }
@@ -583,6 +786,7 @@ function App() {
   const [editingObject, setEditingObject] = useState(null);
   const [showAllObjects, setShowAllObjects] = useState(false);
   const [defaultParentId, setDefaultParentId] = useState(null);
+  const [viewMode, setViewMode] = useState('list');
   const headerRef = useRef(null);
   const [headerHeight, setHeaderHeight] = useState(64);
 
@@ -793,27 +997,45 @@ function App() {
       </div>
       
       <main className="max-w-6xl mx-auto px-4 py-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {displayObjects.map(obj => {
-            const childCount = objects.filter(o => o.parentId === obj.id).length;
-            return (
-              <ObjectCard key={obj.id} object={obj} onClick={() => setSelectedObject(obj)} currentUser={user} childCount={childCount} />
-            );
-          })}
-        </div>
-        {displayObjects.length === 0 && (
-          <div className="text-center py-20 text-gray-500">
-            <p>Inga objekt hittades i denna kategori</p>
-            {user && <p className="text-sm mt-2">Klicka på + knappen för att skapa ditt första objekt!</p>}
-            {!user && <p className="text-sm mt-2">Logga in för att skapa objekt!</p>}
-          </div>
+        {viewMode === 'list' ? (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {displayObjects.map(obj => {
+                const childCount = objects.filter(o => o.parentId === obj.id).length;
+                return (
+                  <ObjectCard key={obj.id} object={obj} onClick={() => setSelectedObject(obj)} currentUser={user} childCount={childCount} />
+                );
+              })}
+            </div>
+            {displayObjects.length === 0 && (
+              <div className="text-center py-20 text-gray-500">
+                <p>Inga objekt hittades i denna kategori</p>
+                {user && <p className="text-sm mt-2">Klicka på + knappen för att skapa ditt första objekt!</p>}
+                {!user && <p className="text-sm mt-2">Logga in för att skapa objekt!</p>}
+              </div>
+            )}
+          </>
+        ) : (
+          <MapView objects={displayObjects} onSelectObject={setSelectedObject} currentUser={user} />
         )}
       </main>
 
       {user && (
-        <button onClick={() => { setEditingObject(null); setShowCreateModal(true); }} className="fixed bottom-6 right-6 w-14 h-14 bg-blue-500 hover:bg-blue-600 rounded-full shadow-2xl flex items-center justify-center text-white transition-all hover:scale-110 z-40">
-          <Plus size={28} />
-        </button>
+        <>
+          <button 
+            onClick={() => { setEditingObject(null); setShowCreateModal(true); }} 
+            className="fixed bottom-6 right-6 w-14 h-14 bg-blue-500 hover:bg-blue-600 rounded-full shadow-2xl flex items-center justify-center text-white transition-all hover:scale-110 z-[1200]"
+          >
+            <Plus size={28} />
+          </button>
+          <button
+            onClick={() => setViewMode(viewMode === 'list' ? 'map' : 'list')}
+            className="fixed bottom-24 right-6 w-14 h-14 bg-gray-800 hover:bg-gray-700 rounded-full shadow-2xl flex items-center justify-center text-white transition-all hover:scale-110 z-[1200] border border-white/10"
+            title={viewMode === 'list' ? 'Visa karta' : 'Visa lista'}
+          >
+            {viewMode === 'list' ? <MapIcon size={24} /> : <List size={24} />}
+          </button>
+        </>
       )}
 
       {selectedObject && (
