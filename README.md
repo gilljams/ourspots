@@ -2,6 +2,8 @@
 
 En mobilfokuserad app för att hantera fastigheter, smultronställen, kaféer, resor och andra platser med delningsfunktioner.
 
+🌐 **Live Demo:** [https://gilljams.github.io/ourspots/](https://gilljams.github.io/ourspots/)
+
 ## 🎯 Vision
 
 OurSpots är en platsbaserad app med premium dark theme som låter användare:
@@ -12,38 +14,46 @@ OurSpots är en platsbaserad app med premium dark theme som låter användare:
 - Se objekt på karta med avstånd och navigation
 - Publik vy för externa användare
 
-## 🏗️ Nuvarande Status (MVP v0.1)
+## 🏗️ Nuvarande Status (v0.2 - Auth MVP)
 
 ### ✅ Implementerat
-- Dark theme med glassmorphism
-- Modulär block-arkitektur (title, image, location, text)
-- Kategori-navigation med swipe-bar
-- Kort-baserad listvy
-- Detaljvy med modal
-- Fördefinierade typ-ikoner (🏡, ☕, 🏞️, ⭐, ✈️)
-- Responsiv design
-- Exempel-data med 3 objekt
+- **Dark theme med glassmorphism** - Modern, responsiv design
+- **Modulär block-arkitektur** - title, image, location, text
+- **Kategori-navigation** - Swipe-bar för filtrering
+- **Kort-baserad listvy** - Med bilder och platsinformation
+- **Detaljvy** - Modal med komplett objektinformation
+- **Fördefinierade typ-ikoner** - 🏡, ☕, 🏞️, ⭐, ✈️, 🏠
+- **Firebase Firestore** - Real-time databas med persistent lagring
+- **Firebase Authentication** - Google-inloggning
+- **Security Rules** - Bara ägare kan redigera sina objekt
+- **CRUD-funktionalitet** - Create, Read, Update, Delete
+- **Ägarskap** - Objekt märks med "Ditt" för inloggad användare
+- **GitHub Pages** - Live deployment
+- **Loading states** - Spinner och feedback vid sparande
+- **Error handling** - Användarvänliga felmeddelanden
 
 ### 🚧 Kommande Features
-- Firebase integration (databas, auth, storage)
 - Kartintegration (Mapbox/Leaflet)
 - Hierarki (parent → child objekt)
-- Lager/samlingar
-- Delningsfunktion
+- Lager/samlingar för resor och projekt
+- Delningsfunktion mellan användare
 - Filter (avstånd, typ, favoriter)
 - Admin-funktioner
 - Publik vy
-- Fler block-typer (checklist, todo, etc.)
+- Fler block-typer (checklist, todo, ratings)
+- Bilduppladdning till Firebase Storage
+- PWA (installera som app)
 
 ## 📦 Tech Stack
 
 - **Frontend:** React 18 + Vite
 - **Styling:** Tailwind CSS v3
 - **Icons:** Lucide React
-- **Hosting:** GitHub Pages (planerat)
-- **Database:** Firebase Firestore (planerat)
-- **Auth:** Firebase Auth (planerat)
-- **Storage:** Firebase Storage (planerat)
+- **Database:** Firebase Firestore (real-time)
+- **Authentication:** Firebase Auth (Google Sign-in)
+- **Hosting:** GitHub Pages
+- **Version Control:** Git + GitHub
+- **CI/CD:** npm scripts för deployment
 
 ## 🚀 Kom igång
 
@@ -51,13 +61,14 @@ OurSpots är en platsbaserad app med premium dark theme som låter användare:
 - Node.js v20+ ([ladda ner](https://nodejs.org/))
 - Git ([ladda ner](https://git-scm.com/))
 - GitHub-konto
+- Google-konto (för inloggning i appen)
 - VS Code (rekommenderat)
 
 ### Installation
 
 1. **Klona projektet:**
    ```bash
-   git clone https://github.com/[ditt-username]/ourspots.git
+   git clone https://github.com/gilljams/ourspots.git
    cd ourspots
    ```
 
@@ -76,6 +87,8 @@ OurSpots är en platsbaserad app med premium dark theme som låter användare:
    http://localhost:5173
    ```
 
+5. **Logga in med Google** för att börja skapa objekt!
+
 ### Bygg för produktion
 
 ```bash
@@ -84,18 +97,26 @@ npm run build
 
 Byggda filer hamnar i `dist/`-mappen.
 
+### Deploya till GitHub Pages
+
+```bash
+npm run deploy
+```
+
 ## 📁 Projektstruktur
 
 ```
 ourspots/
 ├── src/
 │   ├── App.jsx           # Huvudkomponent med all logik
+│   ├── firebase.js       # Firebase konfiguration
 │   ├── main.jsx          # Entry point
 │   ├── index.css         # Tailwind imports
 │   └── assets/           # Bilder och media
 ├── public/               # Statiska filer
+├── dist/                 # Byggda filer (genereras)
 ├── index.html            # HTML template
-├── package.json          # Dependencies
+├── package.json          # Dependencies och scripts
 ├── vite.config.js        # Vite konfiguration
 ├── tailwind.config.js    # Tailwind konfiguration
 ├── postcss.config.js     # PostCSS konfiguration
@@ -103,61 +124,75 @@ ourspots/
 └── MANIFEST.md           # Komplett produktspecifikation
 ```
 
-## 🗺️ Datamodell (Planerad)
+## 🔥 Firebase Setup
+
+### Om du vill sätta upp eget Firebase-projekt:
+
+1. **Skapa Firebase-projekt:**
+   - Gå till [Firebase Console](https://console.firebase.google.com)
+   - Skapa nytt projekt
+   - **Viktigt:** Aktivera INTE Google Analytics eller Gemini (kräver billing)
+
+2. **Aktivera Firestore:**
+   - Gå till Firestore Database
+   - Klicka "Create database"
+   - Välj "Start in test mode"
+   - Välj region: `eur3 (europe-west)`
+
+3. **Aktivera Authentication:**
+   - Gå till Authentication
+   - Klicka "Get started"
+   - Aktivera "Google" som sign-in method
+
+4. **Konfigurera Security Rules:**
+   ```javascript
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+       match /objects/{objectId} {
+         allow read: if true;
+         allow create: if request.auth != null;
+         allow update, delete: if request.auth != null && 
+                                  request.auth.uid == resource.data.ownerId;
+       }
+     }
+   }
+   ```
+
+5. **Lägg till authorized domains:**
+   - Authentication → Settings → Authorized domains
+   - Lägg till din GitHub Pages-domän: `username.github.io`
+
+6. **Uppdatera `src/firebase.js`:**
+   - Ersätt `firebaseConfig` med din egen från Firebase Console
+
+## 🗺️ Datamodell
 
 ### Object
 ```javascript
 {
-  id: string,
-  parentId?: string,
-  layerId: string,
-  type: "🏡" | "🏠" | "☕" | "🏞️" | "⭐" | "✈️",
-  blocks: Block[],
-  ownerId: string,
-  sharedWith?: { userId: string, role: "viewer" | "editor" }[],
-  public?: boolean,
-  metadata: {
-    createdAt: Date,
-    updatedAt: Date
-  }
+  id: string,                    // Auto-genererat av Firestore
+  type: "🏡" | "🏠" | "☕" | ..., // Fördefinierad typ
+  layerId: string,               // Default: "default"
+  blocks: Block[],               // Modulära innehållsblock
+  ownerId: string,               // Firebase Auth UID
+  ownerName: string,             // Användarens namn
+  ownerEmail: string,            // Användarens email
+  createdAt: Timestamp,          // Skapad tid
+  updatedAt: Timestamp           // Senast uppdaterad
 }
 ```
 
 ### Block (Modulär struktur)
 ```javascript
 {
-  id: string,
-  type: "title" | "image" | "location" | "text" | "checklist" | "todo",
-  data: any,
-  metadata?: {
-    order: number,
-    collapsed: boolean,
-    required: boolean,
-    readonly: boolean
+  type: "title" | "image" | "location" | "text",
+  data: {
+    // title: { text: string }
+    // image: { url: string }
+    // location: { lat: number, lng: number, address: string }
+    // text: { content: string }
   }
-}
-```
-
-### Layer
-```javascript
-{
-  id: string,
-  name: string,
-  type: "default" | "trip" | "project" | "public",
-  color?: string,
-  icon?: string
-}
-```
-
-### Category
-```javascript
-{
-  id: string,
-  name: string,
-  icon: string,
-  accentColor: string,
-  swipebar: boolean,
-  filter: FilterCondition
 }
 ```
 
@@ -184,6 +219,28 @@ ourspots/
 
 ## 🔧 Utveckling
 
+### Användning
+
+**Starta dev server:**
+```bash
+npm run dev
+```
+
+**Bygga för produktion:**
+```bash
+npm run build
+```
+
+**Preview produktion-bygge:**
+```bash
+npm run preview
+```
+
+**Deploya till GitHub Pages:**
+```bash
+npm run deploy
+```
+
 ### Lägga till nya block-typer
 
 1. Skapa en ny block-komponent:
@@ -192,7 +249,7 @@ const ChecklistBlock = ({ data }) => (
   <div className="space-y-2">
     {data.items.map((item, i) => (
       <div key={i} className="flex items-center gap-2">
-        <input type="checkbox" checked={item.done} />
+        <input type="checkbox" checked={item.done} readOnly />
         <span>{item.text}</span>
       </div>
     ))}
@@ -211,6 +268,8 @@ const blockComponents = {
 };
 ```
 
+3. Uppdatera formulär för att lägga till checklist-data
+
 ### Lägga till nya kategorier
 
 Uppdatera `categories`-arrayen i `App.jsx`:
@@ -228,10 +287,18 @@ const categories = [
 
 ### Tailwind fungerar inte
 ```bash
-# Rensa cache och installera om
+# Rensa cache och starta om
 rm -rf node_modules/.vite
 npm run dev
 ```
+
+### Firebase connection error
+- Kontrollera att `src/firebase.js` har rätt config
+- Kontrollera att Firestore är aktiverad i Firebase Console
+- Kontrollera Security Rules
+
+### Authentication error på GitHub Pages
+- Lägg till din GitHub Pages-domän i Firebase → Authentication → Settings → Authorized domains
 
 ### Port 5173 upptagen
 Ändra port i `vite.config.js`:
@@ -243,49 +310,65 @@ export default defineConfig({
 })
 ```
 
-### VS Code kan inte spara filer
-- Kontrollera diskutrymme
-- Starta om VS Code
-- Kör VS Code som administratör (Windows)
+### Cross-Origin-Opener-Policy varning
+Detta är en varning från Firebase Auth + GitHub Pages. Kan ignoreras - påverkar inte funktionalitet.
 
-## 📝 Nästa Steg
+## 🔒 Säkerhet
 
-1. **Firebase Setup**
-   - Skapa Firebase-projekt
-   - Konfigurera Firestore
-   - Implementera authentication
-   - Lägg till CRUD-operationer
+### Aktuella Security Rules
+- ✅ Alla kan läsa objekt (publik vy)
+- ✅ Bara inloggade kan skapa objekt
+- ✅ Bara ägare kan uppdatera/radera sina objekt
 
-2. **Kartintegration**
-   - Välj kartleverantör (Mapbox/Leaflet)
-   - Implementera kartvy
-   - Lägg till markers
-   - GPS-integration
+### Nästa steg för säkerhet
+- [ ] Implementera roller (admin, editor, viewer)
+- [ ] Rate limiting för API-anrop
+- [ ] Input validation på serversidan
+- [ ] Content Security Policy headers
 
-3. **Hierarki**
-   - Parent/child-relationer
-   - Breadcrumb-navigation
-   - Nested views
+## 📝 Changelog
 
-4. **Delning**
-   - Share modal
-   - Access control
-   - Viewer/Editor-logik
+### v0.2 - Authentication MVP (2026-01-24)
+- ✨ Firebase Authentication med Google Sign-in
+- 🔒 Security Rules - bara ägare kan redigera
+- 👤 Användarprofilvisning i header
+- 🏷️ "Ditt" badge på egna objekt
+- 🚫 Inloggning krävs för att skapa objekt
 
-5. **Deploy**
-   - GitHub Pages setup
-   - CI/CD med GitHub Actions
-   - Custom domain (valfritt)
+### v0.1 - Initial MVP (2026-01-24)
+- ✨ Dark theme med glassmorphism
+- 📦 CRUD-funktionalitet
+- 🔥 Firebase Firestore integration
+- 🎨 Modulär block-arkitektur
+- 📱 Responsiv design
+- 🌐 GitHub Pages deployment
+- 📚 Komplett dokumentation
 
-## 📚 Dokumentation
+## 🎯 Roadmap
 
-- **MANIFEST.md** - Komplett produktspecifikation
-- **README.md** - Denna fil (snabbstart och översikt)
-- Se även originalmanifestet för fullständig vision och roadmap
+### Kort sikt (nästa sprint)
+- [ ] Fler block-typer (checklist, todo, ratings)
+- [ ] Bilduppladdning till Firebase Storage
+- [ ] Sökning och filtrering
+- [ ] Favoriter/stjärnmarkering
+
+### Medellång sikt
+- [ ] Kartintegration (Mapbox/Leaflet)
+- [ ] Hierarki (parent/child-relationer)
+- [ ] Lager/samlingar för resor
+- [ ] Delning mellan användare
+- [ ] Offline-support (PWA)
+
+### Lång sikt
+- [ ] Mobil app (React Native)
+- [ ] AR-funktioner för platser
+- [ ] AI-genererade beskrivningar
+- [ ] Export/import av data
+- [ ] Teamfunktioner
 
 ## 🤝 Bidra
 
-Detta är ett privat projekt, men dokumentationen är detaljerad för att underlätta utveckling i nya chattsessioner med AI-assistenter.
+Detta är för närvarande ett privat projekt för utveckling och testning.
 
 ## 📄 Licens
 
@@ -295,8 +378,16 @@ Privat projekt - ingen licens ännu.
 
 Projektägare: Joakim (Product Manager/Owner/Architect)
 
+## 🙏 Acknowledgments
+
+- Firebase för backend-tjänster
+- Tailwind CSS för styling-ramverk
+- Lucide för ikoner
+- Unsplash för exempelbilder
+- Vite för snabb utveckling
+
 ---
 
 **Senast uppdaterad:** 2026-01-24  
-**Version:** 0.1.0 (MVP Demo)  
-**Status:** ✅ Dark theme fungerar, basic struktur på plats
+**Version:** 0.2.0 (Authentication MVP)  
+**Status:** ✅ Live på GitHub Pages med Firebase Authentication
