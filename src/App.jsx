@@ -3059,7 +3059,7 @@ function App() {
                       <div className="p-3 rounded-xl bg-white/5 border border-white/10">
                         <div className="flex-1 mb-2">
                           <div className="text-sm font-medium text-white">Snabbpinning går till objekt</div>
-                          <div className="text-xs text-gray-400 mt-0.5">Lägg till positioner direkt på valt objekt ({objects?.length || 0} objekt)</div>
+                          <div className="text-xs text-gray-400 mt-0.5">Lägg till positioner direkt på valt objekt</div>
                         </div>
                         <select
                           value={quickCaptureObjectId}
