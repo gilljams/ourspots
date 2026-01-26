@@ -17,35 +17,41 @@ OurSpots är en platsbaserad app med premium dark theme som låter användare:
 ## 🏗️ Nuvarande Status (v1.1 - UX-förbättringar & Optimeringar)
 
 ### ✅ Implementerat
+
+#### Kärnfunktioner
 - **Dark theme med glassmorphism** - Premium design med radial glows
 - **Modulär block-arkitektur** - title, image, location, text, checklist, todo
+- **Firebase Firestore** - Real-time databas med persistent lagring
+- **Firebase Authentication** - Google-inloggning med rollhantering
+- **Security Rules** - Bara ägare kan redigera sina objekt, admin har full åtkomst
+- **CRUD-funktionalitet** - Create, Read, Update, Delete
+- **Responsive design** - Mobiloptimerad, testad på iOS/Android
+- **GitHub Pages** - Live deployment med optimerad bundle
+
+#### Block & Innehåll
 - **Checklist block** - Kryssrutor med state-synk i modal och nollställningsfunktion
 - **Todo block** - Uppgiftslista med progress-bar och nollställningsfunktion
 - **Reset-knappar** - Nollställ alla markeringar i Todo/Checklist för återkommande uppgifter
+- **Dynamiska block med titlar** - Flera text/checklist/todo med egna titlar
+- **Expand/Collapse-block** - Kollapsade som standard (första öppen), thumbnail-bild, kompakt plats
+- **Drag & drop blockordning** - Dra för att sortera; upp/ner-pilar för mobil
+- **Optimistic updates** - Omedelbar UI-feedback för checklist/todo
+- **Race condition-säkerhet** - Functional setState för robusta uppdateringar
+
+#### Bildhantering
 - **Smart bilduppladdning** - Cloudinary med AI-beskärning, automatisk komprimering och GPS-extrahering
 - **Cloudinary smart cropping** - AI-baserad beskärning (Auto, Ansikten, Centrum)
 - **Automatisk bildkomprimering** - Max 2000px, 85% kvalitet före uppladdning
 - **GPS från bilder** - Automatisk plats-extrahering från EXIF-data
-- **Dynamiska kategorier** - Firebase-baserad kategorihantering med 23+ ikoner
+
+#### Kategorier & Navigation
+- **Dynamiska kategorier** - Firebase-baserad kategorihantering med 24 ikoner från Lucide React
 - **Optimerad icon-import** - Tree-shaking för 575 kB mindre bundle (19 kB vs 594 kB)
-- **Admin-sektion** - Kategorihantering och objekthantering för administratörer
 - **Kategori-navigation** - Swipe-bar för filtrering, reordnad layout (Favoriter → Alla → Kategorier)
-- **Kort-baserad listvy** - Med bilder och platsinformation
-- **Detaljvy** - Modal med komplett objektinformation och collapsed hantera-sektion
-- **Collapsed hantering** - Redigera/Ta bort döljs i expanderbar "Hantera objekt"-sektion
-- **Förbättrade block-knappar** - Tydlig separering och ikoner för "Lägg till block"
-- **Ikoner från Lucide React** - 24 välbara ikoner inklusive mat, nöjen, aktiviteter
-- **Firebase Firestore** - Real-time databas med persistent lagring
-- **Firebase Authentication** - Google-inloggning med rollhantering
-- **Security Rules** - Bara ägare kan redigera sina objekt
-- **Race condition-säkerhet** - Functional setState för robusta uppdateringar
-- **CRUD-funktionalitet** - Create, Read, Update, Delete
-- **Ägarskap** - Objekt märks med "Ditt" för inloggad användare
-- **GitHub Pages** - Live deployment med optimerad bundle
-- **Optimistic updates** - Omedelbar UI-feedback för checklist/todo
-- **Responsive design** - Mobiloptimerad, testad på iOS/Android
-- **Hierarki (Parent-Child)** - Organisera objekt som förälder-barn, dela plats mellan nivåer
-- **Kartintegration** - Leaflet + react-leaflet med CARTO voyager tiles
+- **Ikoner från Lucide React** - 24 välbara ikoner inklusive mat, nöjen, aktiviteter, natur
+
+#### Karta & Position
+- **Kartintegration** - Leaflet + react-leaflet med CARTO voyager tiles (helt gratis)
 - **Fullscreen kartvy** - Floating toggle-knapp för att växla mellan list- och kartvy
 - **Markörtooltips** - Desktop: hover-tooltip, Mobile: tap popup med "Visa detaljer"-knapp
 - **GPS-positionering** - Fångar användares aktuella position automatiskt vid app-start
@@ -53,29 +59,46 @@ OurSpots är en platsbaserad app med premium dark theme som låter användare:
 - **Egen position på karta** - Blå användarikon på huvudkarta och kartväljare
 - **Avstånd från användare** - Visa km-avstånd till varje objekt (Haversine-formel)
 - **Avståndssorterad lista** - Toggle-knapp för att sortera objekt från närmast till längst bort
+- **Marker clustering** - Stora, tydliga kluster som skalar med antal
+- **Markörfärger per kategori** - Dynamiska färger baserat på kategoriinställningar
+
+#### Hierarki & Organisation
+- **Hierarki (Parent-Child)** - Organisera objekt som förälder-barn, dela plats mellan nivåer
 - **Location inheritance** - Barn kan ärva förälderns position om de inte har egen
 - **Breadcrumb-navigering** - Visa hierarki: Alla > Förälder > Barn
 - **Child-count badges** - Visa antal barn på parent-kort
-- **Marker clustering** - Stora, tydliga kluster som skalar med antal
-- **Markörfärger per kategori** - Dynamiska färger baserat på kategoriinställningar
-- **Dynamiska block med titlar** - Flera text/checklist/todo med egna titlar
-- **Expand/Collapse-block** - Kolliderade som standard (första öppen), thumbnail-bild, kompakt plats
-- **Drag & drop blockordning** - Dra för att sortera; upp/ner-pilar för mobil
-- **Stäng detaljmodal via overlay** - Klick utanför modalen för att stänga
-- **Sök & filter** - Sök på objektnamn/innehåll, filtrera på kategori och avstånd (km-slider)
 - **Förbättrad parent-navigering** - SVG-ikon och tydlig placering för tillbaka-knapp
+
+#### Sök & Filter
+- **Sök & filter** - Sök på objektnamn/innehåll, filtrera på kategori och avstånd (km-slider)
 - **Favoriter** - Toggle-filter som kombineras med kategorier, persistent i Firebase
 - **Kombinerad filtrering** - Favoriter + kategori samtidigt (t.ex. favorit Mat & Dryck)
-- **Skärmhantering** - "Håll skärmen påslagen" med Wake Lock API för navigering
+
+#### UI/UX
+- **Kort-baserad listvy** - Med bilder och platsinformation
+- **Detaljvy** - Modal med komplett objektinformation och collapsed hantera-sektion
+- **Collapsed hantering** - Redigera/Ta bort döljs i expanderbar "Hantera objekt"-sektion
+- **Förbättrade block-knappar** - Tydlig separering och ikoner för "Lägg till block"
+- **Stäng detaljmodal via overlay** - Klick utanför modalen för att stänga
+- **Ägarskap** - Objekt märks med "Ditt" för inloggad användare
+
+#### Admin-funktioner
+- **Admin-sektion** - Kategorihantering och objekthantering för administratörer
+- **Kategorihantering** - Skapa, redigera, radera, ordna kategorier med ikoner och färger
 - **Admin-objekthantering** - Admin kan redigera och radera alla objekt (inklusive ägarlösa)
 
+#### Optimeringar & Prestanda
+- **Skärmhantering** - "Håll skärmen påslagen" med Wake Lock API för navigering
+- **Optimerad bundle** - Tree-shaking och lazy loading för snabbare laddning
+
 ### 🚧 Kommande Features (Prioriterad backlog)
-1. **Fler blocktyper** - Betyg, öppettider, kontaktinfo, anteckningar
-2. **Delningsfunktion** - Dela objekt med viewer/editor-roller
+1. **PWA** - Installera som app, offline-support, service worker
+2. **Fler blocktyper** - Betyg, öppettider, kontaktinfo, länkar
+3. **Delningsfunktion** - Dela objekt med viewer/editor-roller
 4. **Lager/samlingar** - Gruppera objekt för resor och projekt
 5. **Publik vy** - Sharable links för externa användare
-6. **PWA** - Installera som app, offline-support
-7. **Avancerad admin** - Användarhantering, statistik, backup
+6. **Avancerad admin** - Användarhantering, statistik, backup/restore
+7. **Import/Export** - Backup och migrering av data
 
 ## 🎨 Admin-funktioner
 
@@ -105,16 +128,21 @@ OurSpots är en platsbaserad app med premium dark theme som låter användare:
 
 ## 📦 Tech Stack
 
-- **Frontend:** React 19.2.0 + Vite (hot reload)
-- **Styling:** Tailwind CSS v3 + Glassmorphism
-- **Icons:** Lucide React (23+ ikoner för kategorier) + Emoji
-- **Maps:** Leaflet + react-leaflet (CARTO tiles, fully free)
-- **Database:** Firebase Firestore (real-time, persistent)
-- **Authentication:** Firebase Auth (Google Sign-in)
+- **Frontend:** React 19.2.0 + Vite (hot reload, optimerad bundle)
+- **Styling:** Tailwind CSS v3 + Glassmorphism + Radial gradients
+- **Icons:** Lucide React (24 ikoner, tree-shaking optimerad)
+- **Maps:** Leaflet + react-leaflet + react-leaflet-cluster (CARTO tiles, helt gratis)
+- **Database:** Firebase Firestore (real-time, persistent, security rules)
+- **Authentication:** Firebase Auth (Google Sign-in med rollhantering)
 - **Image Storage:** Cloudinary (unsigned uploads, 25GB gratis/månad)
-- **Image Processing:** Client-side resize (max 2000px), Cloudinary AI smart cropping
-- **EXIF Reading:** Custom GPS extraction from image metadata
-- **Geolocation:** Browser Geolocation API (GPS)
+- **Image Processing:** 
+  - Client-side resize (Canvas API, max 2000px, 85% kvalitet)
+  - Cloudinary AI smart cropping (auto/face/center)
+  - Custom EXIF GPS-extrahering
+- **Geolocation:** Browser Geolocation API + Haversine-formel för avstånd
+- **Screen Management:** Wake Lock API (håll skärmen påslagen)
+- **State Management:** React useState + functional setState för race condition-säkerhet
+- **Optimeringar:** Tree-shaking, lazy loading, optimistic updates
 - **Hosting:** GitHub Pages
 - **Version Control:** Git + GitHub
 - **CI/CD:** npm scripts för deployment
@@ -261,8 +289,9 @@ ourspots/
 ```javascript
 {
   id: string,                    // Auto-genererat av Firestore
-  type: "🏡" | "🏠" | "☕" | ..., // Fördefinierad typ
+  parentId?: string,             // Parent-objekt för hierarki
   layerId: string,               // Default: "default"
+  type: string,                  // Kategori-ID (från categories collection)
   blocks: Block[],               // Modulära innehållsblock
   ownerId: string,               // Firebase Auth UID
   ownerName: string,             // Användarens namn
@@ -275,13 +304,54 @@ ourspots/
 ### Block (Modulär struktur)
 ```javascript
 {
-  type: "title" | "image" | "location" | "text",
+  id: string,                    // Unikt ID för block
+  type: "title" | "image" | "location" | "text" | "checklist" | "todo",
+  title?: string,                // Valfri titel för text/checklist/todo-block
   data: {
     // title: { text: string }
-    // image: { url: string }
-    // location: { lat: number, lng: number, address: string }
+    // image: { url: string, cropMode?: "auto" | "face" | "center" }
+    // location: { lat: number, lng: number, address?: string }
     // text: { content: string }
+    // checklist: { items: [{ text: string, checked: boolean }] }
+    // todo: { items: [{ text: string, done: boolean }] }
   }
+}
+```
+
+### Category (Dynamisk kategorihantering)
+```javascript
+{
+  id: string,                    // Auto-genererat från label
+  label: string,                 // Visningsnamn (ex: "Mat & Dryck")
+  icon: string,                  // Lucide icon name (ex: "Coffee")
+  color: string,                 // Hex-färg (ex: "#8b4513")
+  order: number,                 // Sorteringsordning
+  createdAt: Timestamp,          // Skapad tid
+  createdBy: string              // Skapare (userId)
+}
+```
+
+### User
+```javascript
+{
+  id: string,                    // Firebase Auth UID
+  email: string,                 // Email från Google Auth
+  displayName: string,           // Namn från Google
+  photoURL: string,              // Profilbild från Google
+  isAdmin: boolean,              // Admin-behörighet
+  favorites: string[],           // Array av objekt-ID:n
+  createdAt: Timestamp           // När användaren skapades
+}
+```
+
+### Layer (Planerat - Ej implementerat)
+```javascript
+{
+  id: string,                    // Layer-ID
+  name: string,                  // Namn (ex: "Sommarresa 2026")
+  type: "default" | "trip" | "project" | "public",
+  color?: string,                // Accentfärg
+  icon?: string                  // Ikon
 }
 ```
 
@@ -417,14 +487,39 @@ Detta är en varning från Firebase Auth + GitHub Pages. Kan ignoreras - påverk
 
 ## 📝 Changelog
 
+### v1.1 - UX-förbättringar & Optimeringar (2026-01-26)
+- 🎯 Collapsed "Hantera objekt"-sektion för renare detaljvy
+- ♻️ Reset-funktionalitet för Todo/Checklist (nollställ alla markeringar)
+- 🏷️ Dynamiska block-titlar för text/checklist/todo-block
+- 📦 Expand/Collapse för alla block i detaljvy
+- ⚡ Optimerad icon-bundle (575 kB mindre, 19 kB vs 594 kB)
+- 🔒 Race condition-säkerhet med functional setState
+- 🎨 Förbättrade block-knappar med tydlig separering
+- 🔄 Admin kan redigera och radera alla objekt
+
+### v1.0 - Karta, Favoriter & Admin (2026-01-25)
+- 🗺️ Kartintegration med Leaflet + CARTO tiles
+- 📍 GPS-positionering och avstånd från användare
+- 🎯 Marker clustering med kategori-färger
+- ⭐ Favoriter med kombinerad filtrering (favoriter + kategori)
+- 🔍 Sök & filter (namn, innehåll, avstånd med km-slider)
+- 🏗️ Hierarki (parent-child) med location inheritance
+- 🗂️ Dynamiska kategorier med Firebase-hantering
+- 👑 Admin-sektion för kategorihantering
+- 🎨 24 Lucide React-ikoner för kategorier
+- 📱 Skärmhantering med Wake Lock API
+- 🎭 Drag & drop blockordning (desktop + mobil-pilar)
+
 ### v0.3 - Block & Upload MVP (2026-01-25)
 - ✨ Checklist block med checkbox-toggle
 - ✨ Todo block med progress-bar
 - ✨ Cloudinary image upload (25GB gratis/månad)
+- 🤖 Smart cropping med AI (auto/face/center)
+- 📸 GPS-extrahering från EXIF-data
+- 🗜️ Automatisk bildkomprimering (max 2000px)
 - 🔄 Optimistic updates - omedelbar UI-feedback
 - 🎨 Förbättrad kontrast i dark theme
 - 📱 Responsiv kategori-bar
-- 🐛 Sticky header/category bar alignment fix
 
 ### v0.2 - Authentication MVP (2026-01-24)
 - ✨ Firebase Authentication med Google Sign-in
@@ -444,27 +539,48 @@ Detta är en varning från Firebase Auth + GitHub Pages. Kan ignoreras - påverk
 
 ## 🎯 Roadmap
 
-### Kort sikt (nästa sprint)
-- [x] Checklist block med state-synk
-- [x] Todo block med progress-bar
-- [x] Bilduppladdning (Cloudinary)
-- [ ] Ratings-block
-- [ ] Sökning och filtrering
-- [ ] Favoriter/stjärnmarkering
+### ✅ Klart (v0.1 - v1.1)
+- [x] Dark theme med glassmorphism
+- [x] Modulär block-arkitektur
+- [x] Firebase Authentication & Firestore
+- [x] Checklist & Todo block med state-synk
+- [x] Bilduppladdning (Cloudinary med AI-beskärning)
+- [x] Sökning och filtrering
+- [x] Favoriter/stjärnmarkering
+- [x] Kartintegration (Leaflet)
+- [x] Hierarki (parent/child-relationer)
+- [x] Dynamiska kategorier
+- [x] Admin-sektion
+- [x] GPS-positionering
+- [x] Avstånd och sortering
+- [x] Marker clustering
+- [x] Wake Lock API
+- [x] Optimerad bundle
 
-### Medellång sikt
-- [ ] Kartintegration (Mapbox/Leaflet)
-- [ ] Hierarki (parent/child-relationer)
-- [ ] Lager/samlingar för resor
-- [ ] Delning mellan användare
-- [ ] Offline-support (PWA)
+### Kort sikt (Q1 2026)
+- [ ] PWA-implementation (manifest.json, service worker)
+- [ ] Installera som app
+- [ ] Offline-support
+- [ ] Ratings-block (1-5 stjärnor)
+- [ ] Öppettider-block
+- [ ] Kontaktinfo-block
+- [ ] Länk-block
 
-### Lång sikt
-- [ ] Mobil app (React Native)
-- [ ] AR-funktioner för platser
+### Medellång sikt (Q2 2026)
+- [ ] Lager/samlingar för resor och projekt
+- [ ] Delning mellan användare (viewer/editor-roller)
+- [ ] Publik vy med sharable links
+- [ ] Avancerad användarhantering
+- [ ] Export/import av data (JSON backup)
+- [ ] Statistik och rapporter
+
+### Lång sikt (Q3-Q4 2026)
+- [ ] Mobil app (React Native eller PWA+)
+- [ ] Push-notiser
 - [ ] AI-genererade beskrivningar
-- [ ] Export/import av data
-- [ ] Teamfunktioner
+- [ ] Teamfunktioner och samarbete
+- [ ] AR-funktioner för platser
+- [ ] Integration med externa tjänster
 
 ## 🤝 Bidra
 
@@ -488,6 +604,6 @@ Projektägare: Joakim (Product Manager/Owner/Architect)
 
 ---
 
-**Senast uppdaterad:** 2026-01-24  
-**Version:** 0.2.0 (Authentication MVP)  
-**Status:** ✅ Live på GitHub Pages med Firebase Authentication
+**Senast uppdaterad:** 2026-01-26  
+**Version:** 1.1 (UX-förbättringar & Optimeringar)  
+**Status:** ✅ Live på GitHub Pages med full funktionalitet

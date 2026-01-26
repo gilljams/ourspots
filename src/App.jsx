@@ -48,6 +48,18 @@ const createUserIcon = () => {
   });
 };
 
+const createAreaIcon = (color) => {
+  return L.divIcon({
+    html: `<div style="background-color: ${color}; width: 35px; height: 35px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.4); opacity: 0.7; display: flex; align-items: center; justify-content: center;">
+      <div style="width: 20px; height: 20px; border-radius: 50%; border: 2px dashed white; opacity: 0.8;"></div>
+    </div>`,
+    className: 'area-marker-icon',
+    iconSize: [35, 35],
+    iconAnchor: [17, 35],
+    popupAnchor: [0, -35],
+  });
+};
+
 const CLOUDINARY_CLOUD_NAME = 'dkpwqradh';
 const CLOUDINARY_UPLOAD_PRESET = 'ourspots_unsigned';
 
@@ -414,41 +426,65 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
   return (
     <div onClick={onClick} className="bg-white/5 backdrop-blur-md rounded-2xl overflow-hidden border border-white/10 hover:border-blue-400/50 transition-all cursor-pointer transform hover:scale-[1.02] relative">
       {isOwner && (
-        <div className="absolute top-2 right-2 z-10">
+        <div className="absolute bottom-2 right-2 z-10">
           <div className="bg-blue-500/90 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-full">Ditt</div>
         </div>
       )}
-      {currentUser && (
-        <button
-          onClick={handleFavoriteClick}
-          className="absolute top-2 left-2 z-10 p-1.5 rounded-full bg-gray-900/70 backdrop-blur-sm hover:bg-gray-800/90 hover:scale-110 transition-all duration-200"
-          title={isFavorite ? 'Ta bort från favoriter' : 'Lägg till i favoriter'}
-        >
-          <Star 
-            size={16} 
-            className={`transition-colors ${isFavorite ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400 hover:text-yellow-300'}`}
-          />
-        </button>
-      )}
-      {childCount > 0 && (
-        <div className={`absolute top-2 z-10 ${currentUser ? 'left-12' : 'left-2'}`}>
-          <div className="bg-white/10 backdrop-blur-sm text-gray-200 text-xs px-2 py-1 rounded-full border border-white/15 flex items-center gap-1">
-            <Folder size={12} className="text-gray-300" />
-            {childCount}
+      {imageBlock ? (
+        <>
+          {currentUser && (
+            <button
+              onClick={handleFavoriteClick}
+              className="absolute top-2 left-2 z-10 p-1.5 rounded-full bg-gray-900/70 backdrop-blur-sm hover:bg-gray-800/90 hover:scale-110 transition-all duration-200"
+              title={isFavorite ? 'Ta bort från favoriter' : 'Lägg till i favoriter'}
+            >
+              <Star 
+                size={16} 
+                className={`transition-colors ${isFavorite ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400 hover:text-yellow-300'}`}
+              />
+            </button>
+          )}
+          {childCount > 0 && (
+            <div className={`absolute top-2 z-10 ${currentUser ? 'left-12' : 'left-2'}`}>
+              <div className="bg-white/10 backdrop-blur-sm text-gray-200 text-xs px-2 py-1 rounded-full border border-white/15 flex items-center gap-1">
+                <Folder size={12} className="text-gray-300" />
+                {childCount}
+              </div>
+            </div>
+          )}
+          <div className="w-full h-40 overflow-hidden">
+            <img src={getTransformedImageUrl(imageBlock.data.url, imageBlock.data.cropMode, 800, 320)} alt="" className="w-full h-full object-cover" />
           </div>
-        </div>
-      )}
-      {imageBlock && (
-        <div className="w-full h-40 overflow-hidden">
-          <img src={getTransformedImageUrl(imageBlock.data.url, imageBlock.data.cropMode, 800, 320)} alt="" className="w-full h-full object-cover" />
-        </div>
-      )}
+        </>
+      ) : null}
       <div className="p-4">
         <div className="flex items-center gap-2 mb-2">
-          <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center flex-shrink-0">
             <IconComponent size={18} className="text-blue-400" />
           </div>
-          {titleBlock && <h3 className="text-lg font-semibold text-white">{titleBlock.data.text}</h3>}
+          {titleBlock && <h3 className="text-lg font-semibold text-white flex-1">{titleBlock.data.text}</h3>}
+          {!imageBlock && (
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {childCount > 0 && (
+                <div className="bg-white/10 backdrop-blur-sm text-gray-200 text-xs px-2 py-1 rounded-full border border-white/15 flex items-center gap-1">
+                  <Folder size={12} className="text-gray-300" />
+                  {childCount}
+                </div>
+              )}
+              {currentUser && (
+                <button
+                  onClick={handleFavoriteClick}
+                  className="p-1.5 rounded-full bg-gray-900/70 backdrop-blur-sm hover:bg-gray-800/90 hover:scale-110 transition-all duration-200"
+                  title={isFavorite ? 'Ta bort från favoriter' : 'Lägg till i favoriter'}
+                >
+                  <Star 
+                    size={16} 
+                    className={`transition-colors ${isFavorite ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400 hover:text-yellow-300'}`}
+                  />
+                </button>
+              )}
+            </div>
+          )}
         </div>
         {locationBlock && (
           <div className="flex items-center gap-1 text-gray-400 text-sm mb-2">
@@ -1105,15 +1141,58 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
 function MapView({ objects, onSelectObject, currentUser, userLocation, categories }) {
   const [hasRequestedPermission, setHasRequestedPermission] = useState(false);
 
-  const objectsWithLocation = objects.filter(obj => {
+  // Helper to get calculated position for object (own coords or center of children)
+  const getObjectPosition = (obj) => {
     const locationBlock = obj.blocks.find(b => b.type === 'location');
-    return locationBlock && locationBlock.data.lat && locationBlock.data.lng;
-  });
+    
+    // Has own coordinates
+    if (locationBlock?.data?.lat && locationBlock?.data?.lng) {
+      return {
+        lat: locationBlock.data.lat,
+        lng: locationBlock.data.lng,
+        isArea: false
+      };
+    }
+    
+    // No own coords - calculate from children
+    const children = objects.filter(child => child.parentId === obj.id);
+    const childrenWithCoords = children.filter(child => {
+      const childLoc = child.blocks.find(b => b.type === 'location');
+      return childLoc?.data?.lat && childLoc?.data?.lng;
+    });
+    
+    if (childrenWithCoords.length > 0) {
+      const avgLat = childrenWithCoords.reduce((sum, child) => {
+        const childLoc = child.blocks.find(b => b.type === 'location');
+        return sum + childLoc.data.lat;
+      }, 0) / childrenWithCoords.length;
+      
+      const avgLng = childrenWithCoords.reduce((sum, child) => {
+        const childLoc = child.blocks.find(b => b.type === 'location');
+        return sum + childLoc.data.lng;
+      }, 0) / childrenWithCoords.length;
+      
+      return {
+        lat: avgLat,
+        lng: avgLng,
+        isArea: true
+      };
+    }
+    
+    return null;
+  };
+
+  const objectsWithLocation = objects
+    .map(obj => {
+      const position = getObjectPosition(obj);
+      return position ? { ...obj, _position: position } : null;
+    })
+    .filter(obj => obj !== null);
 
   const center = objectsWithLocation.length > 0
     ? [
-        objectsWithLocation.reduce((sum, obj) => sum + obj.blocks.find(b => b.type === 'location').data.lat, 0) / objectsWithLocation.length,
-        objectsWithLocation.reduce((sum, obj) => sum + obj.blocks.find(b => b.type === 'location').data.lng, 0) / objectsWithLocation.length
+        objectsWithLocation.reduce((sum, obj) => sum + obj._position.lat, 0) / objectsWithLocation.length,
+        objectsWithLocation.reduce((sum, obj) => sum + obj._position.lng, 0) / objectsWithLocation.length
       ]
     : [59.33, 18.06];
 
@@ -1191,22 +1270,16 @@ function MapView({ objects, onSelectObject, currentUser, userLocation, categorie
   function MarkerWithPopup({ object }) {
     const locationBlock = object.blocks.find(b => b.type === 'location');
     const titleBlock = object.blocks.find(b => b.type === 'title');
-    const position = [locationBlock.data.lat, locationBlock.data.lng];
+    const position = [object._position.lat, object._position.lng];
     // Find category for color
     const category = categories.find(c => c.id === object.type);
     const markerColor = category?.color || '#3B82F6';
     const categoryLabel = category?.label || (PREDEFINED_ICONS[object.type]?.label || 'Objekt');
-    const coloredIcon = createColoredIcon(markerColor);
+    const coloredIcon = object._position.isArea ? createAreaIcon(markerColor) : createColoredIcon(markerColor);
 
     if (isTouchDevice) {
       return (
         <Marker position={position} icon={coloredIcon}>
-          <Tooltip direction="top" offset={[0, -8]} opacity={0.9}>
-            <div className="text-xs">
-              <div className="font-semibold">{titleBlock?.data?.text || 'Namnlöst'}</div>
-              <div className="text-gray-500">{categoryLabel}</div>
-            </div>
-          </Tooltip>
           <Popup>
             <div className="min-w-[180px]">
               <div className="text-sm font-semibold mb-1">{titleBlock?.data?.text || 'Namnlöst'}</div>
@@ -1419,23 +1492,31 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
       return;
     }
 
-    const blocks = [{ type: 'title', data: { text: title } }];
-    if ((lat && lng) && !inheritLocation) {
-      blocks.push({ type: 'location', data: { lat, lng, address: address || `${lat.toFixed(5)}, ${lng.toFixed(5)}` } });
+    const blocks = [{ type: 'title', data: { text: title.trim() } }];
+    if (!inheritLocation) {
+      // Add location block if we have coords OR just address (for area objects)
+      if ((lat !== null && lat !== undefined && lng !== null && lng !== undefined) || address.trim()) {
+        const locationData = { 
+          lat: (lat !== null && lat !== undefined) ? Number(lat) : null,
+          lng: (lng !== null && lng !== undefined) ? Number(lng) : null,
+          address: address.trim() || ((lat !== null && lat !== undefined && lng !== null && lng !== undefined) ? `${lat.toFixed(5)}, ${lng.toFixed(5)}` : '')
+        };
+        blocks.push({ type: 'location', data: locationData });
+      }
     }
-    if (imageUrl.trim()) blocks.push({ type: 'image', data: { url: imageUrl, cropMode: imageCropMode } });
+    if (imageUrl.trim()) blocks.push({ type: 'image', data: { url: imageUrl.trim(), cropMode: imageCropMode } });
     
     // Add custom blocks (text, checklist, todo) from array
     customBlocks.forEach(block => {
       if (block.content.trim()) {
         if (block.type === 'text') {
-          blocks.push({ type: 'text', data: { title: block.title || 'Anteckning', content: block.content } });
+          blocks.push({ type: 'text', data: { title: (block.title || 'Anteckning').trim(), content: block.content.trim() } });
         } else if (block.type === 'checklist') {
           const items = block.content.split('\n').filter(l => l.trim()).map(text => ({ text: text.trim(), checked: false }));
-          if (items.length > 0) blocks.push({ type: 'checklist', data: { title: block.title || 'Checklista', items } });
+          if (items.length > 0) blocks.push({ type: 'checklist', data: { title: (block.title || 'Checklista').trim(), items } });
         } else if (block.type === 'todo') {
           const items = block.content.split('\n').filter(l => l.trim()).map(text => ({ text: text.trim(), done: false }));
-          if (items.length > 0) blocks.push({ type: 'todo', data: { title: block.title || 'Att göra', items } });
+          if (items.length > 0) blocks.push({ type: 'todo', data: { title: (block.title || 'Att göra').trim(), items } });
         }
       }
     });
@@ -1447,6 +1528,7 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
       parentId: parentId || null
     };
 
+    console.log('Submitting object data:', objectData); // Debug log
     onSave(objectData, isEdit ? editObject.id : null);
   };
 
@@ -1459,7 +1541,7 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
       // Extract EXIF GPS data if available (non-blocking)
       try {
         const gpsData = await extractGPSFromImage(file);
-        if (gpsData && !lat && !lng) {
+        if (gpsData && (lat === null || lat === undefined) && (lng === null || lng === undefined)) {
           setLat(gpsData.lat);
           setLng(gpsData.lng);
           if (!address.trim()) {
@@ -1612,8 +1694,21 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
                     </button>
                   </div>
                   {lat && lng && (
-                    <div className="text-xs text-gray-500 bg-white/5 p-2 rounded-lg">
-                      📍 Koordinater: {lat.toFixed(5)}, {lng.toFixed(5)}
+                    <div className="flex items-center gap-2 text-xs text-gray-500 bg-white/5 p-2 rounded-lg">
+                      <span className="flex-1">📍 Koordinater: {lat.toFixed(5)}, {lng.toFixed(5)}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLat(null);
+                          setLng(null);
+                        }}
+                        disabled={saving}
+                        className="px-2 py-1 rounded bg-red-500/20 hover:bg-red-500/30 text-red-400 transition-all disabled:opacity-50 flex items-center gap-1"
+                        title="Rensa koordinater"
+                      >
+                        <X size={14} />
+                        <span className="text-xs">Rensa</span>
+                      </button>
                     </div>
                   )}
                 </div>
@@ -2253,23 +2348,30 @@ function App() {
     }
     setSaving(true);
     try {
-      if (editId) {
-        await updateDoc(doc(db, 'objects', editId), { ...objectData, updatedAt: Timestamp.now() });
-      } else {
-        await addDoc(collection(db, 'objects'), { 
-          ...objectData, 
-          ownerId: user.uid, 
-          ownerName: user.displayName, 
-          ownerEmail: user.email, 
-          createdAt: Timestamp.now(), 
-          updatedAt: Timestamp.now() 
-        });
-      }
+      const saveOperation = editId 
+        ? updateDoc(doc(db, 'objects', editId), { ...objectData, updatedAt: Timestamp.now() })
+        : addDoc(collection(db, 'objects'), { 
+            ...objectData, 
+            ownerId: user.uid, 
+            ownerName: user.displayName, 
+            ownerEmail: user.email, 
+            createdAt: Timestamp.now(), 
+            updatedAt: Timestamp.now() 
+          });
+      
+      // Timeout after 10 seconds
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout')), 10000)
+      );
+      
+      await Promise.race([saveOperation, timeoutPromise]);
+      
       setShowCreateModal(false);
       setEditingObject(null);
       setSelectedObject(null);
     } catch (err) {
-      alert('Kunde inte spara!');
+      console.error('Save error:', err);
+      alert(err.message === 'Timeout' ? 'Sparningen tog för lång tid. Försök igen.' : 'Kunde inte spara!');
     } finally {
       setSaving(false);
     }
@@ -2503,7 +2605,7 @@ function App() {
             )}
           </div>
         ) : (
-          <MapView objects={displayObjects} onSelectObject={setSelectedObject} currentUser={user} userLocation={userLocation} categories={categories} />
+          <MapView objects={filteredObjects} onSelectObject={setSelectedObject} currentUser={user} userLocation={userLocation} categories={categories} />
         )}
       </main>
 
