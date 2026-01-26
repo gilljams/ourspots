@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
-import * as LucideIcons from 'lucide-react';
-const { MapPin, Home, Coffee, Mountain, Star, Calendar, X, Plus, Image, Edit2, Trash2, Loader, LogOut, LogIn, Check, Circle, Upload, Folder, Navigation, Plane, Map: MapIcon, List, ChevronDown, ArrowUp, ArrowDown, Search, Settings } = LucideIcons;
+import { 
+  MapPin, Home, Coffee, Mountain, Star, Calendar, X, Plus, Image, Edit2, Trash2, 
+  Loader, LogOut, LogIn, Check, Circle, Upload, Folder, Navigation, Plane, 
+  Map as MapIcon, List, ChevronDown, ArrowUp, ArrowDown, Search, Settings,
+  UtensilsCrossed, Pizza, Wine, Beer, Gamepad2, Music, Film, PartyPopper, 
+  Bike, Dumbbell, Waves, TreePine, Shell, Sprout, RotateCcw
+} from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMapEvents, Tooltip, Popup } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
@@ -214,8 +219,14 @@ const parseGPSCoordinate = (view, offset, littleEndian) => {
 };
 
 // Helper to get icon component from string name
+const iconMap = {
+  MapPin, Home, Coffee, Mountain, Star, Calendar, Folder, Navigation, Plane,
+  UtensilsCrossed, Pizza, Wine, Beer, Gamepad2, Music, Film, PartyPopper,
+  Bike, Dumbbell, Waves, TreePine, Shell, Sprout, RotateCcw
+};
+
 const getIconComponent = (iconName) => {
-  return LucideIcons[iconName] || Home;
+  return iconMap[iconName] || Home;
 };
 
 // Legacy emoji mapping for backward compatibility (will be phased out)
@@ -265,8 +276,29 @@ const ChecklistBlock = ({ data, objectId, blockIndex, onUpdate }) => {
     await onUpdate(objectId, blockIndex, { ...data, items: newItems });
   };
 
+  const handleReset = async () => {
+    if (!onUpdate) return;
+    if (!confirm('Vill du nollställa alla markeringar?')) return;
+    const newItems = data.items.map(item => ({ ...item, checked: false }));
+    await onUpdate(objectId, blockIndex, { ...data, items: newItems });
+  };
+
+  const hasChecked = data.items.some(item => item.checked);
+
   return (
     <div className="mb-4 rounded-2xl bg-white/10 border border-white/10 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.7)] p-4">
+      {hasChecked && onUpdate && (
+        <div className="flex justify-end mb-2">
+          <button
+            onClick={handleReset}
+            className="flex items-center gap-1 px-2 py-1 text-xs text-gray-400 hover:text-blue-400 hover:bg-white/5 rounded-lg transition-all"
+            title="Nollställ alla markeringar"
+          >
+            <RotateCcw size={12} />
+            <span>Nollställ</span>
+          </button>
+        </div>
+      )}
       <div className="space-y-2">
         {data.items.map((item, i) => (
           <div 
@@ -300,6 +332,13 @@ const TodoBlock = ({ data, objectId, blockIndex, onUpdate }) => {
     await onUpdate(objectId, blockIndex, { ...data, items: newItems });
   };
 
+  const handleReset = async () => {
+    if (!onUpdate) return;
+    if (!confirm('Vill du nollställa alla markeringar?')) return;
+    const newItems = data.items.map(item => ({ ...item, done: false }));
+    await onUpdate(objectId, blockIndex, { ...data, items: newItems });
+  };
+
   const totalItems = data.items.length;
   const doneItems = data.items.filter(item => item.done).length;
   const progress = totalItems > 0 ? (doneItems / totalItems) * 100 : 0;
@@ -308,6 +347,16 @@ const TodoBlock = ({ data, objectId, blockIndex, onUpdate }) => {
     <div className="mb-4 rounded-2xl bg-white/10 border border-white/10 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.7)] p-4">
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs text-gray-400">{doneItems}/{totalItems} klara</span>
+        {doneItems > 0 && onUpdate && (
+          <button
+            onClick={handleReset}
+            className="flex items-center gap-1 px-2 py-1 text-xs text-gray-400 hover:text-blue-400 hover:bg-white/5 rounded-lg transition-all"
+            title="Nollställ alla markeringar"
+          >
+            <RotateCcw size={12} />
+            <span>Nollställ</span>
+          </button>
+        )}
       </div>
       <div className="mb-3 h-2 bg-gray-800 rounded-full overflow-hidden">
         <div 
@@ -800,6 +849,7 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
 function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, currentUser, allObjects, onNavigate, categories, isAdmin }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [expandedBlocks, setExpandedBlocks] = useState(new Set([0])); // First block expanded by default
+  const [showManageSection, setShowManageSection] = useState(false);
   // Find category to get icon
   const category = categories.find(c => c.id === object.type);
   const IconComponent = category ? getIconComponent(category.icon) : (PREDEFINED_ICONS[object.type]?.icon || Home);
@@ -1009,26 +1059,41 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
                 </button>
               </div>
             )}
-            <div className="mt-6 pt-6 border-t border-white/10 space-y-4">
-              {canManage ? (
-                <div className="flex gap-3">
-                  <button onClick={() => onEdit(object)} className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 transition-all">
-                    <Edit2 size={18} />
-                    <span className="font-medium">Redigera</span>
-                  </button>
-                  <button onClick={() => setShowDeleteConfirm(true)} className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30 transition-all">
-                    <Trash2 size={18} />
-                    <span className="font-medium">Ta bort</span>
-                  </button>
-                </div>
-              ) : (
-                <div className="text-center py-2 text-gray-500 text-sm">Du kan bara redigera objekt du har skapat</div>
-              )}
-              <div className="text-xs text-gray-500 space-y-1">
-                <div>Objekt-ID: {object.id}</div>
-                <div>Layer: {object.layerId}</div>
+            {canManage && (
+              <div className="mt-6 pt-6 border-t border-white/10">
+                <button
+                  onClick={() => setShowManageSection(!showManageSection)}
+                  className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-gray-400 hover:text-white transition-all"
+                >
+                  <div className="flex items-center gap-2">
+                    <Settings size={18} />
+                    <span className="font-medium">Hantera objekt</span>
+                  </div>
+                  <ChevronDown 
+                    size={18} 
+                    className={`transition-transform ${showManageSection ? 'rotate-180' : ''}`}
+                  />
+                </button>
+                {showManageSection && (
+                  <div className="mt-3 space-y-3 animate-in slide-in-from-top-2 duration-200">
+                    <div className="flex gap-3">
+                      <button onClick={() => onEdit(object)} className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 transition-all">
+                        <Edit2 size={18} />
+                        <span className="font-medium">Redigera</span>
+                      </button>
+                      <button onClick={() => setShowDeleteConfirm(true)} className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30 transition-all">
+                        <Trash2 size={18} />
+                        <span className="font-medium">Ta bort</span>
+                      </button>
+                    </div>
+                    <div className="text-xs text-gray-500 space-y-1 px-2">
+                      <div>Objekt-ID: {object.id}</div>
+                      <div>Layer: {object.layerId}</div>
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
@@ -1733,31 +1798,37 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
             </div>
 
             {/* Add block buttons */}
-            <div className="flex gap-1 flex-nowrap overflow-x-auto">
-              <button
-                type="button"
-                onClick={() => setCustomBlocks([...customBlocks, { id: Math.random().toString(36).substr(2, 9), type: 'text', title: '', content: '' }])}
-                disabled={saving}
-                className="px-3 py-1 rounded-md bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-xs transition-all disabled:opacity-50 whitespace-nowrap flex-shrink-0"
-              >
-                + Anteckning
-              </button>
-              <button
-                type="button"
-                onClick={() => setCustomBlocks([...customBlocks, { id: Math.random().toString(36).substr(2, 9), type: 'checklist', title: '', content: '' }])}
-                disabled={saving}
-                className="px-3 py-1 rounded-md bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-xs transition-all disabled:opacity-50 whitespace-nowrap flex-shrink-0"
-              >
-                + Checklista
-              </button>
-              <button
-                type="button"
-                onClick={() => setCustomBlocks([...customBlocks, { id: Math.random().toString(36).substr(2, 9), type: 'todo', title: '', content: '' }])}
-                disabled={saving}
-                className="px-3 py-1 rounded-md bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-xs transition-all disabled:opacity-50 whitespace-nowrap flex-shrink-0"
-              >
-                + Att göra
-              </button>
+            <div className="mt-4 pt-4 border-t border-white/10">
+              <div className="text-xs text-gray-500 uppercase tracking-wide mb-3">Lägg till block</div>
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setCustomBlocks([...customBlocks, { id: Math.random().toString(36).substr(2, 9), type: 'text', title: '', content: '' }])}
+                  disabled={saving}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:border-blue-500/30 hover:text-white text-sm transition-all disabled:opacity-50"
+                >
+                  <Plus size={16} />
+                  <span>Anteckning</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCustomBlocks([...customBlocks, { id: Math.random().toString(36).substr(2, 9), type: 'checklist', title: '', content: '' }])}
+                  disabled={saving}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:border-blue-500/30 hover:text-white text-sm transition-all disabled:opacity-50"
+                >
+                  <Plus size={16} />
+                  <span>Checklista</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCustomBlocks([...customBlocks, { id: Math.random().toString(36).substr(2, 9), type: 'todo', title: '', content: '' }])}
+                  disabled={saving}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:border-blue-500/30 hover:text-white text-sm transition-all disabled:opacity-50"
+                >
+                  <Plus size={16} />
+                  <span>Att göra</span>
+                </button>
+              </div>
             </div>
           </div>
           <div className="flex gap-3 pt-6 border-t border-white/10">
@@ -1812,6 +1883,7 @@ function App() {
   });
   const headerRef = useRef(null);
   const [headerHeight, setHeaderHeight] = useState(64);
+  const seedingRef = useRef(false);
   const wakeLockRef = useRef(null);
 
   // Distance helper (Haversine formula)
@@ -1985,26 +2057,28 @@ function App() {
   // Seed initial categories if needed
   useEffect(() => {
     const seedCategories = async () => {
-      if (!isAdmin || !user) {
-        console.log('Not seeding - isAdmin:', isAdmin, 'user:', !!user);
+      if (!isAdmin || !user || seedingRef.current) {
+        console.log('Not seeding - isAdmin:', isAdmin, 'user:', !!user, 'already seeding:', seedingRef.current);
         return;
       }
 
-      // Check if categories exist
-      const snap = await getDoc(doc(db, 'categories', 'property'));
-      if (snap.exists()) {
-        console.log('Categories already exist, skipping seed');
-        return;
-      }
-
-      console.log('Seeding initial categories...');
-      const initialCategories = [
-        { id: 'property', label: 'Fastigheter', icon: 'Home', color: '#6B7280', order: 1 },
-        { id: 'cafe', label: 'Kaféer', icon: 'Coffee', color: '#92400E', order: 2 },
-        { id: 'nature', label: 'Natur', icon: 'Mountain', color: '#065F46', order: 3 }
-      ];
-
+      seedingRef.current = true;
+      
       try {
+        // Check if categories exist
+        const snap = await getDoc(doc(db, 'categories', 'property'));
+        if (snap.exists()) {
+          console.log('Categories already exist, skipping seed');
+          return;
+        }
+
+        console.log('Seeding initial categories...');
+        const initialCategories = [
+          { id: 'property', label: 'Fastigheter', icon: 'Home', color: '#6B7280', order: 1 },
+          { id: 'cafe', label: 'Kaféer', icon: 'Coffee', color: '#92400E', order: 2 },
+          { id: 'nature', label: 'Natur', icon: 'Mountain', color: '#065F46', order: 3 }
+        ];
+
         for (const cat of initialCategories) {
           await setDoc(doc(db, 'categories', cat.id), {
             label: cat.label,
@@ -2018,6 +2092,8 @@ function App() {
         console.log('Categories seeded successfully');
       } catch (err) {
         console.error('Error seeding categories:', err);
+      } finally {
+        seedingRef.current = false;
       }
     };
 
@@ -2026,13 +2102,16 @@ function App() {
 
   useEffect(() => {
     if (!selectedObject) return;
-    const fresh = objects.find(o => o.id === selectedObject.id);
-    if (fresh) {
-      setSelectedObject(fresh);
-    } else {
-      setSelectedObject(null);
-    }
-  }, [objects, selectedObject ? selectedObject.id : null]);
+    
+    const selectedId = selectedObject.id;
+    const fresh = objects.find(o => o.id === selectedId);
+    
+    // Only update if still the same object is selected
+    setSelectedObject(current => {
+      if (!current || current.id !== selectedId) return current;
+      return fresh || null;
+    });
+  }, [objects, selectedObject?.id]);
 
   // Lock background scroll when any modal is open
   useEffect(() => {
@@ -2128,12 +2207,14 @@ function App() {
   const handleToggleFavorite = async (objectId) => {
     if (!user) return;
     
-    const isFavorite = favorites.includes(objectId);
-    const newFavorites = isFavorite 
-      ? favorites.filter(id => id !== objectId)
-      : [...favorites, objectId];
-    
-    setFavorites(newFavorites);
+    let newFavorites;
+    setFavorites(prev => {
+      const isFavorite = prev.includes(objectId);
+      newFavorites = isFavorite 
+        ? prev.filter(id => id !== objectId)
+        : [...prev, objectId];
+      return newFavorites;
+    });
     
     try {
       await updateDoc(doc(db, 'users', user.uid), {
@@ -2142,7 +2223,7 @@ function App() {
     } catch (err) {
       console.error('Error updating favorites:', err);
       // Revert on error
-      setFavorites(favorites);
+      setFavorites(prev => prev.includes(objectId) ? prev.filter(id => id !== objectId) : [...prev, objectId]);
     }
   };
 
@@ -2278,15 +2359,6 @@ function App() {
         <div className="max-w-6xl mx-auto px-4 py-3">
           <div className="flex gap-2 overflow-x-auto items-center justify-between">
             <div className="flex gap-2 overflow-x-auto">
-              {/* Always show "Alla" category */}
-              <button
-                onClick={() => setActiveCategory('all')}
-                className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl whitespace-nowrap transition-all ${activeCategory === 'all' ? 'bg-blue-500 text-white' : 'bg-white/20 text-gray-200 hover:bg-white/30'}`}
-              >
-                <MapIcon size={16} />
-                <span className="text-sm font-medium">Alla</span>
-              </button>
-              
               {/* Favorites category (only for logged in users) */}
               {user && (
                 <button
@@ -2302,6 +2374,14 @@ function App() {
                   )}
                 </button>
               )}
+              
+              {/* Always show "Alla" category */}
+              <button
+                onClick={() => setActiveCategory('all')}
+                className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl whitespace-nowrap transition-all ${activeCategory === 'all' ? 'bg-blue-500 text-white' : 'bg-white/20 text-gray-200 hover:bg-white/30'}`}
+              >
+                <span className="text-sm font-medium">Alla</span>
+              </button>
               
               {/* Dynamic categories from Firestore */}
               {categories.map(cat => {

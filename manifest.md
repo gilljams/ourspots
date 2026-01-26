@@ -2,7 +2,7 @@
 OurSpots – Manifest / Blueprint (Updated Jan 2026)
 ========================
 
-🚀 STATUS: v1.0 - Bildhantering & Smart Filtrering
+🚀 STATUS: v1.1 - UX-förbättringar & Optimeringar
 
 1. VISION
 - Mobilfokuserad app med premium dark theme
@@ -24,17 +24,22 @@ OurSpots – Manifest / Blueprint (Updated Jan 2026)
 - Modulära block/förmågor: nya block kan implementeras utan att ändra objektmodell ✅
 - Default block set per typ/kategori för enkelhet - delvis implementerat
 - Namn: OurSpots – signalerar familjär, delad och personlig platsbok ✅
+- Optimerad bundle med tree-shaking (575 kB mindre icon-bundle) ✅
+- Race condition-säkerhet för robusta uppdateringar ✅
+- Collapsed hantera-sektion för renare läsupplevelse ✅
+- Reset-funktionalitet för återkommande Todo/Checklist ✅
 
 2. KATEGORI-SYSTEM
 - Dynamiska kategorier lagrade i Firebase ✅
 - Admin kan skapa, redigera, radera kategorier ✅
-- 22+ valbara ikoner från Lucide React ✅
+- 24 valbara ikoner från Lucide React (optimerad import) ✅
 - Anpassad färg per kategori ✅
 - Sorterbar ordning (upp/ner pilar) ✅
 - Automatisk hantering av objekt vid kategori-radering ✅
+- Reordnad layout: Favoriter → Alla → Kategorier ✅
 
 Tillgängliga ikoner:
-- Bas: Home, Coffee, Mountain, Star, MapPin, Calendar, Folder, Navigation, Plane
+- Bas: Home, Coffee, Mountain, Star, MapPin, Calendar, Folder, Navigation, Plane, RotateCcw
 - Mat & dryck: UtensilsCrossed, Pizza, Wine, Beer
 - Nöjen: Gamepad2, Music, Film, PartyPopper
 - Aktiviteter: Bike, Dumbbell, Waves

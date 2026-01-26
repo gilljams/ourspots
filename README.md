@@ -14,26 +14,31 @@ OurSpots är en platsbaserad app med premium dark theme som låter användare:
 - Se objekt på karta med avstånd och navigation
 - Publik vy för externa användare
 
-## 🏗️ Nuvarande Status (v1.0 - Bildhantering & Smart Filtrering)
+## 🏗️ Nuvarande Status (v1.1 - UX-förbättringar & Optimeringar)
 
 ### ✅ Implementerat
 - **Dark theme med glassmorphism** - Premium design med radial glows
 - **Modulär block-arkitektur** - title, image, location, text, checklist, todo
-- **Checklist block** - Kryssrutor med state-synk i modal
-- **Todo block** - Uppgiftslista med progress-bar
+- **Checklist block** - Kryssrutor med state-synk i modal och nollställningsfunktion
+- **Todo block** - Uppgiftslista med progress-bar och nollställningsfunktion
+- **Reset-knappar** - Nollställ alla markeringar i Todo/Checklist för återkommande uppgifter
 - **Smart bilduppladdning** - Cloudinary med AI-beskärning, automatisk komprimering och GPS-extrahering
 - **Cloudinary smart cropping** - AI-baserad beskärning (Auto, Ansikten, Centrum)
 - **Automatisk bildkomprimering** - Max 2000px, 85% kvalitet före uppladdning
 - **GPS från bilder** - Automatisk plats-extrahering från EXIF-data
 - **Dynamiska kategorier** - Firebase-baserad kategorihantering med 23+ ikoner
+- **Optimerad icon-import** - Tree-shaking för 575 kB mindre bundle (19 kB vs 594 kB)
 - **Admin-sektion** - Kategorihantering och objekthantering för administratörer
-- **Kategori-navigation** - Swipe-bar för filtrering
+- **Kategori-navigation** - Swipe-bar för filtrering, reordnad layout (Favoriter → Alla → Kategorier)
 - **Kort-baserad listvy** - Med bilder och platsinformation
-- **Detaljvy** - Modal med komplett objektinformation
-- **Ikoner från Lucide React** - 22+ välbara ikoner inklusive mat, nöjen, aktiviteter
+- **Detaljvy** - Modal med komplett objektinformation och collapsed hantera-sektion
+- **Collapsed hantering** - Redigera/Ta bort döljs i expanderbar "Hantera objekt"-sektion
+- **Förbättrade block-knappar** - Tydlig separering och ikoner för "Lägg till block"
+- **Ikoner från Lucide React** - 24 välbara ikoner inklusive mat, nöjen, aktiviteter
 - **Firebase Firestore** - Real-time databas med persistent lagring
 - **Firebase Authentication** - Google-inloggning med rollhantering
 - **Security Rules** - Bara ägare kan redigera sina objekt
+- **Race condition-säkerhet** - Functional setState för robusta uppdateringar
 - **CRUD-funktionalitet** - Create, Read, Update, Delete
 - **Ägarskap** - Objekt märks med "Ditt" för inloggad användare
 - **GitHub Pages** - Live deployment med optimerad bundle
@@ -75,7 +80,7 @@ OurSpots är en platsbaserad app med premium dark theme som låter användare:
 ## 🎨 Admin-funktioner
 
 ### Kategorihantering (endast för administratörer)
-- **Skapa kategorier** - Namn, ikon från 22+ valmöjligheter, anpassad färg
+- **Skapa kategorier** - Namn, ikon från 24 valmöjligheter, anpassad färg
 - **Redigera kategorier** - Ändra namn, ikon och färg
 - **Ordna kategorier** - Flytta upp/ner för att ändra ordning i navigering
 - **Radera kategorier** - Med automatisk hantering av kopplade objekt
