@@ -2999,24 +2999,7 @@ function App() {
                     </button>
                   </div>
                 )}
-                <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">Snabbpinningar</div>
-                <div className="space-y-2">
-                  <button
-                    onClick={() => { setShowMenu(false); setShowCaptures(true); }}
-                    className="w-full flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-all"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Target size={18} className="text-orange-400" />
-                      <span className="font-medium">Visa pinningar 🍄</span>
-                    </div>
-                    {captures.length > 0 && (
-                      <span className="bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                        {captures.length}
-                      </span>
-                    )}
-                  </button>
-                </div>
-                <div className="text-xs text-gray-500 uppercase tracking-wide mb-2 mt-4">Inställningar</div>
+                <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">Inställningar</div>
                 <div className="space-y-2">
                   <div className="p-3 rounded-xl bg-white/5 border border-white/10">
                     <div className="flex items-center justify-between">
@@ -3048,6 +3031,9 @@ function App() {
                       </div>
                     )}
                   </div>
+                </div>
+                <div className="text-xs text-gray-500 uppercase tracking-wide mb-2 mt-4">Snabbpinningar</div>
+                <div className="space-y-2">
                   <div className="p-3 rounded-xl bg-white/5 border border-white/10">
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
@@ -3069,31 +3055,47 @@ function App() {
                     </div>
                   </div>
                   {showQuickCapture && (
-                    <div className="p-3 rounded-xl bg-white/5 border border-white/10">
-                      <div className="flex-1 mb-2">
-                        <div className="text-sm font-medium text-white">Snabbpinning går till objekt</div>
-                        <div className="text-xs text-gray-400 mt-0.5">Lägg till positioner direkt på valt objekt ({objects?.length || 0} objekt)</div>
+                    <>
+                      <div className="p-3 rounded-xl bg-white/5 border border-white/10">
+                        <div className="flex-1 mb-2">
+                          <div className="text-sm font-medium text-white">Snabbpinning går till objekt</div>
+                          <div className="text-xs text-gray-400 mt-0.5">Lägg till positioner direkt på valt objekt ({objects?.length || 0} objekt)</div>
+                        </div>
+                        <select
+                          value={quickCaptureObjectId}
+                          onChange={(e) => setQuickCaptureObjectId(e.target.value)}
+                          className="w-full bg-gray-800 border border-white/10 rounded-lg px-3 py-2 text-white text-sm"
+                        >
+                          <option value="">Ingen (spara i lista)</option>
+                          {objects && user && objects
+                            .filter(obj => obj.ownerId === user.uid)
+                            .map(obj => ({
+                              ...obj,
+                              displayName: obj.blocks?.find(b => b.type === 'title')?.data?.text || 'Namnlöst objekt'
+                            }))
+                            .sort((a, b) => a.displayName.localeCompare(b.displayName))
+                            .map(obj => (
+                              <option key={obj.id} value={obj.id}>
+                                {obj.displayName}
+                              </option>
+                            ))}
+                        </select>
                       </div>
-                      <select
-                        value={quickCaptureObjectId}
-                        onChange={(e) => setQuickCaptureObjectId(e.target.value)}
-                        className="w-full bg-gray-800 border border-white/10 rounded-lg px-3 py-2 text-white text-sm"
+                      <button
+                        onClick={() => { setShowMenu(false); setShowCaptures(true); }}
+                        className="w-full flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-all"
                       >
-                        <option value="">Ingen (spara i lista)</option>
-                        {objects && user && objects
-                          .filter(obj => obj.ownerId === user.uid)
-                          .map(obj => ({
-                            ...obj,
-                            displayName: obj.blocks?.find(b => b.type === 'title')?.data?.text || 'Namnlöst objekt'
-                          }))
-                          .sort((a, b) => a.displayName.localeCompare(b.displayName))
-                          .map(obj => (
-                            <option key={obj.id} value={obj.id}>
-                              {obj.displayName}
-                            </option>
-                          ))}
-                      </select>
-                    </div>
+                        <div className="flex items-center gap-3">
+                          <Target size={18} className="text-orange-400" />
+                          <span className="font-medium">Visa pinningar</span>
+                        </div>
+                        {captures.length > 0 && (
+                          <span className="bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                            {captures.length}
+                          </span>
+                        )}
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
