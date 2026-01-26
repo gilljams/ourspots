@@ -1171,17 +1171,25 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
 function MapView({ objects, onSelectObject, currentUser, userLocation, categories }) {
   const [hasRequestedPermission, setHasRequestedPermission] = useState(false);
 
-  // Helper to get calculated position for object (own coords or center of children)
-  const getObjectPosition = (obj) => {
-    const locationBlock = obj.blocks.find(b => b.type === 'location');
+  // Helper to get all positions for an object (can have multiple location blocks)
+  const getObjectPositions = (obj) => {
+    const locationBlocks = obj.blocks.filter(b => b.type === 'location');
+    const positions = [];
     
-    // Has own coordinates
-    if (locationBlock?.data?.lat && locationBlock?.data?.lng) {
-      return {
-        lat: locationBlock.data.lat,
-        lng: locationBlock.data.lng,
-        isArea: false
-      };
+    // Add all location blocks with coordinates
+    locationBlocks.forEach(block => {
+      if (block.data?.lat && block.data?.lng) {
+        positions.push({
+          lat: block.data.lat,
+          lng: block.data.lng,
+          isArea: false
+        });
+      }
+    });
+    
+    // If has positions, return them
+    if (positions.length > 0) {
+      return positions;
     }
     
     // No own coords - calculate from children
@@ -1202,27 +1210,34 @@ function MapView({ objects, onSelectObject, currentUser, userLocation, categorie
         return sum + childLoc.data.lng;
       }, 0) / childrenWithCoords.length;
       
-      return {
+      return [{
         lat: avgLat,
         lng: avgLng,
         isArea: true
-      };
+      }];
     }
     
-    return null;
+    return [];
   };
 
-  const objectsWithLocation = objects
-    .map(obj => {
-      const position = getObjectPosition(obj);
-      return position ? { ...obj, _position: position } : null;
-    })
-    .filter(obj => obj !== null);
+  // Create marker objects - one marker per position
+  const markersData = [];
+  objects.forEach(obj => {
+    const positions = getObjectPositions(obj);
+    positions.forEach((position, index) => {
+      markersData.push({
+        ...obj,
+        _position: position,
+        _positionIndex: index,
+        _totalPositions: positions.length
+      });
+    });
+  });
 
-  const center = objectsWithLocation.length > 0
+  const center = markersData.length > 0
     ? [
-        objectsWithLocation.reduce((sum, obj) => sum + obj._position.lat, 0) / objectsWithLocation.length,
-        objectsWithLocation.reduce((sum, obj) => sum + obj._position.lng, 0) / objectsWithLocation.length
+        markersData.reduce((sum, m) => sum + m._position.lat, 0) / markersData.length,
+        markersData.reduce((sum, m) => sum + m._position.lng, 0) / markersData.length
       ]
     : [59.33, 18.06];
 
@@ -1298,7 +1313,6 @@ function MapView({ objects, onSelectObject, currentUser, userLocation, categorie
   }
 
   function MarkerWithPopup({ object }) {
-    const locationBlock = object.blocks.find(b => b.type === 'location');
     const titleBlock = object.blocks.find(b => b.type === 'title');
     const position = [object._position.lat, object._position.lng];
     // Find category for color
@@ -1306,13 +1320,17 @@ function MapView({ objects, onSelectObject, currentUser, userLocation, categorie
     const markerColor = category?.color || '#3B82F6';
     const categoryLabel = category?.label || (PREDEFINED_ICONS[object.type]?.label || 'Objekt');
     const coloredIcon = object._position.isArea ? createAreaIcon(markerColor) : createColoredIcon(markerColor);
+    
+    // Show position number if multiple
+    const showPositionNumber = object._totalPositions > 1;
+    const positionLabel = showPositionNumber ? ` (Plats ${object._positionIndex + 1}/${object._totalPositions})` : '';
 
     if (isTouchDevice) {
       return (
         <Marker position={position} icon={coloredIcon}>
           <Popup>
             <div className="min-w-[180px]">
-              <div className="text-sm font-semibold mb-1">{titleBlock?.data?.text || 'Namnlöst'}</div>
+              <div className="text-sm font-semibold mb-1">{titleBlock?.data?.text || 'Namnlöst'}{positionLabel}</div>
               <div className="text-xs text-gray-600 mb-2">{categoryLabel}</div>
               <button
                 onClick={() => onSelectObject(object)}
@@ -1330,7 +1348,7 @@ function MapView({ objects, onSelectObject, currentUser, userLocation, categorie
       <Marker position={position} icon={coloredIcon} eventHandlers={{ click: () => onSelectObject(object) }}>
         <Tooltip direction="top" offset={[0, -8]} opacity={0.9}>
           <div className="text-xs">
-            <div className="font-semibold">{titleBlock?.data?.text || 'Namnlöst'}</div>
+            <div className="font-semibold">{titleBlock?.data?.text || 'Namnlöst'}{positionLabel}</div>
             <div className="text-gray-500">{categoryLabel}</div>
           </div>
         </Tooltip>
@@ -1375,7 +1393,7 @@ function MapView({ objects, onSelectObject, currentUser, userLocation, categorie
 
   return (
     <div className="w-full relative z-10" style={{ height: 'calc(100vh - 200px)' }}>
-      <MapContainer center={center} zoom={objectsWithLocation.length > 0 ? 7 : 6} style={{ height: '100%', width: '100%' }}>
+      <MapContainer center={center} zoom={markersData.length > 0 ? 7 : 6} style={{ height: '100%', width: '100%' }}>
         <TileLayer
           attribution='&copy; <a href="https://carto.com/">CARTO</a>'
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
@@ -1393,8 +1411,8 @@ function MapView({ objects, onSelectObject, currentUser, userLocation, categorie
           zoomToBoundsOnClick={true}
           iconCreateFunction={createClusterIcon}
         >
-          {objectsWithLocation.map(obj => (
-            <MarkerWithPopup key={obj.id} object={obj} />
+          {markersData.map((markerObj, idx) => (
+            <MarkerWithPopup key={`${markerObj.id}-${markerObj._positionIndex}`} object={markerObj} />
           ))}
         </MarkerClusterGroup>
         <CenterOnLocationButton />
