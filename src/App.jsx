@@ -1628,14 +1628,43 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
                 style={{ colorScheme: 'dark' }}
               >
                 <option value="" className="bg-gray-800 text-white">- Inget parent-objekt -</option>
-                {availableParents.map(obj => {
-                  const titleBlock = obj.blocks.find(b => b.type === 'title');
-                  return (
-                    <option key={obj.id} value={obj.id} className="bg-gray-800 text-white">
-                      {obj.type} {titleBlock?.data?.text || 'Namnlöst'}
-                    </option>
-                  );
-                })}
+                {(() => {
+                  // Group objects by category
+                  const grouped = availableParents.reduce((acc, obj) => {
+                    const categoryId = obj.type;
+                    if (!acc[categoryId]) acc[categoryId] = [];
+                    acc[categoryId].push(obj);
+                    return acc;
+                  }, {});
+
+                  // Sort objects within each group alphabetically by title
+                  Object.keys(grouped).forEach(catId => {
+                    grouped[catId].sort((a, b) => {
+                      const titleA = a.blocks.find(b => b.type === 'title')?.data?.text || 'Namnlöst';
+                      const titleB = b.blocks.find(b => b.type === 'title')?.data?.text || 'Namnlöst';
+                      return titleA.localeCompare(titleB, 'sv');
+                    });
+                  });
+
+                  // Render optgroups for each category
+                  return categories.map(category => {
+                    const objectsInCategory = grouped[category.id] || [];
+                    if (objectsInCategory.length === 0) return null;
+
+                    return (
+                      <optgroup key={category.id} label={category.label} className="bg-gray-800 text-gray-300">
+                        {objectsInCategory.map(obj => {
+                          const titleBlock = obj.blocks.find(b => b.type === 'title');
+                          return (
+                            <option key={obj.id} value={obj.id} className="bg-gray-800 text-white">
+                              {titleBlock?.data?.text || 'Namnlöst'}
+                            </option>
+                          );
+                        })}
+                      </optgroup>
+                    );
+                  });
+                })()}
               </select>
               <p className="text-xs text-gray-500 mt-1">T.ex. lägg "Huset" under "Sommarstugan"</p>
             </div>
