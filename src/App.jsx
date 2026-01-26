@@ -1637,9 +1637,17 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
                     return acc;
                   }, {});
 
-                  // Sort objects within each group alphabetically by title
+                  // Sort objects within each group: top-level first, then by title
                   Object.keys(grouped).forEach(catId => {
                     grouped[catId].sort((a, b) => {
+                      const aIsTopLevel = !a.parentId;
+                      const bIsTopLevel = !b.parentId;
+                      
+                      // Top-level objects come first
+                      if (aIsTopLevel && !bIsTopLevel) return -1;
+                      if (!aIsTopLevel && bIsTopLevel) return 1;
+                      
+                      // Within same level, sort alphabetically
                       const titleA = a.blocks.find(b => b.type === 'title')?.data?.text || 'Namnlöst';
                       const titleB = b.blocks.find(b => b.type === 'title')?.data?.text || 'Namnlöst';
                       return titleA.localeCompare(titleB, 'sv');
@@ -1655,9 +1663,13 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
                       <optgroup key={category.id} label={category.label} className="bg-gray-800 text-gray-300">
                         {objectsInCategory.map(obj => {
                           const titleBlock = obj.blocks.find(b => b.type === 'title');
+                          const title = titleBlock?.data?.text || 'Namnlöst';
+                          const isChild = !!obj.parentId;
+                          const prefix = isChild ? '  └─ ' : '';
+                          
                           return (
                             <option key={obj.id} value={obj.id} className="bg-gray-800 text-white">
-                              {titleBlock?.data?.text || 'Namnlöst'}
+                              {prefix}{title}
                             </option>
                           );
                         })}
