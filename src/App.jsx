@@ -2134,13 +2134,16 @@ function App() {
   useEffect(() => {
     localStorage.setItem('keepScreenOn', keepScreenOn.toString());
 
+    let isActive = true; // Track if effect is still active
+
     const requestWakeLock = async () => {
-      if (!keepScreenOn) {
+      if (!keepScreenOn || !isActive) {
         // Release wake lock if turned off
         if (wakeLockRef.current) {
           try {
             await wakeLockRef.current.release();
             wakeLockRef.current = null;
+            console.log('Wake Lock released (turned off)');
           } catch (err) {
             console.error('Error releasing wake lock:', err);
           }
@@ -2151,15 +2154,29 @@ function App() {
       // Request wake lock if supported
       if ('wakeLock' in navigator) {
         try {
+          // Release old lock if exists
+          if (wakeLockRef.current) {
+            await wakeLockRef.current.release();
+          }
+          
           wakeLockRef.current = await navigator.wakeLock.request('screen');
-          console.log('Wake Lock aktiverad');
+          console.log('Wake Lock aktiverad:', new Date().toLocaleTimeString());
 
-          // Re-acquire wake lock when visibility changes
+          // Re-acquire wake lock when it's released
           wakeLockRef.current.addEventListener('release', () => {
-            console.log('Wake Lock released');
+            console.log('Wake Lock released:', new Date().toLocaleTimeString());
+            // Automatically re-request if still active
+            if (keepScreenOn && isActive) {
+              console.log('Försöker återaktivera Wake Lock...');
+              setTimeout(() => requestWakeLock(), 100);
+            }
           });
         } catch (err) {
           console.error('Wake Lock fel:', err);
+          // Retry after a delay if error
+          if (keepScreenOn && isActive) {
+            setTimeout(() => requestWakeLock(), 1000);
+          }
         }
       }
     };
@@ -2168,7 +2185,8 @@ function App() {
 
     // Re-acquire wake lock on page visibility change
     const handleVisibilityChange = () => {
-      if (keepScreenOn && document.visibilityState === 'visible') {
+      console.log('Visibility changed:', document.visibilityState);
+      if (keepScreenOn && document.visibilityState === 'visible' && isActive) {
         requestWakeLock();
       }
     };
@@ -2176,9 +2194,11 @@ function App() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
+      isActive = false;
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (wakeLockRef.current) {
         wakeLockRef.current.release().catch(console.error);
+        wakeLockRef.current = null;
       }
     };
   }, [keepScreenOn]);
