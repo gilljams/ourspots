@@ -630,14 +630,13 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
               <div className="relative flex-1" ref={menuRef}>
                 <button
                   onClick={handleNavigationClick}
-                  className="text-left w-full hover:text-blue-400 transition-colors flex items-center gap-1"
-                  title="Navigation"
+                  className="text-left hover:text-blue-400 transition-colors"
+                  title="Klicka för navigation"
                 >
-                  <span className="flex-1">{locationBlock.data.address}</span>
-                  <Navigation size={14} className="text-blue-400 flex-shrink-0" />
+                  {locationBlock.data.address}
                 </button>
                 {showNavMenu && (
-                  <div className="absolute right-0 bottom-8 bg-gray-800 border border-white/20 rounded-lg shadow-xl z-50 min-w-[160px]">
+                  <div className="absolute left-0 bottom-6 bg-gray-800 border border-white/20 rounded-lg shadow-xl z-50 min-w-[160px]">
                     {onNavigate && (
                       <button
                         onClick={handleShowOnMap}
@@ -665,7 +664,7 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
                 )}
               </div>
             ) : (
-              <span className="flex-1">{locationBlock.data.address}</span>
+              <span>{locationBlock.data.address}</span>
             )}
           </div>
         )}
