@@ -11,7 +11,7 @@ import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { db, auth, googleProvider } from './firebase';
-import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, Timestamp, getDoc, setDoc } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, Timestamp, getDoc, setDoc, deleteField } from 'firebase/firestore';
 import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
 
 // Fix Leaflet default marker icon issue with bundlers
@@ -640,24 +640,30 @@ function ObjectsAdminModal({ objects, categories, onClose, onEditObject }) {
               const hasInvalidCategory = !categories.find(c => c.id === obj.type);
               const parent = obj.parentId ? objects.find(o => o.id === obj.parentId) : null;
               const childCount = getChildCount(obj.id);
+              const hasCircularParent = obj.parentId === obj.id;
+              const hasInvalidParent = obj.parentId && !parent;
               
               return (
                 <div
                   key={obj.id}
-                  className={`p-4 rounded-xl border ${hasInvalidCategory ? 'bg-yellow-400/5 border-yellow-400/30' : 'bg-white/5 border-white/10'}`}
+                  className={`p-4 rounded-xl border ${hasInvalidCategory || hasCircularParent || hasInvalidParent ? 'bg-yellow-400/5 border-yellow-400/30' : 'bg-white/5 border-white/10'}`}
                 >
                   <div className="flex items-start gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className="text-white font-medium truncate">{getObjectTitle(obj)}</h3>
-                        {hasInvalidCategory && (
+                        {(hasInvalidCategory || hasCircularParent || hasInvalidParent) && (
                           <span className="text-yellow-400 text-xs">⚠️</span>
                         )}
                       </div>
                       <div className="text-sm text-gray-400 space-y-1">
                         <div>Kategori: <span className={hasInvalidCategory ? 'text-yellow-400' : 'text-gray-300'}>{getCategoryLabel(obj.type)}</span></div>
                         {obj.parentId && (
-                          <div>Parent: <span className="text-blue-400">{parent ? getObjectTitle(parent) : `❌ ${obj.parentId}`}</span></div>
+                          <div>
+                            Parent: <span className={hasCircularParent ? 'text-red-400' : hasInvalidParent ? 'text-yellow-400' : 'text-blue-400'}>
+                              {hasCircularParent ? '🔁 Cirkulär (sig själv!)' : parent ? getObjectTitle(parent) : `❌ ${obj.parentId}`}
+                            </span>
+                          </div>
                         )}
                         {childCount > 0 && (
                           <div>Children: <span className="text-green-400">{childCount}</span></div>
@@ -665,15 +671,34 @@ function ObjectsAdminModal({ objects, categories, onClose, onEditObject }) {
                         <div className="text-xs text-gray-500">ID: {obj.id}</div>
                       </div>
                     </div>
-                    <button
-                      onClick={() => {
-                        onEditObject(obj);
-                        onClose();
-                      }}
-                      className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded transition-colors"
-                    >
-                      Redigera
-                    </button>
+                    <div className="flex flex-col gap-2">
+                      {(hasCircularParent || hasInvalidParent) && (
+                        <button
+                          onClick={async () => {
+                            if (confirm('Ta bort parent-referensen?')) {
+                              try {
+                                await updateDoc(doc(db, 'objects', obj.id), { parentId: deleteField() });
+                              } catch (err) {
+                                console.error('Error removing parent:', err);
+                                alert('Kunde inte ta bort parent');
+                              }
+                            }
+                          }}
+                          className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white text-xs rounded transition-colors"
+                        >
+                          Ta bort parent
+                        </button>
+                      )}
+                      <button
+                        onClick={() => {
+                          onEditObject(obj);
+                          onClose();
+                        }}
+                        className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded transition-colors"
+                      >
+                        Redigera
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
