@@ -14,13 +14,13 @@ OurSpots är en platsbaserad app med premium dark theme som låter användare:
 - Se objekt på karta med avstånd och navigation
 - Publik vy för externa användare
 
-## 🏗️ Nuvarande Status (v1.2 - Svampknapp & Offline-plockning)
+## 🏗️ Nuvarande Status (v1.3 - Admin-verktyg & Stabilitet)
 
 ### ✅ Implementerat
 
 #### Kärnfunktioner
 - **Dark theme med glassmorphism** - Premium design med radial glows
-- **Modulär block-arkitektur** - title, image, location, text, checklist, todo
+- **Modulär block-arkitektur** - title, image, location (flera per objekt), text, checklist, todo
 - **Firebase Firestore** - Real-time databas med persistent lagring
 - **Firebase Authentication** - Google-inloggning med rollhantering
 - **Security Rules** - Bara ägare kan redigera sina objekt, admin har full åtkomst
@@ -65,11 +65,17 @@ OurSpots är en platsbaserad app med premium dark theme som låter användare:
 #### Offline & Quick Capture (🍄 Svampknapp)
 - **Quick GPS Capture** - Orange flytande knapp med Target-ikon för snabb positionslagring
 - **Offline-plockning** - Spara GPS-positioner i skogen utan uppkoppling (localStorage)
+- **Direkt till objekt** - Välj objekt att lägga till positioner direkt på (snabbare än via lista)
+- **Flera location-blocks** - Varje objekt kan ha många GPS-positioner (Pin 1, Pin 2, etc.)
+- **Pin-numrering** - Tydlig numrering i detaljvy och på karta för att matcha positioner
 - **Capture-lista** - Modal med alla sparade pinningar inkl. tidsstämplar och koordinater
 - **Radera captures** - Ta bort enskilda pinningar från listan
-- **Skapa från capture** - Omvandla pinning till fullt objekt när du är online igen
+- **Radera location-blocks** - Ta bort enskilda positioner från objekt
+- **Kartvisualisering** - Alla location-blocks visas som separata markörer på kartan
+- **Automatisk clustering** - Markörer grupperas på zoom-out, separeras på zoom-in
 - **Badge-indikatorer** - Visar antal sparade captures på både knapp och meny
-- **Perfekt för svampplockning** - Markera kantarellställen utan att förlora fokus på plockningen
+- **Villkorlig synlighet** - "Visa pinningar" visas bara när svampknappen är aktiverad
+- **Perfekt för svampplockning** - Markera flera kantarellställen på samma objekt
 
 #### Hierarki & Organisation
 - **Hierarki (Parent-Child)** - Organisera objekt som förälder-barn, dela plats mellan nivåer
@@ -92,15 +98,30 @@ OurSpots är en platsbaserad app med premium dark theme som låter användare:
 - **Förbättrade block-knappar** - Tydlig separering och ikoner för "Lägg till block"
 - **Stäng detaljmodal via overlay** - Klick utanför modalen för att stänga
 - **Ägarskap** - Objekt märks med "Ditt" för inloggad användare
+- **Förbättrad favoritknapp** - Större träffyta och fixad undefined-bug för stabil favorithantering
+- **Omstrukturerad burgermeny** - Inställningar först, Snabbpinningar sist med villkorlig visning
 
 #### Admin-funktioner
 - **Admin-sektion** - Kategorihantering och objekthantering för administratörer
 - **Kategorihantering** - Skapa, redigera, radera, ordna kategorier med ikoner och färger
-- **Admin-objekthantering** - Admin kan redigera och radera alla objekt (inklusive ägarlösa)
+- **Objektadministration** - "Alla objekt"-vy för att hantera objekt i stor skala
+  - **Användarfiltrering** - Välj specifik användare eller "Alla användare" (inget default för prestanda)
+  - **Sökfunktion** - Filtrera objekt på titel
+  - **Sortering** - Sortera på titel, kategori eller parent-relation
+  - **Problemdetektion:**
+    - Varning för objekt med ogiltiga kategorier
+    - Detektion av cirkulära parent-referenser (objekt som pekar på sig själv)
+    - Detektion av icke-existerande parents
+  - **Snabbåtgärd** - "Ta bort parent"-knapp för att fixa cirkulära/ogiltiga referenser
+  - **Direkt redigering** - Klicka "Redigera" för att öppna edit-modal direkt
+- **Förebyggande åtgärder** - Objektet och dess children kan inte väljas som parent (förhindrar cirkelreferenser)
+- **Admin kan redigera alla objekt** - Inklusive ägarlösa och andra användares objekt
 
 #### Optimeringar & Prestanda
-- **Skärmhantering** - "Håll skärmen påslagen" med Wake Lock API för navigering
+- **Skärmhantering** - "Håll skärmen påslagen" med Wake Lock API + auto-retry vid release
 - **Optimerad bundle** - Tree-shaking och lazy loading för snabbare laddning
+- **Race condition-säkerhet** - Functional setState för robusta uppdateringar
+- **Optimistic updates** - Omedelbar UI-feedback för checklist/todo
 
 ### 🚧 Kommande Features (Prioriterad backlog)
 1. **PWA** - Installera som app, offline-support, service worker
@@ -126,9 +147,19 @@ OurSpots är en platsbaserad app med premium dark theme som låter användare:
   - Natur: Skog, Strand, Svamp/Planta
 
 ### Objekthantering (endast för administratörer)
-- **Redigera alla objekt** - Admin kan redigera vilket objekt som helst
-- **Radera alla objekt** - Admin kan radera objekt oavsett ägare (användbart för att rensa gamla testdata)
-- **Hantera ägarlösa objekt** - Möjlighet att städa upp objekt skapade innan användarsystemet implementerades
+- **Visa alla objekt** - Skalbar vy med användarfiltrering och sökfunktion
+- **Användarfiltrering** - Välj specifik användare för att se deras objekt (tvingande val för prestanda)
+- **Sökfunktion** - Sök på objekttitlar i real-time
+- **Sortering** - Sortera alfabetiskt på titel, kategori eller parent-relation
+- **Problemdetektion:**
+  - Cirkulära references (🔁 objekt som pekar på sig själv)
+  - Ogiltiga kategorier (⚠️ kategorier som inte längre finns)
+  - Icke-existerande parents (⚠️ parent-ID som inte finns)
+- **Snabbåtgärder:**
+  - "Ta bort parent" - Fix cirkulära/ogiltiga parent-referenser med ett klick
+  - "Redigera" - Öppnar edit-modal direkt från admin-vyn
+- **Visuell feedback** - Gul bakgrund och varningsikon för problematiska objekt
+- **Skalbarhet** - Inget default-filter för att undvika att ladda hundratals objekt direkt
 
 ### Så här blir du admin:
 1. Logga in i appen med Google
@@ -498,6 +529,23 @@ Detta är en varning från Firebase Auth + GitHub Pages. Kan ignoreras - påverk
 
 ## 📝 Changelog
 
+### v1.3 - Admin-verktyg & Stabilitet (2026-01-26)
+- ✨ **Admin: "Alla objekt"-vy** - Skalbar objekthantering med användarfilter och sök
+- 🔍 **Problemdetektion** - Upptäck cirkulära parent-referenser och ogiltiga kategorier
+- 🛠️ **Snabbåtgärder** - "Ta bort parent"-knapp för att fixa cirkelreferenser direkt
+- 🔒 **Förebyggande** - Objektet och dess children kan inte väljas som parent i formulär
+- 👥 **Användarfilter** - Visa objekt per användare med namn/email (inte bara ID)
+- 🎯 **Tvingande val** - Inget default-filter för att undvika att ladda hundratals objekt
+- 📍 **Flera location-blocks** - Varje objekt kan ha många GPS-positioner
+- 🔢 **Pin-numrering** - Pin 1, Pin 2 etc. i både detaljvy och karta
+- 🗑️ **Radera location-blocks** - Ta bort enskilda positioner från objekt
+- 🗺️ **Kartvisualisering** - Alla location-blocks visas som separata markörer
+- 🎯 **Direkt till objekt** - Svampknappen kan lägga till positioner direkt på valt objekt
+- ⚠️ **Ogiltig kategori-varning** - Objekt med borttagna kategorier markeras tydligt
+- 🔄 **Wake Lock auto-retry** - Automatisk återaktivering om iOS släpper Wake Lock
+- 🐛 **Favorit-buggfix** - Fixad undefined-fel vid favoritmarkering
+- 🎨 **Förbättrad burgermeny** - Omstrukturerad: Inställningar → Snabbpinningar (villkorlig)
+
 ### v1.2 - Svampknapp & Offline-plockning (2026-01-26)
 - 🍄 **Quick Capture (Svampknapp)** - Orange flytande knapp för snabb GPS-lagring
 - 📍 Offline GPS-plockning med localStorage (perfekt för svampplockning i skogen)
@@ -628,5 +676,5 @@ Projektägare: Joakim (Product Manager/Owner/Architect)
 ---
 
 **Senast uppdaterad:** 2026-01-26  
-**Version:** 1.1 (UX-förbättringar & Optimeringar)  
+**Version:** 1.3 (Admin-verktyg & Stabilitet)  
 **Status:** ✅ Live på GitHub Pages med full funktionalitet
