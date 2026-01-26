@@ -3011,7 +3011,10 @@ function App() {
           objects={objects}
           categories={categories}
           onClose={() => setShowObjectsAdmin(false)}
-          onEditObject={(obj) => setEditingObject(obj)}
+          onEditObject={(obj) => {
+            setEditingObject(obj);
+            setShowCreateModal(true);
+          }}
         />
       )}
 
