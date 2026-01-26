@@ -451,11 +451,11 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
           {currentUser && (
             <button
               onClick={handleFavoriteClick}
-              className="absolute top-2 left-2 z-10 p-1.5 rounded-full bg-gray-900/70 backdrop-blur-sm hover:bg-gray-800/90 hover:scale-110 transition-all duration-200"
+              className="absolute top-2 left-2 z-10 p-3 rounded-full bg-gray-900/70 backdrop-blur-sm hover:bg-gray-800/90 hover:scale-110 transition-all duration-200"
               title={isFavorite ? 'Ta bort från favoriter' : 'Lägg till i favoriter'}
             >
               <Star 
-                size={16} 
+                size={18} 
                 className={`transition-colors ${isFavorite ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400 hover:text-yellow-300'}`}
               />
             </button>
@@ -490,11 +490,11 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
               {currentUser && (
                 <button
                   onClick={handleFavoriteClick}
-                  className="p-1.5 rounded-full bg-gray-900/70 backdrop-blur-sm hover:bg-gray-800/90 hover:scale-110 transition-all duration-200"
+                  className="p-3 rounded-full bg-gray-900/70 backdrop-blur-sm hover:bg-gray-800/90 hover:scale-110 transition-all duration-200"
                   title={isFavorite ? 'Ta bort från favoriter' : 'Lägg till i favoriter'}
                 >
                   <Star 
-                    size={16} 
+                    size={18} 
                     className={`transition-colors ${isFavorite ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400 hover:text-yellow-300'}`}
                   />
                 </button>
