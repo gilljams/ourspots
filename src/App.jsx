@@ -4,7 +4,8 @@ import {
   Loader, LogOut, LogIn, Check, Circle, Upload, Folder, Navigation, Plane, 
   Map as MapIcon, List, ChevronDown, ArrowUp, ArrowDown, Search, Settings,
   UtensilsCrossed, Pizza, Wine, Beer, Gamepad2, Music, Film, PartyPopper, 
-  Bike, Dumbbell, Waves, TreePine, Shell, Sprout, RotateCcw, Target
+  Bike, Dumbbell, Waves, TreePine, Shell, Sprout, RotateCcw, Target,
+  Share2, Users, Eye, Edit, Globe, Copy, Mail
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMapEvents, Tooltip, Popup } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
@@ -679,6 +680,211 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
   );
 }
 
+function ShareModal({ object, onClose, onSave, currentUser }) {
+  const [shareEmail, setShareEmail] = useState('');
+  const [shareRole, setShareRole] = useState('viewer');
+  const [isPublic, setIsPublic] = useState(object.isPublicShared || false);
+  const [shareChildren, setShareChildren] = useState(false);
+  const [copying, setCopying] = useState(false);
+  
+  const titleBlock = object.blocks.find(b => b.type === 'title');
+  const objectTitle = titleBlock?.data?.text || 'detta objekt';
+  
+  // Get shares as array for display
+  const shares = object.shares ? Object.entries(object.shares).map(([uid, data]) => ({
+    uid,
+    ...data
+  })) : [];
+
+  const handleAddShare = () => {
+    if (!shareEmail.trim()) return;
+    
+    const newShares = {
+      ...object.shares,
+      [shareEmail.trim()]: {
+        role: shareRole,
+        sharedAt: Date.now(),
+        email: shareEmail.trim()
+      }
+    };
+    
+    onSave({
+      ...object,
+      shares: newShares
+    });
+    
+    setShareEmail('');
+  };
+
+  const handleRemoveShare = (uid) => {
+    const newShares = { ...object.shares };
+    delete newShares[uid];
+    
+    onSave({
+      ...object,
+      shares: newShares
+    });
+  };
+
+  const handleTogglePublic = async () => {
+    const newIsPublic = !isPublic;
+    setIsPublic(newIsPublic);
+    
+    const updates = {
+      ...object,
+      isPublicShared: newIsPublic
+    };
+    
+    // Generate token if enabling public sharing
+    if (newIsPublic && !object.publicShareToken) {
+      updates.publicShareToken = crypto.randomUUID();
+    }
+    
+    onSave(updates);
+  };
+
+  const handleCopyLink = async () => {
+    const url = `${window.location.origin}${window.location.pathname}#/share/${object.publicShareToken}`;
+    await navigator.clipboard.writeText(url);
+    setCopying(true);
+    setTimeout(() => setCopying(false), 2000);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[1100] flex items-center justify-center p-4">
+      <div className="bg-gray-900/95 backdrop-blur-xl rounded-2xl border border-blue-500/30 max-w-md w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-6">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center">
+              <Share2 size={24} className="text-blue-400" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-xl font-bold text-white">Dela objekt</h3>
+              <p className="text-sm text-gray-400">{objectTitle}</p>
+            </div>
+            <button onClick={onClose} className="text-gray-400 hover:text-white">
+              <X size={20} />
+            </button>
+          </div>
+
+          {/* Share with users */}
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-3">
+              <Users size={16} className="text-gray-400" />
+              <h4 className="text-sm font-semibold text-white">Dela med användare</h4>
+            </div>
+            
+            <div className="flex gap-2 mb-3">
+              <input
+                type="email"
+                value={shareEmail}
+                onChange={(e) => setShareEmail(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleAddShare()}
+                placeholder="email@example.com"
+                className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-400"
+              />
+              <select
+                value={shareRole}
+                onChange={(e) => setShareRole(e.target.value)}
+                className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-blue-400"
+              >
+                <option value="viewer">Viewer</option>
+                <option value="editor">Editor</option>
+              </select>
+              <button
+                onClick={handleAddShare}
+                className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg text-white font-medium transition-all"
+              >
+                <Plus size={20} />
+              </button>
+            </div>
+
+            {/* Shared users list */}
+            {shares.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs text-gray-500 mb-2">Delad med:</p>
+                {shares.map((share) => (
+                  <div key={share.uid} className="flex items-center gap-2 px-3 py-2 bg-white/5 rounded-lg">
+                    <Mail size={14} className="text-gray-400" />
+                    <span className="flex-1 text-sm text-gray-200">{share.email}</span>
+                    <span className="text-xs px-2 py-1 bg-blue-500/20 text-blue-400 rounded">
+                      {share.role === 'editor' ? <><Edit size={10} className="inline mr-1" />Editor</> : <><Eye size={10} className="inline mr-1" />Viewer</>}
+                    </span>
+                    <button
+                      onClick={() => handleRemoveShare(share.uid)}
+                      className="text-gray-400 hover:text-red-400 transition-colors"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {/* Share children checkbox */}
+            <label className="flex items-center gap-2 mt-3 text-sm text-gray-300 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={shareChildren}
+                onChange={(e) => setShareChildren(e.target.checked)}
+                className="w-4 h-4 rounded border-white/20 bg-white/5 text-blue-500 focus:ring-blue-500"
+              />
+              <span>Dela även barn-objekt</span>
+            </label>
+          </div>
+
+          {/* Public sharing */}
+          <div className="pt-6 border-t border-white/10">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Globe size={16} className="text-gray-400" />
+                <h4 className="text-sm font-semibold text-white">Publik delning</h4>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isPublic}
+                  onChange={handleTogglePublic}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+              </label>
+            </div>
+            
+            <p className="text-xs text-gray-500 mb-3">
+              Vem som helst med länken kan se detta objekt
+            </p>
+
+            {isPublic && object.publicShareToken && (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={`${window.location.origin}${window.location.pathname}#/share/${object.publicShareToken}`}
+                  className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-gray-300 focus:outline-none"
+                />
+                <button
+                  onClick={handleCopyLink}
+                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg text-white transition-all flex items-center gap-2"
+                >
+                  {copying ? <Check size={16} /> : <Copy size={16} />}
+                </button>
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={onClose}
+            className="w-full mt-6 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white transition-all"
+          >
+            Stäng
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DeleteConfirmModal({ object, onConfirm, onCancel }) {
   const titleBlock = object.blocks.find(b => b.type === 'title');
   return (
@@ -1252,8 +1458,10 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
 
 function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, currentUser, allObjects, onNavigate, categories, isAdmin, onShowOnMap }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   const [expandedBlocks, setExpandedBlocks] = useState(new Set([0])); // First block expanded by default
   const [showManageSection, setShowManageSection] = useState(false);
+  const [showShareSection, setShowShareSection] = useState(false);
   // Find category to get icon
   const category = categories.find(c => c.id === object.type);
   const IconComponent = category ? getIconComponent(category.icon) : (PREDEFINED_ICONS[object.type]?.icon || Home);
@@ -1485,6 +1693,56 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
                 </button>
               </div>
             )}
+            {/* Share section - for owners only */}
+            {isOwner && (
+              <div className="mt-6 pt-6 border-t border-white/10">
+                <button
+                  onClick={() => setShowShareSection(!showShareSection)}
+                  className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-gray-400 hover:text-white transition-all"
+                >
+                  <div className="flex items-center gap-2">
+                    <Share2 size={18} />
+                    <span className="font-medium">Dela objekt</span>
+                    {object.shares && Object.keys(object.shares).length > 0 && (
+                      <span className="ml-2 px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded-full">
+                        {Object.keys(object.shares).length}
+                      </span>
+                    )}
+                    {object.isPublicShared && (
+                      <Globe size={14} className="text-green-400" />
+                    )}
+                  </div>
+                  <ChevronDown 
+                    size={18} 
+                    className={`transition-transform ${showShareSection ? 'rotate-180' : ''}`}
+                  />
+                </button>
+                {showShareSection && (
+                  <div className="mt-3 animate-in slide-in-from-top-2 duration-200">
+                    <button
+                      onClick={() => setShowShareModal(true)}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 transition-all"
+                    >
+                      <Share2 size={18} />
+                      <span className="font-medium">Hantera delning</span>
+                    </button>
+                    
+                    {/* Quick summary */}
+                    <div className="mt-3 text-xs text-gray-500 space-y-1 px-2">
+                      {object.shares && Object.keys(object.shares).length > 0 && (
+                        <div>Delad med {Object.keys(object.shares).length} användare</div>
+                      )}
+                      {object.isPublicShared && (
+                        <div className="text-green-400">✓ Publikt tillgänglig via länk</div>
+                      )}
+                      {(!object.shares || Object.keys(object.shares).length === 0) && !object.isPublicShared && (
+                        <div>Inte delad med någon än</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             {canManage && (
               <div className="mt-6 pt-6 border-t border-white/10">
                 <button
@@ -1524,6 +1782,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
         </div>
       </div>
       {showDeleteConfirm && <DeleteConfirmModal object={object} onConfirm={handleDelete} onCancel={() => setShowDeleteConfirm(false)} />}
+      {showShareModal && <ShareModal object={object} onClose={() => setShowShareModal(false)} onSave={onEdit} currentUser={currentUser} />}
     </>
   );
 }
