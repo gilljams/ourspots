@@ -2929,9 +2929,20 @@ function App() {
   const [headerHeight, setHeaderHeight] = useState(64);
   const seedingRef = useRef(false);
   const wakeLockRef = useRef(null);
-  const [shareToken, setShareToken] = useState(null);
+  const [shareToken, setShareToken] = useState(() => {
+    // Check immediately on mount if we're on a share route
+    const hash = window.location.hash;
+    if (hash.startsWith('#/share/')) {
+      const token = hash.split('/share/')[1];
+      return token || null;
+    }
+    return null;
+  });
   const [sharedObject, setSharedObject] = useState(null);
-  const [loadingShare, setLoadingShare] = useState(false);
+  const [loadingShare, setLoadingShare] = useState(() => {
+    // Start loading if we detected a share token
+    return window.location.hash.startsWith('#/share/');
+  });
 
   // Distance helper (Haversine formula)
   const getDistance = (lat1, lng1, lat2, lng2) => {
@@ -2963,8 +2974,12 @@ function App() {
   useEffect(() => {
     const checkShareRoute = async () => {
       const hash = window.location.hash;
+      console.log('Checking share route, hash:', hash);
+      
       if (hash.startsWith('#/share/')) {
         const token = hash.split('/share/')[1];
+        console.log('Share token detected:', token);
+        
         if (token) {
           setShareToken(token);
           setLoadingShare(true);
@@ -2977,12 +2992,16 @@ function App() {
               where('publicShareToken', '==', token),
               where('isPublicShared', '==', true)
             );
+            console.log('Querying Firestore for token:', token);
             const snapshot = await getDocs(q);
+            console.log('Firestore query result, empty?:', snapshot.empty);
             
             if (!snapshot.empty) {
               const objectData = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+              console.log('Found shared object:', objectData.id);
               setSharedObject(objectData);
             } else {
+              console.log('No shared object found with this token');
               setSharedObject(null);
             }
           } catch (err) {
@@ -2992,10 +3011,21 @@ function App() {
             setLoadingShare(false);
           }
         }
+      } else {
+        console.log('Not a share route');
       }
     };
 
     checkShareRoute();
+    
+    // Listen for hash changes
+    const handleHashChange = () => {
+      console.log('Hash changed to:', window.location.hash);
+      checkShareRoute();
+    };
+    
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
   // Wake Lock för att hålla skärmen påslagen
