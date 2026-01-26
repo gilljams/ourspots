@@ -3245,14 +3245,6 @@ function App() {
     }
   };
 
-  const handleDeleteObject = async (id) => {
-    try {
-      await deleteDoc(doc(db, 'objects', id));
-    } catch (err) {
-      alert('Kunde inte ta bort!');
-    }
-  };
-
   const handleEdit = (obj) => {
     if (!user || (obj.id && obj.ownerId !== user.uid)) {
       alert('Du kan bara redigera dina objekt!');
