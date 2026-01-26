@@ -564,60 +564,20 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
       )}
       {imageBlock ? (
         <>
-          <div className="absolute top-2 left-2 z-10 flex items-center gap-2">
-            {currentUser && (
-              <button
-                onClick={handleFavoriteClick}
-                className="p-1.5 rounded-full bg-gray-900/70 backdrop-blur-sm hover:bg-gray-800/90 hover:scale-110 transition-all duration-200"
-                title={isFavorite ? 'Ta bort från favoriter' : 'Lägg till i favoriter'}
-              >
-                <Star 
-                  size={16} 
-                  className={`transition-colors ${isFavorite ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400 hover:text-yellow-300'}`}
-                />
-              </button>
-            )}
-            {locationBlock?.data?.lat && locationBlock?.data?.lng && (
-              <div className="relative" ref={menuRef}>
-                <button
-                  onClick={handleNavigationClick}
-                  className="p-1.5 rounded-full bg-gray-900/70 backdrop-blur-sm hover:bg-gray-800/90 hover:scale-110 transition-all duration-200"
-                  title="Navigation"
-                >
-                  <Navigation size={16} className="text-blue-400" />
-                </button>
-                {showNavMenu && (
-                  <div className="absolute left-0 top-10 bg-gray-800 border border-white/20 rounded-lg shadow-xl z-50 min-w-[160px]">
-                    {onNavigate && (
-                      <button
-                        onClick={handleShowOnMap}
-                        className="w-full text-left px-3 py-2 text-xs text-gray-200 hover:bg-white/10 flex items-center gap-2 rounded-t-lg"
-                      >
-                        <MapIcon size={12} />
-                        Visa på karta
-                      </button>
-                    )}
-                    <button
-                      onClick={openGoogleMaps}
-                      className="w-full text-left px-3 py-2 text-xs text-gray-200 hover:bg-white/10 flex items-center gap-2"
-                    >
-                      <Navigation size={12} />
-                      Google Maps
-                    </button>
-                    <button
-                      onClick={openWaze}
-                      className="w-full text-left px-3 py-2 text-xs text-gray-200 hover:bg-white/10 flex items-center gap-2 rounded-b-lg"
-                    >
-                      <Navigation size={12} />
-                      Waze
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+          {currentUser && (
+            <button
+              onClick={handleFavoriteClick}
+              className="absolute top-2 left-2 z-10 p-1.5 rounded-full bg-gray-900/70 backdrop-blur-sm hover:bg-gray-800/90 hover:scale-110 transition-all duration-200"
+              title={isFavorite ? 'Ta bort från favoriter' : 'Lägg till i favoriter'}
+            >
+              <Star 
+                size={16} 
+                className={`transition-colors ${isFavorite ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400 hover:text-yellow-300'}`}
+              />
+            </button>
+          )}
           {childCount > 0 && (
-            <div className={`absolute top-2 z-10 ${currentUser && (locationBlock?.data?.lat && locationBlock?.data?.lng) ? 'left-[6.5rem]' : (currentUser || (locationBlock?.data?.lat && locationBlock?.data?.lng) ? 'left-12' : 'left-2')}`}>
+            <div className={`absolute top-2 z-10 ${currentUser ? 'left-12' : 'left-2'}`}>
               <div className="bg-white/10 backdrop-blur-sm text-gray-200 text-xs px-2 py-1 rounded-full border border-white/15 flex items-center gap-1">
                 <Folder size={12} className="text-gray-300" />
                 {childCount}
@@ -660,51 +620,51 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
                   />
                 </button>
               )}
-              {locationBlock?.data?.lat && locationBlock?.data?.lng && (
-                <div className="relative" ref={menuRef}>
-                  <button
-                    onClick={handleNavigationClick}
-                    className="p-1.5 rounded-full bg-gray-900/70 backdrop-blur-sm hover:bg-gray-800/90 hover:scale-110 transition-all duration-200"
-                    title="Navigation"
-                  >
-                    <Navigation size={16} className="text-blue-400" />
-                  </button>
-                  {showNavMenu && (
-                    <div className="absolute right-0 top-10 bg-gray-800 border border-white/20 rounded-lg shadow-xl z-50 min-w-[160px]">
-                      {onNavigate && (
-                        <button
-                          onClick={handleShowOnMap}
-                          className="w-full text-left px-3 py-2 text-xs text-gray-200 hover:bg-white/10 flex items-center gap-2 rounded-t-lg"
-                        >
-                          <MapIcon size={12} />
-                          Visa på karta
-                        </button>
-                      )}
-                      <button
-                        onClick={openGoogleMaps}
-                        className="w-full text-left px-3 py-2 text-xs text-gray-200 hover:bg-white/10 flex items-center gap-2"
-                      >
-                        <Navigation size={12} />
-                        Google Maps
-                      </button>
-                      <button
-                        onClick={openWaze}
-                        className="w-full text-left px-3 py-2 text-xs text-gray-200 hover:bg-white/10 flex items-center gap-2 rounded-b-lg"
-                      >
-                        <Navigation size={12} />
-                        Waze
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           )}
         </div>
         {locationBlock && (
-          <div className="flex items-center gap-1 text-gray-400 text-sm mb-2">
+          <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
             <MapPin size={14} />
-            <span>{locationBlock.data.address}</span>
+            <span className="flex-1">{locationBlock.data.address}</span>
+            {locationBlock.data.lat && locationBlock.data.lng && (
+              <div className="relative" ref={menuRef}>
+                <button
+                  onClick={handleNavigationClick}
+                  className="p-1 rounded hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 transition-colors"
+                  title="Navigation"
+                >
+                  <Navigation size={14} />
+                </button>
+                {showNavMenu && (
+                  <div className="absolute right-0 bottom-8 bg-gray-800 border border-white/20 rounded-lg shadow-xl z-50 min-w-[160px]">
+                    {onNavigate && (
+                      <button
+                        onClick={handleShowOnMap}
+                        className="w-full text-left px-3 py-2 text-xs text-gray-200 hover:bg-white/10 flex items-center gap-2 rounded-t-lg"
+                      >
+                        <MapIcon size={12} />
+                        Visa på karta
+                      </button>
+                    )}
+                    <button
+                      onClick={openGoogleMaps}
+                      className="w-full text-left px-3 py-2 text-xs text-gray-200 hover:bg-white/10 flex items-center gap-2"
+                    >
+                      <Navigation size={12} />
+                      Google Maps
+                    </button>
+                    <button
+                      onClick={openWaze}
+                      className="w-full text-left px-3 py-2 text-xs text-gray-200 hover:bg-white/10 flex items-center gap-2 rounded-b-lg"
+                    >
+                      <Navigation size={12} />
+                      Waze
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
         {distance !== undefined && (
