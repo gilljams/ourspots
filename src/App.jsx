@@ -1461,7 +1461,6 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
   const [showShareModal, setShowShareModal] = useState(false);
   const [expandedBlocks, setExpandedBlocks] = useState(new Set([0])); // First block expanded by default
   const [showManageSection, setShowManageSection] = useState(false);
-  const [showShareSection, setShowShareSection] = useState(false);
   // Find category to get icon
   const category = categories.find(c => c.id === object.type);
   const IconComponent = category ? getIconComponent(category.icon) : (PREDEFINED_ICONS[object.type]?.icon || Home);
@@ -1693,56 +1692,6 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
                 </button>
               </div>
             )}
-            {/* Share section - for owners only */}
-            {isOwner && (
-              <div className="mt-6 pt-6 border-t border-white/10">
-                <button
-                  onClick={() => setShowShareSection(!showShareSection)}
-                  className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-gray-400 hover:text-white transition-all"
-                >
-                  <div className="flex items-center gap-2">
-                    <Share2 size={18} />
-                    <span className="font-medium">Dela objekt</span>
-                    {object.shares && Object.keys(object.shares).length > 0 && (
-                      <span className="ml-2 px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded-full">
-                        {Object.keys(object.shares).length}
-                      </span>
-                    )}
-                    {object.isPublicShared && (
-                      <Globe size={14} className="text-green-400" />
-                    )}
-                  </div>
-                  <ChevronDown 
-                    size={18} 
-                    className={`transition-transform ${showShareSection ? 'rotate-180' : ''}`}
-                  />
-                </button>
-                {showShareSection && (
-                  <div className="mt-3 animate-in slide-in-from-top-2 duration-200">
-                    <button
-                      onClick={() => setShowShareModal(true)}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 transition-all"
-                    >
-                      <Share2 size={18} />
-                      <span className="font-medium">Hantera delning</span>
-                    </button>
-                    
-                    {/* Quick summary */}
-                    <div className="mt-3 text-xs text-gray-500 space-y-1 px-2">
-                      {object.shares && Object.keys(object.shares).length > 0 && (
-                        <div>Delad med {Object.keys(object.shares).length} användare</div>
-                      )}
-                      {object.isPublicShared && (
-                        <div className="text-green-400">✓ Publikt tillgänglig via länk</div>
-                      )}
-                      {(!object.shares || Object.keys(object.shares).length === 0) && !object.isPublicShared && (
-                        <div>Inte delad med någon än</div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
             {canManage && (
               <div className="mt-6 pt-6 border-t border-white/10">
                 <button
@@ -1770,9 +1719,35 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
                         <span className="font-medium">Ta bort</span>
                       </button>
                     </div>
+                    
+                    {/* Share button - only for owners */}
+                    {isOwner && (
+                      <button
+                        onClick={() => setShowShareModal(true)}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-purple-500/20 border border-purple-500/30 text-purple-400 hover:bg-purple-500/30 transition-all"
+                      >
+                        <Share2 size={18} />
+                        <span className="font-medium">Hantera delning</span>
+                        {object.shares && Object.keys(object.shares).length > 0 && (
+                          <span className="ml-1 px-2 py-0.5 bg-purple-500/30 text-purple-300 text-xs rounded-full">
+                            {Object.keys(object.shares).length}
+                          </span>
+                        )}
+                        {object.isPublicShared && (
+                          <Globe size={14} className="text-green-400" />
+                        )}
+                      </button>
+                    )}
+                    
                     <div className="text-xs text-gray-500 space-y-1 px-2">
                       <div>Objekt-ID: {object.id}</div>
                       <div>Layer: {object.layerId}</div>
+                      {isOwner && object.shares && Object.keys(object.shares).length > 0 && (
+                        <div className="text-purple-400">Delad med {Object.keys(object.shares).length} användare</div>
+                      )}
+                      {isOwner && object.isPublicShared && (
+                        <div className="text-green-400">✓ Publikt tillgänglig via länk</div>
+                      )}
                     </div>
                   </div>
                 )}
