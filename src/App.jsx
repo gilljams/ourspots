@@ -605,12 +605,15 @@ function ObjectsAdminModal({ objects, categories, onClose, onEditObject }) {
   });
   const users = Array.from(usersMap.values());
   
-  // Filter objects
-  let filteredObjects = objects;
-  if (filterUserId) {
-    filteredObjects = filteredObjects.filter(o => o.ownerId === filterUserId);
+  // Filter objects - show nothing if no filter selected
+  let filteredObjects = [];
+  if (filterUserId === 'all') {
+    filteredObjects = objects;
+  } else if (filterUserId) {
+    filteredObjects = objects.filter(o => o.ownerId === filterUserId);
   }
-  if (searchTerm) {
+  
+  if (searchTerm && filteredObjects.length > 0) {
     const term = searchTerm.toLowerCase();
     filteredObjects = filteredObjects.filter(o => getObjectTitle(o).toLowerCase().includes(term));
   }
@@ -634,7 +637,9 @@ function ObjectsAdminModal({ objects, categories, onClose, onEditObject }) {
       <div className="bg-gray-900 border border-white/10 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         <div className="p-6 border-b border-white/10">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-white">Alla objekt ({sortedObjects.length}{filterUserId ? ` av ${objects.length}` : ''})</h2>
+            <h2 className="text-2xl font-bold text-white">
+              Alla objekt {filterUserId && `(${sortedObjects.length}${filterUserId === 'all' ? '' : ` av ${objects.length}`})`}
+            </h2>
             <button onClick={onClose} className="text-gray-400 hover:text-white">
               <X size={24} />
             </button>
@@ -645,7 +650,8 @@ function ObjectsAdminModal({ objects, categories, onClose, onEditObject }) {
               onChange={(e) => setFilterUserId(e.target.value)}
               className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm"
             >
-              <option value="">Alla användare ({objects.length} objekt)</option>
+              <option value="">Inget val - välj användare</option>
+              <option value="all">Alla användare ({objects.length} objekt)</option>
               {users.map(user => {
                 const userObjects = objects.filter(o => o.ownerId === user.id);
                 return (
