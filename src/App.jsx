@@ -451,12 +451,12 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
           {currentUser && (
             <button
               onClick={handleFavoriteClick}
-              className="absolute top-1 left-1 z-20 p-4 rounded-full bg-gray-900/70 backdrop-blur-sm active:bg-gray-800/90 active:scale-95 transition-all duration-200 touch-manipulation"
+              className="absolute top-2 left-2 z-10 p-1.5 rounded-full bg-gray-900/70 backdrop-blur-sm hover:bg-gray-800/90 hover:scale-110 transition-all duration-200"
               title={isFavorite ? 'Ta bort från favoriter' : 'Lägg till i favoriter'}
             >
               <Star 
-                size={20} 
-                className={`transition-colors ${isFavorite ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400'}`}
+                size={16} 
+                className={`transition-colors ${isFavorite ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400 hover:text-yellow-300'}`}
               />
             </button>
           )}
@@ -490,12 +490,12 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
               {currentUser && (
                 <button
                   onClick={handleFavoriteClick}
-                  className="p-4 rounded-full bg-gray-900/70 backdrop-blur-sm active:bg-gray-800/90 active:scale-95 transition-all duration-200 touch-manipulation"
+                  className="p-1.5 rounded-full bg-gray-900/70 backdrop-blur-sm hover:bg-gray-800/90 hover:scale-110 transition-all duration-200"
                   title={isFavorite ? 'Ta bort från favoriter' : 'Lägg till i favoriter'}
                 >
                   <Star 
-                    size={20} 
-                    className={`transition-colors ${isFavorite ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400'}`}
+                    size={16} 
+                    className={`transition-colors ${isFavorite ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400 hover:text-yellow-300'}`}
                   />
                 </button>
               )}
@@ -2457,14 +2457,12 @@ function App() {
   const handleToggleFavorite = async (objectId) => {
     if (!user) return;
     
-    let newFavorites;
-    setFavorites(prev => {
-      const isFavorite = prev.includes(objectId);
-      newFavorites = isFavorite 
-        ? prev.filter(id => id !== objectId)
-        : [...prev, objectId];
-      return newFavorites;
-    });
+    const isFavorite = favorites.includes(objectId);
+    const newFavorites = isFavorite 
+      ? favorites.filter(id => id !== objectId)
+      : [...favorites, objectId];
+    
+    setFavorites(newFavorites);
     
     try {
       await updateDoc(doc(db, 'users', user.uid), {
@@ -2473,7 +2471,7 @@ function App() {
     } catch (err) {
       console.error('Error updating favorites:', err);
       // Revert on error
-      setFavorites(prev => prev.includes(objectId) ? prev.filter(id => id !== objectId) : [...prev, objectId]);
+      setFavorites(favorites);
     }
   };
 
