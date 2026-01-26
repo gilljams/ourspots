@@ -2035,7 +2035,7 @@ function App() {
   });
   const [showQuickCapture, setShowQuickCapture] = useState(() => {
     const saved = localStorage.getItem('showQuickCapture');
-    return saved !== 'false'; // Default true
+    return saved === 'true'; // Default false
   });
   const headerRef = useRef(null);
   const [headerHeight, setHeaderHeight] = useState(64);
@@ -2733,7 +2733,7 @@ function App() {
           {showQuickCapture && (
             <button
               onClick={handleQuickCapture}
-              className="fixed bottom-44 right-6 w-14 h-14 bg-orange-600 hover:bg-orange-500 rounded-full shadow-2xl flex items-center justify-center text-white transition-all hover:scale-110 z-[1200] border-2 border-orange-400"
+              className="fixed bottom-42 right-6 w-14 h-14 bg-orange-600 hover:bg-orange-500 rounded-full shadow-2xl flex items-center justify-center text-white transition-all hover:scale-110 z-[1200] border border-orange-400/30"
               title="Snabbpinna GPS-position 🍄"
             >
               <Target size={24} />
