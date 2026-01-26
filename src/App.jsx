@@ -1665,11 +1665,18 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
                           const titleBlock = obj.blocks.find(b => b.type === 'title');
                           const title = titleBlock?.data?.text || 'Namnlöst';
                           const isChild = !!obj.parentId;
-                          const prefix = isChild ? '  └─ ' : '';
+                          
+                          // If child, find parent name
+                          let displayText = title;
+                          if (isChild) {
+                            const parent = availableParents.find(p => p.id === obj.parentId);
+                            const parentTitle = parent?.blocks.find(b => b.type === 'title')?.data?.text || 'Okänd';
+                            displayText = `└─ ${title} (under ${parentTitle})`;
+                          }
                           
                           return (
                             <option key={obj.id} value={obj.id} className="bg-gray-800 text-white">
-                              {prefix}{title}
+                              {displayText}
                             </option>
                           );
                         })}
