@@ -451,12 +451,12 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
           {currentUser && (
             <button
               onClick={handleFavoriteClick}
-              className="absolute top-2 left-2 z-10 p-3 rounded-full bg-gray-900/70 backdrop-blur-sm hover:bg-gray-800/90 hover:scale-110 transition-all duration-200"
+              className="absolute top-1 left-1 z-20 p-4 rounded-full bg-gray-900/70 backdrop-blur-sm active:bg-gray-800/90 active:scale-95 transition-all duration-200 touch-manipulation"
               title={isFavorite ? 'Ta bort från favoriter' : 'Lägg till i favoriter'}
             >
               <Star 
-                size={18} 
-                className={`transition-colors ${isFavorite ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400 hover:text-yellow-300'}`}
+                size={20} 
+                className={`transition-colors ${isFavorite ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400'}`}
               />
             </button>
           )}
@@ -490,12 +490,12 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
               {currentUser && (
                 <button
                   onClick={handleFavoriteClick}
-                  className="p-3 rounded-full bg-gray-900/70 backdrop-blur-sm hover:bg-gray-800/90 hover:scale-110 transition-all duration-200"
+                  className="p-4 rounded-full bg-gray-900/70 backdrop-blur-sm active:bg-gray-800/90 active:scale-95 transition-all duration-200 touch-manipulation"
                   title={isFavorite ? 'Ta bort från favoriter' : 'Lägg till i favoriter'}
                 >
                   <Star 
-                    size={18} 
-                    className={`transition-colors ${isFavorite ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400 hover:text-yellow-300'}`}
+                    size={20} 
+                    className={`transition-colors ${isFavorite ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400'}`}
                   />
                 </button>
               )}
