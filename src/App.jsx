@@ -3017,9 +3017,14 @@ function App() {
                         />
                       </button>
                     </div>
-                    {keepScreenOn && !('wakeLock' in navigator) && (
+                    {!('wakeLock' in navigator) && (
                       <div className="mt-2 text-xs text-yellow-400">
                         ⚠️ Din webbläsare stöder inte denna funktion
+                      </div>
+                    )}
+                    {keepScreenOn && 'wakeLock' in navigator && (
+                      <div className="mt-2 text-xs text-green-400">
+                        ✓ Aktiv - skärmen ska förbli påslagen
                       </div>
                     )}
                   </div>
