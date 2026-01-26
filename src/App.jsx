@@ -78,8 +78,21 @@ const LocationBlock = ({ data, inherited }) => (
 );
 
 const ImageBlock = ({ data }) => (
-  <div className="w-full h-48 rounded-xl overflow-hidden mb-4 border border-white/10 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.7)]">
-    <img src={data.url} alt="" className="w-full h-full object-cover" />
+  <div className="w-full h-48 rounded-xl overflow-hidden mb-4 border border-white/10 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.7)] relative bg-gray-900">
+    <img 
+      src={data.url} 
+      alt="" 
+      className="absolute inset-0 w-full h-full" 
+      style={(data.scale || 1.0) < 1.0 ? {
+        objectFit: 'contain',
+        objectPosition: data.focus || 'center'
+      } : {
+        objectFit: 'cover',
+        objectPosition: data.focus || 'center',
+        minWidth: `${(data.scale || 1.0) * 100}%`,
+        minHeight: `${(data.scale || 1.0) * 100}%`
+      }} 
+    />
   </div>
 );
 
@@ -223,8 +236,21 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
         </div>
       )}
       {imageBlock && (
-        <div className="w-full h-40 overflow-hidden">
-          <img src={imageBlock.data.url} alt="" className="w-full h-full object-cover" />
+        <div className="w-full h-40 overflow-hidden relative bg-gray-900">
+          <img 
+            src={imageBlock.data.url} 
+            alt="" 
+            className="absolute inset-0 w-full h-full" 
+            style={(imageBlock.data.scale || 1.0) < 1.0 ? {
+              objectFit: 'contain',
+              objectPosition: imageBlock.data.focus || 'center'
+            } : {
+              objectFit: 'cover',
+              objectPosition: imageBlock.data.focus || 'center',
+              minWidth: `${(imageBlock.data.scale || 1.0) * 100}%`,
+              minHeight: `${(imageBlock.data.scale || 1.0) * 100}%`
+            }} 
+          />
         </div>
       )}
       <div className="p-4">
@@ -811,8 +837,21 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
                         className="flex items-center gap-2 p-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:border-blue-400/50 transition-all text-left col-span-1"
                       >
                         {childImage ? (
-                          <div className="w-8 h-8 rounded overflow-hidden flex-shrink-0">
-                            <img src={childImage.data.url} alt="" className="w-full h-full object-cover" />
+                          <div className="w-8 h-8 rounded overflow-hidden flex-shrink-0 relative bg-gray-900">
+                            <img 
+                              src={childImage.data.url} 
+                              alt="" 
+                              className="absolute inset-0 w-full h-full" 
+                              style={(childImage.data.scale || 1.0) < 1.0 ? {
+                                objectFit: 'contain',
+                                objectPosition: childImage.data.focus || 'center'
+                              } : {
+                                objectFit: 'cover',
+                                objectPosition: childImage.data.focus || 'center',
+                                minWidth: `${(childImage.data.scale || 1.0) * 100}%`,
+                                minHeight: `${(childImage.data.scale || 1.0) * 100}%`
+                              }} 
+                            />
                           </div>
                         ) : (
                           <div className="w-8 h-8 rounded bg-blue-500/20 flex items-center justify-center flex-shrink-0">
@@ -1125,6 +1164,8 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
   const [capturingGPS, setCapturingGPS] = useState(false);
   const [showMapPicker, setShowMapPicker] = useState(false);
   const [imageUrl, setImageUrl] = useState(editObject?.blocks?.find(b => b.type === 'image')?.data?.url || '');
+  const [imageFocus, setImageFocus] = useState(editObject?.blocks?.find(b => b.type === 'image')?.data?.focus || 'center');
+  const [imageScale, setImageScale] = useState(editObject?.blocks?.find(b => b.type === 'image')?.data?.scale || 1.0);
   const [uploadingImage, setUploadingImage] = useState(false);
   // Store custom blocks (text, checklist, todo) as array to support multiple
   const [customBlocks, setCustomBlocks] = useState(() => {
@@ -1189,7 +1230,7 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
     if ((lat && lng) && !inheritLocation) {
       blocks.push({ type: 'location', data: { lat, lng, address: address || `${lat.toFixed(5)}, ${lng.toFixed(5)}` } });
     }
-    if (imageUrl.trim()) blocks.push({ type: 'image', data: { url: imageUrl } });
+    if (imageUrl.trim()) blocks.push({ type: 'image', data: { url: imageUrl, focus: imageFocus, scale: imageScale } });
     
     // Add custom blocks (text, checklist, todo) from array
     customBlocks.forEach(block => {
@@ -1364,17 +1405,74 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
               <label className="block text-sm font-medium text-gray-300 mb-2">Bild</label>
               <div className="space-y-3">
                 {imageUrl && (
-                  <div className="relative w-full h-40 rounded-xl overflow-hidden border border-white/10">
-                    <img src={imageUrl} alt="Preview" className="w-full h-full object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => setImageUrl('')}
-                      disabled={uploadingImage || saving}
-                      className="absolute top-2 right-2 bg-red-500/80 hover:bg-red-600 text-white p-2 rounded-lg transition-all disabled:opacity-50"
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
+                  <>
+                    <div className="relative w-full h-40 rounded-xl overflow-hidden border border-white/10 bg-gray-900">
+                      <img 
+                        src={imageUrl} 
+                        alt="Preview" 
+                        className="absolute inset-0 w-full h-full" 
+                        style={imageScale < 1.0 ? {
+                          objectFit: 'contain',
+                          objectPosition: imageFocus
+                        } : {
+                          objectFit: 'cover',
+                          objectPosition: imageFocus,
+                          minWidth: `${imageScale * 100}%`,
+                          minHeight: `${imageScale * 100}%`
+                        }} 
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setImageUrl('');
+                          setImageFocus('center');
+                          setImageScale(1.0);
+                        }}
+                        disabled={uploadingImage || saving}
+                        className="absolute top-2 right-2 bg-red-500/80 hover:bg-red-600 text-white p-2 rounded-lg transition-all disabled:opacity-50"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-400 mb-2">Bildfokus</label>
+                        <select
+                          value={imageFocus}
+                          onChange={(e) => setImageFocus(e.target.value)}
+                          disabled={uploadingImage || saving}
+                          className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-white/10 text-gray-300 text-sm focus:outline-none focus:border-blue-500 disabled:opacity-50"
+                          style={{ colorScheme: 'dark' }}
+                        >
+                          <option value="center">Centrum</option>
+                          <option value="top">Topp</option>
+                          <option value="bottom">Botten</option>
+                          <option value="left">Vänster</option>
+                          <option value="right">Höger</option>
+                          <option value="top left">Topp vänster</option>
+                          <option value="top right">Topp höger</option>
+                          <option value="bottom left">Botten vänster</option>
+                          <option value="bottom right">Botten höger</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-400 mb-2">Zoom</label>
+                        <select
+                          value={String(imageScale)}
+                          onChange={(e) => setImageScale(parseFloat(e.target.value))}
+                          disabled={uploadingImage || saving}
+                          className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-white/10 text-gray-300 text-sm focus:outline-none focus:border-blue-500 disabled:opacity-50"
+                          style={{ colorScheme: 'dark' }}
+                        >
+                          <option value="0.65">Zoom ut mer</option>
+                          <option value="0.8">Zoom ut</option>
+                          <option value="1.0">Normal</option>
+                          <option value="1.2">Zoom in</option>
+                          <option value="1.5">Zoom in mer</option>
+                        </select>
+                      </div>
+                    </div>
+                  </>
                 )}
                 <div className="flex gap-2">
                   <label className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center gap-2">
