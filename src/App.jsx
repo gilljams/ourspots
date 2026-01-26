@@ -259,13 +259,22 @@ const TitleBlock = ({ data }) => (
   <h2 className="text-2xl font-bold text-white mb-2">{data.text}</h2>
 );
 
-const LocationBlock = ({ data, inherited }) => (
+const LocationBlock = ({ data, inherited, onDelete, canDelete }) => (
   <div className="py-2 px-3 rounded-lg bg-white/5 border border-white/10 flex items-center gap-2">
     <MapPin size={16} className="text-blue-400 flex-shrink-0" />
-    <span className="text-xs text-gray-200">
+    <span className="text-xs text-gray-200 flex-1">
       {data.address || (data.lat && data.lng ? `${data.lat.toFixed(6)}, ${data.lng.toFixed(6)}` : 'Ingen plats')}
     </span>
-    {inherited && <span className="text-xs text-gray-500 ml-auto">(från parent)</span>}
+    {inherited && <span className="text-xs text-gray-500">(från parent)</span>}
+    {canDelete && onDelete && (
+      <button
+        onClick={onDelete}
+        className="p-1 rounded hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-colors"
+        title="Ta bort position"
+      >
+        <X size={14} />
+      </button>
+    )}
   </div>
 );
 
@@ -997,6 +1006,23 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
                 const shouldShowLabel = customTitle || showBlockLabel;
                 const isCollapsible = ['text', 'checklist', 'todo'].includes(block.type);
                 
+                // For location blocks, show delete if there are multiple
+                const locationBlocks = blocksToRender.filter(b => b.type === 'location' && !b.inherited);
+                const canDeleteLocation = block.type === 'location' && locationBlocks.length > 1 && !block.inherited;
+                
+                const handleDeleteBlock = async () => {
+                  if (!window.confirm('Ta bort denna position?')) return;
+                  try {
+                    const updatedBlocks = object.blocks.filter((_, i) => i !== index);
+                    await updateDoc(doc(db, 'objects', object.id), {
+                      blocks: updatedBlocks
+                    });
+                  } catch (err) {
+                    console.error('Error deleting block:', err);
+                    alert('Kunde inte ta bort position');
+                  }
+                };
+                
                 return BlockComponent ? (
                   <div key={index}>
                     {isCollapsible && (
@@ -1033,6 +1059,8 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
                           inherited={block.inherited}
                           isExpanded={isExpanded}
                           onToggle={toggleExpanded}
+                          canDelete={canDeleteLocation}
+                          onDelete={handleDeleteBlock}
                         />
                       </div>
                     )}
