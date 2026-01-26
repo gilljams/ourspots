@@ -14,7 +14,7 @@ OurSpots är en platsbaserad app med premium dark theme som låter användare:
 - Se objekt på karta med avstånd och navigation
 - Publik vy för externa användare
 
-## 🏗️ Nuvarande Status (v0.5 - Karta & Avstånd)
+## 🏗️ Nuvarande Status (v0.9 - Favoriter & Admin-verktyg)
 
 ### ✅ Implementerat
 - **Dark theme med glassmorphism** - Premium design med radial glows
@@ -22,16 +22,18 @@ OurSpots är en platsbaserad app med premium dark theme som låter användare:
 - **Checklist block** - Kryssrutor med state-synk i modal
 - **Todo block** - Uppgiftslista med progress-bar
 - **Bilduppladdning** - Cloudinary integration (25GB gratis/månad)
+- **Dynamiska kategorier** - Firebase-baserad kategorihantering med 22+ ikoner
+- **Admin-sektion** - Kategorihantering och objekthantering för administratörer
 - **Kategori-navigation** - Swipe-bar för filtrering
 - **Kort-baserad listvy** - Med bilder och platsinformation
 - **Detaljvy** - Modal med komplett objektinformation
-- **Fördefinierade typ-ikoner** - 🏡, ☕, 🏞️, ⭐, ✈️, 🏠
+- **Ikoner från Lucide React** - 22+ välbara ikoner inklusive mat, nöjen, aktiviteter
 - **Firebase Firestore** - Real-time databas med persistent lagring
-- **Firebase Authentication** - Google-inloggning
+- **Firebase Authentication** - Google-inloggning med rollhantering
 - **Security Rules** - Bara ägare kan redigera sina objekt
 - **CRUD-funktionalitet** - Create, Read, Update, Delete
 - **Ägarskap** - Objekt märks med "Ditt" för inloggad användare
-- **GitHub Pages** - Live deployment
+- **GitHub Pages** - Live deployment med optimerad bundle
 - **Optimistic updates** - Omedelbar UI-feedback för checklist/todo
 - **Responsive design** - Mobiloptimerad, testad på iOS/Android
 - **Hierarki (Parent-Child)** - Organisera objekt som förälder-barn, dela plats mellan nivåer
@@ -40,23 +42,57 @@ OurSpots är en platsbaserad app med premium dark theme som låter användare:
 - **Markörtooltips** - Desktop: hover-tooltip, Mobile: tap popup med "Visa detaljer"-knapp
 - **GPS-positionering** - Fångar användares aktuella position automatiskt vid app-start
 - **Interaktiv kartplockning** - Modal för att välja plats genom att klicka på kartan
+- **Egen position på karta** - Blå användarikon på huvudkarta och kartväljare
 - **Avstånd från användare** - Visa km-avstånd till varje objekt (Haversine-formel)
 - **Avståndssorterad lista** - Toggle-knapp för att sortera objekt från närmast till längst bort
 - **Location inheritance** - Barn kan ärva förälderns position om de inte har egen
 - **Breadcrumb-navigering** - Visa hierarki: Alla > Förälder > Barn
 - **Child-count badges** - Visa antal barn på parent-kort
+- **Marker clustering** - Stora, tydliga kluster som skalar med antal
+- **Markörfärger per kategori** - Dynamiska färger baserat på kategoriinställningar
+- **Dynamiska block med titlar** - Flera text/checklist/todo med egna titlar
+- **Expand/Collapse-block** - Kolliderade som standard (första öppen), thumbnail-bild, kompakt plats
+- **Drag & drop blockordning** - Dra för att sortera; upp/ner-pilar för mobil
+- **Stäng detaljmodal via overlay** - Klick utanför modalen för att stänga
+- **Sök & filter** - Sök på objektnamn/innehåll, filtrera på kategori och avstånd (km-slider)
+- **Förbättrad parent-navigering** - SVG-ikon och tydlig placering för tillbaka-knapp
+- **Favoriter** - Markera objekt som favoriter med stjärn-ikon, egen filterkategori, persistent i Firebase
+- **Skärmhantering** - "Håll skärmen påslagen" med Wake Lock API för navigering
+- **Admin-objekthantering** - Admin kan redigera och radera alla objekt (inklusive ägarlösa)
 
 ### 🚧 Kommande Features (Prioriterad backlog)
-1. **Marker clustering** - Gruppera markers vid utzooming för bättre kartöversikt
-2. **Markörfärger per kategori** - Visuell kodning per objekttyp på kartan
-3. **Sök & filter** - Sök efter objektnamn, filtrera efter typ/avstånd
-4. **Fler blocktyper** - Betyg, öppettider, kontaktinfo, anteckningar
-5. **Delningsfunktion** - Dela objekt med viewer/editor-roller
-6. **Favoriter** - Markera objekt som favoriter, egen snabbkategori
-7. **Lager/samlingar** - Gruppera objekt för resor och projekt
-8. **Admin-funktioner** - Hantera dold/borttagen innehål
-9. **Publik vy** - Sharable links för externa användare
-10. **PWA** - Installera som app, offline-support
+1. **Fler blocktyper** - Betyg, öppettider, kontaktinfo, anteckningar
+2. **Delningsfunktion** - Dela objekt med viewer/editor-roller
+4. **Lager/samlingar** - Gruppera objekt för resor och projekt
+5. **Publik vy** - Sharable links för externa användare
+6. **PWA** - Installera som app, offline-support
+7. **Avancerad admin** - Användarhantering, statistik, backup
+
+## 🎨 Admin-funktioner
+
+### Kategorihantering (endast för administratörer)
+- **Skapa kategorier** - Namn, ikon från 22+ valmöjligheter, anpassad färg
+- **Redigera kategorier** - Ändra namn, ikon och färg
+- **Ordna kategorier** - Flytta upp/ner för att ändra ordning i navigering
+- **Radera kategorier** - Med automatisk hantering av kopplade objekt
+- **Tillgängliga ikoner:**
+  - Hem, Kafé, Berg, Stjärna, Plats, Kalender, Mapp, Navigation
+  - Mat & dryck: UtensilsCrossed, Pizza, Vin, Öl
+  - Nöjen: Gamepad, Musik, Film, Fest
+  - Aktiviteter: Cykel, Träning, Vatten
+  - Natur: Skog, Strand, Svamp/Planta
+
+### Objekthantering (endast för administratörer)
+- **Redigera alla objekt** - Admin kan redigera vilket objekt som helst
+- **Radera alla objekt** - Admin kan radera objekt oavsett ägare (användbart för att rensa gamla testdata)
+- **Hantera ägarlösa objekt** - Möjlighet att städa upp objekt skapade innan användarsystemet implementerades
+
+### Så här blir du admin:
+1. Logga in i appen med Google
+2. Öppna Firebase Console → Firestore Database
+3. Gå till `users` collection och hitta ditt användar-dokument
+4. Sätt fältet `isAdmin` till `true` (boolean)
+5. Ladda om appen - Admin-sektion visas nu i menyn
 
 ## 📦 Tech Stack
 

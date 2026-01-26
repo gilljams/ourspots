@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { MapPin, Home, Coffee, Mountain, Star, Calendar, X, Plus, Image, Edit2, Trash2, Loader, LogOut, LogIn, Check, Circle, Upload, Folder, Navigation, Map as MapIcon, List, ChevronDown, ArrowUp, ArrowDown } from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
+const { MapPin, Home, Coffee, Mountain, Star, Calendar, X, Plus, Image, Edit2, Trash2, Loader, LogOut, LogIn, Check, Circle, Upload, Folder, Navigation, Map: MapIcon, List, ChevronDown, ArrowUp, ArrowDown, Search, Settings } = LucideIcons;
 import { MapContainer, TileLayer, Marker, useMapEvents, Tooltip, Popup } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { db, auth, googleProvider } from './firebase';
-import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, Timestamp, getDoc, setDoc } from 'firebase/firestore';
 import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
 
 // Fix Leaflet default marker icon issue with bundlers
@@ -42,25 +43,26 @@ const createUserIcon = () => {
   });
 };
 
-const CATEGORY_COLORS = {
-  '🏡': '#6B7280', // gray
-  '🏠': '#6B7280', // gray
-  '☕': '#92400E', // brown
-  '🏞️': '#065F46', // green
-  '⭐': '#F59E0B', // yellow/amber
-  '✈️': '#3B82F6', // blue
-};
-
 const CLOUDINARY_CLOUD_NAME = 'dkpwqradh';
 const CLOUDINARY_UPLOAD_PRESET = 'ourspots_unsigned';
 
+// Helper to get icon component from string name
+const getIconComponent = (iconName) => {
+  return LucideIcons[iconName] || Home;
+};
+
+// Legacy emoji mapping for backward compatibility (will be phased out)
 const PREDEFINED_ICONS = {
   '🏡': { icon: Home, label: 'Fastighet' },
   '🏠': { icon: Home, label: 'Hus' },
   '☕': { icon: Coffee, label: 'Kafé' },
   '🏞️': { icon: Mountain, label: 'Natur' },
   '⭐': { icon: Star, label: 'Favorit' },
-  '✈️': { icon: Calendar, label: 'Resa' }
+  '✈️': { icon: Calendar, label: 'Resa' },
+  // New string-based IDs
+  'property': { icon: Home, label: 'Fastighet' },
+  'cafe': { icon: Coffee, label: 'Kafé' },
+  'nature': { icon: Mountain, label: 'Natur' }
 };
 
 const TitleBlock = ({ data }) => (
@@ -179,19 +181,19 @@ const blockComponents = {
   todo: TodoBlock
 };
 
-function ObjectCard({ object, onClick, currentUser, childCount, distance }) {
-  const IconComponent = PREDEFINED_ICONS[object.type]?.icon || Home;
+function ObjectCard({ object, onClick, currentUser, childCount, distance, categories, isFavorite, onToggleFavorite }) {
+  // Find category to get icon
+  const category = categories.find(c => c.id === object.type);
+  const IconComponent = category ? getIconComponent(category.icon) : (PREDEFINED_ICONS[object.type]?.icon || Home);
   const titleBlock = object.blocks.find(b => b.type === 'title');
   const imageBlock = object.blocks.find(b => b.type === 'image');
   const locationBlock = object.blocks.find(b => b.type === 'location');
   const isOwner = currentUser && object.ownerId === currentUser.uid;
-  const todoBlock = object.blocks.find(b => b.type === 'todo');
-  let todoProgress = null;
-  if (todoBlock) {
-    const total = todoBlock.data.items.length;
-    const done = todoBlock.data.items.filter(item => item.done).length;
-    todoProgress = { done, total };
-  }
+
+  const handleFavoriteClick = (e) => {
+    e.stopPropagation();
+    onToggleFavorite(object.id);
+  };
 
   return (
     <div onClick={onClick} className="bg-white/5 backdrop-blur-md rounded-2xl overflow-hidden border border-white/10 hover:border-blue-400/50 transition-all cursor-pointer transform hover:scale-[1.02] relative">
@@ -200,8 +202,20 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance }) {
           <div className="bg-blue-500/90 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-full">Ditt</div>
         </div>
       )}
+      {currentUser && (
+        <button
+          onClick={handleFavoriteClick}
+          className="absolute top-2 left-2 z-10 p-1.5 rounded-full bg-gray-900/70 backdrop-blur-sm hover:bg-gray-800/90 hover:scale-110 transition-all duration-200"
+          title={isFavorite ? 'Ta bort från favoriter' : 'Lägg till i favoriter'}
+        >
+          <Star 
+            size={16} 
+            className={`transition-colors ${isFavorite ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400 hover:text-yellow-300'}`}
+          />
+        </button>
+      )}
       {childCount > 0 && (
-        <div className="absolute top-2 left-2 z-10">
+        <div className={`absolute top-2 z-10 ${currentUser ? 'left-12' : 'left-2'}`}>
           <div className="bg-white/10 backdrop-blur-sm text-gray-200 text-xs px-2 py-1 rounded-full border border-white/15 flex items-center gap-1">
             <Folder size={12} className="text-gray-300" />
             {childCount}
@@ -232,12 +246,6 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance }) {
             <span className="text-blue-400">{distance.toFixed(1)} km bort</span>
           </div>
         )}
-        {todoProgress && (
-          <div className="flex items-center gap-2 text-xs text-gray-400">
-            <Circle size={12} className="text-green-400" />
-            <span>{todoProgress.done}/{todoProgress.total} klara</span>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -266,11 +274,369 @@ function DeleteConfirmModal({ object, onConfirm, onCancel }) {
   );
 }
 
-function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, currentUser, allObjects, onNavigate }) {
+// List of available icons for categories
+const AVAILABLE_ICONS = [
+  { name: 'Home', label: 'Hem' },
+  { name: 'Coffee', label: 'Kafé' },
+  { name: 'Mountain', label: 'Berg' },
+  { name: 'Star', label: 'Stjärna' },
+  { name: 'MapPin', label: 'Plats' },
+  { name: 'Calendar', label: 'Kalender' },
+  { name: 'Folder', label: 'Mapp' },
+  { name: 'Navigation', label: 'Navigation' },
+  { name: 'UtensilsCrossed', label: 'Mat och dryck' },
+  { name: 'Pizza', label: 'Pizza' },
+  { name: 'Wine', label: 'Vin' },
+  { name: 'Beer', label: 'Öl' },
+  { name: 'Gamepad2', label: 'Nöjen' },
+  { name: 'Music', label: 'Musik' },
+  { name: 'Film', label: 'Film' },
+  { name: 'PartyPopper', label: 'Fest' },
+  { name: 'Bike', label: 'Aktiviteter' },
+  { name: 'Dumbbell', label: 'Träning' },
+  { name: 'Waves', label: 'Vatten' },
+  { name: 'TreePine', label: 'Skog' },
+  { name: 'Shell', label: 'Strand' },
+  { name: 'Sprout', label: 'Svamp' },
+];
+
+function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
+  const [editingCategory, setEditingCategory] = useState(null);
+  const [newCategory, setNewCategory] = useState({ label: '', icon: 'Home', color: '#6B7280' });
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  const handleSaveCategory = async () => {
+    if (!newCategory.label.trim()) return;
+    setSaving(true);
+    try {
+      const categoryId = newCategory.label.toLowerCase().replace(/[^a-z0-9]/g, '_');
+      const maxOrder = categories.length > 0 ? Math.max(...categories.map(c => c.order)) : 0;
+      await setDoc(doc(db, 'categories', categoryId), {
+        label: newCategory.label.trim(),
+        icon: newCategory.icon,
+        color: newCategory.color,
+        order: maxOrder + 1,
+        createdAt: Timestamp.now(),
+        createdBy: currentUser.uid
+      });
+      setNewCategory({ label: '', icon: 'Home', color: '#6B7280' });
+    } catch (err) {
+      console.error('Error saving category:', err);
+      alert('Kunde inte spara kategori');
+    }
+    setSaving(false);
+  };
+
+  const handleUpdateCategory = async (categoryId, updates) => {
+    setSaving(true);
+    try {
+      await updateDoc(doc(db, 'categories', categoryId), updates);
+      setEditingCategory(null);
+    } catch (err) {
+      console.error('Error updating category:', err);
+      alert('Kunde inte uppdatera kategori');
+    }
+    setSaving(false);
+  };
+
+  const handleDeleteCategory = async (categoryId) => {
+    // Check if any objects use this category
+    const objectsWithCategory = objects.filter(obj => obj.type === categoryId);
+    
+    if (objectsWithCategory.length > 0) {
+      if (!confirm(`${objectsWithCategory.length} objekt använder denna kategori. De kommer att ändras till 'Okategoriserad'. Fortsätt?`)) {
+        setShowDeleteConfirm(null);
+        return;
+      }
+      
+      // Update all objects to have no category (or a default one)
+      try {
+        for (const obj of objectsWithCategory) {
+          await updateDoc(doc(db, 'objects', obj.id), { type: 'uncategorized' });
+        }
+      } catch (err) {
+        console.error('Error updating objects:', err);
+        alert('Kunde inte uppdatera objekt');
+        setShowDeleteConfirm(null);
+        return;
+      }
+    }
+
+    setSaving(true);
+    try {
+      await deleteDoc(doc(db, 'categories', categoryId));
+      setShowDeleteConfirm(null);
+    } catch (err) {
+      console.error('Error deleting category:', err);
+      alert('Kunde inte radera kategori');
+    }
+    setSaving(false);
+  };
+
+  const handleMoveCategory = async (categoryId, direction) => {
+    const currentIndex = categories.findIndex(c => c.id === categoryId);
+    if (currentIndex === -1) return;
+    
+    const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (newIndex < 0 || newIndex >= categories.length) return;
+
+    const sortedCategories = [...categories].sort((a, b) => a.order - b.order);
+    const currentCat = sortedCategories[currentIndex];
+    const swapCat = sortedCategories[newIndex];
+
+    setSaving(true);
+    try {
+      await updateDoc(doc(db, 'categories', currentCat.id), { order: swapCat.order });
+      await updateDoc(doc(db, 'categories', swapCat.id), { order: currentCat.order });
+    } catch (err) {
+      console.error('Error moving category:', err);
+      alert('Kunde inte flytta kategori');
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[2100] flex items-center justify-center p-4">
+      <div className="bg-gray-900/95 backdrop-blur-xl rounded-2xl border border-white/10 max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+        <div className="p-6 border-b border-white/10 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
+              <Settings size={20} className="text-blue-400" />
+            </div>
+            <h2 className="text-2xl font-bold text-white">Hantera kategorier</h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="p-6 overflow-y-auto flex-1">
+          {/* Add new category */}
+          <div className="mb-6 p-4 rounded-xl bg-white/5 border border-white/10">
+            <h3 className="text-lg font-semibold text-white mb-3">Skapa ny kategori</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm text-gray-300 mb-1">Namn</label>
+                <input
+                  type="text"
+                  value={newCategory.label}
+                  onChange={(e) => setNewCategory({ ...newCategory, label: e.target.value })}
+                  placeholder="T.ex. Restauranger"
+                  className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-400"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm text-gray-300 mb-1">Ikon</label>
+                  <select
+                    value={newCategory.icon}
+                    onChange={(e) => setNewCategory({ ...newCategory, icon: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-white/10 text-white focus:outline-none focus:border-blue-400"
+                    style={{ colorScheme: 'dark' }}
+                  >
+                    {AVAILABLE_ICONS.map(icon => {
+                      const IconComp = getIconComponent(icon.name);
+                      return (
+                        <option key={icon.name} value={icon.name}>{icon.label}</option>
+                      );
+                    })}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-300 mb-1">Färg</label>
+                  <input
+                    type="color"
+                    value={newCategory.color}
+                    onChange={(e) => setNewCategory({ ...newCategory, color: e.target.value })}
+                    className="w-full h-[42px] rounded-lg bg-white/5 border border-white/10 cursor-pointer"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {React.createElement(getIconComponent(newCategory.icon), { size: 20, style: { color: newCategory.color } })}
+                <span className="text-gray-300 text-sm">Förhandsgranskning</span>
+              </div>
+              <button
+                onClick={handleSaveCategory}
+                disabled={!newCategory.label.trim() || saving}
+                className="w-full px-4 py-2 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {saving ? 'Sparar...' : 'Skapa kategori'}
+              </button>
+            </div>
+          </div>
+
+          {/* Existing categories */}
+          <div className="space-y-2">
+            <h3 className="text-lg font-semibold text-white mb-3">Befintliga kategorier</h3>
+            {categories.length === 0 ? (
+              <p className="text-gray-400 text-sm">Inga kategorier än</p>
+            ) : (
+              categories.map((cat, index) => {
+                const IconComp = getIconComponent(cat.icon);
+                const objectCount = objects.filter(obj => obj.type === cat.id).length;
+                return (
+                  <div key={cat.id} className="p-4 rounded-xl bg-white/5 border border-white/10">
+                    {editingCategory?.id === cat.id ? (
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-sm text-gray-300 mb-1">Namn</label>
+                          <input
+                            type="text"
+                            value={editingCategory.label}
+                            onChange={(e) => setEditingCategory({ ...editingCategory, label: e.target.value })}
+                            className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:border-blue-400"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-sm text-gray-300 mb-1">Ikon</label>
+                            <select
+                              value={editingCategory.icon}
+                              onChange={(e) => setEditingCategory({ ...editingCategory, icon: e.target.value })}
+                              className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-white/10 text-white focus:outline-none focus:border-blue-400"
+                              style={{ colorScheme: 'dark' }}
+                            >
+                              {AVAILABLE_ICONS.map(icon => (
+                                <option key={icon.name} value={icon.name}>{icon.label}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm text-gray-300 mb-1">Färg</label>
+                            <input
+                              type="color"
+                              value={editingCategory.color}
+                              onChange={(e) => setEditingCategory({ ...editingCategory, color: e.target.value })}
+                              className="w-full h-[42px] rounded-lg bg-white/5 border border-white/10 cursor-pointer"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleUpdateCategory(cat.id, { label: editingCategory.label, icon: editingCategory.icon, color: editingCategory.color })}
+                            disabled={saving}
+                            className="flex-1 px-4 py-2 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all disabled:opacity-50"
+                          >
+                            Spara
+                          </button>
+                          <button
+                            onClick={() => setEditingCategory(null)}
+                            disabled={saving}
+                            className="flex-1 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 font-medium transition-all"
+                          >
+                            Avbryt
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center" style={{ backgroundColor: `${cat.color}20` }}>
+                            <IconComp size={20} style={{ color: cat.color }} />
+                          </div>
+                          <div>
+                            <div className="text-white font-medium">{cat.label}</div>
+                            <div className="text-xs text-gray-400">{objectCount} objekt</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleMoveCategory(cat.id, 'up')}
+                            disabled={index === 0 || saving}
+                            className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all disabled:opacity-30"
+                            title="Flytta upp"
+                          >
+                            <ArrowUp size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleMoveCategory(cat.id, 'down')}
+                            disabled={index === categories.length - 1 || saving}
+                            className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all disabled:opacity-30"
+                            title="Flytta ner"
+                          >
+                            <ArrowDown size={16} />
+                          </button>
+                          <button
+                            onClick={() => setEditingCategory(cat)}
+                            disabled={saving}
+                            className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all"
+                            title="Redigera"
+                          >
+                            <Edit2 size={16} />
+                          </button>
+                          <button
+                            onClick={() => setShowDeleteConfirm(cat)}
+                            disabled={saving}
+                            className="p-2 rounded-lg bg-white/5 hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition-all"
+                            title="Ta bort"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Delete confirmation */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[2200] flex items-center justify-center p-4">
+          <div className="bg-gray-900/95 backdrop-blur-xl rounded-2xl border border-red-500/30 max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center">
+                <Trash2 size={24} className="text-red-400" />
+              </div>
+              <h3 className="text-xl font-bold text-white">Ta bort kategori?</h3>
+            </div>
+            <p className="text-gray-300 mb-6">
+              Är du säker på att du vill ta bort kategorin <span className="font-semibold text-white">"{showDeleteConfirm.label}"</span>?
+              {objects.filter(obj => obj.type === showDeleteConfirm.id).length > 0 && (
+                <span className="block mt-2 text-yellow-400">
+                  ⚠️ {objects.filter(obj => obj.type === showDeleteConfirm.id).length} objekt använder denna kategori.
+                </span>
+              )}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(null)}
+                disabled={saving}
+                className="flex-1 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 transition-all"
+              >
+                Avbryt
+              </button>
+              <button
+                onClick={() => handleDeleteCategory(showDeleteConfirm.id)}
+                disabled={saving}
+                className="flex-1 px-4 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white font-medium transition-all disabled:opacity-50"
+              >
+                {saving ? 'Raderar...' : 'Ta bort'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, currentUser, allObjects, onNavigate, categories, isAdmin }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [expandedBlocks, setExpandedBlocks] = useState(new Set([0])); // First block expanded by default
-  const IconComponent = PREDEFINED_ICONS[object.type]?.icon || Home;
+  // Find category to get icon
+  const category = categories.find(c => c.id === object.type);
+  const IconComponent = category ? getIconComponent(category.icon) : (PREDEFINED_ICONS[object.type]?.icon || Home);
   const isOwner = currentUser && object.ownerId === currentUser.uid;
+  const canManage = isOwner || isAdmin; // Admin kan hantera alla objekt
   
   const childObjects = allObjects.filter(o => o.parentId === object.id);
   const parentObject = object.parentId ? allObjects.find(o => o.id === object.parentId) : null;
@@ -296,23 +662,57 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
   
   return (
     <>
-      <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-[1000] overflow-hidden" onClick={onClose}>
-        <div className="min-h-screen p-4 flex items-start justify-center pt-20">
-            <div className="bg-gray-950/95 backdrop-blur-xl rounded-3xl border border-white/15 max-w-2xl w-full p-6 shadow-[0_24px_64px_-24px_rgba(0,0,0,0.8)] max-h-[80vh] overflow-y-auto pr-2" onClick={(e) => e.stopPropagation()}>
+      <div 
+        className="fixed inset-0 z-[1000] overflow-hidden" 
+        style={{
+          background: `
+            radial-gradient(circle at 30% 20%, rgba(59,130,246,0.35), transparent 40%),
+            radial-gradient(circle at 70% 60%, rgba(139,92,246,0.25), transparent 45%),
+            radial-gradient(circle at 50% 90%, rgba(56,189,248,0.2), transparent 50%),
+            linear-gradient(to bottom, rgba(0,0,0,0.75), rgba(0,0,0,0.85))
+          `,
+          backdropFilter: 'blur(16px)'
+        }}
+        onClick={onClose}
+      >
+        <div className="min-h-screen p-2 sm:p-4 flex items-start justify-center pt-2 sm:pt-20">
+            <div 
+              className="rounded-3xl border max-w-2xl w-full p-4 sm:p-6 max-h-[96vh] sm:max-h-[80vh] overflow-y-auto relative"
+              style={{
+                background: `
+                  radial-gradient(circle at 20% 10%, rgba(59,130,246,0.12), transparent 50%),
+                  radial-gradient(circle at 80% 80%, rgba(139,92,246,0.08), transparent 50%),
+                  linear-gradient(135deg, rgba(15,23,42,0.98), rgba(6,7,12,0.98))
+                `,
+                backdropFilter: 'blur(32px)',
+                borderColor: 'rgba(139,92,246,0.3)',
+                boxShadow: `
+                  0 0 0 1px rgba(59,130,246,0.1) inset,
+                  0 32px 96px -16px rgba(0,0,0,0.9),
+                  0 0 80px -20px rgba(59,130,246,0.3),
+                  0 0 40px -10px rgba(139,92,246,0.2)
+                `
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
             <div className="flex justify-between items-center mb-6">
               <div className="flex items-center gap-3">
-                {parentObject && (
-                  <button
-                    onClick={() => onNavigate(parentObject)}
-                    className="text-gray-400 hover:text-white transition-all text-sm flex items-center gap-1"
-                  >
-                    ← {parentObject.blocks.find(b => b.type === 'title')?.data?.text || 'Parent'}
-                  </button>
-                )}
                 <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
                   <IconComponent size={24} className="text-blue-400" />
                 </div>
-                <span className="text-gray-400 text-sm">{PREDEFINED_ICONS[object.type]?.label}</span>
+                <span className="text-gray-400 text-sm">{category?.label || (PREDEFINED_ICONS[object.type]?.label || 'Objekt')}</span>
+                {parentObject && (
+                  <button
+                    onClick={() => onNavigate(parentObject)}
+                    className="ml-2 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all text-sm flex items-center gap-2 border border-white/10"
+                    title={`Tillbaka till ${parentObject.blocks.find(b => b.type === 'title')?.data?.text || 'Parent'}`}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="m15 18-6-6 6-6"/>
+                    </svg>
+                    <span>{parentObject.blocks.find(b => b.type === 'title')?.data?.text || 'Parent'}</span>
+                  </button>
+                )}
               </div>
               <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl leading-none">×</button>
             </div>
@@ -442,7 +842,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
               </div>
             )}
             <div className="mt-6 pt-6 border-t border-white/10 space-y-4">
-              {isOwner ? (
+              {canManage ? (
                 <div className="flex gap-3">
                   <button onClick={() => onEdit(object)} className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 transition-all">
                     <Edit2 size={18} />
@@ -469,7 +869,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
   );
 }
 
-function MapView({ objects, onSelectObject, currentUser, userLocation }) {
+function MapView({ objects, onSelectObject, currentUser, userLocation, categories }) {
   const [hasRequestedPermission, setHasRequestedPermission] = useState(false);
 
   const objectsWithLocation = objects.filter(obj => {
@@ -547,7 +947,7 @@ function MapView({ objects, onSelectObject, currentUser, userLocation }) {
     return (
       <button
         onClick={handleCenterOnUser}
-        className="absolute top-4 right-4 z-[500] p-3 rounded-lg bg-blue-500 hover:bg-blue-600 text-white shadow-lg transition-all flex items-center justify-center"
+        className="absolute top-4 right-4 z-[1000] p-3 rounded-lg bg-blue-500 hover:bg-blue-600 text-white shadow-lg transition-all flex items-center justify-center"
         title="Gå till min position"
       >
         <Navigation size={20} />
@@ -559,7 +959,10 @@ function MapView({ objects, onSelectObject, currentUser, userLocation }) {
     const locationBlock = object.blocks.find(b => b.type === 'location');
     const titleBlock = object.blocks.find(b => b.type === 'title');
     const position = [locationBlock.data.lat, locationBlock.data.lng];
-    const markerColor = CATEGORY_COLORS[object.type] || '#3B82F6';
+    // Find category for color
+    const category = categories.find(c => c.id === object.type);
+    const markerColor = category?.color || '#3B82F6';
+    const categoryLabel = category?.label || (PREDEFINED_ICONS[object.type]?.label || 'Objekt');
     const coloredIcon = createColoredIcon(markerColor);
 
     if (isTouchDevice) {
@@ -568,13 +971,13 @@ function MapView({ objects, onSelectObject, currentUser, userLocation }) {
           <Tooltip direction="top" offset={[0, -8]} opacity={0.9}>
             <div className="text-xs">
               <div className="font-semibold">{titleBlock?.data?.text || 'Namnlöst'}</div>
-              <div className="text-gray-500">{PREDEFINED_ICONS[object.type]?.label}</div>
+              <div className="text-gray-500">{categoryLabel}</div>
             </div>
           </Tooltip>
           <Popup>
             <div className="min-w-[180px]">
               <div className="text-sm font-semibold mb-1">{titleBlock?.data?.text || 'Namnlöst'}</div>
-              <div className="text-xs text-gray-600 mb-2">{PREDEFINED_ICONS[object.type]?.label}</div>
+              <div className="text-xs text-gray-600 mb-2">{categoryLabel}</div>
               <button
                 onClick={() => onSelectObject(object)}
                 className="px-3 py-1 rounded bg-blue-500 hover:bg-blue-600 text-white text-xs"
@@ -592,7 +995,7 @@ function MapView({ objects, onSelectObject, currentUser, userLocation }) {
         <Tooltip direction="top" offset={[0, -8]} opacity={0.9}>
           <div className="text-xs">
             <div className="font-semibold">{titleBlock?.data?.text || 'Namnlöst'}</div>
-            <div className="text-gray-500">{PREDEFINED_ICONS[object.type]?.label}</div>
+            <div className="text-gray-500">{categoryLabel}</div>
           </div>
         </Tooltip>
       </Marker>
@@ -635,7 +1038,7 @@ function MapView({ objects, onSelectObject, currentUser, userLocation }) {
   };
 
   return (
-    <div className="h-[calc(100vh-140px)] w-full relative z-0">
+    <div className="w-full relative z-10" style={{ height: 'calc(100vh - 200px)' }}>
       <MapContainer center={center} zoom={objectsWithLocation.length > 0 ? 7 : 6} style={{ height: '100%', width: '100%' }}>
         <TileLayer
           attribution='&copy; <a href="https://carto.com/">CARTO</a>'
@@ -664,7 +1067,7 @@ function MapView({ objects, onSelectObject, currentUser, userLocation }) {
   );
 }
 
-function MapPicker({ onSelect, onClose, initialPosition }) {
+function MapPicker({ onSelect, onClose, initialPosition, userLocation }) {
   const [position, setPosition] = useState(initialPosition || [59.33, 18.06]);
 
   function LocationMarker() {
@@ -708,10 +1111,10 @@ function MapPicker({ onSelect, onClose, initialPosition }) {
   );
 }
 
-function CreateObjectModal({ onClose, onSave, editObject, saving, availableParents, defaultParentId, userLocation }) {
+function CreateObjectModal({ onClose, onSave, editObject, saving, availableParents, defaultParentId, userLocation, categories }) {
   const isEdit = !!editObject;
-  // Default type: use parent's type if defaultParentId is provided (for add-child flow)
-  const defaultTypeFromParent = defaultParentId ? (availableParents.find(p => p.id === defaultParentId)?.type || '🏡') : '🏡';
+  // Default type: use parent's type if defaultParentId is provided, or first category
+  const defaultTypeFromParent = defaultParentId ? (availableParents.find(p => p.id === defaultParentId)?.type || (categories[0]?.id || 'property')) : (categories[0]?.id || 'property');
   const [selectedType, setSelectedType] = useState(editObject?.type || defaultTypeFromParent);
   const [parentId, setParentId] = useState(editObject?.parentId || defaultParentId || '');
   const [inheritLocation, setInheritLocation] = useState(false);
@@ -857,12 +1260,21 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-3">Välj typ</label>
               <div className="grid grid-cols-3 gap-3">
-                {Object.entries(PREDEFINED_ICONS).map(([emoji, { icon: Icon, label }]) => (
-                  <button key={emoji} type="button" onClick={() => setSelectedType(emoji)} disabled={saving} className={`p-4 rounded-xl border-2 transition-all ${selectedType === emoji ? 'border-blue-500 bg-blue-500/20' : 'border-white/10 bg-white/5 hover:border-white/20'} ${saving ? 'opacity-50' : ''}`}>
-                    <Icon size={24} className="mx-auto mb-2 text-blue-400" />
-                    <div className="text-xs text-gray-300">{label}</div>
-                  </button>
-                ))}
+                {categories.map(cat => {
+                  const Icon = getIconComponent(cat.icon);
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setSelectedType(cat.id)}
+                      disabled={saving}
+                      className={`p-4 rounded-xl border-2 transition-all ${selectedType === cat.id ? 'border-blue-500 bg-blue-500/20' : 'border-white/10 bg-white/5 hover:border-white/20'} ${saving ? 'opacity-50' : ''}`}
+                    >
+                      <Icon size={24} className="mx-auto mb-2 text-blue-400" />
+                      <div className="text-xs text-gray-300">{cat.label}</div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
             <div>
@@ -967,7 +1379,7 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
                 <div className="flex gap-2">
                   <label className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center gap-2">
                     <Upload size={18} />
-                    <span className="text-sm font-medium">{uploadingImage ? 'Laddar...' : 'Ladda upp bild'}</span>
+                    <span className="text-sm font-medium">{uploadingImage ? 'Laddar...' : 'Ladda upp'}</span>
                     <input
                       ref={fileInputRef}
                       type="file"
@@ -1037,10 +1449,17 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <label className="text-sm font-medium text-gray-300 flex items-center gap-2">
-                          {block.type === 'text' && <>📝 Anteckning</>}
-                          {block.type === 'checklist' && <><Check size={14} className="text-blue-400" /> Checklista</>}
-                          {block.type === 'todo' && <><Circle size={14} className="text-green-400" /> Att göra</>}
-                          <span className="text-gray-500 text-xs">(dra eller använd pilar)</span>
+                          {block.type === 'text' && (
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-400">
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                          )}
+                          {block.type === 'text' && 'Anteckning'}
+                          {block.type === 'checklist' && <Check size={14} className="text-blue-400" />}
+                          {block.type === 'checklist' && 'Checklista'}
+                          {block.type === 'todo' && <Circle size={14} className="text-green-400" />}
+                          {block.type === 'todo' && 'Att göra'}
                         </label>
                       </div>
                       <div className="flex items-center gap-2">
@@ -1068,9 +1487,10 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
                           type="button"
                           onClick={() => setCustomBlocks(customBlocks.filter(b => b.id !== block.id))}
                           disabled={saving}
-                          className="text-red-400 hover:text-red-300 text-sm transition-all disabled:opacity-50"
+                          className="w-7 h-7 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all disabled:opacity-50 flex items-center justify-center"
+                          title="Ta bort"
                         >
-                          ✕ Ta bort
+                          <X size={14} />
                         </button>
                       </div>
                     </div>
@@ -1126,7 +1546,7 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
           <div className="flex gap-3 pt-6 border-t border-white/10">
             <button type="button" onClick={onClose} disabled={saving} className="flex-1 px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 transition-all disabled:opacity-50">Avbryt</button>
             <button type="button" onClick={handleSubmit} disabled={saving} className="flex-1 px-6 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2">
-              {saving ? <><Loader size={18} className="animate-spin" /><span>Sparar...</span></> : <span>{isEdit ? 'Spara ändringar' : 'Skapa objekt'}</span>}
+              {saving ? <><Loader size={18} className="animate-spin" /><span>Sparar...</span></> : <span>{isEdit ? 'Uppdatera' : 'Skapa objekt'}</span>}
             </button>
           </div>
         </div>
@@ -1136,6 +1556,7 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
           onSelect={handleMapSelect}
           onClose={() => setShowMapPicker(false)}
           initialPosition={lat && lng ? [lat, lng] : null}
+          userLocation={userLocation}
         />
       )}
     </div>
@@ -1144,6 +1565,9 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
 
 function App() {
   const [user, setUser] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [favorites, setFavorites] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [objects, setObjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1155,9 +1579,22 @@ function App() {
   const [defaultParentId, setDefaultParentId] = useState(null);
   const [viewMode, setViewMode] = useState('list');
   const [userLocation, setUserLocation] = useState(null);
-  const [sortByDistance, setSortByDistance] = useState(false);
+  const [sortByDistance, setSortByDistance] = useState(() => {
+    const saved = localStorage.getItem('sortByDistance');
+    return saved === 'true';
+  });
+  const [searchQuery, setSearchQuery] = useState('');
+  const [maxDistanceKm, setMaxDistanceKm] = useState(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [showCategoryAdmin, setShowCategoryAdmin] = useState(false);
+  const [keepScreenOn, setKeepScreenOn] = useState(() => {
+    const saved = localStorage.getItem('keepScreenOn');
+    return saved === 'true';
+  });
   const headerRef = useRef(null);
   const [headerHeight, setHeaderHeight] = useState(64);
+  const wakeLockRef = useRef(null);
 
   // Distance helper (Haversine formula)
   const getDistance = (lat1, lng1, lat2, lng2) => {
@@ -1171,15 +1608,112 @@ function App() {
     return R * c;
   };
 
-  const categories = [
-    { id: 'all', label: 'Alla', icon: Star },
-    { id: '🏡', label: 'Fastigheter', icon: Home },
-    { id: '☕', label: 'Kaféer', icon: Coffee },
-    { id: '🏞️', label: 'Natur', icon: Mountain }
-  ];
+  const getObjectDistance = (obj) => {
+    if (!userLocation) return undefined;
+    const locBlock = obj.blocks?.find(b => b.type === 'location');
+    if (locBlock?.data?.lat && locBlock?.data?.lng) {
+      return getDistance(userLocation.lat, userLocation.lng, locBlock.data.lat, locBlock.data.lng);
+    }
+    return undefined;
+  };
 
+  // Save sortByDistance preference
   useEffect(() => {
-    const unsubAuth = onAuthStateChanged(auth, (u) => setUser(u));
+    localStorage.setItem('sortByDistance', sortByDistance.toString());
+  }, [sortByDistance]);
+
+  // Wake Lock för att hålla skärmen påslagen
+  useEffect(() => {
+    localStorage.setItem('keepScreenOn', keepScreenOn.toString());
+
+    const requestWakeLock = async () => {
+      if (!keepScreenOn) {
+        // Release wake lock if turned off
+        if (wakeLockRef.current) {
+          try {
+            await wakeLockRef.current.release();
+            wakeLockRef.current = null;
+          } catch (err) {
+            console.error('Error releasing wake lock:', err);
+          }
+        }
+        return;
+      }
+
+      // Request wake lock if supported
+      if ('wakeLock' in navigator) {
+        try {
+          wakeLockRef.current = await navigator.wakeLock.request('screen');
+          console.log('Wake Lock aktiverad');
+
+          // Re-acquire wake lock when visibility changes
+          wakeLockRef.current.addEventListener('release', () => {
+            console.log('Wake Lock released');
+          });
+        } catch (err) {
+          console.error('Wake Lock fel:', err);
+        }
+      }
+    };
+
+    requestWakeLock();
+
+    // Re-acquire wake lock on page visibility change
+    const handleVisibilityChange = () => {
+      if (keepScreenOn && document.visibilityState === 'visible') {
+        requestWakeLock();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (wakeLockRef.current) {
+        wakeLockRef.current.release().catch(console.error);
+      }
+    };
+  }, [keepScreenOn]);
+
+  // Auth listener + check admin status
+  useEffect(() => {
+    const unsubAuth = onAuthStateChanged(auth, async (u) => {
+      setUser(u);
+      if (u) {
+        // Check if user is admin
+        try {
+          console.log('Fetching user doc for:', u.uid);
+          const userDoc = await getDoc(doc(db, 'users', u.uid));
+          console.log('User doc exists:', userDoc.exists());
+          if (userDoc.exists()) {
+            console.log('User doc data:', userDoc.data());
+            const adminFlag = userDoc.data()?.isAdmin === true;
+            const userFavorites = userDoc.data()?.favorites || [];
+            console.log('isAdmin flag:', adminFlag);
+            setIsAdmin(adminFlag);
+            setFavorites(userFavorites);
+          } else {
+            console.log('User doc does not exist - creating one');
+            // Create user doc if it doesn't exist
+            await setDoc(doc(db, 'users', u.uid), {
+              email: u.email,
+              isAdmin: false,
+              favorites: [],
+              createdAt: Timestamp.now()
+            });
+            setIsAdmin(false);
+            setFavorites([]);
+          }
+        } catch (err) {
+          console.error('Error fetching user doc:', err);
+          setIsAdmin(false);
+          setFavorites([]);
+        }
+      } else {
+        setIsAdmin(false);
+        setFavorites([]);
+      }
+    });
     return () => unsubAuth();
   }, []);
 
@@ -1220,6 +1754,58 @@ function App() {
     return () => unsub();
   }, []);
 
+  // Listen to categories
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'categories'), (snap) => {
+      const cats = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.order - b.order);
+      console.log('Categories loaded:', cats.length, 'isAdmin:', isAdmin, 'user:', !!user);
+      setCategories(cats);
+    });
+    return () => unsub();
+  }, []);
+
+  // Seed initial categories if needed
+  useEffect(() => {
+    const seedCategories = async () => {
+      if (!isAdmin || !user) {
+        console.log('Not seeding - isAdmin:', isAdmin, 'user:', !!user);
+        return;
+      }
+
+      // Check if categories exist
+      const snap = await getDoc(doc(db, 'categories', 'property'));
+      if (snap.exists()) {
+        console.log('Categories already exist, skipping seed');
+        return;
+      }
+
+      console.log('Seeding initial categories...');
+      const initialCategories = [
+        { id: 'property', label: 'Fastigheter', icon: 'Home', color: '#6B7280', order: 1 },
+        { id: 'cafe', label: 'Kaféer', icon: 'Coffee', color: '#92400E', order: 2 },
+        { id: 'nature', label: 'Natur', icon: 'Mountain', color: '#065F46', order: 3 }
+      ];
+
+      try {
+        for (const cat of initialCategories) {
+          await setDoc(doc(db, 'categories', cat.id), {
+            label: cat.label,
+            icon: cat.icon,
+            color: cat.color,
+            order: cat.order,
+            createdAt: Timestamp.now(),
+            createdBy: user.uid
+          });
+        }
+        console.log('Categories seeded successfully');
+      } catch (err) {
+        console.error('Error seeding categories:', err);
+      }
+    };
+
+    seedCategories();
+  }, [isAdmin, user]);
+
   useEffect(() => {
     if (!selectedObject) return;
     const fresh = objects.find(o => o.id === selectedObject.id);
@@ -1232,7 +1818,7 @@ function App() {
 
   // Lock background scroll when any modal is open
   useEffect(() => {
-    const hasModalOpen = !!selectedObject || !!showCreateModal;
+    const hasModalOpen = !!selectedObject || !!showCreateModal || !!showMenu;
     const previousOverflow = document.body.style.overflow;
     if (hasModalOpen) {
       document.body.style.overflow = 'hidden';
@@ -1242,19 +1828,60 @@ function App() {
     return () => {
       document.body.style.overflow = previousOverflow;
     };
-  }, [selectedObject, showCreateModal]);
+  }, [selectedObject, showCreateModal, showMenu]);
 
-  const filteredObjects = activeCategory === 'all' ? objects : objects.filter(o => o.type === activeCategory);
+  const searchTerm = searchQuery.trim().toLowerCase();
+  const matchesSearch = (obj) => {
+    if (!searchTerm) return true;
+    const values = [];
+    const titleBlock = obj.blocks?.find(b => b.type === 'title');
+    if (titleBlock?.data?.text) values.push(titleBlock.data.text);
+    const locationBlock = obj.blocks?.find(b => b.type === 'location');
+    if (locationBlock?.data?.address) values.push(locationBlock.data.address);
+    obj.blocks?.forEach(block => {
+      if (block.type === 'text' && block.data?.text) {
+        values.push(block.data.text);
+      }
+      if ((block.type === 'checklist' || block.type === 'todo') && Array.isArray(block.data?.items)) {
+        block.data.items.forEach(item => {
+          if (item?.text) values.push(item.text);
+        });
+      }
+    });
+    return values.some(v => v.toString().toLowerCase().includes(searchTerm));
+  };
+
+  const filteredObjects = activeCategory === 'all' 
+    ? objects 
+    : activeCategory === 'favorites'
+    ? objects.filter(o => favorites.includes(o.id))
+    : objects.filter(o => o.type === activeCategory);
   let displayObjects = showAllObjects ? filteredObjects : filteredObjects.filter(o => !o.parentId);
+  
+  // Apply search filter - include parents if any child matches
+  if (searchTerm) {
+    displayObjects = displayObjects.filter(obj => {
+      // Check if object itself matches
+      if (matchesSearch(obj)) return true;
+      // Check if any child matches
+      const children = objects.filter(o => o.parentId === obj.id);
+      return children.some(child => matchesSearch(child));
+    });
+  }
+
+  if (maxDistanceKm && userLocation) {
+    displayObjects = displayObjects.filter(obj => {
+      const dist = getObjectDistance(obj);
+      return typeof dist === 'number' && dist <= maxDistanceKm;
+    });
+  }
   
   // Apply distance sorting if enabled
   if (sortByDistance && userLocation) {
     displayObjects = [...displayObjects].sort((a, b) => {
-      const locBlockA = a.blocks?.find(b => b.type === 'location');
-      const locBlockB = b.blocks?.find(b => b.type === 'location');
-      const distA = (locBlockA?.data?.lat && locBlockA?.data?.lng) ? getDistance(userLocation.lat, userLocation.lng, locBlockA.data.lat, locBlockA.data.lng) : Infinity;
-      const distB = (locBlockB?.data?.lat && locBlockB?.data?.lng) ? getDistance(userLocation.lat, userLocation.lng, locBlockB.data.lat, locBlockB.data.lng) : Infinity;
-      return distA - distB;
+      const distA = getObjectDistance(a);
+      const distB = getObjectDistance(b);
+      return (distA ?? Infinity) - (distB ?? Infinity);
     });
   }
 
@@ -1270,6 +1897,27 @@ function App() {
     try {
       await signOut(auth);
     } catch (err) {}
+  };
+
+  const handleToggleFavorite = async (objectId) => {
+    if (!user) return;
+    
+    const isFavorite = favorites.includes(objectId);
+    const newFavorites = isFavorite 
+      ? favorites.filter(id => id !== objectId)
+      : [...favorites, objectId];
+    
+    setFavorites(newFavorites);
+    
+    try {
+      await updateDoc(doc(db, 'users', user.uid), {
+        favorites: newFavorites
+      });
+    } catch (err) {
+      console.error('Error updating favorites:', err);
+      // Revert on error
+      setFavorites(favorites);
+    }
   };
 
   const handleBlockUpdate = async (objectId, blockIndex, newBlockData) => {
@@ -1364,7 +2012,18 @@ function App() {
     >
       <header ref={headerRef} className="bg-gray-900/50 backdrop-blur-xl border-b border-white/10 sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
-          <div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowMenu(true)}
+              className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all"
+              title="Meny"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+              </svg>
+            </button>
             <h1 className="text-2xl font-bold text-white">OurSpots</h1>
           </div>
           <div>
@@ -1393,44 +2052,139 @@ function App() {
         <div className="max-w-6xl mx-auto px-4 py-3">
           <div className="flex gap-2 overflow-x-auto items-center justify-between">
             <div className="flex gap-2 overflow-x-auto">
+              {/* Always show "Alla" category */}
+              <button
+                onClick={() => setActiveCategory('all')}
+                className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl whitespace-nowrap transition-all ${activeCategory === 'all' ? 'bg-blue-500 text-white' : 'bg-white/20 text-gray-200 hover:bg-white/30'}`}
+              >
+                <MapIcon size={16} />
+                <span className="text-sm font-medium">Alla</span>
+              </button>
+              
+              {/* Favorites category (only for logged in users) */}
+              {user && (
+                <button
+                  onClick={() => setActiveCategory('favorites')}
+                  className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl whitespace-nowrap transition-all ${activeCategory === 'favorites' ? 'bg-yellow-500 text-white' : 'bg-white/20 text-gray-200 hover:bg-white/30'}`}
+                >
+                  <Star size={16} className={activeCategory === 'favorites' ? 'fill-white' : ''} />
+                  <span className="text-sm font-medium hidden sm:inline">Favoriter</span>
+                  {favorites.length > 0 && (
+                    <span className="px-1.5 py-0.5 rounded-full bg-white/20 text-xs">
+                      {favorites.length}
+                    </span>
+                  )}
+                </button>
+              )}
+              
+              {/* Dynamic categories from Firestore */}
               {categories.map(cat => {
-                const IconComponent = cat.icon;
+                const IconComponent = getIconComponent(cat.icon);
                 return (
-                  <button key={cat.id} onClick={() => setActiveCategory(cat.id)} className={`flex items-center gap-2 px-4 py-2 rounded-xl whitespace-nowrap transition-all ${activeCategory === cat.id ? 'bg-blue-500 text-white' : 'bg-white/20 text-gray-200 hover:bg-white/30'}`}>
+                  <button
+                    key={cat.id}
+                    onClick={() => setActiveCategory(cat.id)}
+                    className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl whitespace-nowrap transition-all ${activeCategory === cat.id ? 'bg-blue-500 text-white' : 'bg-white/20 text-gray-200 hover:bg-white/30'}`}
+                  >
                     <IconComponent size={16} />
-                    <span className="text-sm font-medium">{cat.label}</span>
+                    <span className="text-sm font-medium hidden sm:inline">{cat.label}</span>
                   </button>
                 );
               })}
             </div>
-            {userLocation && (
-              <button 
-                onClick={() => setSortByDistance(!sortByDistance)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-xl whitespace-nowrap transition-all text-sm font-medium ${sortByDistance ? 'bg-purple-500/80 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20'}`}
-                title={sortByDistance ? 'Sorterat efter avstånd' : 'Sortera efter avstånd'}
+            <div className="flex gap-2 items-center">
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl whitespace-nowrap transition-all text-sm font-medium ${showFilters ? 'bg-blue-500 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20'}`}
+                title={showFilters ? 'Dölj filter' : 'Visa filter'}
               >
-                <Navigation size={14} />
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="4" y1="21" x2="4" y2="14"></line>
+                  <line x1="4" y1="10" x2="4" y2="3"></line>
+                  <line x1="12" y1="21" x2="12" y2="12"></line>
+                  <line x1="12" y1="8" x2="12" y2="3"></line>
+                  <line x1="20" y1="21" x2="20" y2="16"></line>
+                  <line x1="20" y1="12" x2="20" y2="3"></line>
+                  <line x1="1" y1="14" x2="7" y2="14"></line>
+                  <line x1="9" y1="8" x2="15" y2="8"></line>
+                  <line x1="17" y1="16" x2="23" y2="16"></line>
+                </svg>
               </button>
-            )}
+            </div>
           </div>
+          {showFilters && (
+            <div className="mt-3 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="relative">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-white/10 text-white placeholder:text-gray-400 rounded-xl pl-10 pr-3 py-2.5 border border-white/10 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/30 transition-all"
+                  placeholder="Sök på namn eller innehåll"
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {userLocation && (
+                  <button 
+                    onClick={() => setSortByDistance(!sortByDistance)}
+                    className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl transition-all text-sm font-medium ${sortByDistance ? 'bg-purple-500/80 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20 border border-white/10'}`}
+                  >
+                    <Navigation size={16} />
+                    <span>Sortera efter avstånd</span>
+                  </button>
+                )}
+                <div className="flex-1">
+                  <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
+                    <span>Max avstånd</span>
+                    <span className="text-gray-200">
+                      {!userLocation ? 'Plats krävs' : maxDistanceKm ? `${maxDistanceKm} km` : 'Alla avstånd'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="range"
+                      min="1"
+                      max="50"
+                      step="1"
+                      value={maxDistanceKm ?? 25}
+                      onChange={(e) => setMaxDistanceKm(Number(e.target.value))}
+                      disabled={!userLocation}
+                      className="flex-1 accent-blue-500 disabled:opacity-40"
+                    />
+                    <button
+                      onClick={() => setMaxDistanceKm(null)}
+                      disabled={!maxDistanceKm}
+                      className="text-xs px-3 py-1 rounded-lg bg-white/10 text-gray-300 hover:bg-white/20 border border-white/10 disabled:opacity-40"
+                    >
+                      Rensa
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
       
-      <main className="max-w-6xl mx-auto px-4 py-6">
+      <main className="max-w-6xl mx-auto px-4">
         {viewMode === 'list' ? (
-          <>
+          <div className="py-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {displayObjects.map(obj => {
                 const childCount = objects.filter(o => o.parentId === obj.id).length;
-                let distance = undefined;
-                if (userLocation) {
-                  const locBlock = obj.blocks?.find(b => b.type === 'location');
-                  if (locBlock?.data?.lat && locBlock?.data?.lng) {
-                    distance = getDistance(userLocation.lat, userLocation.lng, locBlock.data.lat, locBlock.data.lng);
-                  }
-                }
+                const distance = getObjectDistance(obj);
                 return (
-                  <ObjectCard key={obj.id} object={obj} onClick={() => setSelectedObject(obj)} currentUser={user} childCount={childCount} distance={distance} />
+                  <ObjectCard 
+                    key={obj.id} 
+                    object={obj} 
+                    onClick={() => setSelectedObject(obj)} 
+                    currentUser={user} 
+                    childCount={childCount} 
+                    distance={distance} 
+                    categories={categories}
+                    isFavorite={favorites.includes(obj.id)}
+                    onToggleFavorite={handleToggleFavorite}
+                  />
                 );
               })}
             </div>
@@ -1441,9 +2195,9 @@ function App() {
                 {!user && <p className="text-sm mt-2">Logga in för att skapa objekt!</p>}
               </div>
             )}
-          </>
+          </div>
         ) : (
-          <MapView objects={displayObjects} onSelectObject={setSelectedObject} currentUser={user} userLocation={userLocation} />
+          <MapView objects={displayObjects} onSelectObject={setSelectedObject} currentUser={user} userLocation={userLocation} categories={categories} />
         )}
       </main>
 
@@ -1466,11 +2220,84 @@ function App() {
       )}
 
       {selectedObject && (
-        <ObjectDetail object={selectedObject} onClose={() => setSelectedObject(null)} onEdit={handleEdit} onDelete={handleDeleteObject} onBlockUpdate={handleBlockUpdate} currentUser={user} allObjects={objects} onNavigate={(obj) => setSelectedObject(obj)} />
+        <ObjectDetail object={selectedObject} onClose={() => setSelectedObject(null)} onEdit={handleEdit} onDelete={handleDeleteObject} onBlockUpdate={handleBlockUpdate} currentUser={user} allObjects={objects} onNavigate={(obj) => setSelectedObject(obj)} categories={categories} isAdmin={isAdmin} />
       )}
 
       {showCreateModal && (
-        <CreateObjectModal onClose={() => { setShowCreateModal(false); setEditingObject(null); setDefaultParentId(null); }} onSave={handleSaveObject} editObject={editingObject} saving={saving} availableParents={objects.filter(o => o.id !== editingObject?.id)} defaultParentId={defaultParentId} userLocation={userLocation} />
+        <CreateObjectModal onClose={() => { setShowCreateModal(false); setEditingObject(null); setDefaultParentId(null); }} onSave={handleSaveObject} editObject={editingObject} saving={saving} availableParents={objects.filter(o => o.id !== editingObject?.id)} defaultParentId={defaultParentId} userLocation={userLocation} categories={categories} />
+      )}
+
+      {showCategoryAdmin && (
+        <CategoryAdminModal
+          categories={categories}
+          onClose={() => setShowCategoryAdmin(false)}
+          currentUser={user}
+          objects={objects}
+        />
+      )}
+
+      {showMenu && (
+        <>
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[2000]" onClick={() => setShowMenu(false)}></div>
+          <div className="fixed top-0 left-0 h-full w-80 bg-gray-950/98 backdrop-blur-xl border-r border-white/10 z-[2001] shadow-2xl animate-in slide-in-from-left duration-300">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-8">
+                <h2 className="text-2xl font-bold text-white">Meny</h2>
+                <button
+                  onClick={() => setShowMenu(false)}
+                  className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="space-y-2">
+                {isAdmin && (
+                  <div className="mb-4 pb-4 border-b border-white/10">
+                    <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">Admin</div>
+                    <button
+                      onClick={() => {
+                        setShowCategoryAdmin(true);
+                        setShowMenu(false);
+                      }}
+                      className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-all group"
+                    >
+                      <Settings size={18} className="text-blue-400" />
+                      <span className="font-medium">Hantera kategorier</span>
+                    </button>
+                  </div>
+                )}
+                <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">Inställningar</div>
+                <div className="space-y-2">
+                  <div className="p-3 rounded-xl bg-white/5 border border-white/10">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-white">Håll skärmen påslagen</div>
+                        <div className="text-xs text-gray-400 mt-0.5">Förhindrar att skärmen släcks</div>
+                      </div>
+                      <button
+                        onClick={() => setKeepScreenOn(!keepScreenOn)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          keepScreenOn ? 'bg-blue-500' : 'bg-gray-600'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            keepScreenOn ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                    {keepScreenOn && !('wakeLock' in navigator) && (
+                      <div className="mt-2 text-xs text-yellow-400">
+                        ⚠️ Din webbläsare stöder inte denna funktion
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
