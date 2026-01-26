@@ -14,7 +14,7 @@ OurSpots är en platsbaserad app med premium dark theme som låter användare:
 - Se objekt på karta med avstånd och navigation
 - Publik vy för externa användare
 
-## 🏗️ Nuvarande Status (v1.3 - Admin-verktyg & Stabilitet)
+## 🏗️ Nuvarande Status (v1.4 - Navigation & UX-förbättringar)
 
 ### ✅ Implementerat
 
@@ -53,6 +53,8 @@ OurSpots är en platsbaserad app med premium dark theme som låter användare:
 #### Karta & Position
 - **Kartintegration** - Leaflet + react-leaflet med CARTO voyager tiles (helt gratis)
 - **Fullscreen kartvy** - Floating toggle-knapp för att växla mellan list- och kartvy
+- **Auto-scroll till toppen** - Kartan visas alltid korrekt utan vit yta (automatisk scroll vid växling)
+- **Dynamisk kartcentrering** - "Visa på karta" centrerar faktiskt på rätt position med zoom 14
 - **Markörtooltips** - Desktop: hover-tooltip, Mobile: tap popup med "Visa detaljer"-knapp
 - **GPS-positionering** - Fångar användares aktuella position automatiskt vid app-start
 - **Interaktiv kartplockning** - Modal för att välja plats genom att klicka på kartan
@@ -61,6 +63,18 @@ OurSpots är en platsbaserad app med premium dark theme som låter användare:
 - **Avståndssorterad lista** - Toggle-knapp för att sortera objekt från närmast till längst bort
 - **Marker clustering** - Stora, tydliga kluster som skalar med antal
 - **Markörfärger per kategori** - Dynamiska färger baserat på kategoriinställningar
+
+#### Navigation & Vägbeskrivning
+- **Klickbar location på kort** - Platsinformation är klickbar direkt på objektkort (ingen modal behövs)
+- **Navigation-meny från kort** - Klicka på platstext för att öppna navigation-alternativ
+- **Navigation-meny i objekt** - Samma meny på varje location-block i detaljvyn
+- **Tre navigation-alternativ:**
+  - **Visa på karta** - Stänger modal, byter till kartvy, centrerar på position
+  - **Google Maps** - Öppnar Google Maps med vägbeskrivning i ny flik
+  - **Waze** - Öppnar Waze-app med navigation i ny flik
+- **Subtil hover-effekt** - Location-text blir blå vid hover, indikerar klickbarhet
+- **Meny döljs utanför klick** - Click-outside detection för smidig UX
+- **Kartknapp döljs vid modal** - Ingen visuell kollision mellan kartknapp och öppen modal
 
 #### Offline & Quick Capture (🍄 Svampknapp)
 - **Quick GPS Capture** - Orange flytande knapp med Target-ikon för snabb positionslagring
@@ -75,6 +89,7 @@ OurSpots är en platsbaserad app med premium dark theme som låter användare:
 - **Automatisk clustering** - Markörer grupperas på zoom-out, separeras på zoom-in
 - **Badge-indikatorer** - Visar antal sparade captures på både knapp och meny
 - **Villkorlig synlighet** - "Visa pinningar" visas bara när svampknappen är aktiverad
+- **Animerad svampknapp** - Glider mjukt ner när modal öppnas (fyller mellanrum när kartknappen döljs)
 - **Perfekt för svampplockning** - Markera flera kantarellställen på samma objekt
 
 #### Hierarki & Organisation
@@ -97,6 +112,7 @@ OurSpots är en platsbaserad app med premium dark theme som låter användare:
 - **Collapsed hantering** - Redigera/Ta bort döljs i expanderbar "Hantera objekt"-sektion
 - **Förbättrade block-knappar** - Tydlig separering och ikoner för "Lägg till block"
 - **Stäng detaljmodal via overlay** - Klick utanför modalen för att stänga
+- **Kartknapp döljs vid modal** - Ingen visuell kollision mellan knappar och öppen modal
 - **Ägarskap** - Objekt märks med "Ditt" för inloggad användare
 - **Förbättrad favoritknapp** - Större träffyta och fixad undefined-bug för stabil favorithantering
 - **Omstrukturerad burgermeny** - Inställningar först, Snabbpinningar sist med villkorlig visning
