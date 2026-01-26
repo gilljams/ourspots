@@ -2987,7 +2987,7 @@ function App() {
                     <div className="p-3 rounded-xl bg-white/5 border border-white/10">
                       <div className="flex-1 mb-2">
                         <div className="text-sm font-medium text-white">Snabbpinning går till objekt</div>
-                        <div className="text-xs text-gray-400 mt-0.5">Lägg till positioner direkt på valt objekt</div>
+                        <div className="text-xs text-gray-400 mt-0.5">Lägg till positioner direkt på valt objekt ({objects?.length || 0} objekt)</div>
                       </div>
                       <select
                         value={quickCaptureObjectId}
@@ -2997,10 +2997,14 @@ function App() {
                         <option value="">Ingen (spara i lista)</option>
                         {objects && user && objects
                           .filter(obj => obj.ownerId === user.uid)
-                          .sort((a, b) => a.name.localeCompare(b.name))
+                          .map(obj => ({
+                            ...obj,
+                            displayName: obj.blocks?.find(b => b.type === 'title')?.data?.text || 'Namnlöst objekt'
+                          }))
+                          .sort((a, b) => a.displayName.localeCompare(b.displayName))
                           .map(obj => (
                             <option key={obj.id} value={obj.id}>
-                              {obj.name}
+                              {obj.displayName}
                             </option>
                           ))}
                       </select>
