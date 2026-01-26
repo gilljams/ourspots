@@ -14,7 +14,7 @@ OurSpots är en platsbaserad app med premium dark theme som låter användare:
 - Se objekt på karta med avstånd och navigation
 - Publik vy för externa användare
 
-## 🏗️ Nuvarande Status (v1.1 - UX-förbättringar & Optimeringar)
+## 🏗️ Nuvarande Status (v1.2 - Svampknapp & Offline-plockning)
 
 ### ✅ Implementerat
 
@@ -62,12 +62,23 @@ OurSpots är en platsbaserad app med premium dark theme som låter användare:
 - **Marker clustering** - Stora, tydliga kluster som skalar med antal
 - **Markörfärger per kategori** - Dynamiska färger baserat på kategoriinställningar
 
+#### Offline & Quick Capture (🍄 Svampknapp)
+- **Quick GPS Capture** - Orange flytande knapp med Target-ikon för snabb positionslagring
+- **Offline-plockning** - Spara GPS-positioner i skogen utan uppkoppling (localStorage)
+- **Capture-lista** - Modal med alla sparade pinningar inkl. tidsstämplar och koordinater
+- **Radera captures** - Ta bort enskilda pinningar från listan
+- **Skapa från capture** - Omvandla pinning till fullt objekt när du är online igen
+- **Badge-indikatorer** - Visar antal sparade captures på både knapp och meny
+- **Perfekt för svampplockning** - Markera kantarellställen utan att förlora fokus på plockningen
+
 #### Hierarki & Organisation
 - **Hierarki (Parent-Child)** - Organisera objekt som förälder-barn, dela plats mellan nivåer
 - **Location inheritance** - Barn kan ärva förälderns position om de inte har egen
 - **Breadcrumb-navigering** - Visa hierarki: Alla > Förälder > Barn
 - **Child-count badges** - Visa antal barn på parent-kort
 - **Förbättrad parent-navigering** - SVG-ikon och tydlig placering för tillbaka-knapp
+- **Smart parent-dropdown** - Grupperad per kategori med alfabetisk sortering
+- **Hierarkisk visualisering** - Top-objekt först, sedan barn med └─ Symbol (under ParentName)
 
 #### Sök & Filter
 - **Sök & filter** - Sök på objektnamn/innehåll, filtrera på kategori och avstånd (km-slider)
@@ -487,8 +498,19 @@ Detta är en varning från Firebase Auth + GitHub Pages. Kan ignoreras - påverk
 
 ## 📝 Changelog
 
+### v1.2 - Svampknapp & Offline-plockning (2026-01-26)
+- 🍄 **Quick Capture (Svampknapp)** - Orange flytande knapp för snabb GPS-lagring
+- 📍 Offline GPS-plockning med localStorage (perfekt för svampplockning i skogen)
+- 📋 Capture-modal med lista över alla sparade pinningar
+- 🗑️ Ta bort enskilda captures
+- ✨ Skapa fullständigt objekt från sparad capture
+- 🔢 Badge-indikatorer som visar antal captures
+- 🌲 Use case: Markera kantarellställen utan uppkoppling, skapa objekt senare
+
 ### v1.1 - UX-förbättringar & Optimeringar (2026-01-26)
 - 🎯 Collapsed "Hantera objekt"-sektion för renare detaljvy
+- 🗂️ Smart parent-dropdown med kategorisering och hierarkisk visualisering
+- 📊 Parent-dropdown visar top-objekt först, sedan barn med └─ Symbol
 - ♻️ Reset-funktionalitet för Todo/Checklist (nollställ alla markeringar)
 - 🏷️ Dynamiska block-titlar för text/checklist/todo-block
 - 📦 Expand/Collapse för alla block i detaljvy
@@ -558,9 +580,10 @@ Detta är en varning från Firebase Auth + GitHub Pages. Kan ignoreras - påverk
 - [x] Optimerad bundle
 
 ### Kort sikt (Q1 2026)
+- [x] Quick Capture (Svampknapp) för offline GPS-plockning ✅ v1.2
 - [ ] PWA-implementation (manifest.json, service worker)
 - [ ] Installera som app
-- [ ] Offline-support
+- [ ] Offline-support för hela appen
 - [ ] Ratings-block (1-5 stjärnor)
 - [ ] Öppettider-block
 - [ ] Kontaktinfo-block
