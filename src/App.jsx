@@ -259,29 +259,103 @@ const TitleBlock = ({ data }) => (
   <h2 className="text-2xl font-bold text-white mb-2">{data.text}</h2>
 );
 
-const LocationBlock = ({ data, inherited, onDelete, canDelete, positionNumber }) => (
-  <div className="py-2 px-3 rounded-lg bg-white/5 border border-white/10 flex items-center gap-2">
-    <MapPin size={16} className="text-blue-400 flex-shrink-0" />
-    {positionNumber && (
-      <span className="text-xs font-semibold text-orange-400 bg-orange-500/20 px-1.5 py-0.5 rounded">
-        Pin {positionNumber}
+const LocationBlock = ({ data, inherited, onDelete, canDelete, positionNumber, onShowOnMap }) => {
+  const [showNavMenu, setShowNavMenu] = React.useState(false);
+  const menuRef = React.useRef(null);
+
+  React.useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setShowNavMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const openGoogleMaps = () => {
+    if (data.lat && data.lng) {
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${data.lat},${data.lng}`, '_blank');
+      setShowNavMenu(false);
+    }
+  };
+
+  const openWaze = () => {
+    if (data.lat && data.lng) {
+      window.open(`https://waze.com/ul?ll=${data.lat},${data.lng}&navigate=yes`, '_blank');
+      setShowNavMenu(false);
+    }
+  };
+
+  const handleShowOnMap = () => {
+    if (onShowOnMap && data.lat && data.lng) {
+      onShowOnMap({ lat: data.lat, lng: data.lng });
+      setShowNavMenu(false);
+    }
+  };
+
+  return (
+    <div className="py-2 px-3 rounded-lg bg-white/5 border border-white/10 flex items-center gap-2">
+      <MapPin size={16} className="text-blue-400 flex-shrink-0" />
+      {positionNumber && (
+        <span className="text-xs font-semibold text-orange-400 bg-orange-500/20 px-1.5 py-0.5 rounded">
+          Pin {positionNumber}
+        </span>
+      )}
+      <span className="text-xs text-gray-200 flex-1">
+        {data.address || (data.lat && data.lng ? `${data.lat.toFixed(6)}, ${data.lng.toFixed(6)}` : 'Ingen plats')}
       </span>
-    )}
-    <span className="text-xs text-gray-200 flex-1">
-      {data.address || (data.lat && data.lng ? `${data.lat.toFixed(6)}, ${data.lng.toFixed(6)}` : 'Ingen plats')}
-    </span>
-    {inherited && <span className="text-xs text-gray-500">(från parent)</span>}
-    {canDelete && onDelete && (
-      <button
-        onClick={onDelete}
-        className="p-1 rounded hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-colors"
-        title="Ta bort position"
-      >
-        <X size={14} />
-      </button>
-    )}
-  </div>
-);
+      {inherited && <span className="text-xs text-gray-500">(från parent)</span>}
+      {data.lat && data.lng && (
+        <div className="relative" ref={menuRef}>
+          <button
+            onClick={() => setShowNavMenu(!showNavMenu)}
+            className="p-1 rounded hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 transition-colors"
+            title="Navigation"
+          >
+            <Navigation size={14} />
+          </button>
+          {showNavMenu && (
+            <div className="absolute right-0 top-8 bg-gray-800 border border-white/20 rounded-lg shadow-xl z-50 min-w-[160px]">
+              {onShowOnMap && (
+                <button
+                  onClick={handleShowOnMap}
+                  className="w-full text-left px-3 py-2 text-xs text-gray-200 hover:bg-white/10 flex items-center gap-2 rounded-t-lg"
+                >
+                  <MapIcon size={12} />
+                  Visa på karta
+                </button>
+              )}
+              <button
+                onClick={openGoogleMaps}
+                className="w-full text-left px-3 py-2 text-xs text-gray-200 hover:bg-white/10 flex items-center gap-2"
+              >
+                <Navigation size={12} />
+                Google Maps
+              </button>
+              <button
+                onClick={openWaze}
+                className="w-full text-left px-3 py-2 text-xs text-gray-200 hover:bg-white/10 flex items-center gap-2 rounded-b-lg"
+              >
+                <Navigation size={12} />
+                Waze
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+      {canDelete && onDelete && (
+        <button
+          onClick={onDelete}
+          className="p-1 rounded hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-colors"
+          title="Ta bort position"
+        >
+          <X size={14} />
+        </button>
+      )}
+    </div>
+  );
+};
 
 const ImageBlock = ({ data }) => (
   <div className="w-full h-48 rounded-xl overflow-hidden mb-4 border border-white/10 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.7)]">
@@ -1095,7 +1169,7 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
   );
 }
 
-function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, currentUser, allObjects, onNavigate, categories, isAdmin }) {
+function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, currentUser, allObjects, onNavigate, categories, isAdmin, onShowOnMap }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [expandedBlocks, setExpandedBlocks] = useState(new Set([0])); // First block expanded by default
   const [showManageSection, setShowManageSection] = useState(false);
@@ -1265,6 +1339,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
                           canDelete={canDeleteLocation}
                           onDelete={handleDeleteBlock}
                           positionNumber={locationBlocks.length > 1 ? locationIndex : null}
+                          onShowOnMap={onShowOnMap}
                         />
                       </div>
                     )}
@@ -3045,13 +3120,15 @@ function App() {
           >
             <Plus size={28} />
           </button>
-          <button
-            onClick={() => setViewMode(viewMode === 'list' ? 'map' : 'list')}
-            className="fixed bottom-24 right-6 w-14 h-14 bg-gray-800 hover:bg-gray-700 rounded-full shadow-2xl flex items-center justify-center text-white transition-all hover:scale-110 z-[1200] border border-white/10"
-            title={viewMode === 'list' ? 'Visa karta' : 'Visa lista'}
-          >
-            {viewMode === 'list' ? <MapIcon size={24} /> : <List size={24} />}
-          </button>
+          {!selectedObject && (
+            <button
+              onClick={() => setViewMode(viewMode === 'list' ? 'map' : 'list')}
+              className="fixed bottom-24 right-6 w-14 h-14 bg-gray-800 hover:bg-gray-700 rounded-full shadow-2xl flex items-center justify-center text-white transition-all hover:scale-110 z-[1200] border border-white/10"
+              title={viewMode === 'list' ? 'Visa karta' : 'Visa lista'}
+            >
+              {viewMode === 'list' ? <MapIcon size={24} /> : <List size={24} />}
+            </button>
+          )}
           {/* Quick capture mushroom button */}
           {showQuickCapture && (
             <button
@@ -3071,7 +3148,23 @@ function App() {
       )}
 
       {selectedObject && (
-        <ObjectDetail object={selectedObject} onClose={() => setSelectedObject(null)} onEdit={handleEdit} onDelete={handleDeleteObject} onBlockUpdate={handleBlockUpdate} currentUser={user} allObjects={objects} onNavigate={(obj) => setSelectedObject(obj)} categories={categories} isAdmin={isAdmin} />
+        <ObjectDetail 
+          object={selectedObject} 
+          onClose={() => setSelectedObject(null)} 
+          onEdit={handleEdit} 
+          onDelete={handleDeleteObject} 
+          onBlockUpdate={handleBlockUpdate} 
+          currentUser={user} 
+          allObjects={objects} 
+          onNavigate={(obj) => setSelectedObject(obj)} 
+          categories={categories} 
+          isAdmin={isAdmin}
+          onShowOnMap={(coords) => {
+            setSelectedObject(null);
+            setViewMode('map');
+            // Map will center on coordinates automatically when mapCenter changes
+          }}
+        />
       )}
 
       {showCreateModal && (
