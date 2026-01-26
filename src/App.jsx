@@ -637,7 +637,7 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
                   <Navigation size={14} />
                 </button>
                 {showNavMenu && (
-                  <div className="absolute right-0 bottom-8 bg-gray-800 border border-white/20 rounded-lg shadow-xl z-50 min-w-[160px]">
+                  <div className="absolute right-0 top-8 bg-gray-800 border border-white/20 rounded-lg shadow-xl z-50 min-w-[160px]">
                     {onNavigate && (
                       <button
                         onClick={handleShowOnMap}
