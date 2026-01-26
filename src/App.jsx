@@ -262,7 +262,9 @@ const TitleBlock = ({ data }) => (
 const LocationBlock = ({ data, inherited }) => (
   <div className="py-2 px-3 rounded-lg bg-white/5 border border-white/10 flex items-center gap-2">
     <MapPin size={16} className="text-blue-400 flex-shrink-0" />
-    <span className="text-xs text-gray-200">{data.address}</span>
+    <span className="text-xs text-gray-200">
+      {data.address || (data.lat && data.lng ? `${data.lat.toFixed(6)}, ${data.lng.toFixed(6)}` : 'Ingen plats')}
+    </span>
     {inherited && <span className="text-xs text-gray-500 ml-auto">(från parent)</span>}
   </div>
 );
@@ -2422,7 +2424,8 @@ function App() {
           await updateDoc(doc(db, 'objects', quickCaptureObjectId), {
             blocks: updatedBlocks
           });
-          alert(`🍄 Position tillagd till "${targetObject.name}"!`);
+          const objectName = targetObject.blocks?.find(b => b.type === 'title')?.data?.text || 'objektet';
+          alert(`🍄 Position tillagd till "${objectName}"!`);
           return;
         } catch (err) {
           console.error('Error adding location:', err);
