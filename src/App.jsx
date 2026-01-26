@@ -474,6 +474,11 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
         </>
       ) : null}
       <div className="p-4">
+        {!category && isOwner && (
+          <div className="mb-2 text-xs text-yellow-400 bg-yellow-400/10 px-2 py-1 rounded border border-yellow-400/20">
+            ⚠️ Ogiltig kategori - redigera objektet
+          </div>
+        )}
         <div className="flex items-center gap-2 mb-2">
           <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center flex-shrink-0">
             <IconComponent size={18} className="text-blue-400" />
@@ -1659,6 +1664,11 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
           <div className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-3">Välj typ</label>
+              {selectedType && !categories.find(c => c.id === selectedType) && (
+                <div className="mb-3 text-sm text-yellow-400 bg-yellow-400/10 px-3 py-2 rounded border border-yellow-400/20">
+                  ⚠️ Nuvarande kategori "{selectedType}" finns inte längre. Välj en ny kategori nedan.
+                </div>
+              )}
               <div className="grid grid-cols-3 gap-3">
                 {categories.map(cat => {
                   const Icon = getIconComponent(cat.icon);
