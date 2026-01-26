@@ -2037,6 +2037,9 @@ function App() {
     const saved = localStorage.getItem('showQuickCapture');
     return saved === 'true'; // Default false
   });
+  const [quickCaptureObjectId, setQuickCaptureObjectId] = useState(() => {
+    return localStorage.getItem('quickCaptureObjectId') || '';
+  });
   const headerRef = useRef(null);
   const [headerHeight, setHeaderHeight] = useState(64);
   const seedingRef = useRef(false);
@@ -2124,6 +2127,14 @@ function App() {
   useEffect(() => {
     localStorage.setItem('showQuickCapture', showQuickCapture.toString());
   }, [showQuickCapture]);
+
+  useEffect(() => {
+    if (quickCaptureObjectId) {
+      localStorage.setItem('quickCaptureObjectId', quickCaptureObjectId);
+    } else {
+      localStorage.removeItem('quickCaptureObjectId');
+    }
+  }, [quickCaptureObjectId]);
 
   // Auth listener + check admin status
   useEffect(() => {
@@ -2388,12 +2399,43 @@ function App() {
   };
 
   // Quick capture functions
-  const handleQuickCapture = () => {
+  const handleQuickCapture = async () => {
     if (!userLocation) {
       alert('⚠️ Ingen GPS-position! Vänta tills GPS har hittats.');
       return;
     }
 
+    // If quick capture object is set, add location block directly
+    if (quickCaptureObjectId) {
+      const targetObject = objects.find(o => o.id === quickCaptureObjectId);
+      if (targetObject) {
+        try {
+          const newBlock = {
+            type: 'location',
+            data: {
+              lat: userLocation.lat,
+              lng: userLocation.lng,
+              address: ''
+            }
+          };
+          const updatedBlocks = [...(targetObject.blocks || []), newBlock];
+          await updateDoc(doc(db, 'objects', quickCaptureObjectId), {
+            blocks: updatedBlocks
+          });
+          alert(`🍄 Position tillagd till "${targetObject.name}"!`);
+          return;
+        } catch (err) {
+          console.error('Error adding location:', err);
+          alert('❌ Kunde inte lägga till position');
+          return;
+        }
+      } else {
+        alert('⚠️ Valt objekt finns inte längre. Välj ett nytt i inställningar.');
+        return;
+      }
+    }
+
+    // Fallback: Save to captures list
     const capture = {
       id: `capture_${Date.now()}`,
       lat: userLocation.lat,
@@ -2941,6 +2983,29 @@ function App() {
                       </button>
                     </div>
                   </div>
+                  {showQuickCapture && (
+                    <div className="p-3 rounded-xl bg-white/5 border border-white/10">
+                      <div className="flex-1 mb-2">
+                        <div className="text-sm font-medium text-white">Snabbpinning går till objekt</div>
+                        <div className="text-xs text-gray-400 mt-0.5">Lägg till positioner direkt på valt objekt</div>
+                      </div>
+                      <select
+                        value={quickCaptureObjectId}
+                        onChange={(e) => setQuickCaptureObjectId(e.target.value)}
+                        className="w-full bg-gray-800 border border-white/10 rounded-lg px-3 py-2 text-white text-sm"
+                      >
+                        <option value="">Ingen (spara i lista)</option>
+                        {objects
+                          .filter(obj => obj.ownerId === user?.uid)
+                          .sort((a, b) => a.name.localeCompare(b.name))
+                          .map(obj => (
+                            <option key={obj.id} value={obj.id}>
+                              {obj.name}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
