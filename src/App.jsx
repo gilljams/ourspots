@@ -1456,7 +1456,7 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
   );
 }
 
-function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, currentUser, allObjects, onNavigate, categories, isAdmin, onShowOnMap }) {
+function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, onUpdateShares, currentUser, allObjects, onNavigate, categories, isAdmin, onShowOnMap }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [expandedBlocks, setExpandedBlocks] = useState(new Set([0])); // First block expanded by default
@@ -1757,7 +1757,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
         </div>
       </div>
       {showDeleteConfirm && <DeleteConfirmModal object={object} onConfirm={handleDelete} onCancel={() => setShowDeleteConfirm(false)} />}
-      {showShareModal && <ShareModal object={object} onClose={() => setShowShareModal(false)} onSave={onEdit} currentUser={currentUser} />}
+      {showShareModal && <ShareModal object={object} onClose={() => setShowShareModal(false)} onSave={onUpdateShares} currentUser={currentUser} />}
     </>
   );
 }
@@ -3200,6 +3200,55 @@ function App() {
     try {
       await deleteDoc(doc(db, 'objects', id));
     } catch (err) {
+      console.error('Delete error:', err);
+      alert('Kunde inte ta bort objektet!');
+    }
+  };
+
+  const handleUpdateShares = async (updatedObject) => {
+    if (!user) {
+      alert('Du måste vara inloggad!');
+      return;
+    }
+    
+    try {
+      const updateData = {
+        shares: updatedObject.shares || {},
+        isPublicShared: updatedObject.isPublicShared || false,
+        updatedAt: Timestamp.now()
+      };
+      
+      // Add publicShareToken if enabling public sharing and token doesn't exist
+      if (updatedObject.isPublicShared && updatedObject.publicShareToken) {
+        updateData.publicShareToken = updatedObject.publicShareToken;
+      }
+      
+      await updateDoc(doc(db, 'objects', updatedObject.id), updateData);
+      
+      // Update local state to reflect changes immediately
+      setObjects(prev => prev.map(obj => 
+        obj.id === updatedObject.id 
+          ? { ...obj, ...updateData }
+          : obj
+      ));
+      
+      // Update selectedObject if it's the one being shared
+      setSelectedObject(prev => 
+        prev && prev.id === updatedObject.id 
+          ? { ...prev, ...updateData }
+          : prev
+      );
+      
+    } catch (err) {
+      console.error('Share update error:', err);
+      alert('Kunde inte uppdatera delning!');
+    }
+  };
+
+  const handleDeleteObject = async (id) => {
+    try {
+      await deleteDoc(doc(db, 'objects', id));
+    } catch (err) {
       alert('Kunde inte ta bort!');
     }
   };
@@ -3481,6 +3530,7 @@ function App() {
           onEdit={handleEdit} 
           onDelete={handleDeleteObject} 
           onBlockUpdate={handleBlockUpdate} 
+          onUpdateShares={handleUpdateShares}
           currentUser={user} 
           allObjects={objects} 
           onNavigate={(obj) => setSelectedObject(obj)} 
