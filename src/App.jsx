@@ -499,7 +499,7 @@ const blockComponents = {
   todo: TodoBlock
 };
 
-function ObjectCard({ object, onClick, currentUser, childCount, distance, categories, isFavorite, onToggleFavorite }) {
+function ObjectCard({ object, onClick, currentUser, childCount, distance, categories, isFavorite, onToggleFavorite, onNavigate }) {
   // Find category to get icon
   const category = categories.find(c => c.id === object.type);
   const IconComponent = category ? getIconComponent(category.icon) : (PREDEFINED_ICONS[object.type]?.icon || Home);
@@ -508,9 +508,51 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
   const locationBlock = object.blocks.find(b => b.type === 'location');
   const isOwner = currentUser && object.ownerId === currentUser.uid;
 
+  const [showNavMenu, setShowNavMenu] = React.useState(false);
+  const menuRef = React.useRef(null);
+
+  React.useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setShowNavMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const handleFavoriteClick = (e) => {
     e.stopPropagation();
     onToggleFavorite(object.id);
+  };
+
+  const handleNavigationClick = (e) => {
+    e.stopPropagation();
+    setShowNavMenu(!showNavMenu);
+  };
+
+  const openGoogleMaps = (e) => {
+    e.stopPropagation();
+    if (locationBlock?.data?.lat && locationBlock?.data?.lng) {
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${locationBlock.data.lat},${locationBlock.data.lng}`, '_blank');
+      setShowNavMenu(false);
+    }
+  };
+
+  const openWaze = (e) => {
+    e.stopPropagation();
+    if (locationBlock?.data?.lat && locationBlock?.data?.lng) {
+      window.open(`https://waze.com/ul?ll=${locationBlock.data.lat},${locationBlock.data.lng}&navigate=yes`, '_blank');
+      setShowNavMenu(false);
+    }
+  };
+
+  const handleShowOnMap = (e) => {
+    e.stopPropagation();
+    if (onNavigate && locationBlock?.data?.lat && locationBlock?.data?.lng) {
+      onNavigate({ lat: locationBlock.data.lat, lng: locationBlock.data.lng });
+      setShowNavMenu(false);
+    }
   };
 
   return (
@@ -522,20 +564,60 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
       )}
       {imageBlock ? (
         <>
-          {currentUser && (
-            <button
-              onClick={handleFavoriteClick}
-              className="absolute top-2 left-2 z-10 p-1.5 rounded-full bg-gray-900/70 backdrop-blur-sm hover:bg-gray-800/90 hover:scale-110 transition-all duration-200"
-              title={isFavorite ? 'Ta bort från favoriter' : 'Lägg till i favoriter'}
-            >
-              <Star 
-                size={16} 
-                className={`transition-colors ${isFavorite ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400 hover:text-yellow-300'}`}
-              />
-            </button>
-          )}
+          <div className="absolute top-2 left-2 z-10 flex items-center gap-2">
+            {currentUser && (
+              <button
+                onClick={handleFavoriteClick}
+                className="p-1.5 rounded-full bg-gray-900/70 backdrop-blur-sm hover:bg-gray-800/90 hover:scale-110 transition-all duration-200"
+                title={isFavorite ? 'Ta bort från favoriter' : 'Lägg till i favoriter'}
+              >
+                <Star 
+                  size={16} 
+                  className={`transition-colors ${isFavorite ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400 hover:text-yellow-300'}`}
+                />
+              </button>
+            )}
+            {locationBlock?.data?.lat && locationBlock?.data?.lng && (
+              <div className="relative" ref={menuRef}>
+                <button
+                  onClick={handleNavigationClick}
+                  className="p-1.5 rounded-full bg-gray-900/70 backdrop-blur-sm hover:bg-gray-800/90 hover:scale-110 transition-all duration-200"
+                  title="Navigation"
+                >
+                  <Navigation size={16} className="text-blue-400" />
+                </button>
+                {showNavMenu && (
+                  <div className="absolute left-0 top-10 bg-gray-800 border border-white/20 rounded-lg shadow-xl z-50 min-w-[160px]">
+                    {onNavigate && (
+                      <button
+                        onClick={handleShowOnMap}
+                        className="w-full text-left px-3 py-2 text-xs text-gray-200 hover:bg-white/10 flex items-center gap-2 rounded-t-lg"
+                      >
+                        <MapIcon size={12} />
+                        Visa på karta
+                      </button>
+                    )}
+                    <button
+                      onClick={openGoogleMaps}
+                      className="w-full text-left px-3 py-2 text-xs text-gray-200 hover:bg-white/10 flex items-center gap-2"
+                    >
+                      <Navigation size={12} />
+                      Google Maps
+                    </button>
+                    <button
+                      onClick={openWaze}
+                      className="w-full text-left px-3 py-2 text-xs text-gray-200 hover:bg-white/10 flex items-center gap-2 rounded-b-lg"
+                    >
+                      <Navigation size={12} />
+                      Waze
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
           {childCount > 0 && (
-            <div className={`absolute top-2 z-10 ${currentUser ? 'left-12' : 'left-2'}`}>
+            <div className={`absolute top-2 z-10 ${currentUser && (locationBlock?.data?.lat && locationBlock?.data?.lng) ? 'left-[6.5rem]' : (currentUser || (locationBlock?.data?.lat && locationBlock?.data?.lng) ? 'left-12' : 'left-2')}`}>
               <div className="bg-white/10 backdrop-blur-sm text-gray-200 text-xs px-2 py-1 rounded-full border border-white/15 flex items-center gap-1">
                 <Folder size={12} className="text-gray-300" />
                 {childCount}
@@ -577,6 +659,44 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
                     className={`transition-colors ${isFavorite ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400 hover:text-yellow-300'}`}
                   />
                 </button>
+              )}
+              {locationBlock?.data?.lat && locationBlock?.data?.lng && (
+                <div className="relative" ref={menuRef}>
+                  <button
+                    onClick={handleNavigationClick}
+                    className="p-1.5 rounded-full bg-gray-900/70 backdrop-blur-sm hover:bg-gray-800/90 hover:scale-110 transition-all duration-200"
+                    title="Navigation"
+                  >
+                    <Navigation size={16} className="text-blue-400" />
+                  </button>
+                  {showNavMenu && (
+                    <div className="absolute right-0 top-10 bg-gray-800 border border-white/20 rounded-lg shadow-xl z-50 min-w-[160px]">
+                      {onNavigate && (
+                        <button
+                          onClick={handleShowOnMap}
+                          className="w-full text-left px-3 py-2 text-xs text-gray-200 hover:bg-white/10 flex items-center gap-2 rounded-t-lg"
+                        >
+                          <MapIcon size={12} />
+                          Visa på karta
+                        </button>
+                      )}
+                      <button
+                        onClick={openGoogleMaps}
+                        className="w-full text-left px-3 py-2 text-xs text-gray-200 hover:bg-white/10 flex items-center gap-2"
+                      >
+                        <Navigation size={12} />
+                        Google Maps
+                      </button>
+                      <button
+                        onClick={openWaze}
+                        className="w-full text-left px-3 py-2 text-xs text-gray-200 hover:bg-white/10 flex items-center gap-2 rounded-b-lg"
+                      >
+                        <Navigation size={12} />
+                        Waze
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           )}
@@ -1447,7 +1567,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
   );
 }
 
-function MapView({ objects, onSelectObject, currentUser, userLocation, categories }) {
+function MapView({ objects, onSelectObject, currentUser, userLocation, categories, mapCenter }) {
   const [hasRequestedPermission, setHasRequestedPermission] = useState(false);
 
   // Helper to get all positions for an object (can have multiple location blocks)
@@ -1676,7 +1796,7 @@ function MapView({ objects, onSelectObject, currentUser, userLocation, categorie
 
   return (
     <div className="w-full relative z-10" style={{ height: 'calc(100vh - 200px)' }}>
-      <MapContainer center={center} zoom={markersData.length > 0 ? 7 : 6} style={{ height: '100%', width: '100%' }}>
+      <MapContainer center={mapCenter || center} zoom={mapCenter ? 14 : (markersData.length > 0 ? 7 : 6)} style={{ height: '100%', width: '100%' }} key={mapCenter ? `${mapCenter.lat}-${mapCenter.lng}` : 'default'}>
         <TileLayer
           attribution='&copy; <a href="https://carto.com/">CARTO</a>'
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
@@ -2377,6 +2497,7 @@ function App() {
   const [quickCaptureObjectId, setQuickCaptureObjectId] = useState(() => {
     return localStorage.getItem('quickCaptureObjectId') || '';
   });
+  const [mapCenter, setMapCenter] = useState(null);
   const headerRef = useRef(null);
   const [headerHeight, setHeaderHeight] = useState(64);
   const seedingRef = useRef(false);
@@ -3095,6 +3216,10 @@ function App() {
                     categories={categories}
                     isFavorite={favorites.includes(obj.id)}
                     onToggleFavorite={handleToggleFavorite}
+                    onNavigate={(coords) => {
+                      setViewMode('map');
+                      setMapCenter(coords);
+                    }}
                   />
                 );
               })}
@@ -3108,7 +3233,7 @@ function App() {
             )}
           </div>
         ) : (
-          <MapView objects={filteredObjects} onSelectObject={setSelectedObject} currentUser={user} userLocation={userLocation} categories={categories} />
+          <MapView objects={filteredObjects} onSelectObject={setSelectedObject} currentUser={user} userLocation={userLocation} categories={categories} mapCenter={mapCenter} />
         )}
       </main>
 
@@ -3162,7 +3287,7 @@ function App() {
           onShowOnMap={(coords) => {
             setSelectedObject(null);
             setViewMode('map');
-            // Map will center on coordinates automatically when mapCenter changes
+            setMapCenter(coords);
           }}
         />
       )}
