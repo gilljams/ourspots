@@ -574,6 +574,117 @@ const AVAILABLE_ICONS = [
   { name: 'Sprout', label: 'Svamp' },
 ];
 
+function ObjectsAdminModal({ objects, categories, onClose, onEditObject }) {
+  const [sortBy, setSortBy] = useState('title'); // title, category, parent
+
+  const getObjectTitle = (obj) => {
+    return obj.blocks?.find(b => b.type === 'title')?.data?.text || 'Namnlöst objekt';
+  };
+
+  const getCategoryLabel = (typeId) => {
+    const cat = categories.find(c => c.id === typeId);
+    return cat ? cat.label : `❌ ${typeId}`;
+  };
+
+  const getChildCount = (objId) => {
+    return objects.filter(o => o.parentId === objId).length;
+  };
+
+  let sortedObjects = [...objects];
+  if (sortBy === 'title') {
+    sortedObjects.sort((a, b) => getObjectTitle(a).localeCompare(getObjectTitle(b)));
+  } else if (sortBy === 'category') {
+    sortedObjects.sort((a, b) => (a.type || '').localeCompare(b.type || ''));
+  } else if (sortBy === 'parent') {
+    sortedObjects.sort((a, b) => {
+      if (a.parentId && !b.parentId) return 1;
+      if (!a.parentId && b.parentId) return -1;
+      return (a.parentId || '').localeCompare(b.parentId || '');
+    });
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-gray-900 border border-white/10 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="p-6 border-b border-white/10">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold text-white">Alla objekt ({objects.length})</h2>
+            <button onClick={onClose} className="text-gray-400 hover:text-white">
+              <X size={24} />
+            </button>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setSortBy('title')}
+              className={`px-3 py-1.5 rounded text-sm ${sortBy === 'title' ? 'bg-blue-500 text-white' : 'bg-white/10 text-gray-300'}`}
+            >
+              Sortera: Titel
+            </button>
+            <button
+              onClick={() => setSortBy('category')}
+              className={`px-3 py-1.5 rounded text-sm ${sortBy === 'category' ? 'bg-blue-500 text-white' : 'bg-white/10 text-gray-300'}`}
+            >
+              Sortera: Kategori
+            </button>
+            <button
+              onClick={() => setSortBy('parent')}
+              className={`px-3 py-1.5 rounded text-sm ${sortBy === 'parent' ? 'bg-blue-500 text-white' : 'bg-white/10 text-gray-300'}`}
+            >
+              Sortera: Parent
+            </button>
+          </div>
+        </div>
+        <div className="overflow-y-auto flex-1 p-6">
+          <div className="space-y-2">
+            {sortedObjects.map(obj => {
+              const hasInvalidCategory = !categories.find(c => c.id === obj.type);
+              const parent = obj.parentId ? objects.find(o => o.id === obj.parentId) : null;
+              const childCount = getChildCount(obj.id);
+              
+              return (
+                <div
+                  key={obj.id}
+                  className={`p-4 rounded-xl border ${hasInvalidCategory ? 'bg-yellow-400/5 border-yellow-400/30' : 'bg-white/5 border-white/10'}`}
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="text-white font-medium truncate">{getObjectTitle(obj)}</h3>
+                        {hasInvalidCategory && (
+                          <span className="text-yellow-400 text-xs">⚠️</span>
+                        )}
+                      </div>
+                      <div className="text-sm text-gray-400 space-y-1">
+                        <div>Kategori: <span className={hasInvalidCategory ? 'text-yellow-400' : 'text-gray-300'}>{getCategoryLabel(obj.type)}</span></div>
+                        {obj.parentId && (
+                          <div>Parent: <span className="text-blue-400">{parent ? getObjectTitle(parent) : `❌ ${obj.parentId}`}</span></div>
+                        )}
+                        {childCount > 0 && (
+                          <div>Children: <span className="text-green-400">{childCount}</span></div>
+                        )}
+                        <div className="text-xs text-gray-500">ID: {obj.id}</div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        onEditObject(obj);
+                        onClose();
+                      }}
+                      className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded transition-colors"
+                    >
+                      Redigera
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
   const [editingCategory, setEditingCategory] = useState(null);
   const [newCategory, setNewCategory] = useState({ label: '', icon: 'Home', color: '#6B7280' });
@@ -2089,6 +2200,7 @@ function App() {
   const [showFilters, setShowFilters] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showCategoryAdmin, setShowCategoryAdmin] = useState(false);
+  const [showObjectsAdmin, setShowObjectsAdmin] = useState(false);
   const [captures, setCaptures] = useState(() => {
     try {
       const saved = localStorage.getItem('ourspots_captures');
@@ -2894,6 +3006,15 @@ function App() {
         />
       )}
 
+      {showObjectsAdmin && (
+        <ObjectsAdminModal
+          objects={objects}
+          categories={categories}
+          onClose={() => setShowObjectsAdmin(false)}
+          onEditObject={(obj) => setEditingObject(obj)}
+        />
+      )}
+
       {/* Captures Modal */}
       {showCaptures && (
         <>
@@ -2995,16 +3116,28 @@ function App() {
                 {isAdmin && (
                   <div className="mb-4 pb-4 border-b border-white/10">
                     <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">Admin</div>
-                    <button
-                      onClick={() => {
-                        setShowCategoryAdmin(true);
-                        setShowMenu(false);
-                      }}
-                      className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-all group"
-                    >
-                      <Settings size={18} className="text-blue-400" />
-                      <span className="font-medium">Hantera kategorier</span>
-                    </button>
+                    <div className="space-y-2">
+                      <button
+                        onClick={() => {
+                          setShowCategoryAdmin(true);
+                          setShowMenu(false);
+                        }}
+                        className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-all group"
+                      >
+                        <Settings size={18} className="text-blue-400" />
+                        <span className="font-medium">Hantera kategorier</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowObjectsAdmin(true);
+                          setShowMenu(false);
+                        }}
+                        className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-all group"
+                      >
+                        <Settings size={18} className="text-purple-400" />
+                        <span className="font-medium">Alla objekt</span>
+                      </button>
+                    </div>
                   </div>
                 )}
                 <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">Inställningar</div>
