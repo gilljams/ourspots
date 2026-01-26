@@ -2033,6 +2033,10 @@ function App() {
     const saved = localStorage.getItem('keepScreenOn');
     return saved === 'true';
   });
+  const [showQuickCapture, setShowQuickCapture] = useState(() => {
+    const saved = localStorage.getItem('showQuickCapture');
+    return saved !== 'false'; // Default true
+  });
   const headerRef = useRef(null);
   const [headerHeight, setHeaderHeight] = useState(64);
   const seedingRef = useRef(false);
@@ -2116,6 +2120,10 @@ function App() {
       }
     };
   }, [keepScreenOn]);
+
+  useEffect(() => {
+    localStorage.setItem('showQuickCapture', showQuickCapture.toString());
+  }, [showQuickCapture]);
 
   // Auth listener + check admin status
   useEffect(() => {
@@ -2722,18 +2730,20 @@ function App() {
             {viewMode === 'list' ? <MapIcon size={24} /> : <List size={24} />}
           </button>
           {/* Quick capture mushroom button */}
-          <button
-            onClick={handleQuickCapture}
-            className="fixed bottom-44 right-6 w-14 h-14 bg-orange-600 hover:bg-orange-500 rounded-full shadow-2xl flex items-center justify-center text-white transition-all hover:scale-110 z-[1200] border-2 border-orange-400"
-            title="Snabbpinna GPS-position 🍄"
-          >
-            <Target size={24} />
-            {captures.length > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                {captures.length}
-              </span>
-            )}
-          </button>
+          {showQuickCapture && (
+            <button
+              onClick={handleQuickCapture}
+              className="fixed bottom-44 right-6 w-14 h-14 bg-orange-600 hover:bg-orange-500 rounded-full shadow-2xl flex items-center justify-center text-white transition-all hover:scale-110 z-[1200] border-2 border-orange-400"
+              title="Snabbpinna GPS-position 🍄"
+            >
+              <Target size={24} />
+              {captures.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                  {captures.length}
+                </span>
+              )}
+            </button>
+          )}
         </>
       )}
 
@@ -2910,6 +2920,26 @@ function App() {
                         ⚠️ Din webbläsare stöder inte denna funktion
                       </div>
                     )}
+                  </div>
+                  <div className="p-3 rounded-xl bg-white/5 border border-white/10">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-white">Visa svampknapp 🍄</div>
+                        <div className="text-xs text-gray-400 mt-0.5">Orange snabb-pinning för offline</div>
+                      </div>
+                      <button
+                        onClick={() => setShowQuickCapture(!showQuickCapture)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          showQuickCapture ? 'bg-orange-500' : 'bg-gray-600'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            showQuickCapture ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
