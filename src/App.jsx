@@ -3219,7 +3219,7 @@ function App() {
           {showQuickCapture && (
             <button
               onClick={handleQuickCapture}
-              className="fixed bottom-[10.5rem] right-6 w-14 h-14 bg-orange-600 hover:bg-orange-500 rounded-full shadow-2xl flex items-center justify-center text-white transition-all hover:scale-110 z-[1200] border border-orange-400/30"
+              className={`fixed right-6 w-14 h-14 bg-orange-600 hover:bg-orange-500 rounded-full shadow-2xl flex items-center justify-center text-white hover:scale-110 z-[1200] border border-orange-400/30 transition-all duration-300 ${selectedObject ? 'bottom-24' : 'bottom-[10.5rem]'}`}
               title="Snabbpinna GPS-position 🍄"
             >
               <Target size={24} />
