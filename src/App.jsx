@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import * as LucideIcons from 'lucide-react';
-const { MapPin, Home, Coffee, Mountain, Star, Calendar, X, Plus, Image, Edit2, Trash2, Loader, LogOut, LogIn, Check, Circle, Upload, Folder, Navigation, Map: MapIcon, List, ChevronDown, ArrowUp, ArrowDown, Search, Settings } = LucideIcons;
+const { MapPin, Home, Coffee, Mountain, Star, Calendar, X, Plus, Image, Edit2, Trash2, Loader, LogOut, LogIn, Check, Circle, Upload, Folder, Navigation, Plane, Map: MapIcon, List, ChevronDown, ArrowUp, ArrowDown, Search, Settings } = LucideIcons;
 import { MapContainer, TileLayer, Marker, useMapEvents, Tooltip, Popup } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
@@ -46,6 +46,173 @@ const createUserIcon = () => {
 const CLOUDINARY_CLOUD_NAME = 'dkpwqradh';
 const CLOUDINARY_UPLOAD_PRESET = 'ourspots_unsigned';
 
+// Helper to transform Cloudinary URLs with smart cropping
+const getTransformedImageUrl = (url, cropMode = 'auto', width = 800, height = 600) => {
+  if (!url || !url.includes('cloudinary.com')) return url; // Return non-Cloudinary URLs as-is
+  
+  const gravityMap = {
+    'auto': 'g_auto',
+    'face': 'g_face', 
+    'center': 'g_center'
+  };
+  
+  const gravity = gravityMap[cropMode] || 'g_auto';
+  const transformation = `c_fill,${gravity},w_${width},h_${height}`;
+  
+  // Insert transformation into Cloudinary URL
+  return url.replace('/upload/', `/upload/${transformation}/`);
+};
+
+// Helper to resize image before upload
+const resizeImage = (file, maxSize = 2000, quality = 0.85) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = document.createElement('img');
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        
+        // Only resize if larger than maxSize
+        if (width <= maxSize && height <= maxSize) {
+          resolve(file);
+          return;
+        }
+        
+        // Calculate new dimensions
+        if (width > height) {
+          if (width > maxSize) {
+            height = (height * maxSize) / width;
+            width = maxSize;
+          }
+        } else {
+          if (height > maxSize) {
+            width = (width * maxSize) / height;
+            height = maxSize;
+          }
+        }
+        
+        // Create canvas and resize
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // Convert to blob
+        canvas.toBlob((blob) => {
+          resolve(blob);
+        }, file.type, quality);
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+};
+
+// Helper to extract GPS coordinates from image EXIF data
+const extractGPSFromImage = (file) => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const view = new DataView(e.target.result);
+        
+        // Check for JPEG signature
+        if (view.getUint16(0, false) !== 0xFFD8) {
+          resolve(null);
+          return;
+        }
+        
+        let offset = 2;
+        const length = view.byteLength;
+        
+        // Find EXIF marker
+        while (offset < length) {
+          if (view.getUint16(offset, false) === 0xFFE1) {
+            const exifOffset = offset + 10;
+            
+            // Check for EXIF signature
+            if (view.getUint32(exifOffset - 6, false) !== 0x45786966) {
+              break;
+            }
+            
+            const littleEndian = view.getUint16(exifOffset, false) === 0x4949;
+            const gpsOffset = findGPSOffset(view, exifOffset, littleEndian);
+            
+            if (gpsOffset) {
+              const coords = parseGPS(view, gpsOffset, littleEndian);
+              resolve(coords);
+              return;
+            }
+          }
+          offset += 2 + view.getUint16(offset + 2, false);
+        }
+        resolve(null);
+      } catch (err) {
+        console.error('EXIF parsing error:', err);
+        resolve(null);
+      }
+    };
+    reader.onerror = () => resolve(null);
+    reader.readAsArrayBuffer(file);
+  });
+};
+
+const findGPSOffset = (view, exifOffset, littleEndian) => {
+  const ifdOffset = exifOffset + view.getUint32(exifOffset + 4, littleEndian);
+  const tags = view.getUint16(ifdOffset, littleEndian);
+  
+  for (let i = 0; i < tags; i++) {
+    const tagOffset = ifdOffset + 2 + (i * 12);
+    const tag = view.getUint16(tagOffset, littleEndian);
+    
+    // GPS IFD Pointer tag
+    if (tag === 0x8825) {
+      return exifOffset + view.getUint32(tagOffset + 8, littleEndian);
+    }
+  }
+  return null;
+};
+
+const parseGPS = (view, gpsOffset, littleEndian) => {
+  const tags = view.getUint16(gpsOffset, littleEndian);
+  let latRef, lat, lngRef, lng;
+  
+  for (let i = 0; i < tags; i++) {
+    const tagOffset = gpsOffset + 2 + (i * 12);
+    const tag = view.getUint16(tagOffset, littleEndian);
+    const valueOffset = gpsOffset - 10 + view.getUint32(tagOffset + 8, littleEndian);
+    
+    if (tag === 1) { // GPSLatitudeRef
+      latRef = String.fromCharCode(view.getUint8(tagOffset + 8));
+    } else if (tag === 2) { // GPSLatitude
+      lat = parseGPSCoordinate(view, valueOffset, littleEndian);
+    } else if (tag === 3) { // GPSLongitudeRef
+      lngRef = String.fromCharCode(view.getUint8(tagOffset + 8));
+    } else if (tag === 4) { // GPSLongitude
+      lng = parseGPSCoordinate(view, valueOffset, littleEndian);
+    }
+  }
+  
+  if (lat && lng) {
+    return {
+      lat: latRef === 'S' ? -lat : lat,
+      lng: lngRef === 'W' ? -lng : lng
+    };
+  }
+  return null;
+};
+
+const parseGPSCoordinate = (view, offset, littleEndian) => {
+  const deg = view.getUint32(offset, littleEndian) / view.getUint32(offset + 4, littleEndian);
+  const min = view.getUint32(offset + 8, littleEndian) / view.getUint32(offset + 12, littleEndian);
+  const sec = view.getUint32(offset + 16, littleEndian) / view.getUint32(offset + 20, littleEndian);
+  return deg + min / 60 + sec / 3600;
+};
+
 // Helper to get icon component from string name
 const getIconComponent = (iconName) => {
   return LucideIcons[iconName] || Home;
@@ -78,21 +245,8 @@ const LocationBlock = ({ data, inherited }) => (
 );
 
 const ImageBlock = ({ data }) => (
-  <div className="w-full h-48 rounded-xl overflow-hidden mb-4 border border-white/10 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.7)] relative bg-gray-900">
-    <img 
-      src={data.url} 
-      alt="" 
-      className="absolute inset-0 w-full h-full" 
-      style={(data.scale || 1.0) < 1.0 ? {
-        objectFit: 'contain',
-        objectPosition: data.focus || 'center'
-      } : {
-        objectFit: 'cover',
-        objectPosition: data.focus || 'center',
-        minWidth: `${(data.scale || 1.0) * 100}%`,
-        minHeight: `${(data.scale || 1.0) * 100}%`
-      }} 
-    />
+  <div className="w-full h-48 rounded-xl overflow-hidden mb-4 border border-white/10 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.7)]">
+    <img src={getTransformedImageUrl(data.url, data.cropMode, 800, 480)} alt="" className="w-full h-full object-cover" />
   </div>
 );
 
@@ -236,21 +390,8 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
         </div>
       )}
       {imageBlock && (
-        <div className="w-full h-40 overflow-hidden relative bg-gray-900">
-          <img 
-            src={imageBlock.data.url} 
-            alt="" 
-            className="absolute inset-0 w-full h-full" 
-            style={(imageBlock.data.scale || 1.0) < 1.0 ? {
-              objectFit: 'contain',
-              objectPosition: imageBlock.data.focus || 'center'
-            } : {
-              objectFit: 'cover',
-              objectPosition: imageBlock.data.focus || 'center',
-              minWidth: `${(imageBlock.data.scale || 1.0) * 100}%`,
-              minHeight: `${(imageBlock.data.scale || 1.0) * 100}%`
-            }} 
-          />
+        <div className="w-full h-40 overflow-hidden">
+          <img src={getTransformedImageUrl(imageBlock.data.url, imageBlock.data.cropMode, 800, 320)} alt="" className="w-full h-full object-cover" />
         </div>
       )}
       <div className="p-4">
@@ -310,6 +451,7 @@ const AVAILABLE_ICONS = [
   { name: 'Calendar', label: 'Kalender' },
   { name: 'Folder', label: 'Mapp' },
   { name: 'Navigation', label: 'Navigation' },
+  { name: 'Plane', label: 'Resor' },
   { name: 'UtensilsCrossed', label: 'Mat och dryck' },
   { name: 'Pizza', label: 'Pizza' },
   { name: 'Wine', label: 'Vin' },
@@ -837,21 +979,8 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
                         className="flex items-center gap-2 p-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:border-blue-400/50 transition-all text-left col-span-1"
                       >
                         {childImage ? (
-                          <div className="w-8 h-8 rounded overflow-hidden flex-shrink-0 relative bg-gray-900">
-                            <img 
-                              src={childImage.data.url} 
-                              alt="" 
-                              className="absolute inset-0 w-full h-full" 
-                              style={(childImage.data.scale || 1.0) < 1.0 ? {
-                                objectFit: 'contain',
-                                objectPosition: childImage.data.focus || 'center'
-                              } : {
-                                objectFit: 'cover',
-                                objectPosition: childImage.data.focus || 'center',
-                                minWidth: `${(childImage.data.scale || 1.0) * 100}%`,
-                                minHeight: `${(childImage.data.scale || 1.0) * 100}%`
-                              }} 
-                            />
+                          <div className="w-8 h-8 rounded overflow-hidden flex-shrink-0">
+                            <img src={getTransformedImageUrl(childImage.data.url, childImage.data.cropMode, 64, 64)} alt="" className="w-full h-full object-cover" />
                           </div>
                         ) : (
                           <div className="w-8 h-8 rounded bg-blue-500/20 flex items-center justify-center flex-shrink-0">
@@ -1164,8 +1293,7 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
   const [capturingGPS, setCapturingGPS] = useState(false);
   const [showMapPicker, setShowMapPicker] = useState(false);
   const [imageUrl, setImageUrl] = useState(editObject?.blocks?.find(b => b.type === 'image')?.data?.url || '');
-  const [imageFocus, setImageFocus] = useState(editObject?.blocks?.find(b => b.type === 'image')?.data?.focus || 'center');
-  const [imageScale, setImageScale] = useState(editObject?.blocks?.find(b => b.type === 'image')?.data?.scale || 1.0);
+  const [imageCropMode, setImageCropMode] = useState(editObject?.blocks?.find(b => b.type === 'image')?.data?.cropMode || 'auto');
   const [uploadingImage, setUploadingImage] = useState(false);
   // Store custom blocks (text, checklist, todo) as array to support multiple
   const [customBlocks, setCustomBlocks] = useState(() => {
@@ -1230,7 +1358,7 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
     if ((lat && lng) && !inheritLocation) {
       blocks.push({ type: 'location', data: { lat, lng, address: address || `${lat.toFixed(5)}, ${lng.toFixed(5)}` } });
     }
-    if (imageUrl.trim()) blocks.push({ type: 'image', data: { url: imageUrl, focus: imageFocus, scale: imageScale } });
+    if (imageUrl.trim()) blocks.push({ type: 'image', data: { url: imageUrl, cropMode: imageCropMode } });
     
     // Add custom blocks (text, checklist, todo) from array
     customBlocks.forEach(block => {
@@ -1263,8 +1391,33 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
 
     setUploadingImage(true);
     try {
+      // Extract EXIF GPS data if available (non-blocking)
+      try {
+        const gpsData = await extractGPSFromImage(file);
+        if (gpsData && !lat && !lng) {
+          setLat(gpsData.lat);
+          setLng(gpsData.lng);
+          if (!address.trim()) {
+            setAddress(`Bild GPS: ${gpsData.lat.toFixed(5)}, ${gpsData.lng.toFixed(5)}`);
+          }
+        }
+      } catch (gpsErr) {
+        console.warn('GPS extraction failed:', gpsErr);
+        // Continue with upload even if GPS fails
+      }
+
+      // Resize image before upload (with fallback to original)
+      let fileToUpload = file;
+      try {
+        const resizedBlob = await resizeImage(file, 2000, 0.85);
+        if (resizedBlob) fileToUpload = resizedBlob;
+      } catch (resizeErr) {
+        console.warn('Image resize failed, uploading original:', resizeErr);
+        // Continue with original file
+      }
+      
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', fileToUpload, file.name);
       formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
 
       const response = await fetch(
@@ -1408,25 +1561,15 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
                   <>
                     <div className="relative w-full h-40 rounded-xl overflow-hidden border border-white/10 bg-gray-900">
                       <img 
-                        src={imageUrl} 
+                        src={getTransformedImageUrl(imageUrl, imageCropMode, 800, 600)} 
                         alt="Preview" 
-                        className="absolute inset-0 w-full h-full" 
-                        style={imageScale < 1.0 ? {
-                          objectFit: 'contain',
-                          objectPosition: imageFocus
-                        } : {
-                          objectFit: 'cover',
-                          objectPosition: imageFocus,
-                          minWidth: `${imageScale * 100}%`,
-                          minHeight: `${imageScale * 100}%`
-                        }} 
+                        className="w-full h-full object-cover" 
                       />
                       <button
                         type="button"
                         onClick={() => {
                           setImageUrl('');
-                          setImageFocus('center');
-                          setImageScale(1.0);
+                          setImageCropMode('auto');
                         }}
                         disabled={uploadingImage || saving}
                         className="absolute top-2 right-2 bg-red-500/80 hover:bg-red-600 text-white p-2 rounded-lg transition-all disabled:opacity-50"
@@ -1434,43 +1577,19 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
                         <X size={16} />
                       </button>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-400 mb-2">Bildfokus</label>
-                        <select
-                          value={imageFocus}
-                          onChange={(e) => setImageFocus(e.target.value)}
-                          disabled={uploadingImage || saving}
-                          className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-white/10 text-gray-300 text-sm focus:outline-none focus:border-blue-500 disabled:opacity-50"
-                          style={{ colorScheme: 'dark' }}
-                        >
-                          <option value="center">Centrum</option>
-                          <option value="top">Topp</option>
-                          <option value="bottom">Botten</option>
-                          <option value="left">Vänster</option>
-                          <option value="right">Höger</option>
-                          <option value="top left">Topp vänster</option>
-                          <option value="top right">Topp höger</option>
-                          <option value="bottom left">Botten vänster</option>
-                          <option value="bottom right">Botten höger</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-400 mb-2">Zoom</label>
-                        <select
-                          value={String(imageScale)}
-                          onChange={(e) => setImageScale(parseFloat(e.target.value))}
-                          disabled={uploadingImage || saving}
-                          className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-white/10 text-gray-300 text-sm focus:outline-none focus:border-blue-500 disabled:opacity-50"
-                          style={{ colorScheme: 'dark' }}
-                        >
-                          <option value="0.65">Zoom ut mer</option>
-                          <option value="0.8">Zoom ut</option>
-                          <option value="1.0">Normal</option>
-                          <option value="1.2">Zoom in</option>
-                          <option value="1.5">Zoom in mer</option>
-                        </select>
-                      </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-400 mb-2">Smart beskärning</label>
+                      <select
+                        value={imageCropMode}
+                        onChange={(e) => setImageCropMode(e.target.value)}
+                        disabled={uploadingImage || saving}
+                        className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-white/10 text-gray-300 text-sm focus:outline-none focus:border-blue-500 disabled:opacity-50"
+                        style={{ colorScheme: 'dark' }}
+                      >
+                        <option value="auto">Auto (AI väljer bästa fokus)</option>
+                        <option value="face">Ansikten (fokusera på personer)</option>
+                        <option value="center">Centrum (traditionell)</option>
+                      </select>
                     </div>
                   </>
                 )}
@@ -1671,6 +1790,7 @@ function App() {
   const [saving, setSaving] = useState(false);
   const [selectedObject, setSelectedObject] = useState(null);
   const [activeCategory, setActiveCategory] = useState('all');
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingObject, setEditingObject] = useState(null);
   const [showAllObjects, setShowAllObjects] = useState(false);
@@ -1949,11 +2069,19 @@ function App() {
     return values.some(v => v.toString().toLowerCase().includes(searchTerm));
   };
 
-  const filteredObjects = activeCategory === 'all' 
-    ? objects 
-    : activeCategory === 'favorites'
-    ? objects.filter(o => favorites.includes(o.id))
-    : objects.filter(o => o.type === activeCategory);
+  // Filter by category (combine with favorites if both selected)
+  let filteredObjects = objects;
+  
+  // Apply category filter
+  if (activeCategory !== 'all' && activeCategory !== 'favorites') {
+    filteredObjects = filteredObjects.filter(o => o.type === activeCategory);
+  }
+  
+  // Apply favorites filter (can be combined with category)
+  if (showFavoritesOnly) {
+    filteredObjects = filteredObjects.filter(o => favorites.includes(o.id));
+  }
+  
   let displayObjects = showAllObjects ? filteredObjects : filteredObjects.filter(o => !o.parentId);
   
   // Apply search filter - include parents if any child matches
@@ -2162,10 +2290,10 @@ function App() {
               {/* Favorites category (only for logged in users) */}
               {user && (
                 <button
-                  onClick={() => setActiveCategory('favorites')}
-                  className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl whitespace-nowrap transition-all ${activeCategory === 'favorites' ? 'bg-yellow-500 text-white' : 'bg-white/20 text-gray-200 hover:bg-white/30'}`}
+                  onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+                  className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl whitespace-nowrap transition-all ${showFavoritesOnly ? 'bg-yellow-500 text-white' : 'bg-white/20 text-gray-200 hover:bg-white/30'}`}
                 >
-                  <Star size={16} className={activeCategory === 'favorites' ? 'fill-white' : ''} />
+                  <Star size={16} className={showFavoritesOnly ? 'fill-white' : ''} />
                   <span className="text-sm font-medium hidden sm:inline">Favoriter</span>
                   {favorites.length > 0 && (
                     <span className="px-1.5 py-0.5 rounded-full bg-white/20 text-xs">

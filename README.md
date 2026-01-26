@@ -14,15 +14,18 @@ OurSpots är en platsbaserad app med premium dark theme som låter användare:
 - Se objekt på karta med avstånd och navigation
 - Publik vy för externa användare
 
-## 🏗️ Nuvarande Status (v0.9 - Favoriter & Admin-verktyg)
+## 🏗️ Nuvarande Status (v1.0 - Bildhantering & Smart Filtrering)
 
 ### ✅ Implementerat
 - **Dark theme med glassmorphism** - Premium design med radial glows
 - **Modulär block-arkitektur** - title, image, location, text, checklist, todo
 - **Checklist block** - Kryssrutor med state-synk i modal
 - **Todo block** - Uppgiftslista med progress-bar
-- **Bilduppladdning** - Cloudinary integration (25GB gratis/månad)
-- **Dynamiska kategorier** - Firebase-baserad kategorihantering med 22+ ikoner
+- **Smart bilduppladdning** - Cloudinary med AI-beskärning, automatisk komprimering och GPS-extrahering
+- **Cloudinary smart cropping** - AI-baserad beskärning (Auto, Ansikten, Centrum)
+- **Automatisk bildkomprimering** - Max 2000px, 85% kvalitet före uppladdning
+- **GPS från bilder** - Automatisk plats-extrahering från EXIF-data
+- **Dynamiska kategorier** - Firebase-baserad kategorihantering med 23+ ikoner
 - **Admin-sektion** - Kategorihantering och objekthantering för administratörer
 - **Kategori-navigation** - Swipe-bar för filtrering
 - **Kort-baserad listvy** - Med bilder och platsinformation
@@ -56,7 +59,8 @@ OurSpots är en platsbaserad app med premium dark theme som låter användare:
 - **Stäng detaljmodal via overlay** - Klick utanför modalen för att stänga
 - **Sök & filter** - Sök på objektnamn/innehåll, filtrera på kategori och avstånd (km-slider)
 - **Förbättrad parent-navigering** - SVG-ikon och tydlig placering för tillbaka-knapp
-- **Favoriter** - Markera objekt som favoriter med stjärn-ikon, egen filterkategori, persistent i Firebase
+- **Favoriter** - Toggle-filter som kombineras med kategorier, persistent i Firebase
+- **Kombinerad filtrering** - Favoriter + kategori samtidigt (t.ex. favorit Mat & Dryck)
 - **Skärmhantering** - "Håll skärmen påslagen" med Wake Lock API för navigering
 - **Admin-objekthantering** - Admin kan redigera och radera alla objekt (inklusive ägarlösa)
 
@@ -96,13 +100,15 @@ OurSpots är en platsbaserad app med premium dark theme som låter användare:
 
 ## 📦 Tech Stack
 
-- **Frontend:** React 18 + Vite (hot reload)
+- **Frontend:** React 19.2.0 + Vite (hot reload)
 - **Styling:** Tailwind CSS v3 + Glassmorphism
-- **Icons:** Lucide React + Emoji
+- **Icons:** Lucide React (23+ ikoner för kategorier) + Emoji
 - **Maps:** Leaflet + react-leaflet (CARTO tiles, fully free)
 - **Database:** Firebase Firestore (real-time, persistent)
 - **Authentication:** Firebase Auth (Google Sign-in)
 - **Image Storage:** Cloudinary (unsigned uploads, 25GB gratis/månad)
+- **Image Processing:** Client-side resize (max 2000px), Cloudinary AI smart cropping
+- **EXIF Reading:** Custom GPS extraction from image metadata
 - **Geolocation:** Browser Geolocation API (GPS)
 - **Hosting:** GitHub Pages
 - **Version Control:** Git + GitHub

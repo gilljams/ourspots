@@ -2,7 +2,7 @@
 OurSpots – Manifest / Blueprint (Updated Jan 2026)
 ========================
 
-🚀 STATUS: v0.9 - Favoriter & Admin-verktyg
+🚀 STATUS: v1.0 - Bildhantering & Smart Filtrering
 
 1. VISION
 - Mobilfokuserad app med premium dark theme
@@ -10,7 +10,8 @@ OurSpots – Manifest / Blueprint (Updated Jan 2026)
 - Delade objekt (viewer/editor) - planerad funktion
 - Objekt + block = återanvändbar struktur ✅
 - Hierarki för objekt (parent → child) ✅
-- Favoriter med stjärn-ikon och filterkategori ✅
+- Favoriter med kombinerad filtrering (favoriter + kategori) ✅
+- Smart bildhantering med AI-beskärning och GPS-extrahering ✅
 - Skärmhantering med Wake Lock API ✅
 - Lager/samlingar för resor/projekt - planerad funktion
 - Dynamiska kategorier med Firebase-baserad hantering ✅
@@ -33,7 +34,7 @@ OurSpots – Manifest / Blueprint (Updated Jan 2026)
 - Automatisk hantering av objekt vid kategori-radering ✅
 
 Tillgängliga ikoner:
-- Bas: Home, Coffee, Mountain, Star, MapPin, Calendar, Folder, Navigation
+- Bas: Home, Coffee, Mountain, Star, MapPin, Calendar, Folder, Navigation, Plane
 - Mat & dryck: UtensilsCrossed, Pizza, Wine, Beer
 - Nöjen: Gamepad2, Music, Film, PartyPopper
 - Aktiviteter: Bike, Dumbbell, Waves
@@ -52,7 +53,7 @@ Object:
 - systemblock: createdAt, updatedAt, Objekt-ID, ParentID, LayerID
 
 Block:
-- type: "image", url
+- type: "image", url, cropMode (auto/face/center)
 - type: "location", lat, lng
 - type: "text", content
 - type: "checklist", items[]
@@ -157,8 +158,16 @@ Default block sets per typ/kategori (för enkelhet):
 
 ### Användarhantering (Implementerat)
 - ✅ Favoriter: Markera objekt med stjärn-ikon
-- ✅ Favoritkategori: Filtrering på favoritmarkerade objekt
+- ✅ Kombinerad filtrering: Favoriter + kategori samtidigt
+- ✅ Toggle-filter: Favoriter fungerar som på/av-filter
 - ✅ Persistent lagring i Firestore users/{uid}/favorites
+
+### Bildhantering (Implementerat)
+- ✅ Cloudinary smart cropping: AI-baserad beskärning (Auto/Face/Center)
+- ✅ Automatisk komprimering: Client-side resize till max 2000px, 85% kvalitet
+- ✅ GPS-extrahering: Läser EXIF-data från bilder automatiskt
+- ✅ Fallback-hantering: Uppladdning fungerar även om resize/GPS misslyckas
+- ✅ Optimerade transformationer: Olika storlekar för kort, detail, thumbnails
 
 ### Inställningar (Implementerat)
 - ✅ "Håll skärmen påslagen" med Wake Lock API
@@ -183,10 +192,12 @@ Default block sets per typ/kategori (för enkelhet):
 - Användarhantering och statistik
 
 9. TEKNISK STACK (GRATISTJÄNSTER)
-- Frontend: React + Vite, host GitHub Pages
+- Frontend: React 19.2.0 + Vite, host GitHub Pages
 - Databas: Firebase Firestore
 - Authentication: Firebase Auth
 - Bilduppladdning: Cloudinary (25GB/månad gratis, unsigned uploads)
+- Bildprocessning: Client-side Canvas API för resize, Cloudinary AI transformations
+- EXIF-läsning: Custom JavaScript implementation för GPS-extrahering
 - CI/CD: GitHub Actions
 - PWA möjlig för offline / haptics
 - Design: dark theme, glassmorphism, accentfärger per kategori/typ
