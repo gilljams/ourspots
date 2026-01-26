@@ -4,7 +4,7 @@ import {
   Loader, LogOut, LogIn, Check, Circle, Upload, Folder, Navigation, Plane, 
   Map as MapIcon, List, ChevronDown, ArrowUp, ArrowDown, Search, Settings,
   UtensilsCrossed, Pizza, Wine, Beer, Gamepad2, Music, Film, PartyPopper, 
-  Bike, Dumbbell, Waves, TreePine, Shell, Sprout, RotateCcw
+  Bike, Dumbbell, Waves, TreePine, Shell, Sprout, RotateCcw, Target
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMapEvents, Tooltip, Popup } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
@@ -2020,6 +2020,15 @@ function App() {
   const [showFilters, setShowFilters] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showCategoryAdmin, setShowCategoryAdmin] = useState(false);
+  const [captures, setCaptures] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ourspots_captures');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [showCaptures, setShowCaptures] = useState(false);
   const [keepScreenOn, setKeepScreenOn] = useState(() => {
     const saved = localStorage.getItem('keepScreenOn');
     return saved === 'true';
@@ -2370,6 +2379,46 @@ function App() {
     }
   };
 
+  // Quick capture functions
+  const handleQuickCapture = () => {
+    if (!userLocation) {
+      alert('⚠️ Ingen GPS-position! Vänta tills GPS har hittats.');
+      return;
+    }
+
+    const capture = {
+      id: `capture_${Date.now()}`,
+      lat: userLocation.lat,
+      lng: userLocation.lng,
+      timestamp: Date.now(),
+      note: ''
+    };
+
+    const newCaptures = [...captures, capture];
+    setCaptures(newCaptures);
+    localStorage.setItem('ourspots_captures', JSON.stringify(newCaptures));
+    
+    // Visual feedback
+    alert('🍄 Position sparad! (' + newCaptures.length + ' st)');
+  };
+
+  const handleDeleteCapture = (captureId) => {
+    const newCaptures = captures.filter(c => c.id !== captureId);
+    setCaptures(newCaptures);
+    localStorage.setItem('ourspots_captures', JSON.stringify(newCaptures));
+  };
+
+  const handleCreateFromCapture = (capture) => {
+    setShowCaptures(false);
+    setEditingObject({
+      parentId: null,
+      blocks: [
+        { type: 'location', data: { lat: capture.lat, lng: capture.lng, address: '' } }
+      ]
+    });
+    setShowCreateModal(true);
+  };
+
   const handleBlockUpdate = async (objectId, blockIndex, newBlockData) => {
     const applyBlockUpdate = (obj) => ({
       ...obj,
@@ -2672,6 +2721,19 @@ function App() {
           >
             {viewMode === 'list' ? <MapIcon size={24} /> : <List size={24} />}
           </button>
+          {/* Quick capture mushroom button */}
+          <button
+            onClick={handleQuickCapture}
+            className="fixed bottom-44 right-6 w-14 h-14 bg-orange-600 hover:bg-orange-500 rounded-full shadow-2xl flex items-center justify-center text-white transition-all hover:scale-110 z-[1200] border-2 border-orange-400"
+            title="Snabbpinna GPS-position 🍄"
+          >
+            <Target size={24} />
+            {captures.length > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                {captures.length}
+              </span>
+            )}
+          </button>
         </>
       )}
 
@@ -2690,6 +2752,89 @@ function App() {
           currentUser={user}
           objects={objects}
         />
+      )}
+
+      {/* Captures Modal */}
+      {showCaptures && (
+        <>
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[2000]" onClick={() => setShowCaptures(false)}></div>
+          <div className="fixed top-0 right-0 h-full w-96 bg-gray-950/98 backdrop-blur-xl border-l border-white/10 z-[2001] shadow-2xl animate-in slide-in-from-right duration-300 overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <Target className="text-orange-400" size={24} />
+                  <h2 className="text-2xl font-bold text-white">GPS-pinningar 🍄</h2>
+                </div>
+                <button
+                  onClick={() => setShowCaptures(false)}
+                  className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              
+              <div className="mb-4 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-sm text-gray-300">
+                <p className="mb-2">💡 Använd orange svampknappen för att snabbt spara GPS-positioner när du är i skogen!</p>
+                <p className="text-xs text-gray-400">Perfekt för kantarellställen utan uppkoppling. Skapa objekt senare.</p>
+              </div>
+
+              {captures.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <Target size={48} className="mx-auto mb-4 text-gray-600" />
+                  <p className="text-lg mb-2">Inga pinningar än</p>
+                  <p className="text-sm">Tryck på orange knappen för att spara en position</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {captures.map((capture, index) => {
+                    const date = new Date(capture.timestamp);
+                    const timeStr = date.toLocaleString('sv-SE', {
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    });
+                    
+                    return (
+                      <div key={capture.id} className="bg-white/5 backdrop-blur-md rounded-xl border border-white/10 p-4">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1">
+                            <div className="text-white font-medium mb-1">
+                              🍄 Pinning #{captures.length - index}
+                            </div>
+                            <div className="text-xs text-gray-400">{timeStr}</div>
+                          </div>
+                          <button
+                            onClick={() => handleDeleteCapture(capture.id)}
+                            className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-all"
+                            title="Ta bort"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                        
+                        <div className="text-xs text-gray-400 space-y-1 mb-3">
+                          <div className="flex items-center gap-2">
+                            <MapPin size={12} />
+                            <span>{capture.lat.toFixed(6)}, {capture.lng.toFixed(6)}</span>
+                          </div>
+                        </div>
+                        
+                        <button
+                          onClick={() => handleCreateFromCapture(capture)}
+                          className="w-full py-2 px-3 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium transition-all flex items-center justify-center gap-2"
+                        >
+                          <Plus size={16} />
+                          Skapa objekt från denna
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </>
       )}
 
       {showMenu && (
@@ -2722,7 +2867,24 @@ function App() {
                     </button>
                   </div>
                 )}
-                <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">Inställningar</div>
+                <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">Snabbpinningar</div>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => { setShowMenu(false); setShowCaptures(true); }}
+                    className="w-full flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-all"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Target size={18} className="text-orange-400" />
+                      <span className="font-medium">Visa pinningar 🍄</span>
+                    </div>
+                    {captures.length > 0 && (
+                      <span className="bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                        {captures.length}
+                      </span>
+                    )}
+                  </button>
+                </div>
+                <div className="text-xs text-gray-500 uppercase tracking-wide mb-2 mt-4">Inställningar</div>
                 <div className="space-y-2">
                   <div className="p-3 rounded-xl bg-white/5 border border-white/10">
                     <div className="flex items-center justify-between">
