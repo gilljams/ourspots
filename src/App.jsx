@@ -2995,8 +2995,8 @@ function App() {
                         className="w-full bg-gray-800 border border-white/10 rounded-lg px-3 py-2 text-white text-sm"
                       >
                         <option value="">Ingen (spara i lista)</option>
-                        {objects
-                          .filter(obj => obj.ownerId === user?.uid)
+                        {objects && user && objects
+                          .filter(obj => obj.ownerId === user.uid)
                           .sort((a, b) => a.name.localeCompare(b.name))
                           .map(obj => (
                             <option key={obj.id} value={obj.id}>
