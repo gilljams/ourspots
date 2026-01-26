@@ -626,18 +626,18 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
         {locationBlock && (
           <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
             <MapPin size={14} />
-            <span className="flex-1">{locationBlock.data.address}</span>
-            {locationBlock.data.lat && locationBlock.data.lng && (
-              <div className="relative" ref={menuRef}>
+            {locationBlock.data.lat && locationBlock.data.lng ? (
+              <div className="relative flex-1" ref={menuRef}>
                 <button
                   onClick={handleNavigationClick}
-                  className="p-1 rounded hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 transition-colors"
+                  className="text-left w-full hover:text-blue-400 transition-colors flex items-center gap-1"
                   title="Navigation"
                 >
-                  <Navigation size={14} />
+                  <span className="flex-1">{locationBlock.data.address}</span>
+                  <Navigation size={14} className="text-blue-400 flex-shrink-0" />
                 </button>
                 {showNavMenu && (
-                  <div className="absolute right-0 top-8 bg-gray-800 border border-white/20 rounded-lg shadow-xl z-50 min-w-[160px]">
+                  <div className="absolute right-0 bottom-8 bg-gray-800 border border-white/20 rounded-lg shadow-xl z-50 min-w-[160px]">
                     {onNavigate && (
                       <button
                         onClick={handleShowOnMap}
@@ -664,6 +664,8 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
                   </div>
                 )}
               </div>
+            ) : (
+              <span className="flex-1">{locationBlock.data.address}</span>
             )}
           </div>
         )}
