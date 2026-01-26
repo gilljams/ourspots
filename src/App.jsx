@@ -576,6 +576,8 @@ const AVAILABLE_ICONS = [
 
 function ObjectsAdminModal({ objects, categories, onClose, onEditObject }) {
   const [sortBy, setSortBy] = useState('title'); // title, category, parent
+  const [filterUserId, setFilterUserId] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
 
   const getObjectTitle = (obj) => {
     return obj.blocks?.find(b => b.type === 'title')?.data?.text || 'Namnlöst objekt';
@@ -590,7 +592,21 @@ function ObjectsAdminModal({ objects, categories, onClose, onEditObject }) {
     return objects.filter(o => o.parentId === objId).length;
   };
 
-  let sortedObjects = [...objects];
+  // Get unique users from objects
+  const users = [...new Set(objects.map(o => o.ownerId).filter(Boolean))];
+  
+  // Filter objects
+  let filteredObjects = objects;
+  if (filterUserId !== 'all') {
+    filteredObjects = filteredObjects.filter(o => o.ownerId === filterUserId);
+  }
+  if (searchTerm) {
+    const term = searchTerm.toLowerCase();
+    filteredObjects = filteredObjects.filter(o => getObjectTitle(o).toLowerCase().includes(term));
+  }
+
+  // Sort objects
+  let sortedObjects = [...filteredObjects];
   if (sortBy === 'title') {
     sortedObjects.sort((a, b) => getObjectTitle(a).localeCompare(getObjectTitle(b)));
   } else if (sortBy === 'category') {
@@ -608,30 +624,56 @@ function ObjectsAdminModal({ objects, categories, onClose, onEditObject }) {
       <div className="bg-gray-900 border border-white/10 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         <div className="p-6 border-b border-white/10">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-white">Alla objekt ({objects.length})</h2>
+            <h2 className="text-2xl font-bold text-white">Alla objekt ({sortedObjects.length} av {objects.length})</h2>
             <button onClick={onClose} className="text-gray-400 hover:text-white">
               <X size={24} />
             </button>
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setSortBy('title')}
-              className={`px-3 py-1.5 rounded text-sm ${sortBy === 'title' ? 'bg-blue-500 text-white' : 'bg-white/10 text-gray-300'}`}
-            >
-              Sortera: Titel
-            </button>
-            <button
-              onClick={() => setSortBy('category')}
-              className={`px-3 py-1.5 rounded text-sm ${sortBy === 'category' ? 'bg-blue-500 text-white' : 'bg-white/10 text-gray-300'}`}
-            >
-              Sortera: Kategori
-            </button>
-            <button
-              onClick={() => setSortBy('parent')}
-              className={`px-3 py-1.5 rounded text-sm ${sortBy === 'parent' ? 'bg-blue-500 text-white' : 'bg-white/10 text-gray-300'}`}
-            >
-              Sortera: Parent
-            </button>
+          <div className="space-y-3">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Sök på titel..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="flex-1 px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 text-sm"
+              />
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <select
+                value={filterUserId}
+                onChange={(e) => setFilterUserId(e.target.value)}
+                className="px-3 py-1.5 bg-white/10 border border-white/20 rounded text-sm text-white"
+              >
+                <option value="all">Alla användare ({objects.length})</option>
+                {users.map(userId => {
+                  const userObjects = objects.filter(o => o.ownerId === userId);
+                  return (
+                    <option key={userId} value={userId}>
+                      {userId.slice(0, 8)}... ({userObjects.length})
+                    </option>
+                  );
+                })}
+              </select>
+              <button
+                onClick={() => setSortBy('title')}
+                className={`px-3 py-1.5 rounded text-sm ${sortBy === 'title' ? 'bg-blue-500 text-white' : 'bg-white/10 text-gray-300'}`}
+              >
+                Titel
+              </button>
+              <button
+                onClick={() => setSortBy('category')}
+                className={`px-3 py-1.5 rounded text-sm ${sortBy === 'category' ? 'bg-blue-500 text-white' : 'bg-white/10 text-gray-300'}`}
+              >
+                Kategori
+              </button>
+              <button
+                onClick={() => setSortBy('parent')}
+                className={`px-3 py-1.5 rounded text-sm ${sortBy === 'parent' ? 'bg-blue-500 text-white' : 'bg-white/10 text-gray-300'}`}
+              >
+                Parent
+              </button>
+            </div>
           </div>
         </div>
         <div className="overflow-y-auto flex-1 p-6">
@@ -3019,7 +3061,22 @@ function App() {
       )}
 
       {showCreateModal && (
-        <CreateObjectModal onClose={() => { setShowCreateModal(false); setEditingObject(null); setDefaultParentId(null); }} onSave={handleSaveObject} editObject={editingObject} saving={saving} availableParents={objects.filter(o => o.id !== editingObject?.id)} defaultParentId={defaultParentId} userLocation={userLocation} categories={categories} />
+        <CreateObjectModal 
+          onClose={() => { setShowCreateModal(false); setEditingObject(null); setDefaultParentId(null); }} 
+          onSave={handleSaveObject} 
+          editObject={editingObject} 
+          saving={saving} 
+          availableParents={objects.filter(o => {
+            // Filter out the object itself
+            if (o.id === editingObject?.id) return false;
+            // Filter out children of the object (to prevent circular references)
+            if (o.parentId === editingObject?.id) return false;
+            return true;
+          })} 
+          defaultParentId={defaultParentId} 
+          userLocation={userLocation} 
+          categories={categories} 
+        />
       )}
 
       {showCategoryAdmin && (
