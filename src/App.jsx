@@ -259,9 +259,14 @@ const TitleBlock = ({ data }) => (
   <h2 className="text-2xl font-bold text-white mb-2">{data.text}</h2>
 );
 
-const LocationBlock = ({ data, inherited, onDelete, canDelete }) => (
+const LocationBlock = ({ data, inherited, onDelete, canDelete, positionNumber }) => (
   <div className="py-2 px-3 rounded-lg bg-white/5 border border-white/10 flex items-center gap-2">
     <MapPin size={16} className="text-blue-400 flex-shrink-0" />
+    {positionNumber && (
+      <span className="text-xs font-semibold text-orange-400 bg-orange-500/20 px-1.5 py-0.5 rounded">
+        Pin {positionNumber}
+      </span>
+    )}
     <span className="text-xs text-gray-200 flex-1">
       {data.address || (data.lat && data.lng ? `${data.lat.toFixed(6)}, ${data.lng.toFixed(6)}` : 'Ingen plats')}
     </span>
@@ -1009,6 +1014,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
                 // For location blocks, show delete if there are multiple
                 const locationBlocks = blocksToRender.filter(b => b.type === 'location' && !b.inherited);
                 const canDeleteLocation = block.type === 'location' && locationBlocks.length > 1 && !block.inherited;
+                const locationIndex = block.type === 'location' && !block.inherited ? locationBlocks.indexOf(block) + 1 : null;
                 
                 const handleDeleteBlock = async () => {
                   if (!window.confirm('Ta bort denna position?')) return;
@@ -1061,6 +1067,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
                           onToggle={toggleExpanded}
                           canDelete={canDeleteLocation}
                           onDelete={handleDeleteBlock}
+                          positionNumber={locationBlocks.length > 1 ? locationIndex : null}
                         />
                       </div>
                     )}
@@ -1323,14 +1330,17 @@ function MapView({ objects, onSelectObject, currentUser, userLocation, categorie
     
     // Show position number if multiple
     const showPositionNumber = object._totalPositions > 1;
-    const positionLabel = showPositionNumber ? ` (Plats ${object._positionIndex + 1}/${object._totalPositions})` : '';
+    const pinLabel = showPositionNumber ? `Pin ${object._positionIndex + 1}` : '';
 
     if (isTouchDevice) {
       return (
         <Marker position={position} icon={coloredIcon}>
           <Popup>
             <div className="min-w-[180px]">
-              <div className="text-sm font-semibold mb-1">{titleBlock?.data?.text || 'Namnlöst'}{positionLabel}</div>
+              <div className="text-sm font-semibold mb-1">{titleBlock?.data?.text || 'Namnlöst'}</div>
+              {showPositionNumber && (
+                <div className="text-xs font-semibold text-orange-600 mb-1">{pinLabel}</div>
+              )}
               <div className="text-xs text-gray-600 mb-2">{categoryLabel}</div>
               <button
                 onClick={() => onSelectObject(object)}
@@ -1348,7 +1358,8 @@ function MapView({ objects, onSelectObject, currentUser, userLocation, categorie
       <Marker position={position} icon={coloredIcon} eventHandlers={{ click: () => onSelectObject(object) }}>
         <Tooltip direction="top" offset={[0, -8]} opacity={0.9}>
           <div className="text-xs">
-            <div className="font-semibold">{titleBlock?.data?.text || 'Namnlöst'}{positionLabel}</div>
+            <div className="font-semibold">{titleBlock?.data?.text || 'Namnlöst'}</div>
+            {showPositionNumber && <div className="text-orange-400 font-semibold">{pinLabel}</div>}
             <div className="text-gray-500">{categoryLabel}</div>
           </div>
         </Tooltip>
