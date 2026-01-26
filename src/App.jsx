@@ -12,7 +12,7 @@ import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { db, auth, googleProvider } from './firebase';
-import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, Timestamp, getDoc, setDoc, deleteField } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, Timestamp, getDoc, setDoc, deleteField, getDocs, query, where } from 'firebase/firestore';
 import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
 
 // Fix Leaflet default marker icon issue with bundlers
@@ -2645,6 +2645,238 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
   );
 }
 
+// Public Object View Component (för delad vy utan inloggning)
+function PublicObjectView({ object, onBackToApp }) {
+  const [checkedItems, setCheckedItems] = useState({});
+  const [expandedChildren, setExpandedChildren] = useState(new Set());
+
+  const handleCheck = (blockId, item) => {
+    const key = `${blockId}-${item}`;
+    setCheckedItems(prev => ({...prev, [key]: !prev[key]}));
+  };
+
+  const getBlockIcon = (type) => {
+    const icons = {
+      text: '📝',
+      checklist: '☑️',
+      todo: '✓',
+      image: '🖼️',
+      location: '📍'
+    };
+    return icons[type] || '•';
+  };
+
+  const renderBlock = (block) => {
+    if (!block) return null;
+
+    switch (block.type) {
+      case 'text':
+        return (
+          <div key={block.id} className="bg-white/5 rounded-xl p-4 border border-white/10">
+            {block.title && <h3 className="text-base font-semibold text-white mb-2">{block.title}</h3>}
+            {block.content && (
+              <div className="text-gray-300 text-sm whitespace-pre-wrap leading-relaxed">
+                {block.content}
+              </div>
+            )}
+          </div>
+        );
+      
+      case 'checklist':
+      case 'todo':
+        const items = block.content ? block.content.split('\n').filter(line => line.trim()) : [];
+        return (
+          <div key={block.id} className="bg-white/5 rounded-xl p-4 border border-white/10">
+            {block.title && <h3 className="text-base font-semibold text-white mb-3">{block.title}</h3>}
+            {items.length > 0 ? (
+              <div className="space-y-2">
+                {items.map((item, idx) => (
+                  <div key={idx} className="flex items-start gap-3 group">
+                    <button
+                      onClick={() => handleCheck(block.id, item)}
+                      className="mt-0.5 flex-shrink-0 w-5 h-5 rounded border-2 border-gray-500 hover:border-blue-400 transition-colors flex items-center justify-center"
+                    >
+                      {checkedItems[`${block.id}-${item}`] && <Check size={14} className="text-blue-400" />}
+                    </button>
+                    <span className={`text-sm leading-snug ${checkedItems[`${block.id}-${item}`] ? 'line-through text-gray-500' : 'text-gray-300'}`}>
+                      {item}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500 text-sm italic">Inga items ännu</p>
+            )}
+          </div>
+        );
+      
+      case 'image':
+        return block.data?.url ? (
+          <div key={block.id} className="bg-white/5 rounded-xl p-2 border border-white/10">
+            <img 
+              src={block.data.url} 
+              alt={block.title || 'Bild'}
+              className="w-full h-auto rounded-lg"
+            />
+          </div>
+        ) : null;
+      
+      case 'location':
+        return block.data?.lat && block.data?.lng ? (
+          <div key={block.id} className="bg-white/5 rounded-xl p-4 border border-white/10">
+            <div className="flex items-start gap-3">
+              <MapPin size={20} className="text-blue-400 flex-shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                {block.data.address && (
+                  <p className="text-white font-medium mb-1 break-words">{block.data.address}</p>
+                )}
+                <p className="text-gray-400 text-sm">
+                  {block.data.lat.toFixed(5)}, {block.data.lng.toFixed(5)}
+                </p>
+                <a
+                  href={`https://www.google.com/maps?q=${block.data.lat},${block.data.lng}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-400 hover:text-blue-300 text-sm mt-2 inline-block"
+                >
+                  Öppna i Google Maps →
+                </a>
+              </div>
+            </div>
+          </div>
+        ) : null;
+      
+      default:
+        return null;
+    }
+  };
+
+  const getTitleBlock = (obj) => obj.blocks?.find(b => b.type === 'title');
+  const getImageBlock = (obj) => obj.blocks?.find(b => b.type === 'image');
+  const getOtherBlocks = (obj) => obj.blocks?.filter(b => !['title', 'image'].includes(b.type)) || [];
+
+  const titleBlock = getTitleBlock(object);
+  const imageBlock = getImageBlock(object);
+  const otherBlocks = getOtherBlocks(object);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
+      {/* Header */}
+      <div className="bg-black/20 backdrop-blur-sm border-b border-white/10 sticky top-0 z-10">
+        <div className="max-w-4xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Globe size={24} className="text-blue-400" />
+              <h1 className="text-xl font-bold text-white">Delat objekt från OurSpots</h1>
+            </div>
+            {onBackToApp && (
+              <button
+                onClick={onBackToApp}
+                className="px-4 py-2 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-300 text-sm transition-all"
+              >
+                Tillbaka till appen
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        {/* Title */}
+        {titleBlock?.content && (
+          <h2 className="text-3xl font-bold text-white mb-6">{titleBlock.content}</h2>
+        )}
+
+        {/* Image */}
+        {imageBlock?.data?.url && (
+          <div className="mb-6">
+            <img 
+              src={imageBlock.data.url} 
+              alt={titleBlock?.content || 'Bild'}
+              className="w-full h-auto rounded-2xl shadow-2xl"
+            />
+          </div>
+        )}
+
+        {/* Category badge */}
+        {object.categoryName && (
+          <div className="mb-6 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20">
+            <span className="text-gray-300 text-sm">{object.categoryName}</span>
+          </div>
+        )}
+
+        {/* Other blocks */}
+        <div className="space-y-4 mb-8">
+          {otherBlocks.map(block => renderBlock(block))}
+        </div>
+
+        {/* Children */}
+        {object.children && object.children.length > 0 && (
+          <div className="mt-8 space-y-4">
+            <h3 className="text-xl font-semibold text-white mb-4">Relaterade objekt</h3>
+            {object.children.map(child => {
+              const childTitle = getTitleBlock(child);
+              const childImage = getImageBlock(child);
+              const isExpanded = expandedChildren.has(child.id);
+              
+              return (
+                <div key={child.id} className="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
+                  <button
+                    onClick={() => {
+                      const newExpanded = new Set(expandedChildren);
+                      if (isExpanded) {
+                        newExpanded.delete(child.id);
+                      } else {
+                        newExpanded.add(child.id);
+                      }
+                      setExpandedChildren(newExpanded);
+                    }}
+                    className="w-full p-4 flex items-center justify-between hover:bg-white/5 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      {childImage?.data?.url && (
+                        <img src={childImage.data.url} alt="" className="w-12 h-12 rounded-lg object-cover" />
+                      )}
+                      <span className="text-white font-medium">{childTitle?.content || 'Utan titel'}</span>
+                    </div>
+                    <ChevronDown 
+                      size={20} 
+                      className={`text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                    />
+                  </button>
+                  
+                  {isExpanded && (
+                    <div className="p-4 pt-0 space-y-3">
+                      {getOtherBlocks(child).map(block => renderBlock(block))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Login prompt */}
+        <div className="mt-12 p-6 rounded-xl bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20">
+          <h3 className="text-lg font-semibold text-white mb-2">Vill du skapa egna objekt?</h3>
+          <p className="text-gray-300 text-sm mb-4">
+            Logga in på OurSpots för att skapa och dela dina egna platser, listor och anteckningar.
+          </p>
+          {onBackToApp && (
+            <button
+              onClick={onBackToApp}
+              className="px-6 py-2.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all"
+            >
+              Gå till OurSpots
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const [user, setUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -2697,6 +2929,9 @@ function App() {
   const [headerHeight, setHeaderHeight] = useState(64);
   const seedingRef = useRef(false);
   const wakeLockRef = useRef(null);
+  const [shareToken, setShareToken] = useState(null);
+  const [sharedObject, setSharedObject] = useState(null);
+  const [loadingShare, setLoadingShare] = useState(false);
 
   // Distance helper (Haversine formula)
   const getDistance = (lat1, lng1, lat2, lng2) => {
@@ -2723,6 +2958,45 @@ function App() {
   useEffect(() => {
     localStorage.setItem('sortByDistance', sortByDistance.toString());
   }, [sortByDistance]);
+
+  // Detect and handle share routes (#/share/:token)
+  useEffect(() => {
+    const checkShareRoute = async () => {
+      const hash = window.location.hash;
+      if (hash.startsWith('#/share/')) {
+        const token = hash.split('/share/')[1];
+        if (token) {
+          setShareToken(token);
+          setLoadingShare(true);
+          
+          try {
+            // Query for object with this public share token
+            const objectsRef = collection(db, 'objects');
+            const q = query(
+              objectsRef,
+              where('publicShareToken', '==', token),
+              where('isPublicShared', '==', true)
+            );
+            const snapshot = await getDocs(q);
+            
+            if (!snapshot.empty) {
+              const objectData = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+              setSharedObject(objectData);
+            } else {
+              setSharedObject(null);
+            }
+          } catch (err) {
+            console.error('Error loading shared object:', err);
+            setSharedObject(null);
+          } finally {
+            setLoadingShare(false);
+          }
+        }
+      }
+    };
+
+    checkShareRoute();
+  }, []);
 
   // Wake Lock för att hålla skärmen påslagen
   useEffect(() => {
@@ -3266,6 +3540,52 @@ function App() {
           <p className="text-gray-400">Laddar dina platser...</p>
         </div>
       </div>
+    );
+  }
+
+  // Handle public share view
+  if (shareToken) {
+    if (loadingShare) {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 flex items-center justify-center">
+          <div className="text-center">
+            <Loader size={48} className="animate-spin text-blue-400 mx-auto mb-4" />
+            <p className="text-gray-400">Laddar delat objekt...</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (!sharedObject) {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 flex items-center justify-center">
+          <div className="text-center max-w-md mx-auto px-4">
+            <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6 mb-4">
+              <h2 className="text-xl font-semibold text-white mb-2">Objekt hittades inte</h2>
+              <p className="text-gray-300 text-sm">Detta objekt finns inte eller är inte längre publikt delat.</p>
+            </div>
+            <button
+              onClick={() => {
+                window.location.hash = '';
+                window.location.reload();
+              }}
+              className="px-6 py-2.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all"
+            >
+              Gå till OurSpots
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <PublicObjectView 
+        object={sharedObject} 
+        onBackToApp={() => {
+          window.location.hash = '';
+          window.location.reload();
+        }}
+      />
     );
   }
 
