@@ -3180,6 +3180,7 @@ function App() {
                     onNavigate={(coords) => {
                       setViewMode('map');
                       setMapCenter(coords);
+                      window.scrollTo(0, 0);
                     }}
                   />
                 );
@@ -3208,7 +3209,13 @@ function App() {
           </button>
           {!selectedObject && (
             <button
-              onClick={() => setViewMode(viewMode === 'list' ? 'map' : 'list')}
+              onClick={() => {
+                const newMode = viewMode === 'list' ? 'map' : 'list';
+                setViewMode(newMode);
+                if (newMode === 'map') {
+                  window.scrollTo(0, 0);
+                }
+              }}
               className="fixed bottom-24 right-6 w-14 h-14 bg-gray-800 hover:bg-gray-700 rounded-full shadow-2xl flex items-center justify-center text-white transition-all hover:scale-110 z-[1200] border border-white/10"
               title={viewMode === 'list' ? 'Visa karta' : 'Visa lista'}
             >
@@ -3249,6 +3256,7 @@ function App() {
             setSelectedObject(null);
             setViewMode('map');
             setMapCenter(coords);
+            window.scrollTo(0, 0);
           }}
         />
       )}
