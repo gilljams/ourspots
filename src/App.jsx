@@ -365,28 +365,11 @@ const ImageBlock = ({ data }) => (
   </div>
 );
 
-// Wrapper for lazy-loaded markdown viewer
-const MarkdownViewer = ({ source, style }) => {
-  const [MDEditorModule, setMDEditorModule] = useState(null);
-  
-  useEffect(() => {
-    import('@uiw/react-md-editor').then(module => {
-      setMDEditorModule(module);
-    });
-  }, []);
-  
-  if (!MDEditorModule) {
-    return <div className="text-gray-300 text-sm">{source || ''}</div>;
-  }
-  
-  return <MDEditorModule.default.Markdown source={source} style={style} />;
-};
-
 const TextBlock = ({ data }) => (
   <div className="mb-4 rounded-2xl bg-white/10 border border-white/10 shadow-[0_10px_30px_-16px_rgba(0,0,0,0.7)] p-4">
     <div data-color-mode="dark" className="markdown-body">
       <Suspense fallback={<div className="text-gray-300 text-sm">{data.content || ''}</div>}>
-        <MarkdownViewer 
+        <MDEditor.Markdown 
           source={data.content || ''} 
           style={{ background: 'transparent', color: '#e5e7eb', fontSize: '0.875rem' }}
         />
@@ -2741,7 +2724,7 @@ function PublicObjectView({ object, onBackToApp }) {
             {block.data?.content && (
               <div data-color-mode="dark" className="markdown-body">
                 <Suspense fallback={<div className="text-gray-300 text-sm">{block.data.content}</div>}>
-                  <MarkdownViewer 
+                  <MDEditor.Markdown 
                     source={block.data.content} 
                     style={{ background: 'transparent', color: '#e5e7eb' }}
                   />
