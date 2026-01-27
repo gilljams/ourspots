@@ -3192,12 +3192,25 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'objects'), (snap) => {
-      setObjects(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    if (!user) {
+      setObjects([]);
+      setLoading(false);
+      return;
+    }
+
+    // Fetch objects where user is owner OR has been shared access
+    const objectsRef = collection(db, 'objects');
+    const q = query(objectsRef, where('ownerId', '==', user.uid));
+    
+    const unsub = onSnapshot(q, (snap) => {
+      const userObjects = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      // TODO: Also fetch objects shared with this user (where shares contains user.email)
+      // This requires a separate query or composite index
+      setObjects(userObjects);
       setLoading(false);
     });
     return () => unsub();
-  }, []);
+  }, [user]);
 
   // Listen to categories
   useEffect(() => {
