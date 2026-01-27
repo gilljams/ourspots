@@ -2671,6 +2671,8 @@ function PublicObjectView({ object, onBackToApp }) {
 
     switch (block.type) {
       case 'text':
+        // Skip empty text blocks
+        if (!block.title && !block.content) return null;
         return (
           <div key={block.id} className="bg-white/5 rounded-xl p-4 border border-white/10">
             {block.title && <h3 className="text-base font-semibold text-white mb-2">{block.title}</h3>}
@@ -2685,6 +2687,8 @@ function PublicObjectView({ object, onBackToApp }) {
       case 'checklist':
       case 'todo':
         const items = block.content ? block.content.split('\n').filter(line => line.trim()) : [];
+        // Skip empty checklists/todos
+        if (items.length === 0 && !block.title) return null;
         return (
           <div key={block.id} className="bg-white/5 rounded-xl p-4 border border-white/10">
             {block.title && <h3 className="text-base font-semibold text-white mb-3">{block.title}</h3>}
@@ -2705,7 +2709,7 @@ function PublicObjectView({ object, onBackToApp }) {
                 ))}
               </div>
             ) : (
-              <p className="text-gray-500 text-sm italic">Inga items ännu</p>
+              block.title && <p className="text-gray-500 text-sm italic">Inga items ännu</p>
             )}
           </div>
         );
@@ -2760,21 +2764,25 @@ function PublicObjectView({ object, onBackToApp }) {
   const otherBlocks = getOtherBlocks(object);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
+    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950"
+      style={{
+         backgroundImage: `radial-gradient(circle at 15% 12%, rgba(59,130,246,0.20), transparent 35%),
+                           radial-gradient(circle at 85% 8%, rgba(56,189,248,0.16), transparent 32%),
+                           radial-gradient(circle at 50% 88%, rgba(59,130,246,0.14), transparent 36%),
+                           linear-gradient(to bottom right, #06070c, #0b1220, #06070c)`
+      }}
+    >
       {/* Header */}
-      <div className="bg-black/20 backdrop-blur-sm border-b border-white/10 sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-4 py-4">
+      <div className="bg-gray-900/50 backdrop-blur-xl border-b border-white/10 sticky top-0 z-10">
+        <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Globe size={24} className="text-blue-400" />
-              <h1 className="text-xl font-bold text-white">Delat objekt från OurSpots</h1>
-            </div>
+            <h1 className="text-2xl font-bold text-white">OurSpots</h1>
             {onBackToApp && (
               <button
                 onClick={onBackToApp}
                 className="px-4 py-2 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-300 text-sm transition-all"
               >
-                Tillbaka till appen
+                Till appen
               </button>
             )}
           </div>
@@ -2782,7 +2790,7 @@ function PublicObjectView({ object, onBackToApp }) {
       </div>
 
       {/* Content */}
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Title */}
         {titleBlock?.content && (
           <h2 className="text-3xl font-bold text-white mb-6">{titleBlock.content}</h2>
@@ -2794,7 +2802,7 @@ function PublicObjectView({ object, onBackToApp }) {
             <img 
               src={imageBlock.data.url} 
               alt={titleBlock?.content || 'Bild'}
-              className="w-full h-auto rounded-2xl shadow-2xl"
+              className="w-full max-w-sm h-48 object-cover rounded-xl shadow-lg"
             />
           </div>
         )}
@@ -2859,7 +2867,6 @@ function PublicObjectView({ object, onBackToApp }) {
 
         {/* Login prompt */}
         <div className="mt-12 p-6 rounded-xl bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20">
-          <h3 className="text-lg font-semibold text-white mb-2">Vill du skapa egna objekt?</h3>
           <p className="text-gray-300 text-sm mb-4">
             Logga in på OurSpots för att skapa och dela dina egna platser, listor och anteckningar.
           </p>
