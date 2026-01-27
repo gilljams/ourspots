@@ -3208,6 +3208,13 @@ function App() {
       // This requires a separate query or composite index
       setObjects(userObjects);
       setLoading(false);
+      
+      // Update selectedObject if it exists and has been modified
+      setSelectedObject(prev => {
+        if (!prev?.id) return prev;
+        const updated = userObjects.find(obj => obj.id === prev.id);
+        return updated || prev; // Keep prev if not found (might be deleted)
+      });
     });
     return () => unsub();
   }, [user]);
@@ -3511,7 +3518,9 @@ function App() {
       
       setShowCreateModal(false);
       setEditingObject(null);
-      setSelectedObject(null);
+      setDefaultParentId(null); // Clear defaultParentId to prevent wrong parent on next create
+      // Don't close selectedObject if we just created a child - keep parent view open
+      // setSelectedObject(null);
     } catch (err) {
       console.error('Save error:', err);
       alert(err.message === 'Timeout' ? 'Sparningen tog för lång tid. Försök igen.' : 'Kunde inte spara!');
