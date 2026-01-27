@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, useRef, lazy, Suspense, useCallback } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { 
   MapPin, Home, Coffee, Mountain, Star, Calendar, X, Plus, Image, Edit2, Trash2, 
   Loader, LogOut, LogIn, Check, Circle, Upload, Folder, Navigation, Plane, 
@@ -11,7 +11,7 @@ import { MapContainer, TileLayer, Marker, useMapEvents, Tooltip, Popup } from 'r
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-const MDEditor = lazy(() => import('@uiw/react-md-editor'));
+import MDEditor from '@uiw/react-md-editor';
 import { db, auth, googleProvider } from './firebase';
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, Timestamp, getDoc, setDoc, deleteField, getDocs, query, where } from 'firebase/firestore';
 import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
@@ -368,12 +368,10 @@ const ImageBlock = ({ data }) => (
 const TextBlock = ({ data }) => (
   <div className="mb-4 rounded-2xl bg-white/10 border border-white/10 shadow-[0_10px_30px_-16px_rgba(0,0,0,0.7)] p-4">
     <div data-color-mode="dark" className="markdown-body">
-      <Suspense fallback={<div className="text-gray-300 text-sm">{data.content || ''}</div>}>
-        <MDEditor.Markdown 
-          source={data.content || ''} 
-          style={{ background: 'transparent', color: '#e5e7eb', fontSize: '0.875rem' }}
-        />
-      </Suspense>
+      <MDEditor.Markdown 
+        source={data.content || ''} 
+        style={{ background: 'transparent', color: '#e5e7eb', fontSize: '0.875rem' }}
+      />
     </div>
   </div>
 );
@@ -2087,7 +2085,6 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
   const [imageUrl, setImageUrl] = useState(editObject?.blocks?.find(b => b.type === 'image')?.data?.url || '');
   const [imageCropMode, setImageCropMode] = useState(editObject?.blocks?.find(b => b.type === 'image')?.data?.cropMode || 'auto');
   const [uploadingImage, setUploadingImage] = useState(false);
-  const debounceTimersRef = useRef({});
   // Store custom blocks (text, checklist, todo) as array to support multiple
   const [customBlocks, setCustomBlocks] = useState(() => {
     if (!editObject) return [];
@@ -2103,13 +2100,6 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
   const [draggingBlockId, setDraggingBlockId] = useState(null);
   const [dragOverBlockId, setDragOverBlockId] = useState(null);
   const fileInputRef = useRef(null);
-
-  // Cleanup debounce timers on unmount
-  useEffect(() => {
-    return () => {
-      Object.values(debounceTimersRef.current).forEach(timer => clearTimeout(timer));
-    };
-  }, []);
 
   const selectedParent = availableParents.find(p => p.id === parentId);
   const parentHasLocation = selectedParent?.blocks?.some(b => b.type === 'location');
@@ -2596,30 +2586,17 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
                     />
                     {block.type === 'text' ? (
                       <div data-color-mode="dark">
-                        <Suspense fallback={
-                          <div className="w-full h-[200px] bg-white/5 border border-white/10 rounded-lg flex items-center justify-center">
-                            <Loader size={24} className="animate-spin text-blue-400" />
-                          </div>
-                        }>
-                          <MDEditor
-                            value={block.content}
-                            onChange={(val) => {
-                              // Update immediately in local state for responsive typing
-                              setCustomBlocks(prev => prev.map(b => b.id === block.id ? { ...b, content: val || '' } : b));
-                              // Debounce expensive operations
-                              if (debounceTimersRef.current[block.id]) {
-                                clearTimeout(debounceTimersRef.current[block.id]);
-                              }
-                            }}
-                            preview="edit"
-                            hideToolbar={false}
-                            height={200}
-                            disabled={saving}
-                            textareaProps={{
-                              placeholder: 'Skriv anteckning med markdown-stöd...'
-                            }}
-                          />
-                        </Suspense>
+                        <MDEditor
+                          value={block.content}
+                          onChange={(val) => setCustomBlocks(customBlocks.map(b => b.id === block.id ? { ...b, content: val || '' } : b))}
+                          preview="edit"
+                          hideToolbar={false}
+                          height={200}
+                          disabled={saving}
+                          textareaProps={{
+                            placeholder: 'Skriv anteckning med markdown-stöd...'
+                          }}
+                        />
                       </div>
                     ) : (
                       <textarea 
@@ -2723,12 +2700,10 @@ function PublicObjectView({ object, onBackToApp }) {
             {block.data?.title && <h3 className="text-base font-semibold text-white mb-2">{block.data.title}</h3>}
             {block.data?.content && (
               <div data-color-mode="dark" className="markdown-body">
-                <Suspense fallback={<div className="text-gray-300 text-sm">{block.data.content}</div>}>
-                  <MDEditor.Markdown 
-                    source={block.data.content} 
-                    style={{ background: 'transparent', color: '#e5e7eb' }}
-                  />
-                </Suspense>
+                <MDEditor.Markdown 
+                  source={block.data.content} 
+                  style={{ background: 'transparent', color: '#e5e7eb' }}
+                />
               </div>
             )}
           </div>
