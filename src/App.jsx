@@ -2117,21 +2117,6 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
         content: b.type === 'text' ? b.data.content : b.data.items.map(i => i.text).join('\n')
       }));
   });
-  // Spara och hämta senaste kategori-valet i localStorage
-  useEffect(() => {
-    if (!isEdit && selectedType) {
-      localStorage.setItem('lastSelectedCategory', selectedType);
-    }
-  }, [selectedType, isEdit]);
-
-  useEffect(() => {
-    if (!isEdit) {
-      const lastCat = localStorage.getItem('lastSelectedCategory');
-      if (lastCat && categories.find(c => c.id === lastCat)) {
-        setSelectedType(lastCat);
-      }
-    }
-  }, [categories, isEdit]);
   const [draggingBlockId, setDraggingBlockId] = useState(null);
   const [dragOverBlockId, setDragOverBlockId] = useState(null);
   const fileInputRef = useRef(null);
@@ -2975,13 +2960,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedObject, setSelectedObject] = useState(null);
-  const [activeCategory, setActiveCategory] = useState(() => {
-    return localStorage.getItem('activeCategory') || 'all';
-  });
-
-  useEffect(() => {
-    localStorage.setItem('activeCategory', activeCategory);
-  }, [activeCategory]);
+  const [activeCategory, setActiveCategory] = useState('all');
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingObject, setEditingObject] = useState(null);
