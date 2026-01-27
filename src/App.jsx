@@ -3562,18 +3562,7 @@ function App() {
     setSelectedObject(null);
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900/20 to-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <Loader size={48} className="animate-spin text-blue-400 mx-auto mb-4" />
-          <p className="text-gray-400">Laddar dina platser...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Handle public share view
+  // Handle public share view FIRST (before checking loading)
   if (shareToken) {
     if (loadingShare) {
       return (
@@ -3616,6 +3605,18 @@ function App() {
           window.location.reload();
         }}
       />
+    );
+  }
+
+  // Check loading state for normal app (after share view check)
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900/20 to-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <Loader size={48} className="animate-spin text-blue-400 mx-auto mb-4" />
+          <p className="text-gray-400">Laddar dina platser...</p>
+        </div>
+      </div>
     );
   }
 
