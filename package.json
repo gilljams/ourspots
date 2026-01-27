@@ -10,7 +10,6 @@
     "deploy": "vite build && gh-pages -d dist"
   },
   "dependencies": {
-    "@uiw/react-md-editor": "^4.0.11",
     "firebase": "^12.8.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.563.0",
