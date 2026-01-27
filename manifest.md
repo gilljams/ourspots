@@ -1,8 +1,8 @@
 ========================
-OurSpots – Manifest / Blueprint (Updated Jan 2026)
+OurSpots – Manifest / Blueprint (Updated Jan 27, 2026)
 ========================
 
-🚀 STATUS: v1.1 - UX-förbättringar & Optimeringar
+🚀 STATUS: v1.5 - Sharing System & Security (In Progress)
 
 1. VISION
 - Mobilfokuserad app med premium dark theme
@@ -53,8 +53,9 @@ Object:
 - type: kategori-id från categories collection
 - blocks: Block[]
 - ownerId: string
-- sharedWith?: { userId: string, role: "viewer" | "editor" }[]
-- public?: boolean
+- shares?: { [email: string]: { role: "viewer" | "editor", sharedAt: Timestamp, email: string } } ✅
+- isPublicShared?: boolean ✅
+- publicShareToken?: string (UUID för publik delning) ✅
 - systemblock: createdAt, updatedAt, Objekt-ID, ParentID, LayerID
 
 Block:
@@ -132,21 +133,75 @@ Default block sets per typ/kategori (för enkelhet):
 - Visa egen position med användarikon på karta och kartväljare ✅
 
 7. NÄSTA PRIORITERING (Q1 2026)
-- PWA-implementation (manifest.json, service worker, installbar)
-- Fler blocktyper (betyg, öppettider, kontakt, länkar)
-- Delning/roller (viewer/editor) – planerad
-- Lager/samlingar för resor och projekt
-- Användarhantering (se dina objekt, profil)
+✅ Grundläggande sharing (v1.5)
+  - ShareModal med email-input, rollväljare (viewer/editor)
+  - Publik delning med unika tokens
+  - PublicObjectView för read-only visning
+  - Behörighetsfiltrering (bara se egna objekt)
 
-8. DELADE OBJEKT / SHARED OBJECTS (PLANERAD FUNKTION)
-- Owner kan dela objekt med roll: Viewer / Editor
-- Delning ärvs nedåt i hierarki (valfritt override)
-- Endast synligt för användare med access
-- Marker visas på karta för delade användare
+🔄 Pågående (v1.5)
+  - Fixa block-visning på delad sida (block renderas inte korrekt)
+  - Hämta objekt delade med användaren (shares[email] query)
+  - Firestore Security Rules för shares och publika objekt
+  
+📋 Planerat (v1.6+)
+  - Badges på kort när objekt är delat
+  - Filter: Mina/Alla objekt
+  - Markdown editor för textfält (bullet lists, bold, bilder)
+  - PWA-implementation (manifest.json, service worker, installbar)
+  - Fler blocktyper (Link, Audio/Video, PDF, Väder, Timer, Kontakt)
+  - Lager/samlingar för resor och projekt
+
+8. DELNING / SHARING SYSTEM ✅ DELVIS IMPLEMENTERAT
+
+### ShareModal (Implementerat v1.5)
+- ✅ Email-baserad delning med rollväljare (Viewer/Editor)
+- ✅ Hantera delade användare (visa lista, ta bort access)
+- ✅ Publik delning med toggle
+- ✅ Kopiera delningslänk med UUID-token
+- ✅ Integrerad i ObjectDetail "Hantera objekt"-sektion
+- ✅ Badge visar antal delade användare + globe-ikon för publik
+
+### PublicObjectView (Implementerat v1.5)
+- ✅ Read-only vy för publika delningslänkar (#/share/:token)
+- ✅ Visar alla block (titel, bild, location, text, checklist, todo)
+- ✅ Design liknar huvudappen (samma header, bakgrund)
+- ✅ Login-banner för att konvertera besökare
+- ✅ "Till appen"-knapp för navigering
+
+### Behörighetskontroll (Implementerat v1.5)
+- ✅ Filtrera objekt baserat på ownerId
+- ✅ Ej inloggade ser inga objekt
+- ✅ Inloggade ser bara sina egna objekt
+
+### Kvarstående (v1.5)
+- 🔄 Fixa block-rendering i PublicObjectView (text/todo-block visas inte)
+- 🔄 Hämta objekt delade MED användaren (shares query)
+- 🔄 Firestore Security Rules uppdatering:
+  ```javascript
+  // Owner access
+  allow read: if resource.data.ownerId == request.auth.uid
+  
+  // Shared access (viewer/editor)
+  allow read: if request.auth != null && 
+              resource.data.shares[request.auth.token.email].role in ['viewer', 'editor']
+  
+  // Public shared access
+  allow read: if resource.data.isPublicShared == true
+  
+  // Editor can update
+  allow update: if resource.data.shares[request.auth.token.email].role == 'editor'
+  ```
+
+### Planerade förbättringar (v1.6+)
+- Email → UID mapping för snabbare queries
+- Badges på objektkort för delad status
+- Filter: Mina/Alla objekt
+- Dela barn-objekt tillsammans med förälder (shareChildren option)
 
 9. ADMINISTRATIVA FUNKTIONER ✅ IMPLEMENTERAT
 
-### Kategorihantering (Implementerat)
+### Kategorihantering (Implementerat v1.1)
 - ✅ Skapa nya kategorier med namn, ikon, färg
 - ✅ Redigera befintliga kategorier
 - ✅ Radera kategorier med automatisk objekthantering
@@ -155,36 +210,43 @@ Default block sets per typ/kategori (för enkelhet):
 - ✅ Dark mode-optimerad UI
 - ✅ Real-time synkronisering med Firebase
 
-### Objekthantering (Implementerat)
+### Objekthantering (Implementerat v1.1)
 - ✅ Admin kan redigera alla objekt oavsett ägare
 - ✅ Admin kan radera alla objekt oavsett ägare
 - ✅ Hantera ägarlösa objekt (skapade innan användarsystem)
 - ✅ Firebase Security Rules uppdaterade för admin-behörighet
 
-### Användarhantering (Implementerat)
+### Delningshantering (Implementerat v1.5)
+- ✅ ShareModal för att dela objekt med andra
+- ✅ Email-baserad användardelning med roller
+- ✅ Publik delning med kopierbar länk
+- ✅ Behörighetskontroll (bara se egna objekt)
+
+### Användarhantering (Implementerat v1.0)
 - ✅ Favoriter: Markera objekt med stjärn-ikon
 - ✅ Kombinerad filtrering: Favoriter + kategori samtidigt
 - ✅ Toggle-filter: Favoriter fungerar som på/av-filter
 - ✅ Persistent lagring i Firestore users/{uid}/favorites
 
-### Bildhantering (Implementerat)
+### Bildhantering (Implementerat v1.2)
 - ✅ Cloudinary smart cropping: AI-baserad beskärning (Auto/Face/Center)
 - ✅ Automatisk komprimering: Client-side resize till max 2000px, 85% kvalitet
 - ✅ GPS-extrahering: Läser EXIF-data från bilder automatiskt
 - ✅ Fallback-hantering: Uppladdning fungerar även om resize/GPS misslyckas
 - ✅ Optimerade transformationer: Olika storlekar för kort, detail, thumbnails
 
-### Inställningar (Implementerat)
+### Inställningar (Implementerat v1.3)
 - ✅ "Håll skärmen påslagen" med Wake Lock API
 - ✅ Persistent inställning i localStorage
 - ✅ Automatisk hantering vid visibility changes
+- ✅ Quick Capture-knapp för snabb objektskapande från favorit
 
-### Admin-åtkomst (Implementerat)
+### Admin-åtkomst (Implementerat v1.1)
 - ✅ isAdmin-flagga i users collection
 - ✅ Admin-sektion synlig endast för administratörer
 - ✅ Skydd mot obehörig åtkomst
 
-### Planerade admin-funktioner
+### Planerade admin-funktioner (v1.6+)
 - Lager: lägg till, redigera, ta bort, färg, ikon, typ
 - Objekt: flytta mellan lager, flytta i hierarki, redigera metadata, public flag
 - Delning / access: lägg till / ta bort användare, set roll Viewer/Editor
@@ -199,26 +261,114 @@ Default block sets per typ/kategori (för enkelhet):
 9. TEKNISK STACK (GRATISTJÄNSTER)
 - Frontend: React 19.2.0 + Vite, host GitHub Pages
 - Databas: Firebase Firestore
-- Authentication: Firebase Auth
+- Authentication: Firebase Auth (Google Sign-In)
+- Routing: Hash-based (#/share/:token för publika länkar)
 - Bilduppladdning: Cloudinary (25GB/månad gratis, unsigned uploads)
-- Bildprocessning: Client-side Canvas API för resize, Cloudinary AI transformations
+- Bildprocessing: Client-side Canvas API för resize, Cloudinary AI transformations
 - EXIF-läsning: Custom JavaScript implementation för GPS-extrahering
-- CI/CD: GitHub Actions
-- PWA möjlig för offline / haptics
+- Kartor: React Leaflet med OpenStreetMap tiles
+- Ikoner: Lucide React (tree-shaken, ~21kB)
+- CI/CD: GitHub Actions med gh-pages deploy
+- PWA möjlig för offline / haptics (planerad)
 - Design: dark theme, glassmorphism, accentfärger per kategori/typ
+- Wake Lock API: Håller skärmen påslagen vid behov
+- Clipboard API: Kopiera delningslänkar
 
 10. MVP / FEATURE-ÖVERSIKT
 - Objekt + block
 - Hierarki (parent → child)
 - Kategorier som swipe
 - Lager (samlingar, resor, public layer)
-- Delning (viewer/editor)
+- Delning (viewer/editor) - delvis implementerat ✅
 - Filter (avstånd / typ / favorit)
 - Kartintegration med marker och glow för nära objekt
 - Floating add button
 - Breadcrumbs
 - Dark theme + glassmorphism
-- Publik vy med karta och kort för externa användare
+- Publik vy med karta och kort för externa användare - implementerat ✅
 - Adminfunktioner (kategorier, lager, objekt, block, delning)
 - Fördefinierade typ-ikoner
 - Modulära block/förmågor + default sets per kategori/typ
+
+11. KÄNDA PROBLEM & KVARSTÅENDE ARBETE (v1.5)
+
+### Högprioriterade buggar
+1. **PublicObjectView block-rendering** 🔴
+   - Symptom: Text- och todo-block med innehåll visas inte
+   - Möjlig orsak: Tomma block filtreras bort för tidigt, eller block.content är undefined
+   - Status: Väntar på debugging nästa session
+
+2. **Delade objekt visas inte i listan** 🔴
+   - Symptom: Objekt delade MED användaren syns inte
+   - Orsak: Query hämtar bara where('ownerId', '==', user.uid)
+   - Lösning behövs: Två queries (owner + shared) eller composite index
+   - Status: TODO i kod, behöver implementeras
+
+### Säkerhetsuppdateringar behövs
+3. **Firestore Security Rules** 🟡
+   - Nuvarande: `allow read: if true` (för bred åtkomst)
+   - Behöver: Owner + Shared + Public filtering
+   - Rules finns dokumenterade i manifest
+   - Status: Redo att applicera i Firebase Console
+
+### UX-förbättringar planerade
+4. **Dela-modal förbättringar** 🟢
+   - Badge på objektkort när delat
+   - Filter: Mina/Alla objekt
+   - Email-validering och bättre felmeddelanden
+   - Status: Planerad v1.6
+
+5. **Markdown editor** 🟢
+   - Rich text för anteckningar (bold, bullets, bilder)
+   - Liknande iPhone Anteckningar
+   - react-md-editor eller liknande
+   - Status: Research behövs
+
+### Firestore Security Rules (Redo att applicera)
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isAdmin() {
+      return request.auth != null && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+    
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null; // For sharing
+    }
+    
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    match /objects/{objectId} {
+      // Read: Owner, Shared, Public (keep "if true" during dev)
+      allow read: if true // Remove when ready to lock down
+                  || resource.data.ownerId == request.auth.uid
+                  || (request.auth != null && resource.data.shares[request.auth.token.email].role in ['viewer', 'editor'])
+                  || resource.data.isPublicShared == true;
+      
+      allow create: if request.auth != null;
+      
+      allow update: if request.auth != null && 
+                       (request.auth.uid == resource.data.ownerId
+                        || isAdmin()
+                        || resource.data.shares[request.auth.token.email].role == 'editor');
+      
+      allow delete: if request.auth != null && 
+                       (request.auth.uid == resource.data.ownerId || isAdmin());
+    }
+  }
+}
+```
+
+### Deployment info
+- Repo: https://github.com/gilljams/ourspots
+- Live: https://gilljams.github.io/ourspots/
+- Deploy: `npm run deploy` (builds + pushes to gh-pages)
+- Latest: commit 84ca332 (Security: Filtrera objekt baserat på ownerId)
