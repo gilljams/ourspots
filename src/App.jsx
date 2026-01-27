@@ -11,6 +11,7 @@ import { MapContainer, TileLayer, Marker, useMapEvents, Tooltip, Popup } from 'r
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import MDEditor from '@uiw/react-md-editor';
 import { db, auth, googleProvider } from './firebase';
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, Timestamp, getDoc, setDoc, deleteField, getDocs, query, where } from 'firebase/firestore';
 import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
@@ -366,7 +367,12 @@ const ImageBlock = ({ data }) => (
 
 const TextBlock = ({ data }) => (
   <div className="mb-4 rounded-2xl bg-white/10 border border-white/10 shadow-[0_10px_30px_-16px_rgba(0,0,0,0.7)] p-4">
-    <p className="text-gray-100 text-sm leading-relaxed whitespace-pre-wrap">{data.content}</p>
+    <div data-color-mode="dark" className="markdown-body">
+      <MDEditor.Markdown 
+        source={data.content || ''} 
+        style={{ background: 'transparent', color: '#e5e7eb', fontSize: '0.875rem' }}
+      />
+    </div>
   </div>
 );
 
@@ -2578,14 +2584,30 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
                       disabled={saving}
                       className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors mb-2 disabled:opacity-50 text-sm"
                     />
-                    <textarea 
-                      value={block.content} 
-                      onChange={(e) => setCustomBlocks(customBlocks.map(b => b.id === block.id ? { ...b, content: e.target.value } : b))}
-                      placeholder={block.type === 'text' ? 'Skriv anteckning...' : 'En per rad'}
-                      rows={3} 
-                      disabled={saving}
-                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors resize-none disabled:opacity-50 font-mono text-sm"
-                    />
+                    {block.type === 'text' ? (
+                      <div data-color-mode="dark">
+                        <MDEditor
+                          value={block.content}
+                          onChange={(val) => setCustomBlocks(customBlocks.map(b => b.id === block.id ? { ...b, content: val || '' } : b))}
+                          preview="edit"
+                          hideToolbar={false}
+                          height={200}
+                          disabled={saving}
+                          textareaProps={{
+                            placeholder: 'Skriv anteckning med markdown-stöd...'
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <textarea 
+                        value={block.content} 
+                        onChange={(e) => setCustomBlocks(customBlocks.map(b => b.id === block.id ? { ...b, content: e.target.value } : b))}
+                        placeholder={block.type === 'text' ? 'Skriv anteckning...' : 'En per rad'}
+                        rows={3} 
+                        disabled={saving}
+                        className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors resize-none disabled:opacity-50 font-mono text-sm"
+                      />
+                    )}
                   </div>
                 );
               })}
@@ -2672,13 +2694,16 @@ function PublicObjectView({ object, onBackToApp }) {
     switch (block.type) {
       case 'text':
         // Skip empty text blocks
-        if (!block.title && !block.content) return null;
+        if (!block.data?.title && !block.data?.content) return null;
         return (
           <div key={block.id} className="bg-white/5 rounded-xl p-4 border border-white/10">
-            {block.title && <h3 className="text-base font-semibold text-white mb-2">{block.title}</h3>}
-            {block.content && (
-              <div className="text-gray-300 text-sm whitespace-pre-wrap leading-relaxed">
-                {block.content}
+            {block.data?.title && <h3 className="text-base font-semibold text-white mb-2">{block.data.title}</h3>}
+            {block.data?.content && (
+              <div data-color-mode="dark" className="markdown-body">
+                <MDEditor.Markdown 
+                  source={block.data.content} 
+                  style={{ background: 'transparent', color: '#e5e7eb' }}
+                />
               </div>
             )}
           </div>
@@ -3311,8 +3336,8 @@ function App() {
     const locationBlock = obj.blocks?.find(b => b.type === 'location');
     if (locationBlock?.data?.address) values.push(locationBlock.data.address);
     obj.blocks?.forEach(block => {
-      if (block.type === 'text' && block.data?.text) {
-        values.push(block.data.text);
+      if (block.type === 'text' && block.data?.content) {
+        values.push(block.data.content);
       }
       if ((block.type === 'checklist' || block.type === 'todo') && Array.isArray(block.data?.items)) {
         block.data.items.forEach(item => {
