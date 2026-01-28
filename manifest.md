@@ -109,6 +109,51 @@ Default block sets per typ/kategori (för enkelhet):
 - Default block set per typ/kategori för enkelhet
 - Fördefinierade typ-ikoner används överallt
 
+### UI/UX Design Guidelines (Implementerat) ✅
+
+#### Färger & Tema
+- Dark theme med glassmorphism (bg-white/5, backdrop-blur)
+- Accent-färg: blue-500/blue-400 för interaktiva element
+- Gråskala: gray-900 bakgrund, gray-400/500 för sekundär text
+- Kategorifärger: Varje kategori har egen accentfärg
+
+#### Knappar & Interaktiva Element
+- FAB-knappar: rounded-2xl, gradient bakgrund, shadow-xl
+- Sekundära knappar: rounded-xl, bg-white/5, border border-white/10
+- Hover-effekter: hover:scale-105 eller hover:bg-white/10
+- Transition: transition-all duration-200/300
+
+#### Kort (ObjectCard)
+- Rounded-2xl med border border-white/10
+- Hover: hover:border-blue-400/50, hover:scale-[1.02]
+- Bilder: h-40, object-cover, hover:scale-105 zoom
+- Favorit-knapp: top-left på bild
+- Barn-indikator: top-right på bild (folder-ikon + antal)
+- Kategori-ikon: Visas endast i titel-raden (ej duplicerad)
+
+#### Formulär & Input
+- Alla inputs: rounded-xl, bg-white/5, border border-white/10
+- Font-size: 16px minimum (förhindrar iOS auto-zoom)
+- Clear-knapp (X): Synlig när fält har innehåll
+- Placeholder: text-gray-500
+- Focus: focus:border-blue-500, focus:ring-2 focus:ring-blue-500/30
+
+#### Filter-sektion
+- Sökning överst med clear-knapp
+- Favoriter + Avstånd på samma rad
+- Distance slider med reset-knapp
+- Kategori-bar: horisontell scroll, ingen synlig scrollbar
+
+#### Ikoner
+- Lucide React med tree-shaking (importera enskilda ikoner)
+- Storlekar: 14-18px för UI, 20-24px för FAB
+- Färg: inherit eller specifik (text-blue-400, text-gray-400)
+
+#### Responsivitet
+- Mobile-first design
+- Viewport: maximum-scale=1.0, user-scalable=no (iOS zoom-fix)
+- Touch-vänliga klickytor (minst 44x44px)
+
 5. FILTER / INTERAKTIVITET
 - Sökning på namn och innehåll (text/todo/checklist) ✅
 - Filter på: kategori/typ, avstånd från användare (km-slider) ✅
@@ -137,6 +182,13 @@ Default block sets per typ/kategori (för enkelhet):
 - Delning/roller (viewer/editor) – planerad
 - Lager/samlingar för resor och projekt
 - Användarhantering (se dina objekt, profil)
+
+### TODO: Undersök Desktop/Laptop Layout
+- [ ] Undersök sidbaserad navigation istället för modaler på större skärmar
+- [ ] Overväg split-view layout (lista till vänster, detalj till höger)
+- [ ] Responsive breakpoints för desktop-anpassning (lg:, xl:)
+- [ ] Modal → Page transition för bättre användarupplevelse på laptop
+- [ ] Kartvy som permanent sidopanel på desktop
 
 8. DELADE OBJEKT / SHARED OBJECTS (PLANERAD FUNKTION)
 - Owner kan dela objekt med roll: Viewer / Editor
