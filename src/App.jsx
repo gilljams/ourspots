@@ -1756,7 +1756,7 @@ function MapView({ objects, onSelectObject, currentUser, userLocation, categorie
   };
 
   return (
-    <div className="w-full relative z-10" style={{ height: 'calc(100vh - 200px)' }}>
+    <div className="w-full relative z-10 rounded-xl overflow-hidden border border-white/10 shadow-2xl bg-gray-900/80 transition-all duration-300" style={{ height: 'calc(100vh - 200px)' }}>
       <MapContainer center={mapCenter || center} zoom={mapCenter ? 14 : (markersData.length > 0 ? 7 : 6)} style={{ height: '100%', width: '100%' }} key={mapCenter ? `${mapCenter.lat}-${mapCenter.lng}` : 'default'}>
         <TileLayer
           attribution='&copy; <a href="https://carto.com/">CARTO</a>'
@@ -1804,7 +1804,7 @@ function MapPicker({ onSelect, onClose, initialPosition, userLocation }) {
           <h3 className="text-xl font-bold text-white">Markera plats på kartan</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-white"><X size={24} /></button>
         </div>
-        <div className="h-[60vh] rounded-xl overflow-hidden border border-white/10 mb-4 relative">
+        <div className="h-[60vh] rounded-xl overflow-hidden border border-white/10 shadow-2xl bg-gray-900/80 transition-all duration-300 mb-4 relative">
           <MapContainer center={position} zoom={13} style={{ height: '100%', width: '100%' }}>
             <TileLayer
               attribution='&copy; <a href="https://carto.com/">CARTO</a>'
