@@ -3225,32 +3225,37 @@ function App() {
 
       {user && (
         <>
-          <button 
-            onClick={() => { setEditingObject(null); setShowCreateModal(true); }} 
-            className="fixed bottom-6 right-6 w-14 h-14 bg-blue-500 hover:bg-blue-600 rounded-full shadow-2xl flex items-center justify-center text-white transition-all hover:scale-110 z-[1200]"
-          >
-            <Plus size={28} />
-          </button>
-          {!selectedObject && (
-            <button
-              onClick={() => {
-                const newMode = viewMode === 'list' ? 'map' : 'list';
-                setViewMode(newMode);
-                if (newMode === 'map') {
-                  window.scrollTo(0, 0);
-                }
-              }}
-              className="fixed bottom-24 right-6 w-14 h-14 bg-gray-800 hover:bg-gray-700 rounded-full shadow-2xl flex items-center justify-center text-white transition-all hover:scale-110 z-[1200] border border-white/10"
-              title={viewMode === 'list' ? 'Visa karta' : 'Visa lista'}
-            >
-              {viewMode === 'list' ? <MapIcon size={24} /> : <List size={24} />}
-            </button>
+          {/* Hide + button and map toggle when any modal is open */}
+          {!selectedObject && !showCreateModal && !showCategoryAdmin && !showObjectsAdmin && (
+            <>
+              <button 
+                onClick={() => { setEditingObject(null); setShowCreateModal(true); }} 
+                className="fixed bottom-6 right-6 w-14 h-14 bg-blue-500 hover:bg-blue-600 rounded-full shadow-2xl flex items-center justify-center text-white transition-all hover:scale-110 z-[1200]"
+              >
+                <Plus size={28} />
+              </button>
+              <button
+                onClick={() => {
+                  const newMode = viewMode === 'list' ? 'map' : 'list';
+                  setViewMode(newMode);
+                  if (newMode === 'map') {
+                    window.scrollTo(0, 0);
+                  }
+                }}
+                className="fixed bottom-24 right-6 w-14 h-14 bg-gray-800 hover:bg-gray-700 rounded-full shadow-2xl flex items-center justify-center text-white transition-all hover:scale-110 z-[1200] border border-white/10"
+                title={viewMode === 'list' ? 'Visa karta' : 'Visa lista'}
+              >
+                {viewMode === 'list' ? <MapIcon size={24} /> : <List size={24} />}
+              </button>
+            </>
           )}
-          {/* Quick capture mushroom button */}
+          {/* Quick capture mushroom button - always visible, moves to bottom when other buttons hidden */}
           {showQuickCapture && (
             <button
               onClick={handleQuickCapture}
-              className={`fixed right-6 w-14 h-14 bg-orange-600 hover:bg-orange-500 rounded-full shadow-2xl flex items-center justify-center text-white hover:scale-110 z-[1200] border border-orange-400/30 transition-all duration-300 ${selectedObject ? 'bottom-24' : 'bottom-[10.5rem]'}`}
+              className={`fixed right-6 w-14 h-14 bg-orange-600 hover:bg-orange-500 rounded-full shadow-2xl flex items-center justify-center text-white hover:scale-110 z-[1200] border border-orange-400/30 transition-all duration-300 ${
+                (selectedObject || showCreateModal || showCategoryAdmin || showObjectsAdmin) ? 'bottom-6' : 'bottom-[10.5rem]'
+              }`}
               title="Snabbpinna GPS-position 🍄"
             >
               <Target size={24} />
