@@ -506,6 +506,8 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
   const imageBlock = object.blocks.find(b => b.type === 'image');
   const locationBlock = object.blocks.find(b => b.type === 'location');
   const isOwner = currentUser && object.ownerId === currentUser.uid;
+  const isSharedWithMe = currentUser && object.shares?.[currentUser.email]?.status === 'accepted';
+  const myRole = isSharedWithMe ? object.shares[currentUser.email].role : null;
 
   const handleFavoriteClick = (e) => {
     e.stopPropagation();
@@ -568,6 +570,15 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
               </div>
             </div>
           )}
+          {/* Shared badge */}
+          {isSharedWithMe && (
+            <div className="absolute top-2 right-2 z-10">
+              <div className={`px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${myRole === 'editor' ? 'bg-green-500/20 text-green-300 border border-green-500/30' : 'bg-purple-500/20 text-purple-300 border border-purple-500/30'}`}>
+                <Users size={10} />
+                {myRole === 'editor' ? 'Redigerare' : 'Delad'}
+              </div>
+            </div>
+          )}
           <div className="w-full h-40 overflow-hidden">
             <img src={getTransformedImageUrl(imageBlock.data.url, imageBlock.data.cropMode, 800, 320)} alt="" className="w-full h-full object-cover" />
           </div>
@@ -601,8 +612,14 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
         </div>
         
         {/* Compact info row for cards without image */}
-        {!imageBlock && (childCount > 0 || distance !== undefined) && (
+        {!imageBlock && (childCount > 0 || distance !== undefined || isSharedWithMe) && (
           <div className="flex items-center gap-3 text-xs text-gray-500 mb-2">
+            {isSharedWithMe && (
+              <span className={`flex items-center gap-1 ${myRole === 'editor' ? 'text-green-400' : 'text-purple-400'}`}>
+                <Users size={12} />
+                {myRole === 'editor' ? 'Redigerare' : 'Delad'}
+              </span>
+            )}
             {childCount > 0 && (
               <span className="flex items-center gap-1">
                 <Folder size={12} />
@@ -1232,6 +1249,9 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
   const category = categories.find(c => c.id === object.type);
   const IconComponent = category ? getIconComponent(category.icon) : (PREDEFINED_ICONS[object.type]?.icon || Home);
   const isOwner = currentUser && object.ownerId === currentUser.uid;
+  const isSharedWithMe = currentUser && object.shares?.[currentUser.email]?.status === 'accepted';
+  const myRole = isSharedWithMe ? object.shares[currentUser.email].role : null;
+  const canEdit = isOwner || isAdmin || myRole === 'editor';
   const canManage = isOwner || isAdmin;
   
   const childObjects = allObjects.filter(o => o.parentId === object.id);
@@ -1447,7 +1467,18 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
                 </div>
               </div>
             )}
-            {canManage && (
+            {/* Shared with me indicator */}
+            {isSharedWithMe && (
+              <div className={`mt-4 p-3 rounded-xl border ${myRole === 'editor' ? 'bg-green-500/10 border-green-500/30' : 'bg-purple-500/10 border-purple-500/30'}`}>
+                <div className="flex items-center gap-2 text-sm">
+                  <Users size={16} className={myRole === 'editor' ? 'text-green-400' : 'text-purple-400'} />
+                  <span className={myRole === 'editor' ? 'text-green-300' : 'text-purple-300'}>
+                    {myRole === 'editor' ? 'Du kan redigera detta objekt' : 'Delat med dig (endast visning)'}
+                  </span>
+                </div>
+              </div>
+            )}
+            {(canManage || canEdit) && (
               <div className="mt-6 pt-6 border-t border-white/10">
                 <button
                   onClick={() => setShowManageSection(!showManageSection)}
@@ -1464,22 +1495,43 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
                 </button>
                 {showManageSection && (
                   <div className="mt-3 p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-3 animate-in slide-in-from-top-2 duration-200">
-                    <button
-                      onClick={() => onEdit({ parentId: object.id })}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:text-white transition-all"
-                    >
-                      <Plus size={16} />
-                      <span className="text-sm">Lägg till barn</span>
-                    </button>
+                    {/* Share button - only for owners */}
+                    {isOwner && (
+                      <button
+                        onClick={() => onShare && onShare(object)}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-300 hover:bg-blue-500/20 hover:text-blue-200 transition-all"
+                      >
+                        <Share2 size={16} />
+                        <span className="text-sm">Dela objekt</span>
+                        {Object.keys(object.shares || {}).length > 0 && (
+                          <span className="ml-1 px-1.5 py-0.5 rounded-full bg-blue-500/30 text-xs">
+                            {Object.keys(object.shares).length}
+                          </span>
+                        )}
+                      </button>
+                    )}
+                    {canManage && (
+                      <button
+                        onClick={() => onEdit({ parentId: object.id })}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:text-white transition-all"
+                      >
+                        <Plus size={16} />
+                        <span className="text-sm">Lägg till barn</span>
+                      </button>
+                    )}
                     <div className="flex gap-2">
-                      <button onClick={() => onEdit(object)} className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:text-white transition-all">
-                        <Edit2 size={16} />
-                        <span className="text-sm">Redigera</span>
-                      </button>
-                      <button onClick={() => setShowDeleteConfirm(true)} className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/30 transition-all">
-                        <Trash2 size={16} />
-                        <span className="text-sm">Ta bort</span>
-                      </button>
+                      {canEdit && (
+                        <button onClick={() => onEdit(object)} className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:text-white transition-all">
+                          <Edit2 size={16} />
+                          <span className="text-sm">Redigera</span>
+                        </button>
+                      )}
+                      {canManage && (
+                        <button onClick={() => setShowDeleteConfirm(true)} className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/30 transition-all">
+                          <Trash2 size={16} />
+                          <span className="text-sm">Ta bort</span>
+                        </button>
+                      )}
                     </div>
                     <div className="text-xs text-gray-600 pt-2 border-t border-white/5">
                       ID: {object.id.slice(0, 8)}...
@@ -1875,7 +1927,7 @@ function ShareModal({ object, onClose, currentUserEmail }) {
 
   return (
     <div 
-      className="fixed inset-0 z-[1000] overflow-hidden"
+      className="fixed inset-0 z-[1500] overflow-hidden"
       style={{
         background: `
           radial-gradient(circle at 30% 20%, rgba(59,130,246,0.35), transparent 40%),
@@ -2862,6 +2914,7 @@ function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [favorites, setFavorites] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [categoriesLoaded, setCategoriesLoaded] = useState(false);
   const [objects, setObjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -3264,6 +3317,7 @@ function App() {
       const cats = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.order - b.order);
       console.log('Categories loaded:', cats.length, 'isAdmin:', isAdmin, 'user:', !!user);
       setCategories(cats);
+      setCategoriesLoaded(true);
     });
     return () => unsub();
   }, []);
@@ -3685,7 +3739,7 @@ function App() {
   }
 
   // Check loading state for normal app (after share view check)
-  if (loading) {
+  if (loading || !categoriesLoaded) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900/20 to-gray-900 flex items-center justify-center">
         <div className="text-center">
