@@ -260,6 +260,10 @@ const getIconComponent = (iconName) => {
   return iconMap[iconName] || Home;
 };
 
+// Email key helpers for Firestore (dots are not allowed in object keys)
+const emailToKey = (email) => email.replace(/\./g, '_DOT_');
+const keyToEmail = (key) => key.replace(/_DOT_/g, '.');
+
 // Legacy emoji mapping for backward compatibility (will be phased out)
 const PREDEFINED_ICONS = {
   '🏡': { icon: Home, label: 'Fastighet' },
@@ -880,11 +884,33 @@ const AVAILABLE_ICONS = [
   { name: 'Sprout', label: 'Svamp' },
 ];
 
-function ObjectsAdminModal({ objects, categories, onClose, onEditObject }) {
+function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onEditObject }) {
   const [sortBy, setSortBy] = useState('title'); // title, category, parent
   const [filterUserId, setFilterUserId] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(true);
+  const [allObjects, setAllObjects] = useState([]);
+  const [loadingAll, setLoadingAll] = useState(true);
+  
+  // Fetch ALL objects for admin view
+  useEffect(() => {
+    const objectsRef = collection(db, 'objects');
+    const unsub = onSnapshot(objectsRef, (snap) => {
+      const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      console.log('Admin: Loaded all objects:', all.length);
+      setAllObjects(all);
+      setLoadingAll(false);
+    }, (error) => {
+      console.error('Admin: Error loading all objects:', error);
+      // Fallback to passed objects if admin query fails
+      setAllObjects(passedObjects);
+      setLoadingAll(false);
+    });
+    return () => unsub();
+  }, [passedObjects]);
+  
+  // Use allObjects if loaded, otherwise passedObjects
+  const objects = loadingAll ? passedObjects : allObjects;
   
   // Swipe to close state
   const [touchStart, setTouchStart] = useState(null);
@@ -1596,7 +1622,7 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
   );
 }
 
-function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, currentUser, allObjects, onNavigate, categories, isAdmin, onShowOnMap, onShare }) {
+function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, currentUser, allObjects, onNavigate, categories, isAdmin, onShowOnMap, onShare, onLeaveShare }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [expandedBlocks, setExpandedBlocks] = useState(new Set([0])); // First block expanded by default
   const [showManageSection, setShowManageSection] = useState(false);
@@ -1984,6 +2010,15 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
                         </button>
                       )}
                     </div>
+                    {isSharedWithMe && !isOwner && (
+                      <button 
+                        onClick={() => onLeaveShare(object)} 
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:bg-orange-500/20 hover:text-orange-400 hover:border-orange-500/30 transition-all"
+                      >
+                        <UserMinus size={16} />
+                        <span className="text-sm">Lämna delning</span>
+                      </button>
+                    )}
                     <div className="text-xs text-gray-600 pt-2 border-t border-white/5">
                       ID: {object.id.slice(0, 8)}...
                     </div>
@@ -2382,7 +2417,12 @@ function ShareModal({ object, onClose, currentUserEmail }) {
     setIsSwipeActive(false);
   };
 
-  const sharesList = Object.entries(shares).map(([email, data]) => ({ email, ...data }));
+  // Convert shares object to list, using stored email or converting key back to email
+  const sharesList = Object.entries(shares).map(([key, data]) => ({ 
+    key, // Keep the Firestore key for updates/deletes
+    email: data.email || keyToEmail(key), // Use stored email or convert key
+    ...data 
+  }));
 
   // Lock body scroll when modal is open
   useEffect(() => {
@@ -2406,7 +2446,8 @@ function ShareModal({ object, onClose, currentUserEmail }) {
       setError('Du kan inte dela med dig själv');
       return;
     }
-    if (shares[trimmedEmail]) {
+    const emailKey = emailToKey(trimmedEmail);
+    if (shares[emailKey]) {
       setError('Denna användare har redan tillgång');
       return;
     }
@@ -2416,7 +2457,8 @@ function ShareModal({ object, onClose, currentUserEmail }) {
 
     try {
       await updateDoc(doc(db, 'objects', object.id), {
-        [`shares.${trimmedEmail}`]: {
+        [`shares.${emailKey}`]: {
+          email: trimmedEmail, // Store original email for display
           role,
           status: 'pending',
           includeChildren,
@@ -2434,13 +2476,14 @@ function ShareModal({ object, onClose, currentUserEmail }) {
     }
   };
 
-  const handleRemoveShare = async (emailToRemove) => {
-    if (!confirm(`Ta bort delning för ${emailToRemove}?`)) return;
+  const handleRemoveShare = async (emailKey, originalEmail) => {
+    const displayEmail = originalEmail || keyToEmail(emailKey);
+    if (!confirm(`Ta bort delning för ${displayEmail}?`)) return;
     
     try {
       await updateDoc(doc(db, 'objects', object.id), {
-        [`shares.${emailToRemove}`]: deleteField(),
-        sharedWithEmails: arrayRemove(emailToRemove)
+        [`shares.${emailKey}`]: deleteField(),
+        sharedWithEmails: arrayRemove(displayEmail)
       });
     } catch (err) {
       console.error('Error removing share:', err);
@@ -2448,10 +2491,10 @@ function ShareModal({ object, onClose, currentUserEmail }) {
     }
   };
 
-  const handleUpdateRole = async (emailToUpdate, newRole) => {
+  const handleUpdateRole = async (emailKey, newRole) => {
     try {
       await updateDoc(doc(db, 'objects', object.id), {
-        [`shares.${emailToUpdate}.role`]: newRole
+        [`shares.${emailKey}.role`]: newRole
       });
     } catch (err) {
       console.error('Error updating role:', err);
@@ -2576,7 +2619,7 @@ function ShareModal({ object, onClose, currentUserEmail }) {
               </h3>
               <div className="space-y-2">
                 {sharesList.map(share => (
-                  <div key={share.email} className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10">
+                  <div key={share.key} className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10">
                     <div className="flex-1 min-w-0">
                       <p className="text-white text-sm truncate">{share.email}</p>
                       <p className="text-xs text-gray-500">
@@ -2586,7 +2629,7 @@ function ShareModal({ object, onClose, currentUserEmail }) {
                     </div>
                     <select
                       value={share.role}
-                      onChange={(e) => handleUpdateRole(share.email, e.target.value)}
+                      onChange={(e) => handleUpdateRole(share.key, e.target.value)}
                       className="px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-purple-500 appearance-none cursor-pointer"
                       style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239CA3AF'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 6px center', backgroundSize: '14px', paddingRight: '24px' }}
                     >
@@ -2594,7 +2637,7 @@ function ShareModal({ object, onClose, currentUserEmail }) {
                       <option value="editor" className="bg-gray-800 text-white">Redigerare</option>
                     </select>
                     <button
-                      onClick={() => handleRemoveShare(share.email)}
+                      onClick={() => handleRemoveShare(share.key, share.email)}
                       className="p-2 rounded-lg hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition-colors"
                       title="Ta bort delning"
                     >
@@ -3949,6 +3992,11 @@ function App() {
     // Subscribe to owned objects
     const unsubOwned = onSnapshot(ownedQuery, (snap) => {
       ownedObjects = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      console.log('Owned objects loaded:', ownedObjects.length, 'for user:', user.uid);
+      ownedLoaded = true;
+      combineAndSetObjects();
+    }, (error) => {
+      console.error('Error loading owned objects:', error);
       ownedLoaded = true;
       combineAndSetObjects();
     });
@@ -3958,6 +4006,11 @@ function App() {
     if (sharedQuery) {
       unsubShared = onSnapshot(sharedQuery, (snap) => {
         sharedObjects = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        console.log('Shared objects loaded:', sharedObjects.length, 'for email:', userEmail);
+        sharedLoaded = true;
+        combineAndSetObjects();
+      }, (error) => {
+        console.error('Error loading shared objects:', error);
         sharedLoaded = true;
         combineAndSetObjects();
       });
@@ -4078,12 +4131,26 @@ function App() {
   let filteredObjects = objects;
   
   // Get pending invitations (objects where user's share status is pending)
-  const pendingInvitations = user?.email 
-    ? objects.filter(obj => 
-        obj.shares?.[user.email]?.status === 'pending' || 
-        obj.shares?.[user.email.toLowerCase()]?.status === 'pending'
-      )
+  const userEmailLower = user?.email?.toLowerCase();
+  const userEmailKey = userEmailLower ? emailToKey(userEmailLower) : null;
+  const pendingInvitations = userEmailKey 
+    ? objects.filter(obj => {
+        if (!obj.shares) return false;
+        // Check using the escaped email key
+        const shareEntry = obj.shares[userEmailKey];
+        if (shareEntry?.status === 'pending') {
+          console.log('Found pending invitation:', obj.id, shareEntry);
+          return true;
+        }
+        // Also check if we're in sharedWithEmails but not the owner
+        if (obj.isSharedWithMe && obj.ownerId !== user.uid) {
+          console.log('Shared object found:', obj.id, 'shares:', obj.shares);
+        }
+        return false;
+      })
     : [];
+  
+  console.log('Pending invitations count:', pendingInvitations.length, 'User email:', userEmailLower, 'Key:', userEmailKey);
   
   // Apply category filter
   if (activeCategory !== 'all' && activeCategory !== 'favorites') {
@@ -4310,6 +4377,29 @@ function App() {
     }
   };
 
+  const handleLeaveShare = async (obj) => {
+    if (!user) return;
+    
+    if (!confirm('Är du säker på att du vill lämna denna delning? Du kommer inte längre ha tillgång till objektet.')) {
+      return;
+    }
+    
+    try {
+      const userEmail = user.email.toLowerCase();
+      const emailKey = emailToKey(userEmail);
+      
+      await updateDoc(doc(db, 'objects', obj.id), {
+        [`shares.${emailKey}`]: deleteField(),
+        sharedWithEmails: arrayRemove(userEmail)
+      });
+      
+      setSelectedObject(null);
+    } catch (err) {
+      console.error('Error leaving share:', err);
+      alert('Kunde inte lämna delningen!');
+    }
+  };
+
   const handleEdit = (obj) => {
     if (!user || (obj.id && obj.ownerId !== user.uid)) {
       alert('Du kan bara redigera dina objekt!');
@@ -4505,7 +4595,7 @@ function App() {
                   <div className="space-y-2">
                     {pendingInvitations.map(obj => {
                       const titleBlock = obj.blocks?.find(b => b.type === 'title');
-                      const shareInfo = obj.shares[user.email] || obj.shares[user.email.toLowerCase()];
+                      const shareInfo = obj.shares[userEmailKey];
                       return (
                         <div key={obj.id} className="flex items-center gap-2 p-2 rounded-lg bg-white/5">
                           <div className="flex-1 min-w-0">
@@ -4518,7 +4608,7 @@ function App() {
                           <button
                             onClick={async () => {
                               try {
-                                const emailKey = obj.shares[user.email] ? user.email : user.email.toLowerCase();
+                                const emailKey = emailToKey(user.email.toLowerCase());
                                 await updateDoc(doc(db, 'objects', obj.id), {
                                   [`shares.${emailKey}.status`]: 'accepted',
                                   [`shares.${emailKey}.respondedAt`]: Timestamp.now()
@@ -4535,7 +4625,7 @@ function App() {
                           <button
                             onClick={async () => {
                               try {
-                                const emailKey = obj.shares[user.email] ? user.email : user.email.toLowerCase();
+                                const emailKey = emailToKey(user.email.toLowerCase());
                                 await updateDoc(doc(db, 'objects', obj.id), {
                                   [`shares.${emailKey}.status`]: 'declined',
                                   [`shares.${emailKey}.respondedAt`]: Timestamp.now()
@@ -4675,6 +4765,7 @@ function App() {
             window.scrollTo(0, 0);
           }}
           onShare={(obj) => setShowShareModal(obj)}
+          onLeaveShare={handleLeaveShare}
         />
       )}
 

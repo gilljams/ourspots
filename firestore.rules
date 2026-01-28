@@ -9,26 +9,20 @@ service cloud.firestore {
              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
     }
     
-    // Check if user has share access to an object (pending OR accepted for read)
-    function hasShareAccess(objectData) {
+    // Check if user's email is in the sharedWithEmails array
+    function isInSharedList(objectData) {
       return request.auth != null && 
-             objectData.shares != null &&
-             objectData.shares[request.auth.token.email] != null &&
-             objectData.shares[request.auth.token.email].status in ['pending', 'accepted'];
+             objectData.sharedWithEmails != null &&
+             request.auth.token.email.lower() in objectData.sharedWithEmails;
     }
     
-    // Check if user has ACCEPTED share access (for editing)
-    function hasAcceptedShareAccess(objectData) {
+    // Check if user has ACCEPTED share access (for editing) - needs shares map
+    function hasAcceptedEditorAccess(objectData) {
       return request.auth != null && 
              objectData.shares != null &&
-             objectData.shares[request.auth.token.email] != null &&
-             objectData.shares[request.auth.token.email].status == 'accepted';
-    }
-    
-    // Check if user has editor role on shared object
-    function hasEditorAccess(objectData) {
-      return hasAcceptedShareAccess(objectData) && 
-             objectData.shares[request.auth.token.email].role == 'editor';
+             request.auth.token.email.lower() in objectData.shares &&
+             objectData.shares[request.auth.token.email.lower()].status == 'accepted' &&
+             objectData.shares[request.auth.token.email.lower()].role == 'editor';
     }
     
     match /users/{userId} {
@@ -42,10 +36,10 @@ service cloud.firestore {
     }
     
     match /objects/{objectId} {
-      // Read access: Owner, shared users (accepted), or Admin
+      // Read access: Owner, in sharedWithEmails array, or Admin
       allow read: if request.auth != null && (
                     resource.data.ownerId == request.auth.uid ||  // Owner
-                    hasShareAccess(resource.data) ||               // Shared with user (accepted)
+                    isInSharedList(resource.data) ||               // In shared list
                     isAdmin()                                      // Admin
                   );
       
@@ -57,13 +51,11 @@ service cloud.firestore {
       allow update: if request.auth != null && (
                        request.auth.uid == resource.data.ownerId ||  // Owner
                        isAdmin() ||                                   // Admin
-                       hasEditorAccess(resource.data) ||              // Editor role (accepted)
-                       // Allow updating own share status (accept/decline invitation)
-                       (resource.data.shares != null &&
-                        resource.data.shares[request.auth.token.email] != null &&
+                       hasAcceptedEditorAccess(resource.data) ||      // Editor role (accepted)
+                       // Allow any shared user to update their own share status (accept/decline)
+                       (isInSharedList(resource.data) &&
                         request.resource.data.diff(resource.data).affectedKeys()
-                          .hasOnly(['shares']) &&
-                        request.resource.data.shares[request.auth.token.email].status in ['accepted', 'declined'])
+                          .hasOnly(['shares']))
                      );
       
       // Delete: Owner or Admin only
