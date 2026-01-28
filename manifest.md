@@ -1,18 +1,21 @@
 ========================
-OurSpots – Manifest / Blueprint (Updated Jan 27, 2026)
+OurSpots – Manifest / Blueprint (Updated Jan 28, 2026)
 ========================
 
-🚀 STATUS: v1.5 - Sharing System & Security (In Progress)
+🚀 STATUS: v1.6 - Sharing System Complete
 
 1. VISION
 - Mobilfokuserad app med premium dark theme
 - Hanterar fastigheter, smultronstellen/kaféer, resor/projekt
-- Delade objekt (viewer/editor) - planerad funktion
+- Delade objekt med viewer/editor-roller ✅
+- Pending/accepted delningsstatus ✅
+- Lämna delning-funktion för mottagare ✅
 - Objekt + block = återanvändbar struktur ✅
 - Hierarki för objekt (parent → child) ✅
 - Favoriter med kombinerad filtrering (favoriter + kategori) ✅
 - Smart bildhantering med AI-beskärning och GPS-extrahering ✅
 - Skärmhantering med Wake Lock API ✅
+- GPS-lägen: Snabb (standard) och Precis (±10m) ✅
 - Lager/samlingar för resor/projekt - planerad funktion
 - Dynamiska kategorier med Firebase-baserad hantering ✅
 - Kategorihantering för administratörer ✅
@@ -53,10 +56,19 @@ Object:
 - type: kategori-id från categories collection
 - blocks: Block[]
 - ownerId: string
-- shares?: { [email: string]: { role: "viewer" | "editor", sharedAt: Timestamp, email: string } } ✅
-- isPublicShared?: boolean ✅
-- publicShareToken?: string (UUID för publik delning) ✅
+- shares?: { [emailKey: string]: { role: "viewer" | "editor", status: "pending" | "accepted", sharedAt: Timestamp, email: string } } ✅
+- sharedWithEmails?: string[] (för Firestore array-contains queries) ✅
+- isPublicShared?: boolean
+- publicShareToken?: string (UUID för publik delning)
 - systemblock: createdAt, updatedAt, Objekt-ID, ParentID, LayerID
+
+Shares-system: ✅ IMPLEMENTERAT
+- Email-nycklar escaped med _DOT_ (t.ex. "user_DOT_name@gmail_DOT_com")
+- Viewer: Kan se objekt, inte redigera
+- Editor: Kan redigera objekt och blocks
+- Pending: Inbjudan skickad, väntar på accept
+- Accepted: Användaren har accepterat delning
+- Lämna delning: Mottagare kan ta bort sig själv
 
 Block:
 - type: "image", url, cropMode (auto/face/center)

@@ -47,15 +47,15 @@ service cloud.firestore {
       allow create: if request.auth != null;
       
       // Update: Owner, Editor role (accepted), or Admin
-      // Also allow shared users to update their own share status (accept/decline)
+      // Also allow shared users to update their own share status (accept/decline) or leave sharing
       allow update: if request.auth != null && (
                        request.auth.uid == resource.data.ownerId ||  // Owner
                        isAdmin() ||                                   // Admin
                        hasAcceptedEditorAccess(resource.data) ||      // Editor role (accepted)
-                       // Allow any shared user to update their own share status (accept/decline)
+                       // Allow any shared user to update shares and sharedWithEmails (accept/decline/leave)
                        (isInSharedList(resource.data) &&
                         request.resource.data.diff(resource.data).affectedKeys()
-                          .hasOnly(['shares']))
+                          .hasOnly(['shares', 'sharedWithEmails']))
                      );
       
       // Delete: Owner or Admin only

@@ -897,7 +897,7 @@ function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onEdit
     const objectsRef = collection(db, 'objects');
     const unsub = onSnapshot(objectsRef, (snap) => {
       const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      console.log('Admin: Loaded all objects:', all.length);
+
       setAllObjects(all);
       setLoadingAll(false);
     }, (error) => {
@@ -1698,7 +1698,8 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
   const categoryColor = category?.color || '#3B82F6';
   const isOwner = currentUser && object.ownerId === currentUser.uid;
   const isSharedWithMe = object.isSharedWithMe;
-  const myShareRole = isSharedWithMe ? object.shares?.[currentUser?.email?.toLowerCase()]?.role : null;
+  const userEmailKey = currentUser?.email ? emailToKey(currentUser.email.toLowerCase()) : null;
+  const myShareRole = isSharedWithMe && userEmailKey ? object.shares?.[userEmailKey]?.role : null;
   const canEdit = isOwner || isAdmin || myShareRole === 'editor';
   const canManage = isOwner || isAdmin;
   
@@ -1844,9 +1845,9 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
                 const shouldShowLabel = customTitle || showBlockLabel;
                 const isCollapsible = ['text', 'checklist', 'todo'].includes(block.type);
                 
-                // For location blocks, show delete if there are multiple
+                // For location blocks, show delete if there are multiple AND user can edit
                 const locationBlocks = blocksToRender.filter(b => b.type === 'location' && !b.inherited);
-                const canDeleteLocation = block.type === 'location' && locationBlocks.length > 1 && !block.inherited;
+                const canDeleteLocation = canEdit && block.type === 'location' && locationBlocks.length > 1 && !block.inherited;
                 const locationIndex = block.type === 'location' && !block.inherited ? locationBlocks.indexOf(block) + 1 : null;
                 
                 const handleDeleteBlock = async () => {
@@ -1972,7 +1973,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
                 </div>
               </div>
             )}
-            {(canManage || canEdit) && (
+            {(canManage || canEdit || isSharedWithMe) && (
               <div ref={manageSectionRef} className="mt-6 pt-6 border-t border-white/10">
                 <button
                   onClick={() => setShowManageSection(!showManageSection)}
@@ -1980,7 +1981,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
                 >
                   <div className="flex items-center gap-2">
                     <Settings size={18} />
-                    <span className="font-medium">Hantera objekt</span>
+                    <span className="font-medium">{isSharedWithMe && !canEdit ? 'Delning' : 'Hantera objekt'}</span>
                   </div>
                   <ChevronDown 
                     size={18} 
@@ -1998,18 +1999,20 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
                         <span className="text-sm">Lägg till barn</span>
                       </button>
                     )}
-                    <div className="flex gap-2">
-                      <button onClick={() => onEdit(object)} className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:text-white transition-all">
-                        <Edit2 size={16} />
-                        <span className="text-sm">Redigera</span>
-                      </button>
-                      {canManage && (
-                        <button onClick={() => setShowDeleteConfirm(true)} className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/30 transition-all">
-                          <Trash2 size={16} />
-                          <span className="text-sm">Ta bort</span>
+                    {canEdit && (
+                      <div className="flex gap-2">
+                        <button onClick={() => onEdit(object)} className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:text-white transition-all">
+                          <Edit2 size={16} />
+                          <span className="text-sm">Redigera</span>
                         </button>
-                      )}
-                    </div>
+                        {canManage && (
+                          <button onClick={() => setShowDeleteConfirm(true)} className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/30 transition-all">
+                            <Trash2 size={16} />
+                            <span className="text-sm">Ta bort</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
                     {isSharedWithMe && !isOwner && (
                       <button 
                         onClick={() => onLeaveShare(object)} 
@@ -2304,7 +2307,7 @@ function MapPicker({ onSelect, onClose, initialPosition, userLocation }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[1100] flex items-center justify-center p-4">
       <div className="bg-gray-900/95 backdrop-blur-xl rounded-3xl border border-white/10 max-w-4xl w-full p-6 shadow-2xl">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-xl font-bold text-white">Markera plats på kartan</h3>
@@ -2654,7 +2657,7 @@ function ShareModal({ object, onClose, currentUserEmail }) {
   );
 }
 
-function CreateObjectModal({ onClose, onSave, editObject, saving, availableParents, defaultParentId, userLocation, categories }) {
+function CreateObjectModal({ onClose, onSave, editObject, saving, availableParents, defaultParentId, userLocation, categories, preciseGPS }) {
   const isEdit = !!editObject;
   // Default type: use parent's type if defaultParentId is provided, or first category
   const defaultTypeFromParent = defaultParentId ? (availableParents.find(p => p.id === defaultParentId)?.type || (categories[0]?.id || 'property')) : (categories[0]?.id || 'property');
@@ -2666,6 +2669,7 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
   const [lat, setLat] = useState(editObject?.blocks?.find(b => b.type === 'location')?.data?.lat || null);
   const [lng, setLng] = useState(editObject?.blocks?.find(b => b.type === 'location')?.data?.lng || null);
   const [capturingGPS, setCapturingGPS] = useState(false);
+  const [gpsAccuracy, setGpsAccuracy] = useState(null);
   const [showMapPicker, setShowMapPicker] = useState(false);
   const [imageUrl, setImageUrl] = useState(editObject?.blocks?.find(b => b.type === 'image')?.data?.url || '');
   const [imageCropMode, setImageCropMode] = useState(editObject?.blocks?.find(b => b.type === 'image')?.data?.cropMode || 'auto');
@@ -2748,6 +2752,8 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
   const selectedParent = availableParents.find(p => p.id === parentId);
   const parentHasLocation = selectedParent?.blocks?.some(b => b.type === 'location');
 
+  const gpsWatchRef = useRef(null);
+  
   const handleGPSCapture = () => {
     if (!navigator.geolocation) {
       alert('GPS stöds inte av din enhet');
@@ -2755,26 +2761,104 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
     }
     if (capturingGPS) return; // Prevent double-clicks
     setCapturingGPS(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        // Batch state updates
-        const newLat = position.coords.latitude;
-        const newLng = position.coords.longitude;
-        setLat(newLat);
-        setLng(newLng);
-        // Only set address if user hasn't entered one
-        if (!address.trim()) {
-          setAddress(`GPS: ${newLat.toFixed(5)}, ${newLng.toFixed(5)}`);
+    setGpsAccuracy(null);
+    
+    if (preciseGPS) {
+      // Precise GPS mode - watch position and wait for good accuracy
+      let bestPosition = null;
+      let bestAccuracy = Infinity;
+      
+      gpsWatchRef.current = navigator.geolocation.watchPosition(
+        (position) => {
+          const accuracy = position.coords.accuracy;
+          setGpsAccuracy(Math.round(accuracy));
+          
+          if (accuracy < bestAccuracy) {
+            bestAccuracy = accuracy;
+            bestPosition = position;
+          }
+          
+          // Auto-accept if accuracy is good enough (under 10 meters)
+          if (accuracy <= 10) {
+            navigator.geolocation.clearWatch(gpsWatchRef.current);
+            const newLat = position.coords.latitude;
+            const newLng = position.coords.longitude;
+            setLat(newLat);
+            setLng(newLng);
+            if (!address.trim()) {
+              setAddress(`GPS: ${newLat.toFixed(5)}, ${newLng.toFixed(5)} (±${Math.round(accuracy)}m)`);
+            }
+            setCapturingGPS(false);
+            setGpsAccuracy(null);
+          }
+        },
+        (error) => {
+          navigator.geolocation.clearWatch(gpsWatchRef.current);
+          // If we have a position, use it even if not perfect
+          if (bestPosition) {
+            const newLat = bestPosition.coords.latitude;
+            const newLng = bestPosition.coords.longitude;
+            setLat(newLat);
+            setLng(newLng);
+            if (!address.trim()) {
+              setAddress(`GPS: ${newLat.toFixed(5)}, ${newLng.toFixed(5)} (±${Math.round(bestAccuracy)}m)`);
+            }
+          } else {
+            alert('Kunde inte hämta position: ' + error.message);
+          }
+          setCapturingGPS(false);
+          setGpsAccuracy(null);
+        },
+        { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 }
+      );
+      
+      // Auto-stop after 15 seconds and use best position
+      setTimeout(() => {
+        if (gpsWatchRef.current && capturingGPS) {
+          navigator.geolocation.clearWatch(gpsWatchRef.current);
+          if (bestPosition) {
+            const newLat = bestPosition.coords.latitude;
+            const newLng = bestPosition.coords.longitude;
+            setLat(newLat);
+            setLng(newLng);
+            if (!address.trim()) {
+              setAddress(`GPS: ${newLat.toFixed(5)}, ${newLng.toFixed(5)} (±${Math.round(bestAccuracy)}m)`);
+            }
+          }
+          setCapturingGPS(false);
+          setGpsAccuracy(null);
         }
-        setCapturingGPS(false);
-      },
-      (error) => {
-        alert('Kunde inte hämta position: ' + error.message);
-        setCapturingGPS(false);
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
+      }, 15000);
+    } else {
+      // Simple GPS mode - just get current position quickly
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const newLat = position.coords.latitude;
+          const newLng = position.coords.longitude;
+          setLat(newLat);
+          setLng(newLng);
+          if (!address.trim()) {
+            setAddress(`GPS: ${newLat.toFixed(5)}, ${newLng.toFixed(5)}`);
+          }
+          setCapturingGPS(false);
+        },
+        (error) => {
+          alert('Kunde inte hämta position: ' + error.message);
+          setCapturingGPS(false);
+        },
+        { enableHighAccuracy: false, timeout: 10000 }
+      );
+    }
   };
+  
+  // Cleanup GPS watch on unmount
+  useEffect(() => {
+    return () => {
+      if (gpsWatchRef.current) {
+        navigator.geolocation.clearWatch(gpsWatchRef.current);
+      }
+    };
+  }, []);
 
   const handleMapSelect = (latitude, longitude) => {
     setLat(latitude);
@@ -2832,7 +2916,6 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
       parentId: parentId || null
     };
 
-    console.log('Submitting object data:', objectData); // Debug log
     onSave(objectData, isEdit ? editObject.id : null);
   };
 
@@ -3102,7 +3185,11 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
                       className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
                     >
                       <Navigation size={18} className={capturingGPS ? 'animate-pulse' : ''} />
-                      <span className="text-sm font-medium">{capturingGPS ? 'Hämtar...' : 'Använd min plats'}</span>
+                      <span className="text-sm font-medium">
+                        {capturingGPS 
+                          ? (gpsAccuracy ? `±${gpsAccuracy}m...` : 'Hämtar...') 
+                          : (preciseGPS ? 'Precis GPS' : 'Använd min plats')}
+                      </span>
                     </button>
                     <button
                       type="button"
@@ -3752,6 +3839,10 @@ function App() {
   const [quickCaptureObjectId, setQuickCaptureObjectId] = useState(() => {
     return localStorage.getItem('quickCaptureObjectId') || '';
   });
+  const [preciseGPS, setPreciseGPS] = useState(() => {
+    const saved = localStorage.getItem('preciseGPS');
+    return saved === 'true'; // Default false (snabb GPS)
+  });
   const [mapCenter, setMapCenter] = useState(null);
   const headerRef = useRef(null);
   const [headerHeight, setHeaderHeight] = useState(64);
@@ -3802,7 +3893,6 @@ function App() {
           try {
             await wakeLockRef.current.release();
             wakeLockRef.current = null;
-            console.log('Wake Lock released (turned off)');
           } catch (err) {
             console.error('Error releasing wake lock:', err);
           }
@@ -3819,14 +3909,12 @@ function App() {
           }
           
           wakeLockRef.current = await navigator.wakeLock.request('screen');
-          console.log('Wake Lock aktiverad:', new Date().toLocaleTimeString());
 
           // Re-acquire wake lock when it's released
           wakeLockRef.current.addEventListener('release', () => {
-            console.log('Wake Lock released:', new Date().toLocaleTimeString());
             // Automatically re-request if still active
             if (keepScreenOn && isActive) {
-              console.log('Försöker återaktivera Wake Lock...');
+
               setTimeout(() => requestWakeLock(), 100);
             }
           });
@@ -3844,7 +3932,7 @@ function App() {
 
     // Re-acquire wake lock on page visibility change
     const handleVisibilityChange = () => {
-      console.log('Visibility changed:', document.visibilityState);
+
       if (keepScreenOn && document.visibilityState === 'visible' && isActive) {
         requestWakeLock();
       }
@@ -3874,6 +3962,11 @@ function App() {
     }
   }, [quickCaptureObjectId]);
 
+  // Save preciseGPS preference
+  useEffect(() => {
+    localStorage.setItem('preciseGPS', preciseGPS.toString());
+  }, [preciseGPS]);
+
   // Auth listener + check admin status
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, async (u) => {
@@ -3881,18 +3974,16 @@ function App() {
       if (u) {
         // Check if user is admin
         try {
-          console.log('Fetching user doc for:', u.uid);
+
           const userDoc = await getDoc(doc(db, 'users', u.uid));
-          console.log('User doc exists:', userDoc.exists());
           if (userDoc.exists()) {
-            console.log('User doc data:', userDoc.data());
             const adminFlag = userDoc.data()?.isAdmin === true;
             const userFavorites = userDoc.data()?.favorites || [];
-            console.log('isAdmin flag:', adminFlag);
+
             setIsAdmin(adminFlag);
             setFavorites(userFavorites);
           } else {
-            console.log('User doc does not exist - creating one');
+
             // Create user doc if it doesn't exist
             await setDoc(doc(db, 'users', u.uid), {
               email: u.email,
@@ -3992,7 +4083,7 @@ function App() {
     // Subscribe to owned objects
     const unsubOwned = onSnapshot(ownedQuery, (snap) => {
       ownedObjects = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      console.log('Owned objects loaded:', ownedObjects.length, 'for user:', user.uid);
+
       ownedLoaded = true;
       combineAndSetObjects();
     }, (error) => {
@@ -4006,7 +4097,7 @@ function App() {
     if (sharedQuery) {
       unsubShared = onSnapshot(sharedQuery, (snap) => {
         sharedObjects = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        console.log('Shared objects loaded:', sharedObjects.length, 'for email:', userEmail);
+
         sharedLoaded = true;
         combineAndSetObjects();
       }, (error) => {
@@ -4026,7 +4117,7 @@ function App() {
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'categories'), (snap) => {
       const cats = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.order - b.order);
-      console.log('Categories loaded:', cats.length, 'isAdmin:', isAdmin, 'user:', !!user);
+
       setCategories(cats);
       setCategoriesLoaded(true);
     });
@@ -4037,7 +4128,7 @@ function App() {
   useEffect(() => {
     const seedCategories = async () => {
       if (!isAdmin || !user || seedingRef.current) {
-        console.log('Not seeding - isAdmin:', isAdmin, 'user:', !!user, 'already seeding:', seedingRef.current);
+
         return;
       }
 
@@ -4047,11 +4138,11 @@ function App() {
         // Check if categories exist
         const snap = await getDoc(doc(db, 'categories', 'property'));
         if (snap.exists()) {
-          console.log('Categories already exist, skipping seed');
+
           return;
         }
 
-        console.log('Seeding initial categories...');
+
         const initialCategories = [
           { id: 'property', label: 'Fastigheter', icon: 'Home', color: '#6B7280', order: 1 },
           { id: 'cafe', label: 'Kaféer', icon: 'Coffee', color: '#92400E', order: 2 },
@@ -4068,7 +4159,7 @@ function App() {
             createdBy: user.uid
           });
         }
-        console.log('Categories seeded successfully');
+
       } catch (err) {
         console.error('Error seeding categories:', err);
       } finally {
@@ -4139,18 +4230,18 @@ function App() {
         // Check using the escaped email key
         const shareEntry = obj.shares[userEmailKey];
         if (shareEntry?.status === 'pending') {
-          console.log('Found pending invitation:', obj.id, shareEntry);
+
           return true;
         }
         // Also check if we're in sharedWithEmails but not the owner
         if (obj.isSharedWithMe && obj.ownerId !== user.uid) {
-          console.log('Shared object found:', obj.id, 'shares:', obj.shares);
+
         }
         return false;
       })
     : [];
   
-  console.log('Pending invitations count:', pendingInvitations.length, 'User email:', userEmailLower, 'Key:', userEmailKey);
+
   
   // Apply category filter
   if (activeCategory !== 'all' && activeCategory !== 'favorites') {
@@ -4784,7 +4875,8 @@ function App() {
           })} 
           defaultParentId={defaultParentId} 
           userLocation={userLocation} 
-          categories={categories} 
+          categories={categories}
+          preciseGPS={preciseGPS}
         />
       )}
 
@@ -4993,6 +5085,31 @@ function App() {
                     {keepScreenOn && 'wakeLock' in navigator && (
                       <div className="mt-2 text-xs text-green-400">
                         ✓ Aktiv - skärmen ska förbli påslagen
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-3 rounded-xl bg-white/5 border border-white/10">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-white">Precis GPS</div>
+                        <div className="text-xs text-gray-400 mt-0.5">Väntar på bättre position (bra utomhus)</div>
+                      </div>
+                      <button
+                        onClick={() => setPreciseGPS(!preciseGPS)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          preciseGPS ? 'bg-green-500' : 'bg-gray-600'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            preciseGPS ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                    {preciseGPS && (
+                      <div className="mt-2 text-xs text-green-400">
+                        ✓ Väntar tills GPS är ±10m eller max 15 sek
                       </div>
                     )}
                   </div>
