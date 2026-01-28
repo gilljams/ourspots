@@ -562,23 +562,21 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
               )}
             </div>
           )}
-          {childCount > 0 && (
-            <div className={`absolute top-2 z-10 ${currentUser ? 'left-12' : 'left-2'}`}>
+          {/* Top-right badges */}
+          <div className="absolute top-2 right-2 z-10 flex gap-1">
+            {childCount > 0 && (
               <div className="bg-white/10 backdrop-blur-sm text-gray-200 text-xs px-2 py-1 rounded-full border border-white/15 flex items-center gap-1">
                 <Folder size={12} className="text-gray-300" />
                 {childCount}
               </div>
-            </div>
-          )}
-          {/* Shared badge */}
-          {isSharedWithMe && (
-            <div className="absolute top-2 right-2 z-10">
+            )}
+            {isSharedWithMe && (
               <div className={`px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${myRole === 'editor' ? 'bg-green-500/20 text-green-300 border border-green-500/30' : 'bg-purple-500/20 text-purple-300 border border-purple-500/30'}`}>
                 <Users size={10} />
                 {myRole === 'editor' ? 'Redigerare' : 'Delad'}
               </div>
-            </div>
-          )}
+            )}
+          </div>
           <div className="w-full h-40 overflow-hidden">
             <img src={getTransformedImageUrl(imageBlock.data.url, imageBlock.data.cropMode, 800, 320)} alt="" className="w-full h-full object-cover" />
           </div>
