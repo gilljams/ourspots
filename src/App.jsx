@@ -62,38 +62,21 @@ const createAreaIcon = (color) => {
 const CLOUDINARY_CLOUD_NAME = 'dkpwqradh';
 const CLOUDINARY_UPLOAD_PRESET = 'ourspots_unsigned';
 
-// Helper to transform Cloudinary URLs - only does basic resize, cropping handled by CSS
-const getTransformedImageUrl = (url, cropMode = 'auto', width = 800, height = 600, focalPoint = null) => {
+// Helper to transform Cloudinary URLs with smart cropping
+const getTransformedImageUrl = (url, cropMode = 'auto', width = 800, height = 600) => {
   if (!url || !url.includes('cloudinary.com')) return url; // Return non-Cloudinary URLs as-is
-  
-  // If we have a custom focal point, don't use Cloudinary cropping - we'll handle it with CSS
-  if (focalPoint && focalPoint.x !== undefined && focalPoint.y !== undefined) {
-    // Just resize, don't crop - CSS object-position will handle positioning
-    const transformation = `c_limit,w_${width * 2},h_${height * 2},q_auto`;
-    return url.replace('/upload/', `/upload/${transformation}/`);
-  }
   
   const gravityMap = {
     'auto': 'g_auto',
     'face': 'g_face', 
     'center': 'g_center'
   };
+  
   const gravity = gravityMap[cropMode] || 'g_auto';
   const transformation = `c_fill,${gravity},w_${width},h_${height}`;
   
   // Insert transformation into Cloudinary URL
   return url.replace('/upload/', `/upload/${transformation}/`);
-};
-
-// Helper to get CSS styles for focal point positioning
-const getFocalPointStyles = (focalPoint) => {
-  if (!focalPoint || focalPoint.x === undefined || focalPoint.y === undefined) {
-    return {};
-  }
-  return {
-    objectPosition: `${focalPoint.x}% ${focalPoint.y}%`,
-    transform: focalPoint.zoom ? `scale(${focalPoint.zoom})` : undefined
-  };
 };
 
 // Helper to resize image before upload
@@ -176,7 +159,7 @@ const extractGPSFromImage = (file) => {
             const gpsOffset = findGPSOffset(view, exifOffset, littleEndian);
             
             if (gpsOffset) {
-              const coords = parseGPS(view, gpsOffset, exifOffset, littleEndian);
+              const coords = parseGPS(view, gpsOffset, littleEndian);
               resolve(coords);
               return;
             }
@@ -210,15 +193,14 @@ const findGPSOffset = (view, exifOffset, littleEndian) => {
   return null;
 };
 
-const parseGPS = (view, gpsOffset, exifOffset, littleEndian) => {
+const parseGPS = (view, gpsOffset, littleEndian) => {
   const tags = view.getUint16(gpsOffset, littleEndian);
   let latRef, lat, lngRef, lng;
   
   for (let i = 0; i < tags; i++) {
     const tagOffset = gpsOffset + 2 + (i * 12);
     const tag = view.getUint16(tagOffset, littleEndian);
-    // Value offset is relative to TIFF header (exifOffset)
-    const valueOffset = exifOffset + view.getUint32(tagOffset + 8, littleEndian);
+    const valueOffset = gpsOffset - 10 + view.getUint32(tagOffset + 8, littleEndian);
     
     if (tag === 1) { // GPSLatitudeRef
       latRef = String.fromCharCode(view.getUint8(tagOffset + 8));
@@ -277,216 +259,112 @@ const TitleBlock = ({ data }) => (
 );
 
 const LocationBlock = ({ data, inherited, onDelete, canDelete, positionNumber, onShowOnMap }) => {
+  const [showNavMenu, setShowNavMenu] = React.useState(false);
+  const menuRef = React.useRef(null);
+
+  React.useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setShowNavMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const openGoogleMaps = () => {
     if (data.lat && data.lng) {
       window.open(`https://www.google.com/maps/dir/?api=1&destination=${data.lat},${data.lng}`, '_blank');
+      setShowNavMenu(false);
     }
   };
 
   const openWaze = () => {
     if (data.lat && data.lng) {
       window.open(`https://waze.com/ul?ll=${data.lat},${data.lng}&navigate=yes`, '_blank');
+      setShowNavMenu(false);
     }
   };
 
   const handleShowOnMap = () => {
     if (onShowOnMap && data.lat && data.lng) {
       onShowOnMap({ lat: data.lat, lng: data.lng });
+      setShowNavMenu(false);
     }
   };
 
   return (
-    <div className="flex items-center gap-3">
-      <div className="flex items-center gap-2 flex-1 min-w-0">
-        <MapPin size={16} className="text-gray-400 flex-shrink-0" />
-        {positionNumber && (
-          <span className="text-xs font-medium text-orange-400">
-            #{positionNumber}
-          </span>
-        )}
-        <span className="text-sm text-gray-300 truncate">
-          {data.address || (data.lat && data.lng ? `${data.lat.toFixed(5)}, ${data.lng.toFixed(5)}` : 'Ingen plats')}
+    <div className="py-2 px-3 rounded-lg bg-white/5 border border-white/10 flex items-center gap-2">
+      <MapPin size={16} className="text-blue-400 flex-shrink-0" />
+      {positionNumber && (
+        <span className="text-xs font-semibold text-orange-400 bg-orange-500/20 px-1.5 py-0.5 rounded">
+          Pin {positionNumber}
         </span>
-        {inherited && <span className="text-xs text-gray-500">(från parent)</span>}
-      </div>
+      )}
+      <span className="text-xs text-gray-200 flex-1">
+        {data.address || (data.lat && data.lng ? `${data.lat.toFixed(6)}, ${data.lng.toFixed(6)}` : 'Ingen plats')}
+      </span>
+      {inherited && <span className="text-xs text-gray-500">(från parent)</span>}
       {data.lat && data.lng && (
-        <div className="flex items-center gap-1">
-          {onShowOnMap && (
-            <button
-              onClick={handleShowOnMap}
-              className="w-9 h-9 rounded-lg bg-white/5 hover:bg-blue-500/20 flex items-center justify-center text-gray-400 hover:text-blue-400 transition-all"
-              title="Visa på karta"
-            >
-              <MapIcon size={16} />
-            </button>
+        <div className="relative" ref={menuRef}>
+          <button
+            onClick={() => setShowNavMenu(!showNavMenu)}
+            className="p-1 rounded hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 transition-colors"
+            title="Navigation"
+          >
+            <Navigation size={14} />
+          </button>
+          {showNavMenu && (
+            <div className="absolute right-0 top-8 bg-gray-800 border border-white/20 rounded-lg shadow-xl z-50 min-w-[160px]">
+              {onShowOnMap && (
+                <button
+                  onClick={handleShowOnMap}
+                  className="w-full text-left px-3 py-2 text-xs text-gray-200 hover:bg-white/10 flex items-center gap-2 rounded-t-lg"
+                >
+                  <MapIcon size={12} />
+                  Visa på karta
+                </button>
+              )}
+              <button
+                onClick={openGoogleMaps}
+                className="w-full text-left px-3 py-2 text-xs text-gray-200 hover:bg-white/10 flex items-center gap-2"
+              >
+                <Navigation size={12} />
+                Google Maps
+              </button>
+              <button
+                onClick={openWaze}
+                className="w-full text-left px-3 py-2 text-xs text-gray-200 hover:bg-white/10 flex items-center gap-2 rounded-b-lg"
+              >
+                <Navigation size={12} />
+                Waze
+              </button>
+            </div>
           )}
-          <button
-            onClick={openGoogleMaps}
-            className="w-9 h-9 rounded-lg bg-white/5 hover:bg-blue-500/20 flex items-center justify-center text-gray-400 hover:text-blue-400 transition-all"
-            title="Google Maps"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10"/>
-              <line x1="2" y1="12" x2="22" y2="12"/>
-              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-            </svg>
-          </button>
-          <button
-            onClick={openWaze}
-            className="w-9 h-9 rounded-lg bg-white/5 hover:bg-blue-500/20 flex items-center justify-center text-gray-400 hover:text-blue-400 transition-all"
-            title="Waze"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9L18 10l-1.8-3.2c-.3-.5-.8-.8-1.4-.8H9.2c-.6 0-1.1.3-1.4.8L6 10l-2.5 1.1C2.7 11.3 2 12.1 2 13v3c0 .6.4 1 1 1h2"/>
-              <circle cx="7" cy="17" r="2"/>
-              <circle cx="17" cy="17" r="2"/>
-            </svg>
-          </button>
         </div>
       )}
       {canDelete && onDelete && (
         <button
           onClick={onDelete}
-          className="w-9 h-9 rounded-lg bg-white/5 hover:bg-red-500/20 flex items-center justify-center text-gray-400 hover:text-red-400 transition-all"
+          className="p-1 rounded hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-colors"
           title="Ta bort position"
         >
-          <X size={16} />
+          <X size={14} />
         </button>
       )}
     </div>
   );
 };
 
-const ImageBlock = ({ data }) => {
-  const focalStyles = getFocalPointStyles(data.focalPoint);
-  return (
-    <div className="w-full h-48 rounded-xl overflow-hidden mb-4 border border-white/10 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.7)]">
-      <img 
-        src={getTransformedImageUrl(data.url, data.focalPoint ? 'custom' : data.cropMode, 800, 480, data.focalPoint)} 
-        alt="" 
-        className="w-full h-full object-cover"
-        style={focalStyles}
-      />
-    </div>
-  );
-};
-
-// Lightweight markdown renderer - supports **bold**, *italic*, - bullets, numbered lists
-const renderMarkdown = (text) => {
-  if (!text) return null;
-  
-  const lines = text.split('\n');
-  const elements = [];
-  let listItems = [];
-  let listType = null; // 'ul' or 'ol'
-  
-  const flushList = () => {
-    if (listItems.length > 0) {
-      if (listType === 'ol') {
-        elements.push(
-          <ol key={`ol-${elements.length}`} className="list-decimal list-inside space-y-1 my-2">
-            {listItems}
-          </ol>
-        );
-      } else {
-        elements.push(
-          <ul key={`ul-${elements.length}`} className="list-disc list-inside space-y-1 my-2">
-            {listItems}
-          </ul>
-        );
-      }
-      listItems = [];
-      listType = null;
-    }
-  };
-  
-  const formatInline = (line) => {
-    // Process bold and italic
-    const parts = [];
-    let remaining = line;
-    let keyIndex = 0;
-    
-    while (remaining.length > 0) {
-      // Check for **bold**
-      const boldMatch = remaining.match(/\*\*(.+?)\*\*/);
-      // Check for *italic* (but not **)
-      const italicMatch = remaining.match(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/);
-      
-      let firstMatch = null;
-      let matchType = null;
-      
-      if (boldMatch && (!italicMatch || boldMatch.index <= italicMatch.index)) {
-        firstMatch = boldMatch;
-        matchType = 'bold';
-      } else if (italicMatch) {
-        firstMatch = italicMatch;
-        matchType = 'italic';
-      }
-      
-      if (firstMatch) {
-        // Add text before match
-        if (firstMatch.index > 0) {
-          parts.push(remaining.substring(0, firstMatch.index));
-        }
-        // Add formatted text
-        if (matchType === 'bold') {
-          parts.push(<strong key={keyIndex++} className="font-semibold text-white">{firstMatch[1]}</strong>);
-        } else {
-          parts.push(<em key={keyIndex++} className="italic text-gray-300">{firstMatch[1]}</em>);
-        }
-        remaining = remaining.substring(firstMatch.index + firstMatch[0].length);
-      } else {
-        parts.push(remaining);
-        break;
-      }
-    }
-    
-    return parts.length > 0 ? parts : line;
-  };
-  
-  lines.forEach((line, index) => {
-    // Check for H1 heading (# )
-    const h1Match = line.match(/^#\s+(.+)/);
-    // Check for H2 heading (## )
-    const h2Match = line.match(/^##\s+(.+)/);
-    // Check for bullet list (- or *)
-    const bulletMatch = line.match(/^\s*[-*]\s+(.+)/);
-    // Check for numbered list (1. 2. etc)
-    const numberedMatch = line.match(/^\s*\d+\.\s+(.+)/);
-    
-    if (h2Match) {
-      flushList();
-      elements.push(<h3 key={`h2-${index}`} className="text-base font-semibold text-white mt-3 mb-1">{formatInline(h2Match[1])}</h3>);
-    } else if (h1Match) {
-      flushList();
-      elements.push(<h2 key={`h1-${index}`} className="text-lg font-bold text-white mt-4 mb-2">{formatInline(h1Match[1])}</h2>);
-    } else if (bulletMatch) {
-      if (listType !== 'ul') flushList();
-      listType = 'ul';
-      listItems.push(<li key={`li-${index}`} className="text-gray-200">{formatInline(bulletMatch[1])}</li>);
-    } else if (numberedMatch) {
-      if (listType !== 'ol') flushList();
-      listType = 'ol';
-      listItems.push(<li key={`li-${index}`} className="text-gray-200">{formatInline(numberedMatch[1])}</li>);
-    } else {
-      flushList();
-      if (line.trim() === '') {
-        elements.push(<div key={`br-${index}`} className="h-2" />);
-      } else {
-        elements.push(<p key={`p-${index}`} className="text-gray-200">{formatInline(line)}</p>);
-      }
-    }
-  });
-  
-  flushList();
-  return elements;
-};
+const ImageBlock = ({ data }) => (
+  <div className="w-full h-48 rounded-xl overflow-hidden mb-4 border border-white/10 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.7)]">
+    <img src={getTransformedImageUrl(data.url, data.cropMode, 800, 480)} alt="" className="w-full h-full object-cover" />
+  </div>
+);
 
 const TextBlock = ({ data }) => (
-  <div className="bg-white/[0.03] rounded-xl p-4">
-    <div className="text-sm leading-relaxed space-y-1">
-      {renderMarkdown(data.content)}
-    </div>
+  <div className="mb-4 rounded-2xl bg-white/10 border border-white/10 shadow-[0_10px_30px_-16px_rgba(0,0,0,0.7)] p-4">
+    <p className="text-gray-100 text-sm leading-relaxed whitespace-pre-wrap">{data.content}</p>
   </div>
 );
 
@@ -506,48 +384,36 @@ const ChecklistBlock = ({ data, objectId, blockIndex, onUpdate }) => {
     await onUpdate(objectId, blockIndex, { ...data, items: newItems });
   };
 
-  const checkedCount = data.items.filter(item => item.checked).length;
-  const totalCount = data.items.length;
+  const hasChecked = data.items.some(item => item.checked);
 
   return (
-    <div className="bg-white/[0.03] rounded-xl overflow-hidden">
-      {/* Header with progress */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
-        <div className="flex items-center gap-3">
-          <div className="h-1.5 w-20 bg-gray-800 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-gradient-to-r from-blue-500 to-blue-400 transition-all duration-300"
-              style={{ width: `${totalCount > 0 ? (checkedCount / totalCount) * 100 : 0}%` }}
-            />
-          </div>
-          <span className="text-xs text-gray-500">{checkedCount}/{totalCount}</span>
-        </div>
-        {checkedCount > 0 && onUpdate && (
+    <div className="mb-4 rounded-2xl bg-white/10 border border-white/10 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.7)] p-4">
+      {hasChecked && onUpdate && (
+        <div className="flex justify-end mb-2">
           <button
             onClick={handleReset}
-            className="flex items-center gap-1.5 px-2 py-1 text-xs text-gray-500 hover:text-blue-400 transition-all"
+            className="flex items-center gap-1 px-2 py-1 text-xs text-gray-400 hover:text-blue-400 hover:bg-white/5 rounded-lg transition-all"
             title="Nollställ alla markeringar"
           >
             <RotateCcw size={12} />
             <span>Nollställ</span>
           </button>
-        )}
-      </div>
-      {/* Items */}
-      <div className="divide-y divide-white/5">
+        </div>
+      )}
+      <div className="space-y-2">
         {data.items.map((item, i) => (
           <div 
             key={i}
             onClick={() => handleToggle(i)}
-            className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-white/[0.02] transition-colors group"
+            className="flex items-center gap-3 p-3 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 cursor-pointer transition-all group"
           >
-            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all flex-shrink-0 ${
-              item.checked ? 'bg-blue-500 border-blue-500' : 'border-gray-600 group-hover:border-blue-400'
+            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+              item.checked ? 'bg-blue-500 border-blue-500' : 'border-white/20 group-hover:border-blue-400'
             }`}>
               {item.checked && <Check size={14} className="text-white" />}
             </div>
-            <span className={`text-sm transition-all ${
-              item.checked ? 'text-gray-500 line-through' : 'text-gray-200'
+            <span className={`text-sm flex-1 transition-all ${
+              item.checked ? 'text-gray-500 line-through' : 'text-gray-100'
             }`}>
               {item.text}
             </span>
@@ -579,22 +445,13 @@ const TodoBlock = ({ data, objectId, blockIndex, onUpdate }) => {
   const progress = totalItems > 0 ? (doneItems / totalItems) * 100 : 0;
 
   return (
-    <div className="bg-white/[0.03] rounded-xl overflow-hidden">
-      {/* Header with progress */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
-        <div className="flex items-center gap-3">
-          <div className="h-1.5 w-20 bg-gray-800 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-gradient-to-r from-green-500 to-emerald-400 transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-          <span className="text-xs text-gray-500">{doneItems}/{totalItems}</span>
-        </div>
+    <div className="mb-4 rounded-2xl bg-white/10 border border-white/10 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.7)] p-4">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs text-gray-400">{doneItems}/{totalItems} klara</span>
         {doneItems > 0 && onUpdate && (
           <button
             onClick={handleReset}
-            className="flex items-center gap-1.5 px-2 py-1 text-xs text-gray-500 hover:text-green-400 transition-all"
+            className="flex items-center gap-1 px-2 py-1 text-xs text-gray-400 hover:text-blue-400 hover:bg-white/5 rounded-lg transition-all"
             title="Nollställ alla markeringar"
           >
             <RotateCcw size={12} />
@@ -602,21 +459,26 @@ const TodoBlock = ({ data, objectId, blockIndex, onUpdate }) => {
           </button>
         )}
       </div>
-      {/* Items */}
-      <div className="divide-y divide-white/5">
+      <div className="mb-3 h-2 bg-gray-800 rounded-full overflow-hidden">
+        <div 
+          className="h-full bg-gradient-to-r from-green-500 to-blue-500 transition-all duration-300"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+      <div className="space-y-2">
         {data.items.map((item, i) => (
           <div 
             key={i}
             onClick={() => handleToggle(i)}
-            className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-white/[0.02] transition-colors group"
+            className="flex items-center gap-3 p-3 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 cursor-pointer transition-all group"
           >
-            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0 ${
-              item.done ? 'bg-green-500 border-green-500' : 'border-gray-600 group-hover:border-green-400'
+            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+              item.done ? 'bg-green-500 border-green-500' : 'border-white/20 group-hover:border-green-400'
             }`}>
               {item.done && <Check size={14} className="text-white" />}
             </div>
-            <span className={`text-sm transition-all ${
-              item.done ? 'text-gray-500 line-through' : 'text-gray-200'
+            <span className={`text-sm flex-1 transition-all ${
+              item.done ? 'text-gray-500 line-through' : 'text-gray-100'
             }`}>
               {item.text}
             </span>
@@ -643,25 +505,18 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
   const titleBlock = object.blocks.find(b => b.type === 'title');
   const imageBlock = object.blocks.find(b => b.type === 'image');
   const locationBlock = object.blocks.find(b => b.type === 'location');
-  const textBlock = object.blocks.find(b => b.type === 'text');
   const isOwner = currentUser && object.ownerId === currentUser.uid;
-  const isSharedWithMe = currentUser && object.shares?.[currentUser.email]?.status === 'accepted';
-  const myRole = isSharedWithMe ? object.shares[currentUser.email].role : null;
 
   const handleFavoriteClick = (e) => {
     e.stopPropagation();
     onToggleFavorite(object.id);
   };
 
-  const handleShareClick = (e) => {
-    e.stopPropagation();
-    if (onShare) onShare(object);
-  };
-
   const openWaze = (e) => {
     e.stopPropagation();
     if (locationBlock?.data?.lat && locationBlock?.data?.lng) {
       window.open(`https://waze.com/ul?ll=${locationBlock.data.lat},${locationBlock.data.lng}&navigate=yes`, '_blank');
+      setShowNavMenu(false);
     }
   };
 
@@ -669,25 +524,12 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
     e.stopPropagation();
     if (onNavigate && locationBlock?.data?.lat && locationBlock?.data?.lng) {
       onNavigate({ lat: locationBlock.data.lat, lng: locationBlock.data.lng });
+      setShowNavMenu(false);
     }
   };
 
-  const hasLocation = locationBlock?.data?.lat && locationBlock?.data?.lng;
-  
-  // Get a preview snippet from text block
-  const textPreview = textBlock?.data?.content?.slice(0, 80)?.replace(/[#*_-]/g, '')?.trim();
-
   return (
     <div onClick={onClick} className="bg-white/5 backdrop-blur-md rounded-2xl overflow-hidden border border-white/10 hover:border-blue-400/50 transition-all cursor-pointer transform hover:scale-[1.02] relative group">
-      {/* Shared badge */}
-      {isSharedWithMe && (
-        <div className="absolute top-2 left-12 z-10">
-          <div className={`px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${myRole === 'editor' ? 'bg-green-500/20 text-green-300 border border-green-500/30' : 'bg-purple-500/20 text-purple-300 border border-purple-500/30'}`}>
-            <Users size={10} />
-            {myRole === 'editor' ? 'Redigerare' : 'Delad'}
-          </div>
-        </div>
-      )}
       {imageBlock ? (
         <>
           {currentUser && (
@@ -714,24 +556,19 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
             </div>
           )}
           {childCount > 0 && (
-            <div className="absolute top-2 right-2 z-10">
+            <div className={`absolute top-2 z-10 ${currentUser ? 'left-12' : 'left-2'}`}>
               <div className="bg-white/10 backdrop-blur-sm text-gray-200 text-xs px-2 py-1 rounded-full border border-white/15 flex items-center gap-1">
                 <Folder size={12} className="text-gray-300" />
                 {childCount}
               </div>
             </div>
           )}
-          <div className="w-full h-40 overflow-hidden relative">
-            <img 
-              src={getTransformedImageUrl(imageBlock.data.url, imageBlock.data.focalPoint ? 'custom' : imageBlock.data.cropMode, 800, 320, imageBlock.data.focalPoint)} 
-              alt="" 
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-              style={getFocalPointStyles(imageBlock.data.focalPoint)}
-            />
+          <div className="w-full h-40 overflow-hidden">
+            <img src={getTransformedImageUrl(imageBlock.data.url, imageBlock.data.cropMode, 800, 320)} alt="" className="w-full h-full object-cover" />
           </div>
         </>
       ) : null}
-      <div className={imageBlock ? "p-4" : "p-4"}>
+      <div className="p-4">
         {!category && isOwner && (
           <div className="mb-2 text-xs text-yellow-400 bg-yellow-400/10 px-2 py-1 rounded border border-yellow-400/20">
             ⚠️ Ogiltig kategori - redigera objektet
@@ -744,40 +581,23 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
           <div className="flex-1 min-w-0">
             {titleBlock && <h3 className="text-lg font-semibold text-white truncate">{titleBlock.data.text}</h3>}
           </div>
-          {currentUser && !imageBlock && (
-            <div className="flex items-center gap-1 flex-shrink-0">
-              <button
-                onClick={handleFavoriteClick}
-                className="p-1.5 rounded-full hover:bg-white/10 hover:scale-110 transition-all duration-200"
-                title={isFavorite ? 'Ta bort från favoriter' : 'Lägg till i favoriter'}
-              >
-                <Star 
-                  size={16} 
-                  className={`transition-colors ${isFavorite ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400 hover:text-yellow-300'}`}
-                />
-              </button>
-              {isOwner && (
-                <button
-                  onClick={handleShareClick}
-                  className="p-1.5 rounded-full hover:bg-white/10 hover:scale-110 transition-all duration-200"
-                  title="Dela objekt"
-                >
-                  <Share2 size={16} className="text-gray-400 hover:text-blue-300" />
-                </button>
-              )}
-            </div>
+          {currentUser && (
+            <button
+              onClick={handleFavoriteClick}
+              className={`p-1.5 rounded-full hover:bg-white/10 hover:scale-110 transition-all duration-200 flex-shrink-0 ${imageBlock ? 'hidden' : ''}`}
+              title={isFavorite ? 'Ta bort från favoriter' : 'Lägg till i favoriter'}
+            >
+              <Star 
+                size={16} 
+                className={`transition-colors ${isFavorite ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400 hover:text-yellow-300'}`}
+              />
+            </button>
           )}
         </div>
         
         {/* Compact info row for cards without image */}
-        {!imageBlock && (childCount > 0 || distance !== undefined || isSharedWithMe) && (
+        {!imageBlock && (childCount > 0 || distance !== undefined) && (
           <div className="flex items-center gap-3 text-xs text-gray-500 mb-2">
-            {isSharedWithMe && (
-              <span className={`flex items-center gap-1 ${myRole === 'editor' ? 'text-green-400' : 'text-purple-400'}`}>
-                <Users size={12} />
-                {myRole === 'editor' ? 'Redigerare' : 'Delad'}
-              </span>
-            )}
             {childCount > 0 && (
               <span className="flex items-center gap-1">
                 <Folder size={12} />
@@ -882,62 +702,6 @@ function ObjectsAdminModal({ objects, categories, onClose, onEditObject }) {
   const [sortBy, setSortBy] = useState('title'); // title, category, parent
   const [filterUserId, setFilterUserId] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [showFilters, setShowFilters] = useState(true);
-  
-  // Swipe to close state
-  const [touchStart, setTouchStart] = useState(null);
-  const [touchStartY, setTouchStartY] = useState(null);
-  const [touchDelta, setTouchDelta] = useState(0);
-  const [isSwipeActive, setIsSwipeActive] = useState(false);
-  const modalRef = useRef(null);
-  
-  const SWIPE_THRESHOLD = 30;
-  const CLOSE_THRESHOLD = 150;
-  const RESISTANCE = 0.5;
-  
-  const handleTouchStart = (e) => {
-    setTouchStart(e.touches[0].clientX);
-    setTouchStartY(e.touches[0].clientY);
-    setIsSwipeActive(false);
-  };
-  
-  const handleTouchMove = (e) => {
-    if (touchStart === null) return;
-    const currentX = e.touches[0].clientX;
-    const currentY = e.touches[0].clientY;
-    const deltaX = currentX - touchStart;
-    const deltaY = currentY - touchStartY;
-    
-    if (!isSwipeActive) {
-      if (deltaX > SWIPE_THRESHOLD && Math.abs(deltaX) > Math.abs(deltaY) * 2) {
-        setIsSwipeActive(true);
-        e.preventDefault();
-      } else if (Math.abs(deltaY) > 10) {
-        setTouchStart(null);
-        return;
-      } else {
-        return;
-      }
-    }
-    
-    if (deltaX > SWIPE_THRESHOLD) {
-      e.preventDefault();
-      const adjustedDelta = (deltaX - SWIPE_THRESHOLD) * RESISTANCE;
-      setTouchDelta(adjustedDelta);
-    }
-  };
-  
-  const handleTouchEnd = () => {
-    if (touchDelta > CLOSE_THRESHOLD * RESISTANCE) {
-      setTouchDelta(200);
-      setTimeout(onClose, 200);
-    } else {
-      setTouchDelta(0);
-    }
-    setTouchStart(null);
-    setTouchStartY(null);
-    setIsSwipeActive(false);
-  };
 
   const getObjectTitle = (obj) => {
     return obj.blocks?.find(b => b.type === 'title')?.data?.text || 'Namnlöst objekt';
@@ -993,52 +757,24 @@ function ObjectsAdminModal({ objects, categories, onClose, onEditObject }) {
   }
 
   return (
-    <div 
-      className="fixed inset-0 bg-black/80 sm:bg-black/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-8"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div 
-        ref={modalRef}
-        className="bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-xl border-t sm:border border-white/10 sm:border-white/[0.08] w-full sm:max-w-lg sm:w-[90%] h-full sm:h-auto sm:max-h-[85vh] overflow-hidden flex flex-col transition-transform duration-200 ease-out relative sm:shadow-2xl sm:shadow-black/50"
-        style={{ transform: `translateX(${touchDelta}px)`, opacity: touchDelta > 0 ? 1 - (touchDelta / 300) : 1 }}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-      >
-        {/* Subtle decorative gradient */}
-        <div className="absolute top-0 left-0 right-0 h-72 bg-gradient-to-b from-blue-600/8 via-blue-900/5 to-transparent pointer-events-none" />
-        
-        {/* Fixed header */}
-        <div className="sticky top-0 z-10 px-4 py-4 sm:p-6 border-b border-white/5 bg-gradient-to-r from-gray-900/98 via-gray-900/95 to-gray-900/98 backdrop-blur-xl flex items-center justify-between shadow-[0_1px_12px_rgba(0,0,0,0.4)]">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-600/20 flex items-center justify-center">
-              <List size={20} className="text-blue-400" />
-            </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-white">Alla objekt</h2>
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-gray-900 border border-white/10 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="p-6 border-b border-white/10">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold text-white">
+              Alla objekt {filterUserId && `(${sortedObjects.length}${filterUserId === 'all' ? '' : ` av ${objects.length}`})`}
+            </h2>
+            <button onClick={onClose} className="text-gray-400 hover:text-white">
+              <X size={24} />
+            </button>
           </div>
-          <button 
-            onClick={onClose} 
-            className="w-11 h-11 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 active:bg-white/20 text-gray-400 hover:text-white transition-all touch-manipulation"
-            aria-label="Stäng"
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
-        </div>
-        
-        {/* Filters section */}
-        <div className="px-4 py-3 sm:p-4 border-b border-white/5 relative z-[1]">
-          {/* User select with proper dark mode styling */}
-          <div className="relative">
+          <div className="space-y-3">
             <select
               value={filterUserId}
               onChange={(e) => setFilterUserId(e.target.value)}
-              className="w-full px-4 py-3 bg-gray-800 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-blue-400/50 appearance-none cursor-pointer"
-              style={{ colorScheme: 'dark' }}
+              className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm"
             >
-              <option value="">Välj användare...</option>
+              <option value="">Inget val - välj användare</option>
               <option value="all">Alla användare ({objects.length} objekt)</option>
               {users.map(user => {
                 const userObjects = objects.filter(o => o.ownerId === user.id);
@@ -1049,69 +785,38 @@ function ObjectsAdminModal({ objects, categories, onClose, onEditObject }) {
                 );
               })}
             </select>
-            <ChevronDown size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-          </div>
-          
-          {filterUserId && (
-            <div className="mt-3">
-              {/* Toggle filters button */}
+            <input
+              type="text"
+              placeholder="Sök på titel..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 text-sm"
+            />
+            <div className="flex gap-2">
               <button
-                onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors mb-3"
+                onClick={() => setSortBy('title')}
+                className={`flex-1 px-3 py-1.5 rounded text-sm ${sortBy === 'title' ? 'bg-blue-500 text-white' : 'bg-white/10 text-gray-300'}`}
               >
-                <ChevronDown size={16} className={`transition-transform ${showFilters ? '' : '-rotate-90'}`} />
-                <span>{sortedObjects.length} objekt{filterUserId !== 'all' && ` av ${objects.length}`}</span>
-                <span className="text-gray-600">•</span>
-                <span>Sök & sortera</span>
+                Titel
               </button>
-              
-              {showFilters && (
-                <div className="space-y-3">
-                  <input
-                    type="text"
-                    placeholder="Sök på titel..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 text-sm focus:outline-none focus:border-blue-400/50"
-                  />
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setSortBy('title')}
-                      className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all ${sortBy === 'title' ? 'bg-blue-500 text-white' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}
-                    >
-                      Titel
-                    </button>
-                    <button
-                      onClick={() => setSortBy('category')}
-                      className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all ${sortBy === 'category' ? 'bg-blue-500 text-white' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}
-                    >
-                      Kategori
-                    </button>
-                    <button
-                      onClick={() => setSortBy('parent')}
-                      className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all ${sortBy === 'parent' ? 'bg-blue-500 text-white' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}
-                    >
-                      Parent
-                    </button>
-                  </div>
-                </div>
-              )}
+              <button
+                onClick={() => setSortBy('category')}
+                className={`flex-1 px-3 py-1.5 rounded text-sm ${sortBy === 'category' ? 'bg-blue-500 text-white' : 'bg-white/10 text-gray-300'}`}
+              >
+                Kategori
+              </button>
+              <button
+                onClick={() => setSortBy('parent')}
+                className={`flex-1 px-3 py-1.5 rounded text-sm ${sortBy === 'parent' ? 'bg-blue-500 text-white' : 'bg-white/10 text-gray-300'}`}
+              >
+                Parent
+              </button>
             </div>
-          )}
+          </div>
         </div>
-        
-        <div className="overflow-y-auto flex-1 p-4 sm:p-6 pb-8 sm:pb-10">
+        <div className="overflow-y-auto flex-1 p-6">
           <div className="space-y-2">
-            {!filterUserId ? (
-              <div className="text-center py-12 text-gray-500">
-                <List size={48} className="mx-auto mb-4 opacity-50" />
-                <p>Välj en användare ovan för att se objekt</p>
-              </div>
-            ) : sortedObjects.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">
-                <p>Inga objekt hittades</p>
-              </div>
-            ) : sortedObjects.map(obj => {
+            {sortedObjects.map(obj => {
               const hasInvalidCategory = !categories.find(c => c.id === obj.type);
               const parent = obj.parentId ? objects.find(o => o.id === obj.parentId) : null;
               const childCount = getChildCount(obj.id);
@@ -1190,68 +895,6 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
   const [newCategory, setNewCategory] = useState({ label: '', icon: 'Home', color: '#6B7280' });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
   const [saving, setSaving] = useState(false);
-  
-  // Swipe to close state
-  const [touchStart, setTouchStart] = useState(null);
-  const [touchStartY, setTouchStartY] = useState(null);
-  const [touchDelta, setTouchDelta] = useState(0);
-  const [isSwipeActive, setIsSwipeActive] = useState(false);
-  const [isClosing, setIsClosing] = useState(false);
-  const modalRef = useRef(null);
-  
-  const SWIPE_THRESHOLD = 30; // Minimum px before swipe activates
-  const CLOSE_THRESHOLD = 150; // px needed to trigger close
-  const RESISTANCE = 0.5; // Friction factor (0.5 = moves half as fast as finger)
-  
-  const handleTouchStart = (e) => {
-    setTouchStart(e.touches[0].clientX);
-    setTouchStartY(e.touches[0].clientY);
-    setIsSwipeActive(false);
-  };
-  
-  const handleTouchMove = (e) => {
-    if (touchStart === null) return;
-    const currentX = e.touches[0].clientX;
-    const currentY = e.touches[0].clientY;
-    const deltaX = currentX - touchStart;
-    const deltaY = currentY - touchStartY;
-    
-    // Check if this is a horizontal swipe (not vertical scrolling)
-    if (!isSwipeActive) {
-      // Only activate if moved past threshold and clearly more horizontal than vertical
-      if (deltaX > SWIPE_THRESHOLD && Math.abs(deltaX) > Math.abs(deltaY) * 2) {
-        setIsSwipeActive(true);
-        e.preventDefault(); // Only prevent default once we're sure it's a swipe
-      } else if (Math.abs(deltaY) > 10) {
-        // User is scrolling vertically, don't activate swipe
-        setTouchStart(null);
-        return;
-      } else {
-        return; // Not yet determined, allow normal behavior
-      }
-    }
-    
-    // Apply resistance and only allow swiping right
-    if (deltaX > SWIPE_THRESHOLD) {
-      e.preventDefault();
-      const adjustedDelta = (deltaX - SWIPE_THRESHOLD) * RESISTANCE;
-      setTouchDelta(adjustedDelta);
-    }
-  };
-  
-  const handleTouchEnd = () => {
-    // If swiped past close threshold, close the modal
-    if (touchDelta > CLOSE_THRESHOLD * RESISTANCE) {
-      setIsClosing(true);
-      setTouchDelta(200); // Animate out
-      setTimeout(onClose, 200);
-    } else {
-      setTouchDelta(0);
-    }
-    setTouchStart(null);
-    setTouchStartY(null);
-    setIsSwipeActive(false);
-  };
 
   const handleSaveCategory = async () => {
     if (!newCategory.label.trim()) return;
@@ -1344,42 +987,24 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
   };
 
   return (
-    <div 
-      className="fixed inset-0 bg-black/80 sm:bg-black/70 backdrop-blur-sm z-[2100] flex items-end sm:items-center justify-center sm:p-8"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div 
-        ref={modalRef}
-        className="bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-xl border-t sm:border border-white/10 sm:border-white/[0.08] w-full sm:max-w-lg sm:w-[90%] h-full sm:h-auto sm:max-h-[85vh] overflow-hidden flex flex-col transition-transform duration-200 ease-out relative sm:shadow-2xl sm:shadow-black/50"
-        style={{ transform: `translateX(${touchDelta}px)`, opacity: touchDelta > 0 ? 1 - (touchDelta / 300) : 1 }}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-      >
-        {/* Subtle decorative gradient */}
-        <div className="absolute top-0 left-0 right-0 h-72 bg-gradient-to-b from-blue-600/8 via-blue-900/5 to-transparent pointer-events-none" />
-        
-        {/* Fixed header */}
-        <div className="sticky top-0 z-10 px-4 py-4 sm:p-6 border-b border-white/5 bg-gradient-to-r from-gray-900/98 via-gray-900/95 to-gray-900/98 backdrop-blur-xl flex items-center justify-between shadow-[0_1px_12px_rgba(0,0,0,0.4)]">
+    <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[2100] flex items-center justify-center p-4">
+      <div className="bg-gray-900/95 backdrop-blur-xl rounded-2xl border border-white/10 max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+        <div className="p-6 border-b border-white/10 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-600/20 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
               <Settings size={20} className="text-blue-400" />
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-white">Kategorier</h2>
+            <h2 className="text-2xl font-bold text-white">Hantera kategorier</h2>
           </div>
           <button
             onClick={onClose}
-            className="w-11 h-11 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 active:bg-white/20 text-gray-400 hover:text-white transition-all touch-manipulation"
-            aria-label="Stäng"
+            className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all"
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
+            <X size={20} />
           </button>
         </div>
 
-        <div className="p-4 sm:p-6 overflow-y-auto flex-1">
+        <div className="p-6 overflow-y-auto flex-1">
           {/* Add new category */}
           <div className="mb-6 p-4 rounded-xl bg-white/5 border border-white/10">
             <h3 className="text-lg font-semibold text-white mb-3">Skapa ny kategori</h3>
@@ -1594,84 +1219,15 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
   );
 }
 
-function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, currentUser, allObjects, onNavigate, categories, isAdmin, onShowOnMap, onShare }) {
+function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, currentUser, allObjects, onNavigate, categories, isAdmin, onShowOnMap }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   const [expandedBlocks, setExpandedBlocks] = useState(new Set([0])); // First block expanded by default
   const [showManageSection, setShowManageSection] = useState(false);
-  
-  // Swipe to close state
-  const [touchStart, setTouchStart] = useState(null);
-  const [touchStartY, setTouchStartY] = useState(null);
-  const [touchDelta, setTouchDelta] = useState(0);
-  const [isSwipeActive, setIsSwipeActive] = useState(false);
-  const modalRef = useRef(null);
-  const manageSectionRef = useRef(null);
-  
-  // Scroll manage section into view when opened
-  useEffect(() => {
-    if (showManageSection && manageSectionRef.current) {
-      setTimeout(() => {
-        manageSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
-      }, 50); // Small delay to let the animation start
-    }
-  }, [showManageSection]);
-  
-  const SWIPE_THRESHOLD = 30;
-  const CLOSE_THRESHOLD = 150;
-  const RESISTANCE = 0.5;
-  
-  const handleTouchStart = (e) => {
-    setTouchStart(e.touches[0].clientX);
-    setTouchStartY(e.touches[0].clientY);
-    setIsSwipeActive(false);
-  };
-  
-  const handleTouchMove = (e) => {
-    if (touchStart === null) return;
-    const currentX = e.touches[0].clientX;
-    const currentY = e.touches[0].clientY;
-    const deltaX = currentX - touchStart;
-    const deltaY = currentY - touchStartY;
-    
-    if (!isSwipeActive) {
-      if (deltaX > SWIPE_THRESHOLD && Math.abs(deltaX) > Math.abs(deltaY) * 2) {
-        setIsSwipeActive(true);
-        e.preventDefault();
-      } else if (Math.abs(deltaY) > 10) {
-        setTouchStart(null);
-        return;
-      } else {
-        return;
-      }
-    }
-    
-    if (deltaX > SWIPE_THRESHOLD) {
-      e.preventDefault();
-      const adjustedDelta = (deltaX - SWIPE_THRESHOLD) * RESISTANCE;
-      setTouchDelta(adjustedDelta);
-    }
-  };
-  
-  const handleTouchEnd = () => {
-    if (touchDelta > CLOSE_THRESHOLD * RESISTANCE) {
-      setTouchDelta(200);
-      setTimeout(onClose, 200);
-    } else {
-      setTouchDelta(0);
-    }
-    setTouchStart(null);
-    setTouchStartY(null);
-    setIsSwipeActive(false);
-  };
-  
   // Find category to get icon
   const category = categories.find(c => c.id === object.type);
   const IconComponent = category ? getIconComponent(category.icon) : (PREDEFINED_ICONS[object.type]?.icon || Home);
-  const categoryColor = category?.color || '#3B82F6';
   const isOwner = currentUser && object.ownerId === currentUser.uid;
-  const isSharedWithMe = currentUser && object.shares?.[currentUser.email]?.status === 'accepted';
-  const myRole = isSharedWithMe ? object.shares[currentUser.email].role : null;
-  const canEdit = isOwner || isAdmin || myRole === 'editor';
   const canManage = isOwner || isAdmin;
   
   const childObjects = allObjects.filter(o => o.parentId === object.id);
@@ -1680,14 +1236,9 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
   // Inherit location from parent if child doesn't have one
   const hasOwnLocation = object.blocks.some(b => b.type === 'location');
   const parentLocation = parentObject?.blocks?.find(b => b.type === 'location');
-  
-  // Track original index in object.blocks for each block
-  const rawBlocks = object.blocks.map((block, idx) => ({ ...block, objectBlockIndex: idx }));
-  
-  // Add inherited location if needed (with no objectBlockIndex since it's not in object.blocks)
-  if (!hasOwnLocation && parentLocation) {
-    rawBlocks.push({ type: 'location', data: parentLocation.data, inherited: true, objectBlockIndex: -1 });
-  }
+  const rawBlocks = hasOwnLocation || !parentLocation 
+    ? object.blocks 
+    : [...object.blocks, { type: 'location', data: parentLocation.data, inherited: true }];
   
   const blocksToRender = rawBlocks.sort((a, b) => {
     const order = { 'title': 0, 'image': 1, 'location': 2, 'text': 3, 'checklist': 3, 'todo': 3 };
@@ -1701,81 +1252,67 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
     onClose();
   };
   
-  // Get title for header
-  const titleBlock = object.blocks.find(b => b.type === 'title');
-  const objectTitle = titleBlock?.data?.text || 'Objekt';
-  
   return (
     <>
       <div 
-        className="fixed inset-0 bg-black/80 sm:bg-black/70 backdrop-blur-sm z-[1000] flex items-end sm:items-center justify-center sm:p-8"
-        onClick={(e) => e.target === e.currentTarget && onClose()}
+        className="fixed inset-0 z-[1000] overflow-hidden" 
+        style={{
+          background: `
+            radial-gradient(circle at 30% 20%, rgba(59,130,246,0.35), transparent 40%),
+            radial-gradient(circle at 70% 60%, rgba(139,92,246,0.25), transparent 45%),
+            radial-gradient(circle at 50% 90%, rgba(56,189,248,0.2), transparent 50%),
+            linear-gradient(to bottom, rgba(0,0,0,0.75), rgba(0,0,0,0.85))
+          `,
+          backdropFilter: 'blur(16px)'
+        }}
+        onClick={onClose}
       >
-        <div 
-          ref={modalRef}
-          className="bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-xl border-t sm:border border-white/10 sm:border-white/[0.08] w-full sm:max-w-lg sm:w-[90%] h-full sm:h-auto sm:max-h-[85vh] overflow-hidden flex flex-col transition-transform duration-200 ease-out relative sm:shadow-2xl sm:shadow-black/50"
-          style={{ transform: `translateX(${touchDelta}px)`, opacity: touchDelta > 0 ? 1 - (touchDelta / 300) : 1 }}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Subtle decorative gradient using category color */}
-          <div 
-            className="absolute top-0 left-0 right-0 h-72 pointer-events-none"
-            style={{ background: `linear-gradient(to bottom, ${categoryColor}12, ${categoryColor}05 50%, transparent)` }}
-          />
-          
-          {/* Fixed header */}
-          <div className="sticky top-0 z-10 px-4 py-4 sm:p-5 border-b border-white/5 bg-gradient-to-r from-gray-900/98 via-gray-900/95 to-gray-900/98 backdrop-blur-xl flex items-center justify-between shadow-[0_1px_12px_rgba(0,0,0,0.4)]">
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <div 
-                className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ backgroundColor: `${categoryColor}20` }}
-              >
-                <IconComponent size={20} style={{ color: categoryColor }} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h2 className="text-lg sm:text-xl font-bold text-white truncate">{objectTitle}</h2>
-                <span className="text-xs text-gray-400">{category?.label || 'Objekt'}</span>
-              </div>
-            </div>
-            <button 
-              onClick={onClose} 
-              className="w-11 h-11 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 active:bg-white/20 text-gray-400 hover:text-white transition-all touch-manipulation flex-shrink-0 ml-2"
-              aria-label="Stäng"
+        <div className="min-h-screen p-2 sm:p-4 flex items-start justify-center pt-2 sm:pt-20">
+            <div 
+              className="rounded-3xl border max-w-2xl w-full p-4 sm:p-6 max-h-[96vh] sm:max-h-[80vh] overflow-y-auto relative"
+              style={{
+                background: `
+                  radial-gradient(circle at 20% 10%, rgba(59,130,246,0.12), transparent 50%),
+                  radial-gradient(circle at 80% 80%, rgba(139,92,246,0.08), transparent 50%),
+                  linear-gradient(135deg, rgba(15,23,42,0.98), rgba(6,7,12,0.98))
+                `,
+                backdropFilter: 'blur(32px)',
+                borderColor: 'rgba(139,92,246,0.3)',
+                boxShadow: `
+                  0 0 0 1px rgba(59,130,246,0.1) inset,
+                  0 32px 96px -16px rgba(0,0,0,0.9),
+                  0 0 80px -20px rgba(59,130,246,0.3),
+                  0 0 40px -10px rgba(139,92,246,0.2)
+                `
+              }}
+              onClick={(e) => e.stopPropagation()}
             >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-          </div>
-          
-          {/* Parent navigation */}
-          {parentObject && (
-            <div className="px-4 py-2 border-b border-white/5">
-              <button
-                onClick={() => onNavigate(parentObject)}
-                className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="m15 18-6-6 6-6"/>
-                </svg>
-                <span>Tillbaka till {parentObject.blocks.find(b => b.type === 'title')?.data?.text || 'överordnat objekt'}</span>
-              </button>
+            <div className="flex justify-between items-center mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                  <IconComponent size={24} className="text-blue-400" />
+                </div>
+                <span className="text-gray-400 text-sm">{category?.label || (PREDEFINED_ICONS[object.type]?.label || 'Objekt')}</span>
+                {parentObject && (
+                  <button
+                    onClick={() => onNavigate(parentObject)}
+                    className="ml-2 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all text-sm flex items-center gap-2 border border-white/10"
+                    title={`Tillbaka till ${parentObject.blocks.find(b => b.type === 'title')?.data?.text || 'Parent'}`}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="m15 18-6-6 6-6"/>
+                    </svg>
+                    <span>{parentObject.blocks.find(b => b.type === 'title')?.data?.text || 'Parent'}</span>
+                  </button>
+                )}
+              </div>
+              <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl leading-none">×</button>
             </div>
-          )}
-          
-          {/* Scrollable content */}
-          <div className="overflow-y-auto flex-1 p-4 sm:p-5 pb-8 sm:pb-10">
-            <div className="space-y-5">
+            <div className="space-y-4">
               {(() => {
                 const sorted = blocksToRender
-                  .filter(block => blockComponents[block.type] && block.type !== 'title');
+                  .filter(block => blockComponents[block.type]);
                 return sorted.map((block, index) => {
-                // Use the original index in object.blocks (tracked as objectBlockIndex)
-                const actualBlockIndex = block.objectBlockIndex;
                 const BlockComponent = blockComponents[block.type];
                 const isExpanded = expandedBlocks.has(index);
                 const toggleExpanded = () => {
@@ -1804,7 +1341,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
                 const handleDeleteBlock = async () => {
                   if (!window.confirm('Ta bort denna position?')) return;
                   try {
-                    const updatedBlocks = object.blocks.filter((_, i) => i !== actualBlockIndex);
+                    const updatedBlocks = object.blocks.filter((_, i) => i !== index);
                     await updateDoc(doc(db, 'objects', object.id), {
                       blocks: updatedBlocks
                     });
@@ -1815,58 +1352,37 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
                 };
                 
                 return BlockComponent ? (
-                  <div key={actualBlockIndex} className="space-y-2">
+                  <div key={index}>
                     {isCollapsible && (
                       <button
                         onClick={toggleExpanded}
-                        className="w-full flex items-center gap-2.5 py-1 group"
+                        className="w-full flex items-center gap-2 mb-2 group"
                       >
-                        <div className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
-                          <ChevronDown 
-                            size={14} 
-                            className={`text-gray-400 group-hover:text-white transition-all ${isExpanded ? 'rotate-0' : '-rotate-90'}`}
-                          />
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {block.type === 'text' && (
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500">
-                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                              <polyline points="14 2 14 8 20 8"></polyline>
-                              <line x1="16" y1="13" x2="8" y2="13"></line>
-                              <line x1="16" y1="17" x2="8" y2="17"></line>
-                            </svg>
-                          )}
-                          {block.type === 'checklist' && (
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-400">
-                              <path d="M9 11l3 3L22 4"></path>
-                              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
-                            </svg>
-                          )}
-                          {block.type === 'todo' && (
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-400">
-                              <circle cx="12" cy="12" r="10"></circle>
-                              <polyline points="12 6 12 12 16 14"></polyline>
-                            </svg>
-                          )}
-                          <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">
+                        <ChevronDown 
+                          size={18} 
+                          className={`text-gray-400 group-hover:text-white transition-all ${isExpanded ? 'rotate-0' : '-rotate-90'}`}
+                        />
+                        {shouldShowLabel && (
+                          <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider group-hover:text-gray-300 transition-colors">
                             {customTitle ? customTitle : (
                               <>
-                                {block.type === 'text' && (showBlockLabel ? `Anteckning ${blockNumber}` : 'Anteckning')}
-                                {block.type === 'checklist' && (showBlockLabel ? `Checklista ${blockNumber}` : 'Checklista')}
-                                {block.type === 'todo' && (showBlockLabel ? `Att göra ${blockNumber}` : 'Att göra')}
+                                {block.type === 'text' && `Anteckning ${blockNumber}`}
+                                {block.type === 'checklist' && `Checklista ${blockNumber}`}
+                                {block.type === 'todo' && `Att göra ${blockNumber}`}
+                                {!['text', 'checklist', 'todo'].includes(block.type) && `${block.type} ${blockNumber}`}
                               </>
                             )}
-                          </span>
-                        </div>
+                          </div>
+                        )}
                       </button>
                     )}
                     {(!isCollapsible || isExpanded) && (
-                      <div>
+                      <div className={shouldShowLabel && isCollapsible ? 'border-l-4 border-blue-500/30 pl-4' : ''}>
                         <BlockComponent 
-                          key={actualBlockIndex} 
+                          key={index} 
                           data={block.data} 
                           objectId={object.id} 
-                          blockIndex={actualBlockIndex} 
+                          blockIndex={index} 
                           onUpdate={onBlockUpdate} 
                           inherited={block.inherited}
                           isExpanded={isExpanded}
@@ -1885,9 +1401,17 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
             </div>
             {childObjects.length > 0 && (
               <div className="mt-6 pt-6 border-t border-white/10">
-                <div className="flex items-center gap-2 mb-3">
-                  <Folder size={16} className="text-gray-400" />
-                  <h3 className="text-sm font-medium text-gray-400">Barn ({childObjects.length})</h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-lg font-semibold text-white">Ingår i detta objekt:</h3>
+                  {isOwner && (
+                    <button
+                      onClick={() => onEdit({ parentId: object.id })}
+                      className="w-8 h-8 bg-blue-500 hover:bg-blue-600 rounded-md flex items-center justify-center text-white transition-all hover:scale-105"
+                      title="Lägg till underobjekt"
+                    >
+                      <Plus size={14} />
+                    </button>
+                  )}
                 </div>
                 <div className="grid grid-cols-3 gap-2 items-end">
                   {childObjects.map(child => {
@@ -1902,12 +1426,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
                       >
                         {childImage ? (
                           <div className="w-8 h-8 rounded overflow-hidden flex-shrink-0">
-                            <img 
-                              src={getTransformedImageUrl(childImage.data.url, childImage.data.focalPoint ? 'custom' : childImage.data.cropMode, 64, 64, childImage.data.focalPoint)} 
-                              alt="" 
-                              className="w-full h-full object-cover"
-                              style={getFocalPointStyles(childImage.data.focalPoint)}
-                            />
+                            <img src={getTransformedImageUrl(childImage.data.url, childImage.data.cropMode, 64, 64)} alt="" className="w-full h-full object-cover" />
                           </div>
                         ) : (
                           <div className="w-8 h-8 rounded bg-blue-500/20 flex items-center justify-center flex-shrink-0">
@@ -1924,19 +1443,8 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
                 </div>
               </div>
             )}
-            {/* Shared with me indicator */}
-            {isSharedWithMe && (
-              <div className={`mt-4 p-3 rounded-xl border ${myRole === 'editor' ? 'bg-green-500/10 border-green-500/30' : 'bg-purple-500/10 border-purple-500/30'}`}>
-                <div className="flex items-center gap-2 text-sm">
-                  <Users size={16} className={myRole === 'editor' ? 'text-green-400' : 'text-purple-400'} />
-                  <span className={myRole === 'editor' ? 'text-green-300' : 'text-purple-300'}>
-                    {myRole === 'editor' ? 'Du kan redigera detta objekt' : 'Delat med dig (endast visning)'}
-                  </span>
-                </div>
-              </div>
-            )}
             {canManage && (
-              <div ref={manageSectionRef} className="mt-6 pt-6 border-t border-white/10">
+              <div className="mt-6 pt-6 border-t border-white/10">
                 <button
                   onClick={() => setShowManageSection(!showManageSection)}
                   className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-gray-400 hover:text-white transition-all"
@@ -1952,21 +1460,6 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
                 </button>
                 {showManageSection && (
                   <div className="mt-3 p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-3 animate-in slide-in-from-top-2 duration-200">
-                    {/* Share button - only for owners */}
-                    {isOwner && (
-                      <button
-                        onClick={() => onShare && onShare(object)}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-300 hover:bg-blue-500/20 hover:text-blue-200 transition-all"
-                      >
-                        <Share2 size={16} />
-                        <span className="text-sm">Dela objekt</span>
-                        {Object.keys(object.shares || {}).length > 0 && (
-                          <span className="ml-1 px-1.5 py-0.5 rounded-full bg-blue-500/30 text-xs">
-                            {Object.keys(object.shares).length}
-                          </span>
-                        )}
-                      </button>
-                    )}
                     <button
                       onClick={() => onEdit({ parentId: object.id })}
                       className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:text-white transition-all"
@@ -1995,6 +1488,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
         </div>
       </div>
       {showDeleteConfirm && <DeleteConfirmModal object={object} onConfirm={handleDelete} onCancel={() => setShowDeleteConfirm(false)} />}
+      {showShareModal && <ShareModal object={object} onClose={() => setShowShareModal(false)} onSave={onUpdateShares} currentUser={currentUser} />}
     </>
   );
 }
@@ -2208,7 +1702,7 @@ function MapView({ objects, onSelectObject, currentUser, userLocation, categorie
   };
 
   return (
-    <div className="w-full relative z-10 rounded-xl overflow-hidden border border-white/10 shadow-2xl bg-gray-900/80 transition-all duration-300" style={{ height: 'calc(100vh - 200px)' }}>
+    <div className="w-full relative z-10" style={{ height: 'calc(100vh - 200px)' }}>
       <MapContainer center={mapCenter || center} zoom={mapCenter ? 14 : (markersData.length > 0 ? 7 : 6)} style={{ height: '100%', width: '100%' }} key={mapCenter ? `${mapCenter.lat}-${mapCenter.lng}` : 'default'}>
         <TileLayer
           attribution='&copy; <a href="https://carto.com/">CARTO</a>'
@@ -2258,18 +1752,9 @@ function MapPicker({ onSelect, onClose, initialPosition, userLocation }) {
       <div className="bg-gray-900/95 backdrop-blur-xl rounded-3xl border border-white/10 max-w-4xl w-full p-6 shadow-2xl">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-xl font-bold text-white">Markera plats på kartan</h3>
-          <button 
-            onClick={onClose} 
-            className="w-11 h-11 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 active:bg-white/20 text-gray-400 hover:text-white transition-all touch-manipulation"
-            aria-label="Stäng"
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
+          <button onClick={onClose} className="text-gray-400 hover:text-white"><X size={24} /></button>
         </div>
-        <div className="h-[60vh] rounded-xl overflow-hidden border border-white/10 shadow-2xl bg-gray-900/80 transition-all duration-300 mb-4 relative">
+        <div className="h-[60vh] rounded-xl overflow-hidden border border-white/10 mb-4 relative">
           <MapContainer center={position} zoom={13} style={{ height: '100%', width: '100%' }}>
             <TileLayer
               attribution='&copy; <a href="https://carto.com/">CARTO</a>'
@@ -2514,8 +1999,6 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
   const [showMapPicker, setShowMapPicker] = useState(false);
   const [imageUrl, setImageUrl] = useState(editObject?.blocks?.find(b => b.type === 'image')?.data?.url || '');
   const [imageCropMode, setImageCropMode] = useState(editObject?.blocks?.find(b => b.type === 'image')?.data?.cropMode || 'auto');
-  const [imageFocalPoint, setImageFocalPoint] = useState(editObject?.blocks?.find(b => b.type === 'image')?.data?.focalPoint || null);
-  const [showFocalPointPicker, setShowFocalPointPicker] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   // Store custom blocks (text, checklist, todo) as array to support multiple
   const [customBlocks, setCustomBlocks] = useState(() => {
@@ -2532,63 +2015,6 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
   const [draggingBlockId, setDraggingBlockId] = useState(null);
   const [dragOverBlockId, setDragOverBlockId] = useState(null);
   const fileInputRef = useRef(null);
-  const modalRef = useRef(null);
-  
-  // Swipe to close
-  const [touchStart, setTouchStart] = useState(null);
-  const [touchStartY, setTouchStartY] = useState(null);
-  const [touchDelta, setTouchDelta] = useState(0);
-  const [isSwipeActive, setIsSwipeActive] = useState(false);
-  
-  const SWIPE_THRESHOLD = 30;
-  const CLOSE_THRESHOLD = 150;
-  const RESISTANCE = 0.5;
-  
-  const handleTouchStart = (e) => {
-    if (saving) return;
-    setTouchStart(e.touches[0].clientX);
-    setTouchStartY(e.touches[0].clientY);
-    setIsSwipeActive(false);
-  };
-  
-  const handleTouchMove = (e) => {
-    if (touchStart === null || saving) return;
-    const currentX = e.touches[0].clientX;
-    const currentY = e.touches[0].clientY;
-    const deltaX = currentX - touchStart;
-    const deltaY = currentY - touchStartY;
-    
-    if (!isSwipeActive) {
-      if (deltaX > SWIPE_THRESHOLD && Math.abs(deltaX) > Math.abs(deltaY) * 2) {
-        setIsSwipeActive(true);
-        e.preventDefault();
-      } else if (Math.abs(deltaY) > 10) {
-        setTouchStart(null);
-        return;
-      } else {
-        return;
-      }
-    }
-    
-    if (deltaX > SWIPE_THRESHOLD) {
-      e.preventDefault();
-      const adjustedDelta = (deltaX - SWIPE_THRESHOLD) * RESISTANCE;
-      setTouchDelta(adjustedDelta);
-    }
-  };
-  
-  const handleTouchEnd = () => {
-    if (saving) return;
-    if (touchDelta > CLOSE_THRESHOLD * RESISTANCE) {
-      setTouchDelta(200);
-      setTimeout(onClose, 200);
-    } else {
-      setTouchDelta(0);
-    }
-    setTouchStart(null);
-    setTouchStartY(null);
-    setIsSwipeActive(false);
-  };
 
   const selectedParent = availableParents.find(p => p.id === parentId);
   const parentHasLocation = selectedParent?.blocks?.some(b => b.type === 'location');
@@ -2598,18 +2024,14 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
       alert('GPS stöds inte av din enhet');
       return;
     }
-    if (capturingGPS) return; // Prevent double-clicks
     setCapturingGPS(true);
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        // Batch state updates
-        const newLat = position.coords.latitude;
-        const newLng = position.coords.longitude;
-        setLat(newLat);
-        setLng(newLng);
+        setLat(position.coords.latitude);
+        setLng(position.coords.longitude);
         // Only set address if user hasn't entered one
         if (!address.trim()) {
-          setAddress(`GPS: ${newLat.toFixed(5)}, ${newLng.toFixed(5)}`);
+          setAddress(`GPS: ${position.coords.latitude.toFixed(5)}, ${position.coords.longitude.toFixed(5)}`);
         }
         setCapturingGPS(false);
       },
@@ -2649,11 +2071,7 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
         blocks.push({ type: 'location', data: locationData });
       }
     }
-    if (imageUrl.trim()) {
-      const imageData = { url: imageUrl.trim(), cropMode: imageCropMode };
-      if (imageFocalPoint) imageData.focalPoint = imageFocalPoint;
-      blocks.push({ type: 'image', data: imageData });
-    }
+    if (imageUrl.trim()) blocks.push({ type: 'image', data: { url: imageUrl.trim(), cropMode: imageCropMode } });
     
     // Add custom blocks (text, checklist, todo) from array
     customBlocks.forEach(block => {
@@ -2684,7 +2102,6 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
   const handleImageFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (uploadingImage) return; // Prevent double uploads
 
     setUploadingImage(true);
     try {
@@ -2740,92 +2157,37 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
   };
 
   return (
-    <>
-      <div 
-        className="fixed inset-0 bg-black/80 sm:bg-black/70 backdrop-blur-sm z-[1000] flex items-end sm:items-center justify-center sm:p-8"
-        onClick={(e) => !saving && e.target === e.currentTarget && onClose()}
-      >
-        <div 
-          ref={modalRef}
-          className="bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-xl border-t sm:border border-white/10 sm:border-white/[0.08] w-full sm:max-w-2xl sm:w-[90%] h-full sm:h-auto sm:max-h-[90vh] overflow-hidden flex flex-col transition-transform duration-200 ease-out relative sm:shadow-2xl sm:shadow-black/50"
-          style={{ transform: `translateX(${touchDelta}px)`, opacity: touchDelta > 0 ? 1 - (touchDelta / 300) : 1 }}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Subtle decorative gradient */}
-          <div 
-            className="absolute top-0 left-0 right-0 h-48 pointer-events-none"
-            style={{ background: 'linear-gradient(to bottom, rgba(59, 130, 246, 0.08), rgba(59, 130, 246, 0.02) 50%, transparent)' }}
-          />
-          
-          {/* Fixed header */}
-          <div className="sticky top-0 z-10 px-4 py-4 sm:p-5 border-b border-white/5 bg-gradient-to-r from-gray-900/98 via-gray-900/95 to-gray-900/98 backdrop-blur-xl flex items-center justify-between shadow-[0_1px_12px_rgba(0,0,0,0.4)]">
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center flex-shrink-0">
-                <Plus size={20} className="text-blue-400" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h2 className="text-lg sm:text-xl font-bold text-white truncate">{isEdit ? 'Redigera objekt' : 'Skapa nytt objekt'}</h2>
-                <span className="text-xs text-gray-400">{isEdit ? 'Uppdatera detaljer' : 'Fyll i detaljer nedan'}</span>
-              </div>
-            </div>
-            <button 
-              onClick={onClose} 
-              className="w-11 h-11 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 active:bg-white/20 text-gray-400 hover:text-white transition-all touch-manipulation disabled:opacity-50 flex-shrink-0 ml-2"
-              disabled={saving}
-              aria-label="Stäng"
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[1000] flex flex-col">
+      <div className="flex-1 overflow-y-auto p-4 flex items-start justify-center py-10">
+        <div className="bg-gray-900/95 backdrop-blur-xl rounded-3xl border border-white/10 max-w-2xl w-full p-6 shadow-2xl">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-white">{isEdit ? 'Redigera objekt' : 'Skapa nytt objekt'}</h2>
+            <button onClick={onClose} className="text-gray-400 hover:text-white" disabled={saving}><X size={24} /></button>
           </div>
-          
-          {/* Scrollable content */}
-          <div className="overflow-y-auto flex-1 p-4 sm:p-5">
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-3">Välj kategori</label>
-                {selectedType && !categories.find(c => c.id === selectedType) && (
-                  <div className="mb-3 text-sm text-yellow-400 bg-yellow-400/10 px-3 py-2 rounded border border-yellow-400/20">
-                    ⚠️ Nuvarande kategori "{selectedType}" finns inte längre. Välj en ny kategori nedan.
-                  </div>
-                )}
-                <div className="grid grid-cols-4 gap-2">
-                  {categories.map(cat => {
-                    const Icon = getIconComponent(cat.icon);
-                    return (
-                      <button
+          <div className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-3">Välj typ</label>
+              {selectedType && !categories.find(c => c.id === selectedType) && (
+                <div className="mb-3 text-sm text-yellow-400 bg-yellow-400/10 px-3 py-2 rounded border border-yellow-400/20">
+                  ⚠️ Nuvarande kategori "{selectedType}" finns inte längre. Välj en ny kategori nedan.
+                </div>
+              )}
+              <div className="grid grid-cols-3 gap-3">
+                {categories.map(cat => {
+                  const Icon = getIconComponent(cat.icon);
+                  return (
+                    <button
                       key={cat.id}
                       type="button"
                       onClick={() => setSelectedType(cat.id)}
                       disabled={saving}
-                      className={`p-2.5 rounded-lg border-2 transition-all ${selectedType === cat.id ? 'border-blue-500 bg-blue-500/20' : 'border-white/10 bg-white/5 hover:border-white/20'} ${saving ? 'opacity-50' : ''}`}
+                      className={`p-4 rounded-xl border-2 transition-all ${selectedType === cat.id ? 'border-blue-500 bg-blue-500/20' : 'border-white/10 bg-white/5 hover:border-white/20'} ${saving ? 'opacity-50' : ''}`}
                     >
-                      <Icon size={20} className="mx-auto mb-1 text-blue-400" />
-                      <div className="text-[10px] text-gray-300 truncate">{cat.label}</div>
+                      <Icon size={24} className="mx-auto mb-2 text-blue-400" />
+                      <div className="text-xs text-gray-300">{cat.label}</div>
                     </button>
                   );
                 })}
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Titel *</label>
-              <div className="relative">
-                <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="T.ex. Sommarstugan i Dalarna" disabled={saving} className="w-full px-4 py-3 pr-10 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-50" />
-                {title && (
-                  <button
-                    type="button"
-                    onClick={() => setTitle('')}
-                    disabled={saving}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors disabled:opacity-50"
-                  >
-                    <X size={16} />
-                  </button>
-                )}
               </div>
             </div>
             <div>
@@ -2915,30 +2277,22 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
                 </label>
               </div>
             )}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Titel *</label>
+              <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="T.ex. Sommarstugan i Dalarna" disabled={saving} className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-50" />
+            </div>
             {!inheritLocation && (
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">Plats</label>
                 <div className="space-y-3">
-                  <div className="relative">
-                    <input 
-                      type="text" 
-                      value={address} 
-                      onChange={(e) => setAddress(e.target.value)} 
-                      placeholder="Skriv plats/beskrivning (t.ex. Kantarellstället vid stigen)" 
-                      disabled={saving} 
-                      className="w-full px-4 py-3 pr-10 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-50" 
-                    />
-                    {address && (
-                      <button
-                        type="button"
-                        onClick={() => setAddress('')}
-                        disabled={saving}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors disabled:opacity-50"
-                      >
-                        <X size={16} />
-                      </button>
-                    )}
-                  </div>
+                  <input 
+                    type="text" 
+                    value={address} 
+                    onChange={(e) => setAddress(e.target.value)} 
+                    placeholder="Skriv plats/beskrivning (t.ex. Kantarellstället vid stigen)" 
+                    disabled={saving} 
+                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-50" 
+                  />
                   <div className="flex gap-2">
                     <button
                       type="button"
@@ -2987,54 +2341,36 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
                   <>
                     <div className="relative w-full h-40 rounded-xl overflow-hidden border border-white/10 bg-gray-900">
                       <img 
-                        src={getTransformedImageUrl(imageUrl, imageFocalPoint ? 'custom' : imageCropMode, 800, 600, imageFocalPoint)} 
+                        src={getTransformedImageUrl(imageUrl, imageCropMode, 800, 600)} 
                         alt="Preview" 
                         className="w-full h-full object-cover" 
-                        style={getFocalPointStyles(imageFocalPoint)}
                       />
                       <button
                         type="button"
                         onClick={() => {
                           setImageUrl('');
                           setImageCropMode('auto');
-                          setImageFocalPoint(null);
                         }}
                         disabled={uploadingImage || saving}
                         className="absolute top-2 right-2 bg-red-500/80 hover:bg-red-600 text-white p-2 rounded-lg transition-all disabled:opacity-50"
                       >
                         <X size={16} />
                       </button>
-                      {/* Button to open focal point picker */}
-                      <button
-                        type="button"
-                        onClick={() => setShowFocalPointPicker(true)}
-                        disabled={uploadingImage || saving}
-                        className="absolute bottom-2 right-2 bg-black/60 hover:bg-black/80 text-white px-3 py-1.5 rounded-lg transition-all disabled:opacity-50 flex items-center gap-1.5 text-xs font-medium"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <circle cx="12" cy="12" r="3"></circle>
-                          <path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path>
-                        </svg>
-                        {imageFocalPoint ? 'Ändra' : 'Justera'}
-                      </button>
                     </div>
-                    {imageFocalPoint && (
-                      <div className="flex items-center justify-between text-xs text-gray-500 px-1">
-                        <span className="flex items-center gap-1.5">
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="20 6 9 17 4 12"></polyline>
-                          </svg>
-                          Justerad{imageFocalPoint.zoom > 1 ? ` (${Math.round((imageFocalPoint.zoom - 1) * 100)}% zoom)` : ''}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setImageFocalPoint(null)}
-                          className="text-blue-400 hover:text-blue-300"
-                        >
-                          Återställ till auto
-                        </button>
-                      </div>
-                    )}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-400 mb-2">Smart beskärning</label>
+                      <select
+                        value={imageCropMode}
+                        onChange={(e) => setImageCropMode(e.target.value)}
+                        disabled={uploadingImage || saving}
+                        className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-white/10 text-gray-300 text-sm focus:outline-none focus:border-blue-500 disabled:opacity-50"
+                        style={{ colorScheme: 'dark' }}
+                      >
+                        <option value="auto">Auto (AI väljer bästa fokus)</option>
+                        <option value="face">Ansikten (fokusera på personer)</option>
+                        <option value="center">Centrum (traditionell)</option>
+                      </select>
+                    </div>
                   </>
                 )}
                 <div className="flex gap-2">
@@ -3155,139 +2491,18 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
                         </button>
                       </div>
                     </div>
-                    <div className="relative mb-2">
-                      <input
-                        type="text"
-                        value={block.title}
-                        onChange={(e) => setCustomBlocks(customBlocks.map(b => b.id === block.id ? { ...b, title: e.target.value } : b))}
-                        placeholder={block.type === 'text' ? 'T.ex. Mat plan' : block.type === 'checklist' ? 'T.ex. Före semester' : 'T.ex. Packlista'}
-                        disabled={saving}
-                        className="w-full px-4 py-2 pr-8 rounded-lg bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-50 text-sm"
-                      />
-                      {block.title && (
-                        <button
-                          type="button"
-                          onClick={() => setCustomBlocks(customBlocks.map(b => b.id === block.id ? { ...b, title: '' } : b))}
-                          disabled={saving}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors disabled:opacity-50"
-                        >
-                          <X size={14} />
-                        </button>
-                      )}
-                    </div>
-                    {block.type === 'text' && (
-                      <div className="flex items-center gap-1 mb-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const textarea = document.getElementById(`textarea-${block.id}`);
-                            if (!textarea) return;
-                            const start = textarea.selectionStart;
-                            const end = textarea.selectionEnd;
-                            const text = block.content;
-                            const selected = text.substring(start, end);
-                            const newContent = text.substring(0, start) + `**${selected}**` + text.substring(end);
-                            setCustomBlocks(customBlocks.map(b => b.id === block.id ? { ...b, content: newContent } : b));
-                            setTimeout(() => {
-                              textarea.focus();
-                              textarea.setSelectionRange(start + 2, end + 2);
-                            }, 0);
-                          }}
-                          className="px-2 py-1 rounded bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white transition-all text-xs font-bold"
-                          title="Fetstil **text**"
-                        >
-                          B
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const textarea = document.getElementById(`textarea-${block.id}`);
-                            if (!textarea) return;
-                            const start = textarea.selectionStart;
-                            const end = textarea.selectionEnd;
-                            const text = block.content;
-                            const selected = text.substring(start, end);
-                            const newContent = text.substring(0, start) + `*${selected}*` + text.substring(end);
-                            setCustomBlocks(customBlocks.map(b => b.id === block.id ? { ...b, content: newContent } : b));
-                            setTimeout(() => {
-                              textarea.focus();
-                              textarea.setSelectionRange(start + 1, end + 1);
-                            }, 0);
-                          }}
-                          className="px-2 py-1 rounded bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white transition-all text-xs italic"
-                          title="Kursiv *text*"
-                        >
-                          I
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const textarea = document.getElementById(`textarea-${block.id}`);
-                            if (!textarea) return;
-                            const start = textarea.selectionStart;
-                            const text = block.content;
-                            // Find start of current line
-                            const lineStart = text.lastIndexOf('\n', start - 1) + 1;
-                            const newContent = text.substring(0, lineStart) + '- ' + text.substring(lineStart);
-                            setCustomBlocks(customBlocks.map(b => b.id === block.id ? { ...b, content: newContent } : b));
-                            setTimeout(() => {
-                              textarea.focus();
-                              textarea.setSelectionRange(start + 2, start + 2);
-                            }, 0);
-                          }}
-                          className="px-2 py-1 rounded bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white transition-all text-xs"
-                          title="Punktlista"
-                        >
-                          • Lista
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const textarea = document.getElementById(`textarea-${block.id}`);
-                            if (!textarea) return;
-                            const start = textarea.selectionStart;
-                            const text = block.content;
-                            const lineStart = text.lastIndexOf('\n', start - 1) + 1;
-                            const newContent = text.substring(0, lineStart) + '# ' + text.substring(lineStart);
-                            setCustomBlocks(customBlocks.map(b => b.id === block.id ? { ...b, content: newContent } : b));
-                            setTimeout(() => {
-                              textarea.focus();
-                              textarea.setSelectionRange(start + 2, start + 2);
-                            }, 0);
-                          }}
-                          className="px-2 py-1 rounded bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white transition-all text-xs font-bold"
-                          title="Rubrik # text"
-                        >
-                          H1
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const textarea = document.getElementById(`textarea-${block.id}`);
-                            if (!textarea) return;
-                            const start = textarea.selectionStart;
-                            const text = block.content;
-                            const lineStart = text.lastIndexOf('\n', start - 1) + 1;
-                            const newContent = text.substring(0, lineStart) + '## ' + text.substring(lineStart);
-                            setCustomBlocks(customBlocks.map(b => b.id === block.id ? { ...b, content: newContent } : b));
-                            setTimeout(() => {
-                              textarea.focus();
-                              textarea.setSelectionRange(start + 3, start + 3);
-                            }, 0);
-                          }}
-                          className="px-2 py-1 rounded bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white transition-all text-xs font-semibold"
-                          title="Underrubrik ## text"
-                        >
-                          H2
-                        </button>
-                        <span className="text-[10px] text-gray-600 ml-1"># rubrik</span>
-                      </div>
-                    )}
+                    <input
+                      type="text"
+                      value={block.title}
+                      onChange={(e) => setCustomBlocks(customBlocks.map(b => b.id === block.id ? { ...b, title: e.target.value } : b))}
+                      placeholder={block.type === 'text' ? 'T.ex. Mat plan' : block.type === 'checklist' ? 'T.ex. Före semester' : 'T.ex. Packlista'}
+                      disabled={saving}
+                      className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors mb-2 disabled:opacity-50 text-sm"
+                    />
                     <textarea 
-                      id={`textarea-${block.id}`}
                       value={block.content} 
                       onChange={(e) => setCustomBlocks(customBlocks.map(b => b.id === block.id ? { ...b, content: e.target.value } : b))}
-                      placeholder={block.type === 'text' ? 'Stöder # rubrik, **fet**, *kursiv*, - lista' : 'En per rad'}
+                      placeholder={block.type === 'text' ? 'Skriv anteckning...' : 'En per rad'}
                       rows={3} 
                       disabled={saving}
                       className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors resize-none disabled:opacity-50 font-mono text-sm"
@@ -3330,17 +2545,12 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
                 </button>
               </div>
             </div>
-            </div>
           </div>
-          
-          {/* Fixed footer with action buttons */}
-          <div className="sticky bottom-0 p-4 sm:p-5 border-t border-white/5 bg-gradient-to-t from-gray-950 via-gray-900/98 to-gray-900/95 backdrop-blur-xl">
-            <div className="flex gap-3">
-              <button type="button" onClick={onClose} disabled={saving} className="flex-1 px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 transition-all disabled:opacity-50">Avbryt</button>
-              <button type="button" onClick={handleSubmit} disabled={saving} className="flex-1 px-6 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2">
-                {saving ? <><Loader size={18} className="animate-spin" /><span>Sparar...</span></> : <span>{isEdit ? 'Uppdatera' : 'Skapa objekt'}</span>}
-              </button>
-            </div>
+          <div className="flex gap-3 pt-6 border-t border-white/10">
+            <button type="button" onClick={onClose} disabled={saving} className="flex-1 px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 transition-all disabled:opacity-50">Avbryt</button>
+            <button type="button" onClick={handleSubmit} disabled={saving} className="flex-1 px-6 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+              {saving ? <><Loader size={18} className="animate-spin" /><span>Sparar...</span></> : <span>{isEdit ? 'Uppdatera' : 'Skapa objekt'}</span>}
+            </button>
           </div>
         </div>
       </div>
@@ -3352,193 +2562,243 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
           userLocation={userLocation}
         />
       )}
-      {showFocalPointPicker && imageUrl && (
-        <FocalPointPicker
-          imageUrl={imageUrl}
-          currentFocalPoint={imageFocalPoint}
-          onSelect={(point) => {
-            setImageFocalPoint(point);
-            setShowFocalPointPicker(false);
-          }}
-          onClose={() => setShowFocalPointPicker(false)}
-        />
-      )}
-    </>
+    </div>
   );
 }
 
-// Focal Point Picker Component with zoom
-function FocalPointPicker({ imageUrl, currentFocalPoint, onSelect, onClose }) {
-  const [focalPoint, setFocalPoint] = useState(currentFocalPoint || { x: 50, y: 50, zoom: 1 });
-  const [isDragging, setIsDragging] = useState(false);
-  const containerRef = useRef(null);
-  const imageRef = useRef(null);
-  
-  const handlePointerDown = (e) => {
-    e.preventDefault();
-    setIsDragging(true);
-    updateFocalPoint(e);
+// Public Object View Component (för delad vy utan inloggning)
+function PublicObjectView({ object, onBackToApp }) {
+  const [checkedItems, setCheckedItems] = useState({});
+  const [expandedChildren, setExpandedChildren] = useState(new Set());
+
+  const handleCheck = (blockId, item) => {
+    const key = `${blockId}-${item}`;
+    setCheckedItems(prev => ({...prev, [key]: !prev[key]}));
   };
-  
-  const handlePointerMove = (e) => {
-    if (!isDragging) return;
-    e.preventDefault();
-    updateFocalPoint(e);
+
+  const getBlockIcon = (type) => {
+    const icons = {
+      text: '📝',
+      checklist: '☑️',
+      todo: '✓',
+      image: '🖼️',
+      location: '📍'
+    };
+    return icons[type] || '•';
   };
-  
-  const handlePointerUp = () => {
-    setIsDragging(false);
-  };
-  
-  const updateFocalPoint = (e) => {
-    if (!containerRef.current || !imageRef.current) return;
-    const rect = imageRef.current.getBoundingClientRect();
-    const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
-    const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
-    setFocalPoint(prev => ({ ...prev, x, y }));
-  };
-  
-  const handleZoomChange = (newZoom) => {
-    setFocalPoint(prev => ({ ...prev, zoom: newZoom }));
-  };
-  
-  // Get original image URL without transformations for the picker
-  const originalImageUrl = imageUrl.includes('/upload/') 
-    ? imageUrl.replace(/\/upload\/[^/]+\//, '/upload/q_auto,w_1200/') 
-    : imageUrl;
-  
-  return (
-    <div className="fixed inset-0 bg-black/95 z-[2000] flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-white/10 bg-gray-900/80">
-        <div>
-          <h3 className="text-lg font-bold text-white">Justera bilden</h3>
-          <p className="text-xs text-gray-400">Tryck på bilden för att välja fokuspunkt, använd reglaget för zoom</p>
-        </div>
-        <button
-          onClick={onClose}
-          className="w-11 h-11 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors"
-        >
-          <X size={20} />
-        </button>
-      </div>
+
+  const renderBlock = (block) => {
+    if (!block) return null;
+
+    switch (block.type) {
+      case 'text':
+        // Skip empty text blocks
+        if (!block.title && !block.content) return null;
+        return (
+          <div key={block.id} className="bg-white/5 rounded-xl p-4 border border-white/10">
+            {block.title && <h3 className="text-base font-semibold text-white mb-2">{block.title}</h3>}
+            {block.content && (
+              <div className="text-gray-300 text-sm whitespace-pre-wrap leading-relaxed">
+                {block.content}
+              </div>
+            )}
+          </div>
+        );
       
-      {/* Image picker area */}
-      <div 
-        ref={containerRef}
-        className="flex-1 flex items-center justify-center overflow-hidden p-4 touch-none"
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerLeave={handlePointerUp}
-        onPointerCancel={handlePointerUp}
-      >
-        <div className="relative">
-          <img 
-            ref={imageRef}
-            src={originalImageUrl} 
-            alt="Välj fokuspunkt" 
-            className="max-w-full max-h-[50vh] rounded-xl shadow-2xl pointer-events-none select-none"
-            draggable={false}
-          />
-          {/* Dimmed overlay except around focal point */}
-          <div className="absolute inset-0 rounded-xl overflow-hidden pointer-events-none">
-            {/* Full dim overlay */}
-            <div className="absolute inset-0 bg-black/50"></div>
-            {/* Clear circle around focal point */}
-            <div 
-              className="absolute w-32 h-32 -translate-x-1/2 -translate-y-1/2 rounded-full"
-              style={{ 
-                left: `${focalPoint.x}%`, 
-                top: `${focalPoint.y}%`,
-                boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)',
-                background: 'transparent'
-              }}
-            ></div>
+      case 'checklist':
+      case 'todo':
+        const items = block.content ? block.content.split('\n').filter(line => line.trim()) : [];
+        // Skip empty checklists/todos
+        if (items.length === 0 && !block.title) return null;
+        return (
+          <div key={block.id} className="bg-white/5 rounded-xl p-4 border border-white/10">
+            {block.title && <h3 className="text-base font-semibold text-white mb-3">{block.title}</h3>}
+            {items.length > 0 ? (
+              <div className="space-y-2">
+                {items.map((item, idx) => (
+                  <div key={idx} className="flex items-start gap-3 group">
+                    <button
+                      onClick={() => handleCheck(block.id, item)}
+                      className="mt-0.5 flex-shrink-0 w-5 h-5 rounded border-2 border-gray-500 hover:border-blue-400 transition-colors flex items-center justify-center"
+                    >
+                      {checkedItems[`${block.id}-${item}`] && <Check size={14} className="text-blue-400" />}
+                    </button>
+                    <span className={`text-sm leading-snug ${checkedItems[`${block.id}-${item}`] ? 'line-through text-gray-500' : 'text-gray-300'}`}>
+                      {item}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              block.title && <p className="text-gray-500 text-sm italic">Inga items ännu</p>
+            )}
           </div>
-          {/* Focal point crosshair */}
-          <div 
-            className="absolute w-16 h-16 -translate-x-1/2 -translate-y-1/2 pointer-events-none transition-all duration-75"
-            style={{ left: `${focalPoint.x}%`, top: `${focalPoint.y}%` }}
-          >
-            {/* Outer ring */}
-            <div className="absolute inset-0 rounded-full border-2 border-white shadow-[0_0_20px_rgba(0,0,0,0.5)]"></div>
-            {/* Inner dot */}
-            <div className="absolute inset-[26px] rounded-full bg-white shadow-lg"></div>
-            {/* Crosshair lines extending outside circle */}
-            <div className="absolute left-1/2 -top-4 h-4 w-0.5 bg-white/70 -translate-x-1/2"></div>
-            <div className="absolute left-1/2 -bottom-4 h-4 w-0.5 bg-white/70 -translate-x-1/2"></div>
-            <div className="absolute top-1/2 -left-4 w-4 h-0.5 bg-white/70 -translate-y-1/2"></div>
-            <div className="absolute top-1/2 -right-4 w-4 h-0.5 bg-white/70 -translate-y-1/2"></div>
-          </div>
-        </div>
-      </div>
+        );
       
-      {/* Bottom controls */}
-      <div className="p-4 border-t border-white/10 bg-gray-900/90 space-y-4">
-        {/* Zoom slider */}
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 text-gray-400">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-              <line x1="8" y1="11" x2="14" y2="11"></line>
-            </svg>
-            <span className="text-xs w-8">Ut</span>
+      case 'image':
+        return block.data?.url ? (
+          <div key={block.id} className="bg-white/5 rounded-xl p-2 border border-white/10">
+            <img 
+              src={block.data.url} 
+              alt={block.title || 'Bild'}
+              className="w-full h-auto rounded-lg"
+            />
           </div>
-          <input
-            type="range"
-            min="1"
-            max="2"
-            step="0.05"
-            value={focalPoint.zoom || 1}
-            onChange={(e) => handleZoomChange(parseFloat(e.target.value))}
-            className="flex-1 h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-blue-500"
-          />
-          <div className="flex items-center gap-2 text-gray-400">
-            <span className="text-xs w-8 text-right">In</span>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-              <line x1="11" y1="8" x2="11" y2="14"></line>
-              <line x1="8" y1="11" x2="14" y2="11"></line>
-            </svg>
-          </div>
-        </div>
-        
-        {/* Preview and actions */}
-        <div className="flex items-center gap-4">
-          <div className="flex-shrink-0">
-            <p className="text-xs text-gray-500 mb-1.5">Resultat</p>
-            <div className="w-28 h-20 rounded-lg overflow-hidden border border-white/20 bg-gray-800">
-              <img 
-                src={originalImageUrl} 
-                alt="Preview" 
-                className="w-full h-full object-cover"
-                style={{ 
-                  objectPosition: `${focalPoint.x}% ${focalPoint.y}%`,
-                  transform: `scale(${focalPoint.zoom || 1})`
-                }}
-              />
+        ) : null;
+      
+      case 'location':
+        return block.data?.lat && block.data?.lng ? (
+          <div key={block.id} className="bg-white/5 rounded-xl p-4 border border-white/10">
+            <div className="flex items-start gap-3">
+              <MapPin size={20} className="text-blue-400 flex-shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                {block.data.address && (
+                  <p className="text-white font-medium mb-1 break-words">{block.data.address}</p>
+                )}
+                <p className="text-gray-400 text-sm">
+                  {block.data.lat.toFixed(5)}, {block.data.lng.toFixed(5)}
+                </p>
+                <a
+                  href={`https://www.google.com/maps?q=${block.data.lat},${block.data.lng}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-400 hover:text-blue-300 text-sm mt-2 inline-block"
+                >
+                  Öppna i Google Maps →
+                </a>
+              </div>
             </div>
           </div>
-          <div className="flex-1 flex flex-col gap-2">
-            <button
-              onClick={() => onSelect(focalPoint)}
-              className="w-full px-4 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all flex items-center justify-center gap-2"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
-              Använd
-            </button>
-            <button
-              onClick={onClose}
-              className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white transition-all text-sm"
-            >
-              Avbryt
-            </button>
+        ) : null;
+      
+      default:
+        return null;
+    }
+  };
+
+  const getTitleBlock = (obj) => obj.blocks?.find(b => b.type === 'title');
+  const getImageBlock = (obj) => obj.blocks?.find(b => b.type === 'image');
+  const getOtherBlocks = (obj) => obj.blocks?.filter(b => !['title', 'image'].includes(b.type)) || [];
+
+  const titleBlock = getTitleBlock(object);
+  const imageBlock = getImageBlock(object);
+  const otherBlocks = getOtherBlocks(object);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950"
+      style={{
+         backgroundImage: `radial-gradient(circle at 15% 12%, rgba(59,130,246,0.20), transparent 35%),
+                           radial-gradient(circle at 85% 8%, rgba(56,189,248,0.16), transparent 32%),
+                           radial-gradient(circle at 50% 88%, rgba(59,130,246,0.14), transparent 36%),
+                           linear-gradient(to bottom right, #06070c, #0b1220, #06070c)`
+      }}
+    >
+      {/* Header */}
+      <div className="bg-gray-900/50 backdrop-blur-xl border-b border-white/10 sticky top-0 z-10">
+        <div className="max-w-6xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold text-white">OurSpots</h1>
+            {onBackToApp && (
+              <button
+                onClick={onBackToApp}
+                className="px-4 py-2 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-300 text-sm transition-all"
+              >
+                Till appen
+              </button>
+            )}
           </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        {/* Title */}
+        {titleBlock?.content && (
+          <h2 className="text-3xl font-bold text-white mb-6">{titleBlock.content}</h2>
+        )}
+
+        {/* Image */}
+        {imageBlock?.data?.url && (
+          <div className="mb-6">
+            <img 
+              src={imageBlock.data.url} 
+              alt={titleBlock?.content || 'Bild'}
+              className="w-full max-w-sm h-48 object-cover rounded-xl shadow-lg"
+            />
+          </div>
+        )}
+
+        {/* Category badge */}
+        {object.categoryName && (
+          <div className="mb-6 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20">
+            <span className="text-gray-300 text-sm">{object.categoryName}</span>
+          </div>
+        )}
+
+        {/* Other blocks */}
+        <div className="space-y-4 mb-8">
+          {otherBlocks.map(block => renderBlock(block))}
+        </div>
+
+        {/* Children */}
+        {object.children && object.children.length > 0 && (
+          <div className="mt-8 space-y-4">
+            <h3 className="text-xl font-semibold text-white mb-4">Relaterade objekt</h3>
+            {object.children.map(child => {
+              const childTitle = getTitleBlock(child);
+              const childImage = getImageBlock(child);
+              const isExpanded = expandedChildren.has(child.id);
+              
+              return (
+                <div key={child.id} className="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
+                  <button
+                    onClick={() => {
+                      const newExpanded = new Set(expandedChildren);
+                      if (isExpanded) {
+                        newExpanded.delete(child.id);
+                      } else {
+                        newExpanded.add(child.id);
+                      }
+                      setExpandedChildren(newExpanded);
+                    }}
+                    className="w-full p-4 flex items-center justify-between hover:bg-white/5 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      {childImage?.data?.url && (
+                        <img src={childImage.data.url} alt="" className="w-12 h-12 rounded-lg object-cover" />
+                      )}
+                      <span className="text-white font-medium">{childTitle?.content || 'Utan titel'}</span>
+                    </div>
+                    <ChevronDown 
+                      size={20} 
+                      className={`text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                    />
+                  </button>
+                  
+                  {isExpanded && (
+                    <div className="p-4 pt-0 space-y-3">
+                      {getOtherBlocks(child).map(block => renderBlock(block))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Login prompt */}
+        <div className="mt-12 p-6 rounded-xl bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20">
+          <p className="text-gray-300 text-sm mb-4">
+            Logga in på OurSpots för att skapa och dela dina egna platser, listor och anteckningar.
+          </p>
+          {onBackToApp && (
+            <button
+              onClick={onBackToApp}
+              className="px-6 py-2.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all"
+            >
+              Gå till OurSpots
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -3550,15 +2810,11 @@ function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [favorites, setFavorites] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [categoriesLoaded, setCategoriesLoaded] = useState(false);
   const [objects, setObjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedObject, setSelectedObject] = useState(null);
-  const [activeCategory, setActiveCategory] = useState(() => {
-    const saved = localStorage.getItem('activeCategory');
-    return saved || 'all';
-  });
+  const [activeCategory, setActiveCategory] = useState('all');
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [showSharedWithMe, setShowSharedWithMe] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -3603,6 +2859,20 @@ function App() {
   const [headerHeight, setHeaderHeight] = useState(64);
   const seedingRef = useRef(false);
   const wakeLockRef = useRef(null);
+  const [shareToken, setShareToken] = useState(() => {
+    // Check immediately on mount if we're on a share route
+    const hash = window.location.hash;
+    if (hash.startsWith('#/share/')) {
+      const token = hash.split('/share/')[1];
+      return token || null;
+    }
+    return null;
+  });
+  const [sharedObject, setSharedObject] = useState(null);
+  const [loadingShare, setLoadingShare] = useState(() => {
+    // Start loading if we detected a share token
+    return window.location.hash.startsWith('#/share/');
+  });
 
   // Distance helper (Haversine formula)
   const getDistance = (lat1, lng1, lat2, lng2) => {
@@ -3630,10 +2900,63 @@ function App() {
     localStorage.setItem('sortByDistance', sortByDistance.toString());
   }, [sortByDistance]);
 
-  // Save activeCategory preference
+  // Detect and handle share routes (#/share/:token)
   useEffect(() => {
-    localStorage.setItem('activeCategory', activeCategory);
-  }, [activeCategory]);
+    const checkShareRoute = async () => {
+      const hash = window.location.hash;
+      console.log('Checking share route, hash:', hash);
+      
+      if (hash.startsWith('#/share/')) {
+        const token = hash.split('/share/')[1];
+        console.log('Share token detected:', token);
+        
+        if (token) {
+          setShareToken(token);
+          setLoadingShare(true);
+          
+          try {
+            // Query for object with this public share token
+            const objectsRef = collection(db, 'objects');
+            const q = query(
+              objectsRef,
+              where('publicShareToken', '==', token),
+              where('isPublicShared', '==', true)
+            );
+            console.log('Querying Firestore for token:', token);
+            const snapshot = await getDocs(q);
+            console.log('Firestore query result, empty?:', snapshot.empty);
+            
+            if (!snapshot.empty) {
+              const objectData = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+              console.log('Found shared object:', objectData.id);
+              setSharedObject(objectData);
+            } else {
+              console.log('No shared object found with this token');
+              setSharedObject(null);
+            }
+          } catch (err) {
+            console.error('Error loading shared object:', err);
+            setSharedObject(null);
+          } finally {
+            setLoadingShare(false);
+          }
+        }
+      } else {
+        console.log('Not a share route');
+      }
+    };
+
+    checkShareRoute();
+    
+    // Listen for hash changes
+    const handleHashChange = () => {
+      console.log('Hash changed to:', window.location.hash);
+      checkShareRoute();
+    };
+    
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
 
   // Wake Lock för att hålla skärmen påslagen
   useEffect(() => {
@@ -3889,7 +3212,6 @@ function App() {
       const cats = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.order - b.order);
       console.log('Categories loaded:', cats.length, 'isAdmin:', isAdmin, 'user:', !!user);
       setCategories(cats);
-      setCategoriesLoaded(true);
     });
     return () => unsub();
   }, []);
@@ -3955,7 +3277,7 @@ function App() {
 
   // Lock background scroll when any modal is open
   useEffect(() => {
-    const hasModalOpen = !!selectedObject || !!showCreateModal || !!showMenu || !!showCategoryAdmin || !!showObjectsAdmin || !!showCaptures;
+    const hasModalOpen = !!selectedObject || !!showCreateModal || !!showMenu;
     const previousOverflow = document.body.style.overflow;
     if (hasModalOpen) {
       document.body.style.overflow = 'hidden';
@@ -3965,7 +3287,7 @@ function App() {
     return () => {
       document.body.style.overflow = previousOverflow;
     };
-  }, [selectedObject, showCreateModal, showMenu, showCategoryAdmin, showObjectsAdmin, showCaptures]);
+  }, [selectedObject, showCreateModal, showMenu]);
 
   const searchTerm = searchQuery.trim().toLowerCase();
   const matchesSearch = (obj) => {
@@ -4171,43 +3493,29 @@ function App() {
     }
     setSaving(true);
     try {
-      let savedObjectId = editId;
+      const saveOperation = editId 
+        ? updateDoc(doc(db, 'objects', editId), { ...objectData, updatedAt: Timestamp.now() })
+        : addDoc(collection(db, 'objects'), { 
+            ...objectData, 
+            ownerId: user.uid, 
+            ownerName: user.displayName, 
+            ownerEmail: user.email, 
+            createdAt: Timestamp.now(), 
+            updatedAt: Timestamp.now() 
+          });
       
-      if (editId) {
-        // Update existing
-        await updateDoc(doc(db, 'objects', editId), { ...objectData, updatedAt: Timestamp.now() });
-      } else {
-        // Create new - use Promise.race with timeout
-        const addOperation = addDoc(collection(db, 'objects'), { 
-          ...objectData, 
-          ownerId: user.uid, 
-          ownerName: user.displayName, 
-          ownerEmail: user.email, 
-          createdAt: Timestamp.now(), 
-          updatedAt: Timestamp.now() 
-        });
-        
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Timeout')), 10000)
-        );
-        
-        const docRef = await Promise.race([addOperation, timeoutPromise]);
-        savedObjectId = docRef.id;
-      }
+      // Timeout after 10 seconds
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout')), 10000)
+      );
+      
+      await Promise.race([saveOperation, timeoutPromise]);
       
       setShowCreateModal(false);
       setEditingObject(null);
-      setDefaultParentId(null);
-      
-      // Show the saved object after a brief delay (let Firestore sync)
-      if (savedObjectId) {
-        setTimeout(() => {
-          const savedObj = objects.find(o => o.id === savedObjectId);
-          if (savedObj) {
-            setSelectedObject(savedObj);
-          }
-        }, 300);
-      }
+      setDefaultParentId(null); // Clear defaultParentId to prevent wrong parent on next create
+      // Don't close selectedObject if we just created a child - keep parent view open
+      // setSelectedObject(null);
     } catch (err) {
       console.error('Save error:', err);
       alert(err.message === 'Timeout' ? 'Sparningen tog för lång tid. Försök igen.' : 'Kunde inte spara!');
@@ -4220,7 +3528,48 @@ function App() {
     try {
       await deleteDoc(doc(db, 'objects', id));
     } catch (err) {
-      alert('Kunde inte ta bort!');
+      console.error('Delete error:', err);
+      alert('Kunde inte ta bort objektet!');
+    }
+  };
+
+  const handleUpdateShares = async (updatedObject) => {
+    if (!user) {
+      alert('Du måste vara inloggad!');
+      return;
+    }
+    
+    try {
+      const updateData = {
+        shares: updatedObject.shares || {},
+        isPublicShared: updatedObject.isPublicShared || false,
+        updatedAt: Timestamp.now()
+      };
+      
+      // Add publicShareToken if enabling public sharing and token doesn't exist
+      if (updatedObject.isPublicShared && updatedObject.publicShareToken) {
+        updateData.publicShareToken = updatedObject.publicShareToken;
+      }
+      
+      await updateDoc(doc(db, 'objects', updatedObject.id), updateData);
+      
+      // Update local state to reflect changes immediately
+      setObjects(prev => prev.map(obj => 
+        obj.id === updatedObject.id 
+          ? { ...obj, ...updateData }
+          : obj
+      ));
+      
+      // Update selectedObject if it's the one being shared
+      setSelectedObject(prev => 
+        prev && prev.id === updatedObject.id 
+          ? { ...prev, ...updateData }
+          : prev
+      );
+      
+    } catch (err) {
+      console.error('Share update error:', err);
+      alert('Kunde inte uppdatera delning!');
     }
   };
 
@@ -4237,12 +3586,59 @@ function App() {
     setSelectedObject(null);
   };
 
-  if (loading || !categoriesLoaded) {
+  // Handle public share view FIRST (before checking loading)
+  if (shareToken) {
+    if (loadingShare) {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 flex items-center justify-center">
+          <div className="text-center">
+            <Loader size={48} className="animate-spin text-blue-400 mx-auto mb-4" />
+            <p className="text-gray-400">Laddar delat objekt...</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (!sharedObject) {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 flex items-center justify-center">
+          <div className="text-center max-w-md mx-auto px-4">
+            <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6 mb-4">
+              <h2 className="text-xl font-semibold text-white mb-2">Objekt hittades inte</h2>
+              <p className="text-gray-300 text-sm">Detta objekt finns inte eller är inte längre publikt delat.</p>
+            </div>
+            <button
+              onClick={() => {
+                window.location.hash = '';
+                window.location.reload();
+              }}
+              className="px-6 py-2.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all"
+            >
+              Gå till OurSpots
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <PublicObjectView 
+        object={sharedObject} 
+        onBackToApp={() => {
+          window.location.hash = '';
+          window.location.reload();
+        }}
+      />
+    );
+  }
+
+  // Check loading state for normal app (after share view check)
+  if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900/20 to-gray-900 flex items-center justify-center">
         <div className="text-center">
           <Loader size={48} className="animate-spin text-blue-400 mx-auto mb-4" />
-          <p className="text-gray-400">{!categoriesLoaded ? 'Laddar kategorier...' : 'Laddar dina platser...'}</p>
+          <p className="text-gray-400">Laddar dina platser...</p>
         </div>
       </div>
     );
@@ -4263,10 +3659,14 @@ function App() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setShowMenu(true)}
-              className="w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-all"
+              className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all"
               title="Meny"
             >
-              <Menu size={20} />
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+              </svg>
             </button>
             <h1 className="text-2xl font-bold text-white">OurSpots</h1>
           </div>
@@ -4294,13 +3694,28 @@ function App() {
       
       <div className="bg-gray-900/30 backdrop-blur-md border-b border-white/10 sticky z-30" style={{ top: headerHeight }}>
         <div className="max-w-6xl mx-auto px-4 py-3">
-          <div className="flex gap-2 items-center">
-            {/* Scrollable categories */}
-            <div className="flex gap-2 overflow-x-auto flex-1 min-w-0 pb-1 -mb-1">
+          <div className="flex gap-2 overflow-x-auto items-center justify-between">
+            <div className="flex gap-2 overflow-x-auto">
+              {/* Favorites category (only for logged in users) */}
+              {user && (
+                <button
+                  onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+                  className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl whitespace-nowrap transition-all ${showFavoritesOnly ? 'bg-yellow-500 text-white' : 'bg-white/20 text-gray-200 hover:bg-white/30'}`}
+                >
+                  <Star size={16} className={showFavoritesOnly ? 'fill-white' : ''} />
+                  <span className="text-sm font-medium hidden sm:inline">Favoriter</span>
+                  {favorites.length > 0 && (
+                    <span className="px-1.5 py-0.5 rounded-full bg-white/20 text-xs">
+                      {favorites.length}
+                    </span>
+                  )}
+                </button>
+              )}
+              
               {/* Always show "Alla" category */}
               <button
                 onClick={() => setActiveCategory('all')}
-                className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl whitespace-nowrap transition-all flex-shrink-0 ${activeCategory === 'all' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-white/10 text-gray-300 hover:bg-white/20'}`}
+                className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl whitespace-nowrap transition-all ${activeCategory === 'all' ? 'bg-blue-500 text-white' : 'bg-white/20 text-gray-200 hover:bg-white/30'}`}
               >
                 <span className="text-sm font-medium">Alla</span>
               </button>
@@ -4312,7 +3727,7 @@ function App() {
                   <button
                     key={cat.id}
                     onClick={() => setActiveCategory(cat.id)}
-                    className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl whitespace-nowrap transition-all flex-shrink-0 ${activeCategory === cat.id ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-white/10 text-gray-300 hover:bg-white/20'}`}
+                    className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl whitespace-nowrap transition-all ${activeCategory === cat.id ? 'bg-blue-500 text-white' : 'bg-white/20 text-gray-200 hover:bg-white/30'}`}
                   >
                     <IconComponent size={16} />
                     <span className="text-sm font-medium hidden sm:inline">{cat.label}</span>
@@ -4320,36 +3735,36 @@ function App() {
                 );
               })}
             </div>
-            
-            {/* Filter button - fixed position */}
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-xl whitespace-nowrap transition-all text-sm font-medium flex-shrink-0 ${showFilters ? 'bg-blue-500 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20'}`}
-              title={showFilters ? 'Dölj filter' : 'Visa filter'}
-            >
-              <SlidersHorizontal size={16} />
-            </button>
+            <div className="flex gap-2 items-center">
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl whitespace-nowrap transition-all text-sm font-medium ${showFilters ? 'bg-blue-500 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20'}`}
+                title={showFilters ? 'Dölj filter' : 'Visa filter'}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="4" y1="21" x2="4" y2="14"></line>
+                  <line x1="4" y1="10" x2="4" y2="3"></line>
+                  <line x1="12" y1="21" x2="12" y2="12"></line>
+                  <line x1="12" y1="8" x2="12" y2="3"></line>
+                  <line x1="20" y1="21" x2="20" y2="16"></line>
+                  <line x1="20" y1="12" x2="20" y2="3"></line>
+                  <line x1="1" y1="14" x2="7" y2="14"></line>
+                  <line x1="9" y1="8" x2="15" y2="8"></line>
+                  <line x1="17" y1="16" x2="23" y2="16"></line>
+                </svg>
+              </button>
+            </div>
           </div>
-          
           {showFilters && (
             <div className="mt-3 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
-              {/* Search - at top with clear button */}
               <div className="relative">
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-white/10 text-white text-base placeholder:text-gray-400 rounded-xl pl-10 pr-10 py-2.5 border border-white/10 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/30 transition-all"
+                  className="w-full bg-white/10 text-white placeholder:text-gray-400 rounded-xl pl-10 pr-3 py-2.5 border border-white/10 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/30 transition-all"
                   placeholder="Sök på namn eller innehåll"
                 />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-gray-300 transition-colors"
-                  >
-                    <X size={12} />
-                  </button>
-                )}
               </div>
               
               {/* Favorites + Shared + Sort by distance */}
@@ -4446,7 +3861,7 @@ function App() {
                   <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
                     <span>Max avstånd</span>
                     <span className="text-gray-200">
-                      {maxDistanceKm ? `${maxDistanceKm} km` : 'Alla'}
+                      {!userLocation ? 'Plats krävs' : maxDistanceKm ? `${maxDistanceKm} km` : 'Alla avstånd'}
                     </span>
                   </div>
                   <div className="flex items-center gap-3">
@@ -4457,14 +3872,15 @@ function App() {
                       step="1"
                       value={maxDistanceKm ?? 25}
                       onChange={(e) => setMaxDistanceKm(Number(e.target.value))}
-                      className="flex-1 accent-blue-500"
+                      disabled={!userLocation}
+                      className="flex-1 accent-blue-500 disabled:opacity-40"
                     />
                     <button
                       onClick={() => setMaxDistanceKm(null)}
                       disabled={!maxDistanceKm}
-                      className="text-xs px-2.5 py-1 rounded-lg bg-white/10 text-gray-300 hover:bg-white/20 border border-white/10 disabled:opacity-40"
+                      className="text-xs px-3 py-1 rounded-lg bg-white/10 text-gray-300 hover:bg-white/20 border border-white/10 disabled:opacity-40"
                     >
-                      Alla
+                      Rensa
                     </button>
                   </div>
                 </div>
@@ -4526,41 +3942,35 @@ function App() {
 
       {user && (
         <>
-          {/* Hide + button and map toggle when any modal is open */}
-          {!selectedObject && !showCreateModal && !showCategoryAdmin && !showObjectsAdmin && (
-            <>
-              <button 
-                onClick={() => { setEditingObject(null); setShowCreateModal(true); }} 
-                className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-2xl shadow-xl shadow-blue-500/30 flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 z-[1200]"
-                title="Skapa nytt objekt"
-              >
-                <Plus size={26} strokeWidth={2.5} />
-              </button>
-              <button
-                onClick={() => {
-                  const newMode = viewMode === 'list' ? 'map' : 'list';
-                  setViewMode(newMode);
-                  if (newMode === 'map') {
-                    window.scrollTo(0, 0);
-                  }
-                }}
-                className="fixed bottom-24 right-6 w-14 h-14 bg-gray-800/90 hover:bg-gray-700 backdrop-blur-sm rounded-2xl shadow-xl flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 z-[1200] border border-white/10"
-                title={viewMode === 'list' ? 'Visa karta' : 'Visa lista'}
-              >
-                {viewMode === 'list' ? <MapIcon size={22} /> : <List size={22} />}
-              </button>
-            </>
+          <button 
+            onClick={() => { setEditingObject(null); setShowCreateModal(true); }} 
+            className="fixed bottom-6 right-6 w-14 h-14 bg-blue-500 hover:bg-blue-600 rounded-full shadow-2xl flex items-center justify-center text-white transition-all hover:scale-110 z-[1200]"
+          >
+            <Plus size={28} />
+          </button>
+          {!selectedObject && (
+            <button
+              onClick={() => {
+                const newMode = viewMode === 'list' ? 'map' : 'list';
+                setViewMode(newMode);
+                if (newMode === 'map') {
+                  window.scrollTo(0, 0);
+                }
+              }}
+              className="fixed bottom-24 right-6 w-14 h-14 bg-gray-800 hover:bg-gray-700 rounded-full shadow-2xl flex items-center justify-center text-white transition-all hover:scale-110 z-[1200] border border-white/10"
+              title={viewMode === 'list' ? 'Visa karta' : 'Visa lista'}
+            >
+              {viewMode === 'list' ? <MapIcon size={24} /> : <List size={24} />}
+            </button>
           )}
-          {/* Quick capture mushroom button - always visible, moves to bottom when other buttons hidden */}
+          {/* Quick capture mushroom button */}
           {showQuickCapture && (
             <button
               onClick={handleQuickCapture}
-              className={`fixed right-6 w-14 h-14 bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 rounded-2xl shadow-xl shadow-orange-500/30 flex items-center justify-center text-white hover:scale-105 active:scale-95 z-[1200] transition-all duration-300 ${
-                (selectedObject || showCreateModal || showCategoryAdmin || showObjectsAdmin) ? 'bottom-6' : 'bottom-[10.5rem]'
-              }`}
+              className={`fixed right-6 w-14 h-14 bg-orange-600 hover:bg-orange-500 rounded-full shadow-2xl flex items-center justify-center text-white hover:scale-110 z-[1200] border border-orange-400/30 transition-all duration-300 ${selectedObject ? 'bottom-24' : 'bottom-[10.5rem]'}`}
               title="Snabbpinna GPS-position 🍄"
             >
-              <Target size={22} />
+              <Target size={24} />
               {captures.length > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
                   {captures.length}
@@ -4578,6 +3988,7 @@ function App() {
           onEdit={handleEdit} 
           onDelete={handleDeleteObject} 
           onBlockUpdate={handleBlockUpdate} 
+          onUpdateShares={handleUpdateShares}
           currentUser={user} 
           allObjects={allAvailableObjects} 
           onNavigate={(obj) => setSelectedObject(obj)} 
@@ -4643,43 +4054,26 @@ function App() {
 
       {/* Captures Modal */}
       {showCaptures && (
-        <div 
-          className="fixed inset-0 bg-black/80 sm:bg-black/70 backdrop-blur-sm z-[2000] flex items-end sm:items-center justify-center sm:justify-end"
-          onClick={(e) => e.target === e.currentTarget && setShowCaptures(false)}
-        >
-          <div className="bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-l-xl sm:rounded-r-none border-t sm:border-l sm:border-t sm:border-b border-white/10 sm:border-white/[0.08] w-full sm:w-96 h-full sm:h-full overflow-hidden flex flex-col relative sm:shadow-2xl sm:shadow-black/50 animate-in slide-in-from-bottom sm:slide-in-from-right duration-300">
-            {/* Subtle decorative gradient */}
-            <div className="absolute top-0 left-0 right-0 h-72 bg-gradient-to-b from-orange-600/8 via-orange-900/5 to-transparent pointer-events-none" />
-            
-            {/* Fixed header */}
-            <div className="sticky top-0 z-10 px-4 py-4 sm:p-6 border-b border-white/5 bg-gradient-to-r from-gray-900/98 via-gray-900/95 to-gray-900/98 backdrop-blur-xl flex items-center justify-between shadow-[0_1px_12px_rgba(0,0,0,0.4)]">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500/20 to-orange-600/20 flex items-center justify-center">
-                  <Target size={20} className="text-orange-400" />
+        <>
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[2000]" onClick={() => setShowCaptures(false)}></div>
+          <div className="fixed top-0 right-0 h-full w-96 bg-gray-950/98 backdrop-blur-xl border-l border-white/10 z-[2001] shadow-2xl animate-in slide-in-from-right duration-300 overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <Target className="text-orange-400" size={24} />
+                  <h2 className="text-2xl font-bold text-white">GPS-pinningar 🍄</h2>
                 </div>
-                <h2 className="text-xl sm:text-2xl font-bold text-white">GPS-pinningar</h2>
+                <button
+                  onClick={() => setShowCaptures(false)}
+                  className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all"
+                >
+                  <X size={20} />
+                </button>
               </div>
-              <button
-                onClick={() => setShowCaptures(false)}
-                className="w-11 h-11 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 active:bg-white/20 text-gray-400 hover:text-white transition-all touch-manipulation"
-                aria-label="Stäng"
-              >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-              </button>
-            </div>
-            
-            <div className="overflow-y-auto flex-1 p-4 sm:p-6 pb-8 sm:pb-10">
-              <div className="mb-4 p-4 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-300">
-                <div className="flex gap-3">
-                  <Lightbulb size={18} className="text-blue-400 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="mb-1">Använd orange svampknappen för att snabbt spara GPS-positioner när du är i skogen!</p>
-                    <p className="text-xs text-gray-500">Perfekt för kantarellställen utan uppkoppling. Skapa objekt senare.</p>
-                  </div>
-                </div>
+              
+              <div className="mb-4 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-sm text-gray-300">
+                <p className="mb-2">💡 Använd orange svampknappen för att snabbt spara GPS-positioner när du är i skogen!</p>
+                <p className="text-xs text-gray-400">Perfekt för kantarellställen utan uppkoppling. Skapa objekt senare.</p>
               </div>
 
               {captures.length === 0 ? (
@@ -4703,9 +4097,8 @@ function App() {
                       <div key={capture.id} className="bg-white/5 backdrop-blur-md rounded-xl border border-white/10 p-4">
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex-1">
-                            <div className="flex items-center gap-2 text-white font-medium mb-1">
-                              <Target size={16} className="text-orange-400" />
-                              <span>Pinning #{captures.length - index}</span>
+                            <div className="text-white font-medium mb-1">
+                              🍄 Pinning #{captures.length - index}
                             </div>
                             <div className="text-xs text-gray-400">{timeStr}</div>
                           </div>
@@ -4739,7 +4132,7 @@ function App() {
               )}
             </div>
           </div>
-        </div>
+        </>
       )}
 
       {showMenu && (
@@ -4751,13 +4144,9 @@ function App() {
                 <h2 className="text-2xl font-bold text-white">Meny</h2>
                 <button
                   onClick={() => setShowMenu(false)}
-                  className="w-11 h-11 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 active:bg-white/20 text-gray-400 hover:text-white transition-all touch-manipulation"
-                  aria-label="Stäng"
+                  className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all"
                 >
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                  </svg>
+                  <X size={20} />
                 </button>
               </div>
               <div className="space-y-2">
