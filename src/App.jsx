@@ -795,8 +795,15 @@ function ObjectsAdminModal({ objects, categories, onClose, onEditObject }) {
             <h2 className="text-2xl font-bold text-white">
               Alla objekt {filterUserId && `(${sortedObjects.length}${filterUserId === 'all' ? '' : ` av ${objects.length}`})`}
             </h2>
-            <button onClick={onClose} className="text-gray-400 hover:text-white">
-              <X size={24} />
+            <button 
+              onClick={onClose} 
+              className="w-11 h-11 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 active:bg-white/20 text-gray-400 hover:text-white transition-all touch-manipulation"
+              aria-label="Stäng"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
             </button>
           </div>
           <div className="space-y-3">
@@ -1029,9 +1036,13 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all"
+            className="w-11 h-11 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 active:bg-white/20 text-gray-400 hover:text-white transition-all touch-manipulation"
+            aria-label="Stäng"
           >
-            <X size={20} />
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
           </button>
         </div>
 
@@ -1336,7 +1347,16 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
                   </button>
                 )}
               </div>
-              <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl leading-none">×</button>
+              <button 
+                onClick={onClose} 
+                className="w-11 h-11 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 active:bg-white/20 text-gray-400 hover:text-white transition-all touch-manipulation"
+                aria-label="Stäng"
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
             </div>
             <div className="space-y-4">
               {(() => {
@@ -1802,7 +1822,16 @@ function MapPicker({ onSelect, onClose, initialPosition, userLocation }) {
       <div className="bg-gray-900/95 backdrop-blur-xl rounded-3xl border border-white/10 max-w-4xl w-full p-6 shadow-2xl">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-xl font-bold text-white">Markera plats på kartan</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-white"><X size={24} /></button>
+          <button 
+            onClick={onClose} 
+            className="w-11 h-11 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 active:bg-white/20 text-gray-400 hover:text-white transition-all touch-manipulation"
+            aria-label="Stäng"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
         </div>
         <div className="h-[60vh] rounded-xl overflow-hidden border border-white/10 shadow-2xl bg-gray-900/80 transition-all duration-300 mb-4 relative">
           <MapContainer center={position} zoom={13} style={{ height: '100%', width: '100%' }}>
@@ -2007,7 +2036,17 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
         <div className="bg-gray-900/95 backdrop-blur-xl rounded-3xl border border-white/10 max-w-2xl w-full p-6 shadow-2xl">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold text-white">{isEdit ? 'Redigera objekt' : 'Skapa nytt objekt'}</h2>
-            <button onClick={onClose} className="text-gray-400 hover:text-white" disabled={saving}><X size={24} /></button>
+            <button 
+              onClick={onClose} 
+              className="w-11 h-11 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 active:bg-white/20 text-gray-400 hover:text-white transition-all touch-manipulation disabled:opacity-50"
+              disabled={saving}
+              aria-label="Stäng"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
           </div>
           <div className="space-y-6">
             <div>
@@ -3343,9 +3382,13 @@ function App() {
                 </div>
                 <button
                   onClick={() => setShowCaptures(false)}
-                  className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all"
+                  className="w-11 h-11 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 active:bg-white/20 text-gray-400 hover:text-white transition-all touch-manipulation"
+                  aria-label="Stäng"
                 >
-                  <X size={20} />
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
                 </button>
               </div>
               
@@ -3422,9 +3465,13 @@ function App() {
                 <h2 className="text-2xl font-bold text-white">Meny</h2>
                 <button
                   onClick={() => setShowMenu(false)}
-                  className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all"
+                  className="w-11 h-11 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 active:bg-white/20 text-gray-400 hover:text-white transition-all touch-manipulation"
+                  aria-label="Stäng"
                 >
-                  <X size={20} />
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
                 </button>
               </div>
               <div className="space-y-2">
