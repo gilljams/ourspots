@@ -25,6 +25,14 @@ service cloud.firestore {
              objectData.shares[request.auth.token.email.lower()].role == 'editor';
     }
     
+    // Check if user has ANY accepted share access (viewer or editor)
+    function hasAcceptedShareAccess(objectData) {
+      return request.auth != null && 
+             objectData.shares != null &&
+             request.auth.token.email.lower() in objectData.shares &&
+             objectData.shares[request.auth.token.email.lower()].status == 'accepted';
+    }
+    
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
       allow read: if request.auth != null; // Allow reading other users for sharing
@@ -48,6 +56,7 @@ service cloud.firestore {
       
       // Update: Owner, Editor role (accepted), or Admin
       // Also allow shared users to update their own share status (accept/decline) or leave sharing
+      // Also allow any accepted share user to update blocks (checklist/todo)
       allow update: if request.auth != null && (
                        request.auth.uid == resource.data.ownerId ||  // Owner
                        isAdmin() ||                                   // Admin
@@ -55,7 +64,11 @@ service cloud.firestore {
                        // Allow any shared user to update shares and sharedWithEmails (accept/decline/leave)
                        (isInSharedList(resource.data) &&
                         request.resource.data.diff(resource.data).affectedKeys()
-                          .hasOnly(['shares', 'sharedWithEmails']))
+                          .hasOnly(['shares', 'sharedWithEmails'])) ||
+                       // Allow any accepted shared user to update blocks and updatedAt (checklist/todo)
+                       (hasAcceptedShareAccess(resource.data) &&
+                        request.resource.data.diff(resource.data).affectedKeys()
+                          .hasOnly(['blocks', 'updatedAt']))
                      );
       
       // Delete: Owner or Admin only
