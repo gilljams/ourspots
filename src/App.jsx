@@ -4077,6 +4077,14 @@ function App() {
   // Filter by category (combine with favorites if both selected)
   let filteredObjects = objects;
   
+  // Get pending invitations (objects where user's share status is pending)
+  const pendingInvitations = user?.email 
+    ? objects.filter(obj => 
+        obj.shares?.[user.email]?.status === 'pending' || 
+        obj.shares?.[user.email.toLowerCase()]?.status === 'pending'
+      )
+    : [];
+  
   // Apply category filter
   if (activeCategory !== 'all' && activeCategory !== 'favorites') {
     filteredObjects = filteredObjects.filter(o => o.type === activeCategory);
@@ -4483,6 +4491,67 @@ function App() {
                     >
                       Alla
                     </button>
+                  </div>
+                </div>
+              )}
+              
+              {/* Pending share invitations */}
+              {pendingInvitations.length > 0 && (
+                <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/30">
+                  <h4 className="text-sm font-medium text-blue-300 mb-2 flex items-center gap-2">
+                    <Mail size={14} />
+                    Inbjudningar ({pendingInvitations.length})
+                  </h4>
+                  <div className="space-y-2">
+                    {pendingInvitations.map(obj => {
+                      const titleBlock = obj.blocks?.find(b => b.type === 'title');
+                      const shareInfo = obj.shares[user.email] || obj.shares[user.email.toLowerCase()];
+                      return (
+                        <div key={obj.id} className="flex items-center gap-2 p-2 rounded-lg bg-white/5">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white text-sm truncate">{titleBlock?.data?.text || 'Namnlöst'}</p>
+                            <p className="text-xs text-gray-500">
+                              {shareInfo?.role === 'editor' ? 'Redigerare' : 'Läsare'}
+                              {shareInfo?.includeChildren && ' • Inkl. barn'}
+                            </p>
+                          </div>
+                          <button
+                            onClick={async () => {
+                              try {
+                                const emailKey = obj.shares[user.email] ? user.email : user.email.toLowerCase();
+                                await updateDoc(doc(db, 'objects', obj.id), {
+                                  [`shares.${emailKey}.status`]: 'accepted',
+                                  [`shares.${emailKey}.respondedAt`]: Timestamp.now()
+                                });
+                              } catch (err) {
+                                console.error('Error accepting share:', err);
+                                alert('Kunde inte acceptera inbjudan');
+                              }
+                            }}
+                            className="px-2 py-1 rounded-lg bg-green-500/20 text-green-300 text-xs hover:bg-green-500/30 transition-colors"
+                          >
+                            Acceptera
+                          </button>
+                          <button
+                            onClick={async () => {
+                              try {
+                                const emailKey = obj.shares[user.email] ? user.email : user.email.toLowerCase();
+                                await updateDoc(doc(db, 'objects', obj.id), {
+                                  [`shares.${emailKey}.status`]: 'declined',
+                                  [`shares.${emailKey}.respondedAt`]: Timestamp.now()
+                                });
+                              } catch (err) {
+                                console.error('Error declining share:', err);
+                                alert('Kunde inte neka inbjudan');
+                              }
+                            }}
+                            className="px-2 py-1 rounded-lg bg-red-500/20 text-red-300 text-xs hover:bg-red-500/30 transition-colors"
+                          >
+                            Neka
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
