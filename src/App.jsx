@@ -3817,6 +3817,7 @@ function App() {
   const [maxDistanceKm, setMaxDistanceKm] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [showInvitations, setShowInvitations] = useState(false);
   const [showCategoryAdmin, setShowCategoryAdmin] = useState(false);
   const [showObjectsAdmin, setShowObjectsAdmin] = useState(false);
   const [captures, setCaptures] = useState(() => {
@@ -4536,6 +4537,18 @@ function App() {
               <Menu size={20} />
             </button>
             <h1 className="text-2xl font-bold text-white">OurSpots</h1>
+            {pendingInvitations.length > 0 && (
+              <button
+                onClick={() => setShowInvitations(!showInvitations)}
+                className="relative w-10 h-10 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 flex items-center justify-center text-blue-400 hover:text-blue-300 transition-all"
+                title="Inbjudningar"
+              >
+                <Mail size={20} />
+                <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                  {pendingInvitations.length}
+                </span>
+              </button>
+            )}
           </div>
           <div>
             {user ? (
@@ -4558,6 +4571,73 @@ function App() {
           </div>
         </div>
       </header>
+      
+      {/* Invitations dropdown */}
+      {showInvitations && pendingInvitations.length > 0 && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setShowInvitations(false)} />
+          <div className="absolute left-4 right-4 sm:left-auto sm:right-auto sm:w-80 mt-2 ml-0 sm:ml-14 p-3 rounded-xl bg-gray-900/95 backdrop-blur-xl border border-white/10 shadow-2xl z-50 animate-in slide-in-from-top-2">
+            <h4 className="text-sm font-medium text-white mb-3 flex items-center gap-2">
+              <Mail size={16} className="text-blue-400" />
+              Inbjudningar ({pendingInvitations.length})
+            </h4>
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {pendingInvitations.map(obj => {
+                const titleBlock = obj.blocks?.find(b => b.type === 'title');
+                const shareInfo = obj.shares[userEmailKey];
+                return (
+                  <div key={obj.id} className="flex items-center gap-2 p-2.5 rounded-lg bg-white/5 border border-white/10">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white text-sm font-medium truncate">{titleBlock?.data?.text || 'Namnlöst'}</p>
+                      <p className="text-xs text-gray-400">
+                        {shareInfo?.role === 'editor' ? '✏️ Redigerare' : '👁️ Läsare'}
+                        {shareInfo?.includeChildren && ' • Inkl. barn'}
+                      </p>
+                    </div>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={async () => {
+                          try {
+                            const emailKey = emailToKey(user.email.toLowerCase());
+                            await updateDoc(doc(db, 'objects', obj.id), {
+                              [`shares.${emailKey}.status`]: 'accepted',
+                              [`shares.${emailKey}.respondedAt`]: Timestamp.now()
+                            });
+                            if (pendingInvitations.length === 1) setShowInvitations(false);
+                          } catch (err) {
+                            alert('Kunde inte acceptera');
+                          }
+                        }}
+                        className="px-2.5 py-1.5 rounded-lg bg-green-500/20 text-green-300 text-xs font-medium hover:bg-green-500/30 transition-colors"
+                      >
+                        ✓
+                      </button>
+                      <button
+                        onClick={async () => {
+                          try {
+                            const emailKey = emailToKey(user.email.toLowerCase());
+                            const userEmail = user.email.toLowerCase();
+                            await updateDoc(doc(db, 'objects', obj.id), {
+                              [`shares.${emailKey}`]: deleteField(),
+                              sharedWithEmails: arrayRemove(userEmail)
+                            });
+                            if (pendingInvitations.length === 1) setShowInvitations(false);
+                          } catch (err) {
+                            alert('Kunde inte neka');
+                          }
+                        }}
+                        className="px-2.5 py-1.5 rounded-lg bg-red-500/20 text-red-300 text-xs font-medium hover:bg-red-500/30 transition-colors"
+                      >
+                        ✗
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
       
       <div className="bg-gray-900/30 backdrop-blur-md border-b border-white/10 sticky z-30" style={{ top: headerHeight }}>
         <div className="max-w-6xl mx-auto px-4 py-3">
@@ -4672,67 +4752,6 @@ function App() {
                     >
                       Alla
                     </button>
-                  </div>
-                </div>
-              )}
-              
-              {/* Pending share invitations */}
-              {pendingInvitations.length > 0 && (
-                <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/30">
-                  <h4 className="text-sm font-medium text-blue-300 mb-2 flex items-center gap-2">
-                    <Mail size={14} />
-                    Inbjudningar ({pendingInvitations.length})
-                  </h4>
-                  <div className="space-y-2">
-                    {pendingInvitations.map(obj => {
-                      const titleBlock = obj.blocks?.find(b => b.type === 'title');
-                      const shareInfo = obj.shares[userEmailKey];
-                      return (
-                        <div key={obj.id} className="flex items-center gap-2 p-2 rounded-lg bg-white/5">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-white text-sm truncate">{titleBlock?.data?.text || 'Namnlöst'}</p>
-                            <p className="text-xs text-gray-500">
-                              {shareInfo?.role === 'editor' ? 'Redigerare' : 'Läsare'}
-                              {shareInfo?.includeChildren && ' • Inkl. barn'}
-                            </p>
-                          </div>
-                          <button
-                            onClick={async () => {
-                              try {
-                                const emailKey = emailToKey(user.email.toLowerCase());
-                                await updateDoc(doc(db, 'objects', obj.id), {
-                                  [`shares.${emailKey}.status`]: 'accepted',
-                                  [`shares.${emailKey}.respondedAt`]: Timestamp.now()
-                                });
-                              } catch (err) {
-                                console.error('Error accepting share:', err);
-                                alert('Kunde inte acceptera inbjudan');
-                              }
-                            }}
-                            className="px-2 py-1 rounded-lg bg-green-500/20 text-green-300 text-xs hover:bg-green-500/30 transition-colors"
-                          >
-                            Acceptera
-                          </button>
-                          <button
-                            onClick={async () => {
-                              try {
-                                const emailKey = emailToKey(user.email.toLowerCase());
-                                await updateDoc(doc(db, 'objects', obj.id), {
-                                  [`shares.${emailKey}.status`]: 'declined',
-                                  [`shares.${emailKey}.respondedAt`]: Timestamp.now()
-                                });
-                              } catch (err) {
-                                console.error('Error declining share:', err);
-                                alert('Kunde inte neka inbjudan');
-                              }
-                            }}
-                            className="px-2 py-1 rounded-lg bg-red-500/20 text-red-300 text-xs hover:bg-red-500/30 transition-colors"
-                          >
-                            Neka
-                          </button>
-                        </div>
-                      );
-                    })}
                   </div>
                 </div>
               )}
