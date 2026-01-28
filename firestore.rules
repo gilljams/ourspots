@@ -1,0 +1,66 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Hjälpfunktion för att kolla om användare är admin
+    function isAdmin() {
+      return request.auth != null && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+    
+    // Check if user has accepted share access to an object
+    function hasShareAccess(objectData) {
+      return request.auth != null && 
+             objectData.shares != null &&
+             objectData.shares[request.auth.token.email] != null &&
+             objectData.shares[request.auth.token.email].status == 'accepted';
+    }
+    
+    // Check if user has editor role on shared object
+    function hasEditorAccess(objectData) {
+      return hasShareAccess(objectData) && 
+             objectData.shares[request.auth.token.email].role == 'editor';
+    }
+    
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null; // Allow reading other users for sharing
+    }
+    
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    match /objects/{objectId} {
+      // Read access: Owner, shared users (accepted), or Admin
+      allow read: if request.auth != null && (
+                    resource.data.ownerId == request.auth.uid ||  // Owner
+                    hasShareAccess(resource.data) ||               // Shared with user (accepted)
+                    isAdmin()                                      // Admin
+                  );
+      
+      // Create: Anyone logged in
+      allow create: if request.auth != null;
+      
+      // Update: Owner, Editor role (accepted), or Admin
+      // Also allow shared users to update their own share status (accept/decline)
+      allow update: if request.auth != null && (
+                       request.auth.uid == resource.data.ownerId ||  // Owner
+                       isAdmin() ||                                   // Admin
+                       hasEditorAccess(resource.data) ||              // Editor role (accepted)
+                       // Allow updating own share status (accept/decline invitation)
+                       (resource.data.shares != null &&
+                        resource.data.shares[request.auth.token.email] != null &&
+                        request.resource.data.diff(resource.data).affectedKeys()
+                          .hasOnly(['shares']) &&
+                        request.resource.data.shares[request.auth.token.email].status in ['accepted', 'declined'])
+                     );
+      
+      // Delete: Owner or Admin only
+      allow delete: if request.auth != null && 
+                       (request.auth.uid == resource.data.ownerId || isAdmin());
+    }
+  }
+}

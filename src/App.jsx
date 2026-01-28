@@ -5,14 +5,14 @@ import {
   Map as MapIcon, List, ChevronDown, ArrowUp, ArrowDown, Search, Settings,
   UtensilsCrossed, Pizza, Wine, Beer, Gamepad2, Music, Film, PartyPopper, 
   Bike, Dumbbell, Waves, TreePine, Shell, Sprout, RotateCcw, Target, Lightbulb,
-  SlidersHorizontal, Menu, Filter
+  SlidersHorizontal, Menu, Filter, Share2, UserPlus, UserMinus, Users, Mail
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMapEvents, Tooltip, Popup } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { db, auth, googleProvider } from './firebase';
-import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, Timestamp, getDoc, setDoc, deleteField, query, where } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, Timestamp, getDoc, setDoc, deleteField, query, where, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
 
 // Fix Leaflet default marker icon issue with bundlers
@@ -36,16 +36,14 @@ const createColoredIcon = (color) => {
 
 const createUserIcon = () => {
   return L.divIcon({
-    html: `<div style="width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); border: 3px solid white; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4), inset 0 0 0 2px #1E40AF; display: flex; align-items: center; justify-content: center; position: relative;">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" style="position: absolute;">
-        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-        <circle cx="12" cy="7" r="4"></circle>
-      </svg>
+    html: `<div class="user-marker-container">
+      <div class="user-marker-pulse"></div>
+      <div class="user-marker-dot"></div>
     </div>`,
     className: 'user-position-icon',
-    iconSize: [30, 30],
-    iconAnchor: [15, 30],
-    popupAnchor: [0, -30],
+    iconSize: [24, 24],
+    iconAnchor: [12, 12], // Center anchor - user IS at this exact point
+    popupAnchor: [0, -12],
   });
 };
 
@@ -638,7 +636,7 @@ const blockComponents = {
   todo: TodoBlock
 };
 
-function ObjectCard({ object, onClick, currentUser, childCount, distance, categories, isFavorite, onToggleFavorite, onNavigate }) {
+function ObjectCard({ object, onClick, currentUser, childCount, distance, categories, isFavorite, onToggleFavorite, onNavigate, onShare }) {
   // Find category to get icon
   const category = categories.find(c => c.id === object.type);
   const IconComponent = category ? getIconComponent(category.icon) : (PREDEFINED_ICONS[object.type]?.icon || Home);
@@ -647,10 +645,17 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
   const locationBlock = object.blocks.find(b => b.type === 'location');
   const textBlock = object.blocks.find(b => b.type === 'text');
   const isOwner = currentUser && object.ownerId === currentUser.uid;
+  const isSharedWithMe = currentUser && object.shares?.[currentUser.email]?.status === 'accepted';
+  const myRole = isSharedWithMe ? object.shares[currentUser.email].role : null;
 
   const handleFavoriteClick = (e) => {
     e.stopPropagation();
     onToggleFavorite(object.id);
+  };
+
+  const handleShareClick = (e) => {
+    e.stopPropagation();
+    if (onShare) onShare(object);
   };
 
   const openWaze = (e) => {
@@ -674,19 +679,39 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
 
   return (
     <div onClick={onClick} className="bg-white/5 backdrop-blur-md rounded-2xl overflow-hidden border border-white/10 hover:border-blue-400/50 transition-all cursor-pointer transform hover:scale-[1.02] relative group">
+      {/* Shared badge */}
+      {isSharedWithMe && (
+        <div className="absolute top-2 left-12 z-10">
+          <div className={`px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${myRole === 'editor' ? 'bg-green-500/20 text-green-300 border border-green-500/30' : 'bg-purple-500/20 text-purple-300 border border-purple-500/30'}`}>
+            <Users size={10} />
+            {myRole === 'editor' ? 'Redigerare' : 'Delad'}
+          </div>
+        </div>
+      )}
       {imageBlock ? (
         <>
           {currentUser && (
-            <button
-              onClick={handleFavoriteClick}
-              className="absolute top-2 left-2 z-10 p-1.5 rounded-full bg-gray-900/70 backdrop-blur-sm hover:bg-gray-800/90 hover:scale-110 transition-all duration-200"
-              title={isFavorite ? 'Ta bort från favoriter' : 'Lägg till i favoriter'}
-            >
-              <Star 
-                size={16} 
-                className={`transition-colors ${isFavorite ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400 hover:text-yellow-300'}`}
-              />
-            </button>
+            <div className="absolute top-2 left-2 z-10 flex gap-1">
+              <button
+                onClick={handleFavoriteClick}
+                className="p-1.5 rounded-full bg-gray-900/70 backdrop-blur-sm hover:bg-gray-800/90 hover:scale-110 transition-all duration-200"
+                title={isFavorite ? 'Ta bort från favoriter' : 'Lägg till i favoriter'}
+              >
+                <Star 
+                  size={16} 
+                  className={`transition-colors ${isFavorite ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400 hover:text-yellow-300'}`}
+                />
+              </button>
+              {isOwner && (
+                <button
+                  onClick={handleShareClick}
+                  className="p-1.5 rounded-full bg-gray-900/70 backdrop-blur-sm hover:bg-gray-800/90 hover:scale-110 transition-all duration-200"
+                  title="Dela objekt"
+                >
+                  <Share2 size={16} className="text-gray-400 hover:text-blue-300" />
+                </button>
+              )}
+            </div>
           )}
           {childCount > 0 && (
             <div className="absolute top-2 right-2 z-10">
@@ -719,23 +744,40 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
           <div className="flex-1 min-w-0">
             {titleBlock && <h3 className="text-lg font-semibold text-white truncate">{titleBlock.data.text}</h3>}
           </div>
-          {currentUser && (
-            <button
-              onClick={handleFavoriteClick}
-              className={`p-1.5 rounded-full hover:bg-white/10 hover:scale-110 transition-all duration-200 flex-shrink-0 ${imageBlock ? 'hidden' : ''}`}
-              title={isFavorite ? 'Ta bort från favoriter' : 'Lägg till i favoriter'}
-            >
-              <Star 
-                size={16} 
-                className={`transition-colors ${isFavorite ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400 hover:text-yellow-300'}`}
-              />
-            </button>
+          {currentUser && !imageBlock && (
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <button
+                onClick={handleFavoriteClick}
+                className="p-1.5 rounded-full hover:bg-white/10 hover:scale-110 transition-all duration-200"
+                title={isFavorite ? 'Ta bort från favoriter' : 'Lägg till i favoriter'}
+              >
+                <Star 
+                  size={16} 
+                  className={`transition-colors ${isFavorite ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400 hover:text-yellow-300'}`}
+                />
+              </button>
+              {isOwner && (
+                <button
+                  onClick={handleShareClick}
+                  className="p-1.5 rounded-full hover:bg-white/10 hover:scale-110 transition-all duration-200"
+                  title="Dela objekt"
+                >
+                  <Share2 size={16} className="text-gray-400 hover:text-blue-300" />
+                </button>
+              )}
+            </div>
           )}
         </div>
         
         {/* Compact info row for cards without image */}
-        {!imageBlock && (childCount > 0 || distance !== undefined) && (
+        {!imageBlock && (childCount > 0 || distance !== undefined || isSharedWithMe) && (
           <div className="flex items-center gap-3 text-xs text-gray-500 mb-2">
+            {isSharedWithMe && (
+              <span className={`flex items-center gap-1 ${myRole === 'editor' ? 'text-green-400' : 'text-purple-400'}`}>
+                <Users size={12} />
+                {myRole === 'editor' ? 'Redigerare' : 'Delad'}
+              </span>
+            )}
             {childCount > 0 && (
               <span className="flex items-center gap-1">
                 <Folder size={12} />
@@ -1552,7 +1594,7 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
   );
 }
 
-function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, currentUser, allObjects, onNavigate, categories, isAdmin, onShowOnMap }) {
+function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, currentUser, allObjects, onNavigate, categories, isAdmin, onShowOnMap, onShare }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [expandedBlocks, setExpandedBlocks] = useState(new Set([0])); // First block expanded by default
   const [showManageSection, setShowManageSection] = useState(false);
@@ -1627,6 +1669,9 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
   const IconComponent = category ? getIconComponent(category.icon) : (PREDEFINED_ICONS[object.type]?.icon || Home);
   const categoryColor = category?.color || '#3B82F6';
   const isOwner = currentUser && object.ownerId === currentUser.uid;
+  const isSharedWithMe = currentUser && object.shares?.[currentUser.email]?.status === 'accepted';
+  const myRole = isSharedWithMe ? object.shares[currentUser.email].role : null;
+  const canEdit = isOwner || isAdmin || myRole === 'editor';
   const canManage = isOwner || isAdmin;
   
   const childObjects = allObjects.filter(o => o.parentId === object.id);
@@ -1879,6 +1924,17 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
                 </div>
               </div>
             )}
+            {/* Shared with me indicator */}
+            {isSharedWithMe && (
+              <div className={`mt-4 p-3 rounded-xl border ${myRole === 'editor' ? 'bg-green-500/10 border-green-500/30' : 'bg-purple-500/10 border-purple-500/30'}`}>
+                <div className="flex items-center gap-2 text-sm">
+                  <Users size={16} className={myRole === 'editor' ? 'text-green-400' : 'text-purple-400'} />
+                  <span className={myRole === 'editor' ? 'text-green-300' : 'text-purple-300'}>
+                    {myRole === 'editor' ? 'Du kan redigera detta objekt' : 'Delat med dig (endast visning)'}
+                  </span>
+                </div>
+              </div>
+            )}
             {canManage && (
               <div ref={manageSectionRef} className="mt-6 pt-6 border-t border-white/10">
                 <button
@@ -1896,6 +1952,21 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
                 </button>
                 {showManageSection && (
                   <div className="mt-3 p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-3 animate-in slide-in-from-top-2 duration-200">
+                    {/* Share button - only for owners */}
+                    {isOwner && (
+                      <button
+                        onClick={() => onShare && onShare(object)}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-300 hover:bg-blue-500/20 hover:text-blue-200 transition-all"
+                      >
+                        <Share2 size={16} />
+                        <span className="text-sm">Dela objekt</span>
+                        {Object.keys(object.shares || {}).length > 0 && (
+                          <span className="ml-1 px-1.5 py-0.5 rounded-full bg-blue-500/30 text-xs">
+                            {Object.keys(object.shares).length}
+                          </span>
+                        )}
+                      </button>
+                    )}
                     <button
                       onClick={() => onEdit({ parentId: object.id })}
                       className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:text-white transition-all"
@@ -2019,46 +2090,27 @@ function MapView({ objects, onSelectObject, currentUser, userLocation, categorie
   // Component to handle center on user location
   function CenterOnLocationButton() {
     const map = useMapEvents({});
-    const handleCenterOnUser = async () => {
+    const handleCenterOnUser = () => {
+      // Use already known userLocation (instant!)
+      if (userLocation) {
+        map.flyTo([userLocation.lat, userLocation.lng], 16, { duration: 0.5 });
+        return;
+      }
+
+      // Fallback: Request fresh GPS position
       if (!('geolocation' in navigator)) {
         alert('Din enhet stöder inte platsåtkomst');
         return;
       }
 
-      // Check if we can query permissions (not all browsers support this)
-      if ('permissions' in navigator) {
-        try {
-          const result = await navigator.permissions.query({ name: 'geolocation' });
-          if (result.state === 'denied') {
-            alert('Platsåtkomst är blockerad. Gå till Safari-inställningar > Sekretess > Platstjänster och aktivera för denna webbplats.');
-            return;
-          }
-        } catch (e) {
-          // Permissions API not fully supported, continue anyway
-        }
-      }
-
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          const { latitude, longitude } = position.coords;
-          map.setView([latitude, longitude], 13);
+          map.flyTo([position.coords.latitude, position.coords.longitude], 16, { duration: 0.5 });
         },
-        (error) => {
-          let message = 'Kunde inte hämta din position. ';
-          if (error.code === 1) {
-            message = 'Du nekade platsåtkomst. För att aktivera: gå till Safari-inställningar > denna webbplats > Plats och välj "Fråga" eller "Tillåt".';
-          } else if (error.code === 2) {
-            message += 'Position inte tillgänglig. Kontrollera att Platstjänster är aktiverade i iOS-inställningar.';
-          } else if (error.code === 3) {
-            message += 'Timeout - försök igen om en stund.';
-          }
-          alert(message);
+        () => {
+          alert('Kunde inte hämta din position');
         },
-        { 
-          enableHighAccuracy: false, 
-          timeout: 20000,
-          maximumAge: 30000
-        }
+        { enableHighAccuracy: false, timeout: 5000, maximumAge: 30000 }
       );
     };
     return (
@@ -2163,8 +2215,12 @@ function MapView({ objects, onSelectObject, currentUser, userLocation, categorie
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
         />
         {userLocation && (
-          <Marker position={[userLocation.lat, userLocation.lng]} icon={createUserIcon()}>
-            <Tooltip permanent={false} direction="top">Din plats</Tooltip>
+          <Marker 
+            position={[userLocation.lat, userLocation.lng]} 
+            icon={createUserIcon()}
+            zIndexOffset={1000}
+          >
+            <Tooltip permanent={false} direction="top" offset={[0, -8]}>Din plats</Tooltip>
           </Marker>
         )}
         <MarkerClusterGroup
@@ -2220,8 +2276,12 @@ function MapPicker({ onSelect, onClose, initialPosition, userLocation }) {
               url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
             />
             {userLocation && (
-              <Marker position={[userLocation.lat, userLocation.lng]} icon={createUserIcon()}>
-                <Tooltip permanent={false} direction="top">Din plats</Tooltip>
+              <Marker 
+                position={[userLocation.lat, userLocation.lng]} 
+                icon={createUserIcon()}
+                zIndexOffset={1000}
+              >
+                <Tooltip permanent={false} direction="top" offset={[0, -8]}>Din plats</Tooltip>
               </Marker>
             )}
             <LocationMarker />
@@ -2232,6 +2292,207 @@ function MapPicker({ onSelect, onClose, initialPosition, userLocation }) {
         <div className="flex gap-3">
           <button onClick={onClose} className="flex-1 px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 transition-all">Avbryt</button>
           <button onClick={() => onSelect(position[0], position[1])} className="flex-1 px-6 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all">Använd denna plats</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Share Modal - for inviting users to view/edit objects
+function ShareModal({ object, onClose, currentUserEmail }) {
+  const [email, setEmail] = useState('');
+  const [role, setRole] = useState('viewer');
+  const [includeChildren, setIncludeChildren] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const existingShares = object.shares || {};
+  const sharesList = Object.entries(existingShares).map(([email, data]) => ({ email, ...data }));
+
+  const handleInvite = async () => {
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!trimmedEmail) {
+      setError('Ange en e-postadress');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setError('Ogiltig e-postadress');
+      return;
+    }
+    if (trimmedEmail === currentUserEmail) {
+      setError('Du kan inte dela med dig själv');
+      return;
+    }
+    if (existingShares[trimmedEmail]) {
+      setError('Denna användare har redan tillgång');
+      return;
+    }
+
+    setSaving(true);
+    setError('');
+
+    try {
+      await updateDoc(doc(db, 'objects', object.id), {
+        [`shares.${trimmedEmail}`]: {
+          role,
+          status: 'pending',
+          includeChildren,
+          invitedAt: Timestamp.now(),
+          respondedAt: null
+        },
+        sharedWithEmails: arrayUnion(trimmedEmail)
+      });
+      setEmail('');
+    } catch (err) {
+      console.error('Error sharing:', err);
+      setError('Kunde inte dela objektet');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRemoveShare = async (emailToRemove) => {
+    if (!confirm(`Ta bort delning för ${emailToRemove}?`)) return;
+    
+    try {
+      await updateDoc(doc(db, 'objects', object.id), {
+        [`shares.${emailToRemove}`]: deleteField(),
+        sharedWithEmails: arrayRemove(emailToRemove)
+      });
+    } catch (err) {
+      console.error('Error removing share:', err);
+      alert('Kunde inte ta bort delningen');
+    }
+  };
+
+  const handleUpdateRole = async (emailToUpdate, newRole) => {
+    try {
+      await updateDoc(doc(db, 'objects', object.id), {
+        [`shares.${emailToUpdate}.role`]: newRole
+      });
+    } catch (err) {
+      console.error('Error updating role:', err);
+    }
+  };
+
+  const titleBlock = object.blocks?.find(b => b.type === 'title');
+
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-gray-900 rounded-2xl p-6 max-w-md w-full border border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              <Share2 size={20} className="text-blue-400" />
+              Dela objekt
+            </h2>
+            <p className="text-sm text-gray-400 mt-1">{titleBlock?.data?.text || 'Namnlöst objekt'}</p>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Invite new user */}
+        <div className="space-y-4 mb-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Bjud in med e-post</label>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => { setEmail(e.target.value); setError(''); }}
+                  placeholder="exempel@email.com"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors"
+                  onKeyDown={(e) => e.key === 'Enter' && handleInvite()}
+                />
+              </div>
+              <button
+                onClick={handleInvite}
+                disabled={saving || !email.trim()}
+                className="px-4 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {saving ? <Loader size={16} className="animate-spin" /> : <UserPlus size={16} />}
+              </button>
+            </div>
+            {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
+          </div>
+
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-300 mb-2">Roll</label>
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-blue-500 transition-colors"
+              >
+                <option value="viewer">Läsare (kan bara se)</option>
+                <option value="editor">Redigerare (kan ändra)</option>
+              </select>
+            </div>
+          </div>
+
+          <label className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10 cursor-pointer hover:bg-white/10 transition-colors">
+            <input
+              type="checkbox"
+              checked={includeChildren}
+              onChange={(e) => setIncludeChildren(e.target.checked)}
+              className="w-4 h-4 rounded border-blue-500 text-blue-500 focus:ring-blue-500"
+            />
+            <div>
+              <span className="text-gray-200 text-sm">Inkludera barn-objekt</span>
+              <p className="text-xs text-gray-500">Dela också alla objekt under detta</p>
+            </div>
+          </label>
+        </div>
+
+        {/* Current shares */}
+        {sharesList.length > 0 && (
+          <div>
+            <h3 className="text-sm font-medium text-gray-300 mb-3 flex items-center gap-2">
+              <Users size={16} />
+              Delad med ({sharesList.length})
+            </h3>
+            <div className="space-y-2">
+              {sharesList.map(share => (
+                <div key={share.email} className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white text-sm truncate">{share.email}</p>
+                    <p className="text-xs text-gray-500">
+                      {share.status === 'pending' ? '⏳ Väntar på svar' : share.status === 'accepted' ? '✓ Accepterad' : '✗ Nekad'}
+                      {share.includeChildren && ' • Inkl. barn'}
+                    </p>
+                  </div>
+                  <select
+                    value={share.role}
+                    onChange={(e) => handleUpdateRole(share.email, e.target.value)}
+                    className="px-2 py-1 rounded-lg bg-white/10 border border-white/10 text-white text-xs focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="viewer">Läsare</option>
+                    <option value="editor">Redigerare</option>
+                  </select>
+                  <button
+                    onClick={() => handleRemoveShare(share.email)}
+                    className="p-1.5 rounded-lg hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition-colors"
+                    title="Ta bort delning"
+                  >
+                    <UserMinus size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="mt-6 pt-4 border-t border-white/10">
+          <button
+            onClick={onClose}
+            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 transition-all"
+          >
+            Stäng
+          </button>
         </div>
       </div>
     </div>
@@ -3299,7 +3560,9 @@ function App() {
     return saved || 'all';
   });
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [showSharedWithMe, setShowSharedWithMe] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(null); // null or object to share
   const [editingObject, setEditingObject] = useState(null);
   const [showAllObjects, setShowAllObjects] = useState(false);
   const [defaultParentId, setDefaultParentId] = useState(null);
@@ -3511,38 +3774,78 @@ function App() {
     return () => window.removeEventListener('resize', updateHeaderHeight);
   }, []);
 
-  // Capture user's location on mount
+  // Capture user's location on mount and watch for updates
   useEffect(() => {
     if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
+      // Try high accuracy GPS first, fallback to low accuracy if it fails
+      const getPositionWithFallback = () => {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            setUserLocation({
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+              accuracy: position.coords.accuracy
+            });
+          },
+          (error) => {
+            // High accuracy failed - try low accuracy as fallback (WiFi/cell towers)
+            console.log('High accuracy GPS failed, trying fallback...', error.message);
+            navigator.geolocation.getCurrentPosition(
+              (position) => {
+                setUserLocation({
+                  lat: position.coords.latitude,
+                  lng: position.coords.longitude,
+                  accuracy: position.coords.accuracy
+                });
+              },
+              () => {
+                // Complete failure - continue without location
+                console.log('Location unavailable');
+              },
+              { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+            );
+          },
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+      };
+
+      getPositionWithFallback();
+
+      // Watch position for continuous updates (important for mushroom picking!)
+      // Uses high accuracy, but the watch API handles fallback internally
+      const watchId = navigator.geolocation.watchPosition(
         (position) => {
           setUserLocation({
             lat: position.coords.latitude,
-            lng: position.coords.longitude
+            lng: position.coords.longitude,
+            accuracy: position.coords.accuracy
           });
         },
-        () => {
-          // User denied or error - just continue without location
-        }
+        () => {},
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
       );
+
+      return () => navigator.geolocation.clearWatch(watchId);
     }
   }, []);
+
+  // State for shared objects (fetched separately)
+  const [sharedObjects, setSharedObjects] = useState([]);
 
   useEffect(() => {
     if (!user) {
       setObjects([]);
+      setSharedObjects([]);
       setLoading(false);
       return;
     }
 
-    // Fetch objects where user is owner OR has been shared access
+    // Fetch objects where user is owner
     const objectsRef = collection(db, 'objects');
-    const q = query(objectsRef, where('ownerId', '==', user.uid));
+    const ownedQuery = query(objectsRef, where('ownerId', '==', user.uid));
     
-    const unsub = onSnapshot(q, (snap) => {
+    const unsubOwned = onSnapshot(ownedQuery, (snap) => {
       const userObjects = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      // TODO: Also fetch objects shared with this user (where shares contains user.email)
-      // This requires a separate query or composite index
       setObjects(userObjects);
       setLoading(false);
       
@@ -3550,10 +3853,34 @@ function App() {
       setSelectedObject(prev => {
         if (!prev?.id) return prev;
         const updated = userObjects.find(obj => obj.id === prev.id);
-        return updated || prev; // Keep prev if not found (might be deleted)
+        if (updated) return updated;
+        // Check shared objects too
+        const sharedUpdated = sharedObjects.find(obj => obj.id === prev.id);
+        return sharedUpdated || prev;
       });
     });
-    return () => unsub();
+
+    // Fetch objects shared with this user (using sharedWithEmails array)
+    const sharedQuery = query(objectsRef, where('sharedWithEmails', 'array-contains', user.email));
+    
+    const unsubShared = onSnapshot(sharedQuery, (snap) => {
+      const shared = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(obj => obj.ownerId !== user.uid); // Exclude own objects
+      setSharedObjects(shared);
+      
+      // Update selectedObject if viewing a shared object
+      setSelectedObject(prev => {
+        if (!prev?.id) return prev;
+        const updated = shared.find(obj => obj.id === prev.id);
+        return updated || prev;
+      });
+    });
+
+    return () => {
+      unsubOwned();
+      unsubShared();
+    };
   }, [user]);
 
   // Listen to categories
@@ -3661,8 +3988,16 @@ function App() {
     return values.some(v => v.toString().toLowerCase().includes(searchTerm));
   };
 
+  // Combine owned objects with shared objects (accepted only)
+  const allAvailableObjects = [
+    ...objects,
+    ...sharedObjects.filter(obj => obj.shares?.[user?.email]?.status === 'accepted')
+  ];
+
   // Filter by category (combine with favorites if both selected)
-  let filteredObjects = objects;
+  let filteredObjects = showSharedWithMe 
+    ? sharedObjects.filter(obj => obj.shares?.[user?.email]?.status === 'accepted')
+    : allAvailableObjects;
   
   // Apply category filter
   if (activeCategory !== 'all' && activeCategory !== 'favorites') {
@@ -3682,7 +4017,7 @@ function App() {
       // Check if object itself matches
       if (matchesSearch(obj)) return true;
       // Check if any child matches
-      const children = objects.filter(o => o.parentId === obj.id);
+      const children = allAvailableObjects.filter(o => o.parentId === obj.id);
       return children.some(child => matchesSearch(child));
     });
   }
@@ -4017,12 +4352,12 @@ function App() {
                 )}
               </div>
               
-              {/* Favorites + Sort by distance on same row */}
-              <div className="flex gap-2">
+              {/* Favorites + Shared + Sort by distance */}
+              <div className="flex gap-2 flex-wrap">
                 {user && (
                   <button
                     onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl transition-all text-sm font-medium ${showFavoritesOnly ? 'bg-yellow-500 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20 border border-white/10'}`}
+                    className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl transition-all text-sm font-medium ${showFavoritesOnly ? 'bg-yellow-500 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20 border border-white/10'}`}
                   >
                     <Star size={16} className={showFavoritesOnly ? 'fill-white' : ''} />
                     <span>Favoriter</span>
@@ -4033,16 +4368,77 @@ function App() {
                     )}
                   </button>
                 )}
+                {user && sharedObjects.filter(o => o.shares?.[user.email]?.status === 'accepted').length > 0 && (
+                  <button
+                    onClick={() => setShowSharedWithMe(!showSharedWithMe)}
+                    className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl transition-all text-sm font-medium ${showSharedWithMe ? 'bg-purple-500 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20 border border-white/10'}`}
+                  >
+                    <Users size={16} />
+                    <span>Delade</span>
+                    <span className={`px-1.5 py-0.5 rounded-full text-xs ${showSharedWithMe ? 'bg-white/25' : 'bg-purple-500/20 text-purple-400'}`}>
+                      {sharedObjects.filter(o => o.shares?.[user.email]?.status === 'accepted').length}
+                    </span>
+                  </button>
+                )}
                 {userLocation && (
                   <button 
                     onClick={() => setSortByDistance(!sortByDistance)}
-                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl transition-all text-sm font-medium ${sortByDistance ? 'bg-purple-500/80 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20 border border-white/10'}`}
+                    className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl transition-all text-sm font-medium ${sortByDistance ? 'bg-blue-500/80 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20 border border-white/10'}`}
                   >
                     <Navigation size={16} />
                     <span>Närmast</span>
                   </button>
                 )}
               </div>
+              
+              {/* Pending share invites */}
+              {user && sharedObjects.filter(o => o.shares?.[user.email]?.status === 'pending').length > 0 && (
+                <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/30">
+                  <h4 className="text-sm font-medium text-blue-300 mb-2 flex items-center gap-2">
+                    <Mail size={14} />
+                    Inbjudningar ({sharedObjects.filter(o => o.shares?.[user.email]?.status === 'pending').length})
+                  </h4>
+                  <div className="space-y-2">
+                    {sharedObjects.filter(o => o.shares?.[user.email]?.status === 'pending').map(obj => {
+                      const titleBlock = obj.blocks?.find(b => b.type === 'title');
+                      const shareInfo = obj.shares[user.email];
+                      return (
+                        <div key={obj.id} className="flex items-center gap-2 p-2 rounded-lg bg-white/5">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white text-sm truncate">{titleBlock?.data?.text || 'Namnlöst'}</p>
+                            <p className="text-xs text-gray-500">
+                              {shareInfo.role === 'editor' ? 'Redigerare' : 'Läsare'}
+                              {shareInfo.includeChildren && ' • Inkl. barn'}
+                            </p>
+                          </div>
+                          <button
+                            onClick={async () => {
+                              await updateDoc(doc(db, 'objects', obj.id), {
+                                [`shares.${user.email}.status`]: 'accepted',
+                                [`shares.${user.email}.respondedAt`]: Timestamp.now()
+                              });
+                            }}
+                            className="px-2 py-1 rounded-lg bg-green-500/20 text-green-300 text-xs hover:bg-green-500/30 transition-colors"
+                          >
+                            Acceptera
+                          </button>
+                          <button
+                            onClick={async () => {
+                              await updateDoc(doc(db, 'objects', obj.id), {
+                                [`shares.${user.email}.status`]: 'declined',
+                                [`shares.${user.email}.respondedAt`]: Timestamp.now()
+                              });
+                            }}
+                            className="px-2 py-1 rounded-lg bg-red-500/20 text-red-300 text-xs hover:bg-red-500/30 transition-colors"
+                          >
+                            Neka
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               
               {/* Distance slider */}
               {userLocation && (
@@ -4083,7 +4479,7 @@ function App() {
           <div className="py-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {displayObjects.map(obj => {
-                const childCount = objects.filter(o => o.parentId === obj.id).length;
+                const childCount = allAvailableObjects.filter(o => o.parentId === obj.id).length;
                 const distance = getObjectDistance(obj);
                 return (
                   <ObjectCard 
@@ -4101,6 +4497,7 @@ function App() {
                       setMapCenter(coords);
                       window.scrollTo(0, 0);
                     }}
+                    onShare={(obj) => setShowShareModal(obj)}
                   />
                 );
               })}
@@ -4111,11 +4508,12 @@ function App() {
                   <MapPin size={32} className="text-gray-600" />
                 </div>
                 <p className="text-gray-400 text-lg font-medium">
-                  {showFavoritesOnly ? 'Inga favoriter ännu' : 'Inga objekt hittades'}
+                  {showFavoritesOnly ? 'Inga favoriter ännu' : showSharedWithMe ? 'Inga delade objekt' : 'Inga objekt hittades'}
                 </p>
                 <p className="text-gray-600 text-sm mt-2 max-w-xs mx-auto">
                   {!user ? 'Logga in för att skapa objekt!' : 
                    showFavoritesOnly ? 'Markera objekt med stjärnan för att lägga till favoriter' :
+                   showSharedWithMe ? 'Objekt som andra delar med dig visas här' :
                    'Tryck på + knappen för att skapa ditt första objekt'}
                 </p>
               </div>
@@ -4181,7 +4579,7 @@ function App() {
           onDelete={handleDeleteObject} 
           onBlockUpdate={handleBlockUpdate} 
           currentUser={user} 
-          allObjects={objects} 
+          allObjects={allAvailableObjects} 
           onNavigate={(obj) => setSelectedObject(obj)} 
           categories={categories} 
           isAdmin={isAdmin}
@@ -4191,6 +4589,15 @@ function App() {
             setMapCenter(coords);
             window.scrollTo(0, 0);
           }}
+          onShare={(obj) => setShowShareModal(obj)}
+        />
+      )}
+
+      {showShareModal && (
+        <ShareModal
+          object={showShareModal}
+          onClose={() => setShowShareModal(null)}
+          currentUserEmail={user?.email}
         />
       )}
 
