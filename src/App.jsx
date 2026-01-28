@@ -2416,6 +2416,7 @@ function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [favorites, setFavorites] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [categoriesLoaded, setCategoriesLoaded] = useState(false);
   const [objects, setObjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -2680,6 +2681,7 @@ function App() {
       const cats = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.order - b.order);
       console.log('Categories loaded:', cats.length, 'isAdmin:', isAdmin, 'user:', !!user);
       setCategories(cats);
+      setCategoriesLoaded(true);
     });
     return () => unsub();
   }, []);
@@ -3005,12 +3007,12 @@ function App() {
     setSelectedObject(null);
   };
 
-  if (loading) {
+  if (loading || !categoriesLoaded) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900/20 to-gray-900 flex items-center justify-center">
         <div className="text-center">
           <Loader size={48} className="animate-spin text-blue-400 mx-auto mb-4" />
-          <p className="text-gray-400">Laddar dina platser...</p>
+          <p className="text-gray-400">{!categoriesLoaded ? 'Laddar kategorier...' : 'Laddar dina platser...'}</p>
         </div>
       </div>
     );
