@@ -512,11 +512,15 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
     onToggleFavorite(object.id);
   };
 
+  const handleShareClick = (e) => {
+    e.stopPropagation();
+    if (onShare) onShare(object);
+  };
+
   const openWaze = (e) => {
     e.stopPropagation();
     if (locationBlock?.data?.lat && locationBlock?.data?.lng) {
       window.open(`https://waze.com/ul?ll=${locationBlock.data.lat},${locationBlock.data.lng}&navigate=yes`, '_blank');
-      setShowNavMenu(false);
     }
   };
 
@@ -524,9 +528,10 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
     e.stopPropagation();
     if (onNavigate && locationBlock?.data?.lat && locationBlock?.data?.lng) {
       onNavigate({ lat: locationBlock.data.lat, lng: locationBlock.data.lng });
-      setShowNavMenu(false);
     }
   };
+
+  const hasLocation = locationBlock?.data?.lat && locationBlock?.data?.lng;
 
   return (
     <div onClick={onClick} className="bg-white/5 backdrop-blur-md rounded-2xl overflow-hidden border border-white/10 hover:border-blue-400/50 transition-all cursor-pointer transform hover:scale-[1.02] relative group">
@@ -1219,9 +1224,8 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
   );
 }
 
-function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, currentUser, allObjects, onNavigate, categories, isAdmin, onShowOnMap }) {
+function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, currentUser, allObjects, onNavigate, categories, isAdmin, onShowOnMap, onShare }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [showShareModal, setShowShareModal] = useState(false);
   const [expandedBlocks, setExpandedBlocks] = useState(new Set([0])); // First block expanded by default
   const [showManageSection, setShowManageSection] = useState(false);
   // Find category to get icon
@@ -1488,7 +1492,6 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
         </div>
       </div>
       {showDeleteConfirm && <DeleteConfirmModal object={object} onConfirm={handleDelete} onCancel={() => setShowDeleteConfirm(false)} />}
-      {showShareModal && <ShareModal object={object} onClose={() => setShowShareModal(false)} onSave={onUpdateShares} currentUser={currentUser} />}
     </>
   );
 }
@@ -1794,6 +1797,14 @@ function ShareModal({ object, onClose, currentUserEmail }) {
   const existingShares = object.shares || {};
   const sharesList = Object.entries(existingShares).map(([email, data]) => ({ email, ...data }));
 
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, []);
+
   const handleInvite = async () => {
     const trimmedEmail = email.trim().toLowerCase();
     if (!trimmedEmail) {
@@ -1863,121 +1874,162 @@ function ShareModal({ object, onClose, currentUserEmail }) {
   const titleBlock = object.blocks?.find(b => b.type === 'title');
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 rounded-2xl p-6 max-w-md w-full border border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h2 className="text-xl font-bold text-white flex items-center gap-2">
-              <Share2 size={20} className="text-blue-400" />
-              Dela objekt
-            </h2>
-            <p className="text-sm text-gray-400 mt-1">{titleBlock?.data?.text || 'Namnlöst objekt'}</p>
-          </div>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
-            <X size={20} />
-          </button>
-        </div>
-
-        {/* Invite new user */}
-        <div className="space-y-4 mb-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Bjud in med e-post</label>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => { setEmail(e.target.value); setError(''); }}
-                  placeholder="exempel@email.com"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors"
-                  onKeyDown={(e) => e.key === 'Enter' && handleInvite()}
-                />
-              </div>
-              <button
-                onClick={handleInvite}
-                disabled={saving || !email.trim()}
-                className="px-4 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {saving ? <Loader size={16} className="animate-spin" /> : <UserPlus size={16} />}
-              </button>
-            </div>
-            {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
-          </div>
-
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-300 mb-2">Roll</label>
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-blue-500 transition-colors"
-              >
-                <option value="viewer">Läsare (kan bara se)</option>
-                <option value="editor">Redigerare (kan ändra)</option>
-              </select>
-            </div>
-          </div>
-
-          <label className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10 cursor-pointer hover:bg-white/10 transition-colors">
-            <input
-              type="checkbox"
-              checked={includeChildren}
-              onChange={(e) => setIncludeChildren(e.target.checked)}
-              className="w-4 h-4 rounded border-blue-500 text-blue-500 focus:ring-blue-500"
-            />
+    <div 
+      className="fixed inset-0 z-[1000] overflow-hidden"
+      style={{
+        background: `
+          radial-gradient(circle at 30% 20%, rgba(59,130,246,0.35), transparent 40%),
+          radial-gradient(circle at 70% 60%, rgba(139,92,246,0.25), transparent 45%),
+          radial-gradient(circle at 50% 90%, rgba(56,189,248,0.2), transparent 50%),
+          linear-gradient(to bottom, rgba(0,0,0,0.75), rgba(0,0,0,0.85))
+        `,
+        backdropFilter: 'blur(16px)'
+      }}
+      onClick={onClose}
+    >
+      <div className="min-h-screen p-4 flex items-start justify-center pt-10 sm:pt-20">
+        <div 
+          className="rounded-3xl border max-w-md w-full p-6 max-h-[90vh] overflow-y-auto relative"
+          style={{
+            background: `
+              radial-gradient(circle at 20% 10%, rgba(59,130,246,0.12), transparent 50%),
+              radial-gradient(circle at 80% 80%, rgba(139,92,246,0.08), transparent 50%),
+              linear-gradient(135deg, rgba(15,23,42,0.98), rgba(6,7,12,0.98))
+            `,
+            backdropFilter: 'blur(32px)',
+            borderColor: 'rgba(139,92,246,0.3)',
+            boxShadow: `
+              0 0 0 1px rgba(59,130,246,0.1) inset,
+              0 32px 96px -16px rgba(0,0,0,0.9),
+              0 0 80px -20px rgba(59,130,246,0.3),
+              0 0 40px -10px rgba(139,92,246,0.2)
+            `
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex justify-between items-center mb-6">
             <div>
-              <span className="text-gray-200 text-sm">Inkludera barn-objekt</span>
-              <p className="text-xs text-gray-500">Dela också alla objekt under detta</p>
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <Share2 size={20} className="text-blue-400" />
+                Dela objekt
+              </h2>
+              <p className="text-sm text-gray-400 mt-1">{titleBlock?.data?.text || 'Namnlöst objekt'}</p>
             </div>
-          </label>
-        </div>
-
-        {/* Current shares */}
-        {sharesList.length > 0 && (
-          <div>
-            <h3 className="text-sm font-medium text-gray-300 mb-3 flex items-center gap-2">
-              <Users size={16} />
-              Delad med ({sharesList.length})
-            </h3>
-            <div className="space-y-2">
-              {sharesList.map(share => (
-                <div key={share.email} className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white text-sm truncate">{share.email}</p>
-                    <p className="text-xs text-gray-500">
-                      {share.status === 'pending' ? '⏳ Väntar på svar' : share.status === 'accepted' ? '✓ Accepterad' : '✗ Nekad'}
-                      {share.includeChildren && ' • Inkl. barn'}
-                    </p>
-                  </div>
-                  <select
-                    value={share.role}
-                    onChange={(e) => handleUpdateRole(share.email, e.target.value)}
-                    className="px-2 py-1 rounded-lg bg-white/10 border border-white/10 text-white text-xs focus:outline-none focus:border-blue-500"
-                  >
-                    <option value="viewer">Läsare</option>
-                    <option value="editor">Redigerare</option>
-                  </select>
-                  <button
-                    onClick={() => handleRemoveShare(share.email)}
-                    className="p-1.5 rounded-lg hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition-colors"
-                    title="Ta bort delning"
-                  >
-                    <UserMinus size={16} />
-                  </button>
-                </div>
-              ))}
-            </div>
+            <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl leading-none">×</button>
           </div>
-        )}
 
-        <div className="mt-6 pt-4 border-t border-white/10">
-          <button
-            onClick={onClose}
-            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 transition-all"
-          >
-            Stäng
-          </button>
+          {/* Invite new user */}
+          <div className="space-y-4 mb-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Bjud in med e-post</label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => { setEmail(e.target.value); setError(''); }}
+                    placeholder="exempel@email.com"
+                    className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors"
+                    onKeyDown={(e) => e.key === 'Enter' && handleInvite()}
+                  />
+                  {email && (
+                    <button
+                      onClick={() => setEmail('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-gray-300 transition-colors"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+                <button
+                  onClick={handleInvite}
+                  disabled={saving || !email.trim()}
+                  className="px-4 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  title="Bjud in användare"
+                >
+                  {saving ? <Loader size={16} className="animate-spin" /> : <UserPlus size={16} />}
+                </button>
+              </div>
+              {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
+            </div>
+
+            <div className="flex gap-4">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-300 mb-2">Roll</label>
+                <select
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl bg-gray-800 border border-white/10 text-white text-base focus:outline-none focus:border-blue-500 transition-colors appearance-none cursor-pointer"
+                  style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239CA3AF'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '20px' }}
+                >
+                  <option value="viewer" className="bg-gray-800 text-white">Läsare (kan bara se)</option>
+                  <option value="editor" className="bg-gray-800 text-white">Redigerare (kan ändra)</option>
+                </select>
+              </div>
+            </div>
+
+            <label className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10 cursor-pointer hover:bg-white/10 transition-colors">
+              <input
+                type="checkbox"
+                checked={includeChildren}
+                onChange={(e) => setIncludeChildren(e.target.checked)}
+                className="w-4 h-4 rounded border-blue-500 text-blue-500 focus:ring-blue-500"
+              />
+              <div>
+                <span className="text-gray-200 text-sm">Inkludera barn-objekt</span>
+                <p className="text-xs text-gray-500">Dela också alla objekt under detta</p>
+              </div>
+            </label>
+          </div>
+
+          {/* Current shares */}
+          {sharesList.length > 0 && (
+            <div>
+              <h3 className="text-sm font-medium text-gray-300 mb-3 flex items-center gap-2">
+                <Users size={16} />
+                Delad med ({sharesList.length})
+              </h3>
+              <div className="space-y-2">
+                {sharesList.map(share => (
+                  <div key={share.email} className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white text-sm truncate">{share.email}</p>
+                      <p className="text-xs text-gray-500">
+                        {share.status === 'pending' ? '⏳ Väntar på svar' : share.status === 'accepted' ? '✓ Accepterad' : '✗ Nekad'}
+                        {share.includeChildren && ' • Inkl. barn'}
+                      </p>
+                    </div>
+                    <select
+                      value={share.role}
+                      onChange={(e) => handleUpdateRole(share.email, e.target.value)}
+                      className="px-2 py-1.5 rounded-lg bg-gray-800 border border-white/10 text-white text-xs focus:outline-none focus:border-blue-500 appearance-none cursor-pointer"
+                      style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239CA3AF'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 6px center', backgroundSize: '14px', paddingRight: '24px' }}
+                    >
+                      <option value="viewer" className="bg-gray-800 text-white">Läsare</option>
+                      <option value="editor" className="bg-gray-800 text-white">Redigerare</option>
+                    </select>
+                    <button
+                      onClick={() => handleRemoveShare(share.email)}
+                      className="p-1.5 rounded-lg hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition-colors"
+                      title="Ta bort delning"
+                    >
+                      <UserMinus size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="mt-6 pt-4 border-t border-white/10">
+            <button
+              onClick={onClose}
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 transition-all"
+            >
+              Stäng
+            </button>
+          </div>
         </div>
       </div>
     </div>
