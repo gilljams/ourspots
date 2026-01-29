@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Prevent iOS auto-zoom on input focus */
+/* Prevent iOS auto-zoom on input focus by using 16px font */
 input, textarea, select {
   font-size: 16px !important;
 }

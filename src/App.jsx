@@ -5,7 +5,8 @@ import {
   Map as MapIcon, List, ChevronDown, ArrowUp, ArrowDown, Search, Settings,
   UtensilsCrossed, Pizza, Wine, Beer, Gamepad2, Music, Film, PartyPopper, 
   Bike, Dumbbell, Waves, TreePine, Shell, Sprout, RotateCcw, Target, Lightbulb,
-  SlidersHorizontal, Menu, Filter, Share2, UserPlus, UserMinus, Users, Mail
+  SlidersHorizontal, Menu, Filter, Share2, UserPlus, UserMinus, Users, Mail,
+  FileText, CheckSquare, ClipboardList
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap, Tooltip, Popup } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
@@ -882,7 +883,7 @@ const AVAILABLE_ICONS = [
   { name: 'Sprout', label: 'Svamp' },
 ];
 
-function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onEditObject }) {
+function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onViewObject }) {
   const [sortBy, setSortBy] = useState('title'); // title, category, parent
   const [filterUserId, setFilterUserId] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -1192,12 +1193,12 @@ function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onEdit
                       )}
                       <button
                         onClick={() => {
-                          onEditObject(obj);
+                          onViewObject(obj);
                           onClose();
                         }}
                         className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded transition-colors"
                       >
-                        Redigera
+                        Visa
                       </button>
                     </div>
                   </div>
@@ -1700,6 +1701,8 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
   const myShareRole = isSharedWithMe && userEmailKey ? object.shares?.[userEmailKey]?.role : null;
   const canEdit = isOwner || isAdmin || myShareRole === 'editor';
   const canManage = isOwner || isAdmin;
+  // For UI purposes: show "Delning" only for viewers (readers), editors see "Hantera objekt"
+  const showAsSharedView = !isOwner && !isAdmin && isSharedWithMe && myShareRole !== 'editor';
   
   const childObjects = allObjects.filter(o => o.parentId === object.id);
   const parentObject = object.parentId ? allObjects.find(o => o.id === object.parentId) : null;
@@ -1770,6 +1773,11 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
                     <span className="text-xs text-purple-400 flex items-center gap-1">
                       <Users size={10} />
                       {myShareRole === 'editor' ? 'Redigerare' : 'Läsare'}
+                    </span>
+                  )}
+                  {isAdmin && !isOwner && (
+                    <span className="text-xs bg-yellow-500/20 text-yellow-400 px-1.5 py-0.5 rounded flex items-center gap-1">
+                      Admin
                     </span>
                   )}
                 </div>
@@ -1979,7 +1987,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
                 >
                   <div className="flex items-center gap-2">
                     <Settings size={18} />
-                    <span className="font-medium">{isSharedWithMe && !canEdit ? 'Delning' : 'Hantera objekt'}</span>
+                    <span className="font-medium">{showAsSharedView ? 'Delning' : 'Hantera objekt'}</span>
                   </div>
                   <ChevronDown 
                     size={18} 
@@ -2335,13 +2343,66 @@ function InvalidateSizeOnChange({ showFilters }) {
 
 function MapPicker({ onSelect, onClose, initialPosition, userLocation }) {
   const [position, setPosition] = useState(initialPosition || [59.33, 18.06]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searching, setSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState([]);
+  const mapRef = useRef(null);
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    setSearching(true);
+    setSearchResults([]);
+    try {
+      // Using Photon API (OpenStreetMap-based, CORS-friendly)
+      const response = await fetch(
+        `https://photon.komoot.io/api/?q=${encodeURIComponent(searchQuery)}&limit=5`
+      );
+      if (!response.ok) throw new Error('Search failed');
+      const data = await response.json();
+      // Transform Photon format to our format
+      const results = data.features.map(f => ({
+        lat: f.geometry.coordinates[1],
+        lon: f.geometry.coordinates[0],
+        name: f.properties.name || '',
+        city: f.properties.city || f.properties.county || '',
+        country: f.properties.country || '',
+        display_name: [f.properties.name, f.properties.city, f.properties.county, f.properties.country].filter(Boolean).join(', ')
+      }));
+      setSearchResults(results);
+      if (results.length === 0) {
+        alert('Inga resultat hittades för "' + searchQuery + '"');
+      }
+    } catch (err) {
+      console.error('Search error:', err);
+      alert('Kunde inte söka. Försök igen!');
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const selectSearchResult = (result) => {
+    const lat = parseFloat(result.lat);
+    const lng = parseFloat(result.lon);
+    setPosition([lat, lng]);
+    setSearchResults([]);
+    setSearchQuery(result.name || result.display_name.split(',')[0]);
+    if (mapRef.current) {
+      mapRef.current.flyTo([lat, lng], 14);
+    }
+  };
 
   function LocationMarker() {
-    useMapEvents({
+    const map = useMapEvents({
       click(e) {
         setPosition([e.latlng.lat, e.latlng.lng]);
       },
     });
+    
+    // Store map reference
+    useEffect(() => {
+      mapRef.current = map;
+    }, [map]);
+    
     return position ? <Marker position={position} /> : null;
   }
 
@@ -2361,7 +2422,45 @@ function MapPicker({ onSelect, onClose, initialPosition, userLocation }) {
             </svg>
           </button>
         </div>
-        <div className="h-[60vh] rounded-xl overflow-hidden border border-white/10 shadow-2xl bg-gray-900/80 transition-all duration-300 mb-4 relative">
+        
+        {/* Search bar */}
+        <div className="relative mb-4">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+              placeholder="Sök ort eller adress..."
+              className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500"
+            />
+            <button
+              onClick={handleSearch}
+              disabled={searching}
+              className="px-4 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all disabled:opacity-50"
+            >
+              {searching ? <Loader size={20} className="animate-spin" /> : <Search size={20} />}
+            </button>
+          </div>
+          
+          {/* Search results dropdown */}
+          {searchResults.length > 0 && (
+            <div className="absolute top-full left-0 right-0 mt-2 bg-gray-800 border border-white/10 rounded-xl overflow-hidden z-[1200] shadow-xl">
+              {searchResults.map((result, i) => (
+                <button
+                  key={i}
+                  onClick={() => selectSearchResult(result)}
+                  className="w-full px-4 py-3 text-left text-sm text-gray-200 hover:bg-white/10 border-b border-white/5 last:border-0"
+                >
+                  <div className="font-medium">{result.name || result.display_name.split(',')[0]}</div>
+                  <div className="text-xs text-gray-400 truncate">{result.display_name}</div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        
+        <div className="h-[50vh] rounded-xl overflow-hidden border border-white/10 shadow-2xl bg-gray-900/80 transition-all duration-300 mb-4 relative">
           <MapContainer center={position} zoom={13} style={{ height: '100%', width: '100%' }}>
             <TileLayer
               attribution='&copy; <a href="https://carto.com/">CARTO</a>'
@@ -2376,7 +2475,7 @@ function MapPicker({ onSelect, onClose, initialPosition, userLocation }) {
           </MapContainer>
           
         </div>
-        <p className="text-sm text-gray-400 mb-4">Klicka på kartan för att placera markören</p>
+        <p className="text-sm text-gray-400 mb-4">Sök efter en plats eller klicka på kartan</p>
         <div className="flex gap-3">
           <button onClick={onClose} className="flex-1 px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 transition-all">Avbryt</button>
           <button onClick={() => onSelect(position[0], position[1])} className="flex-1 px-6 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all">Använd denna plats</button>
@@ -2696,26 +2795,74 @@ function ShareModal({ object, onClose, currentUserEmail }) {
   );
 }
 
+// Simple block editor with local state to avoid parent re-renders on each keystroke
+function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }) {
+  const [title, setTitle] = useState(block.title);
+  const [content, setContent] = useState(block.content);
+  
+  const syncTitle = () => onUpdate(block.id, { title });
+  const syncContent = () => onUpdate(block.id, { content });
+  
+  return (
+    <div className="rounded-xl border border-white/10 p-3 bg-white/5">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-sm font-medium text-gray-300 flex items-center gap-2">
+          {block.type === 'text' && <><FileText size={16} className="text-blue-400" /> Anteckning</>}
+          {block.type === 'checklist' && <><CheckSquare size={16} className="text-green-400" /> Checklista</>}
+          {block.type === 'todo' && <><ClipboardList size={16} className="text-amber-400" /> Att göra</>}
+        </span>
+        <div className="flex gap-1">
+          <button type="button" onClick={() => onMove(block.id, -1)} disabled={index === 0} className="w-7 h-7 rounded bg-white/5 text-gray-400 hover:bg-white/10 flex items-center justify-center disabled:opacity-30">
+            <ArrowUp size={14} />
+          </button>
+          <button type="button" onClick={() => onMove(block.id, 1)} disabled={index === total - 1} className="w-7 h-7 rounded bg-white/5 text-gray-400 hover:bg-white/10 flex items-center justify-center disabled:opacity-30">
+            <ArrowDown size={14} />
+          </button>
+          <button type="button" onClick={() => onRemove(block.id)} className="w-7 h-7 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center">
+            <X size={14} />
+          </button>
+        </div>
+      </div>
+      <input
+        type="text"
+        defaultValue={block.title}
+        onChange={(e) => setTitle(e.target.value)}
+        onBlur={syncTitle}
+        placeholder="Rubrik (valfritt)"
+        disabled={saving}
+        className="w-full px-3 py-2 mb-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500"
+      />
+      <textarea
+        defaultValue={block.content}
+        onChange={(e) => setContent(e.target.value)}
+        onBlur={syncContent}
+        placeholder={block.type === 'text' ? 'Skriv text här...' : 'En per rad'}
+        rows={3}
+        disabled={saving}
+        className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-none"
+      />
+    </div>
+  );
+}
+
 function CreateObjectModal({ onClose, onSave, editObject, saving, availableParents, defaultParentId, userLocation, categories, preciseGPS }) {
+  // ========== STATE ==========
   const isEdit = !!editObject;
-  // Default type: use parent's type if defaultParentId is provided, or first category
-  const defaultTypeFromParent = defaultParentId ? (availableParents.find(p => p.id === defaultParentId)?.type || (categories[0]?.id || 'property')) : (categories[0]?.id || 'property');
-  const [selectedType, setSelectedType] = useState(editObject?.type || defaultTypeFromParent);
+  const defaultType = defaultParentId 
+    ? (availableParents.find(p => p.id === defaultParentId)?.type || categories[0]?.id || 'property') 
+    : (categories[0]?.id || 'property');
+
+  // Form state
+  const [selectedType, setSelectedType] = useState(editObject?.type || defaultType);
   const [parentId, setParentId] = useState(editObject?.parentId || defaultParentId || '');
   const [inheritLocation, setInheritLocation] = useState(false);
   const [title, setTitle] = useState(editObject?.blocks?.find(b => b.type === 'title')?.data?.text || '');
   const [address, setAddress] = useState(editObject?.blocks?.find(b => b.type === 'location')?.data?.address || '');
-  const [lat, setLat] = useState(editObject?.blocks?.find(b => b.type === 'location')?.data?.lat || null);
-  const [lng, setLng] = useState(editObject?.blocks?.find(b => b.type === 'location')?.data?.lng || null);
-  const [capturingGPS, setCapturingGPS] = useState(false);
-  const [gpsAccuracy, setGpsAccuracy] = useState(null);
-  const [showMapPicker, setShowMapPicker] = useState(false);
+  const [lat, setLat] = useState(editObject?.blocks?.find(b => b.type === 'location')?.data?.lat ?? null);
+  const [lng, setLng] = useState(editObject?.blocks?.find(b => b.type === 'location')?.data?.lng ?? null);
   const [imageUrl, setImageUrl] = useState(editObject?.blocks?.find(b => b.type === 'image')?.data?.url || '');
   const [imageCropMode, setImageCropMode] = useState(editObject?.blocks?.find(b => b.type === 'image')?.data?.cropMode || 'auto');
   const [imageFocalPoint, setImageFocalPoint] = useState(editObject?.blocks?.find(b => b.type === 'image')?.data?.focalPoint || null);
-  const [showFocalPointPicker, setShowFocalPointPicker] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState(false);
-  // Store custom blocks (text, checklist, todo) as array to support multiple
   const [customBlocks, setCustomBlocks] = useState(() => {
     if (!editObject) return [];
     return editObject.blocks
@@ -2723,125 +2870,84 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
       .map(b => ({
         id: Math.random().toString(36).substr(2, 9),
         type: b.type,
-        title: b.data.title || '', // Custom title for the block
+        title: b.data.title || '',
         content: b.type === 'text' ? b.data.content : b.data.items.map(i => i.text).join('\n')
       }));
   });
-  const [draggingBlockId, setDraggingBlockId] = useState(null);
-  const [dragOverBlockId, setDragOverBlockId] = useState(null);
+
+  // UI state
+  const [capturingGPS, setCapturingGPS] = useState(false);
+  const [gpsAccuracy, setGpsAccuracy] = useState(null);
+  const [showMapPicker, setShowMapPicker] = useState(false);
+  const [showFocalPointPicker, setShowFocalPointPicker] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  // Refs
   const fileInputRef = useRef(null);
-  const modalRef = useRef(null);
-  
-  // Swipe to close
-  const [touchStart, setTouchStart] = useState(null);
-  const [touchStartY, setTouchStartY] = useState(null);
-  const [touchDelta, setTouchDelta] = useState(0);
-  const [isSwipeActive, setIsSwipeActive] = useState(false);
-  
-  const SWIPE_THRESHOLD = 30;
-  const CLOSE_THRESHOLD = 150;
-  const RESISTANCE = 0.5;
-  
-  const handleTouchStart = (e) => {
-    if (saving) return;
-    setTouchStart(e.touches[0].clientX);
-    setTouchStartY(e.touches[0].clientY);
-    setIsSwipeActive(false);
-  };
-  
-  const handleTouchMove = (e) => {
-    if (touchStart === null || saving) return;
-    const currentX = e.touches[0].clientX;
-    const currentY = e.touches[0].clientY;
-    const deltaX = currentX - touchStart;
-    const deltaY = currentY - touchStartY;
-    
-    if (!isSwipeActive) {
-      if (deltaX > SWIPE_THRESHOLD && Math.abs(deltaX) > Math.abs(deltaY) * 2) {
-        setIsSwipeActive(true);
-        e.preventDefault();
-      } else if (Math.abs(deltaY) > 10) {
-        setTouchStart(null);
-        return;
-      } else {
-        return;
-      }
-    }
-    
-    if (deltaX > SWIPE_THRESHOLD) {
-      e.preventDefault();
-      const adjustedDelta = (deltaX - SWIPE_THRESHOLD) * RESISTANCE;
-      setTouchDelta(adjustedDelta);
-    }
-  };
-  
-  const handleTouchEnd = () => {
-    if (saving) return;
-    if (touchDelta > CLOSE_THRESHOLD * RESISTANCE) {
-      setTouchDelta(200);
-      setTimeout(onClose, 200);
-    } else {
-      setTouchDelta(0);
-    }
-    setTouchStart(null);
-    setTouchStartY(null);
-    setIsSwipeActive(false);
-  };
-
-  const selectedParent = availableParents.find(p => p.id === parentId);
-  const parentHasLocation = selectedParent?.blocks?.some(b => b.type === 'location');
-
   const gpsWatchRef = useRef(null);
   
+  // Track if form has been modified (simpler than deep comparison)
+  const [formTouched, setFormTouched] = useState(false);
+
+  // ========== COMPUTED ==========
+  const selectedParent = availableParents.find(p => p.id === parentId);
+  const parentHasLocation = selectedParent?.blocks?.some(b => b.type === 'location');
+  
+  // For edit mode, form is changed if it's been touched
+  // For create mode, always allow submit
+  const hasChanges = !isEdit || formTouched;
+
+  // ========== CLEANUP ==========
+  useEffect(() => {
+    return () => {
+      if (gpsWatchRef.current) {
+        navigator.geolocation.clearWatch(gpsWatchRef.current);
+      }
+    };
+  }, []);
+
+  // ========== HANDLERS ==========
+  const handleCategorySelect = (catId) => {
+    setSelectedType(catId);
+    setFormTouched(true);
+  };
+
   const handleGPSCapture = () => {
     if (!navigator.geolocation) {
       alert('GPS stöds inte av din enhet');
       return;
     }
-    if (capturingGPS) return; // Prevent double-clicks
+    if (capturingGPS) return;
     setCapturingGPS(true);
     setGpsAccuracy(null);
-    
+
     if (preciseGPS) {
-      // Precise GPS mode - watch position and wait for good accuracy
       let bestPosition = null;
       let bestAccuracy = Infinity;
-      
+
       gpsWatchRef.current = navigator.geolocation.watchPosition(
         (position) => {
           const accuracy = position.coords.accuracy;
           setGpsAccuracy(Math.round(accuracy));
-          
           if (accuracy < bestAccuracy) {
             bestAccuracy = accuracy;
             bestPosition = position;
           }
-          
-          // Auto-accept if accuracy is good enough (under 10 meters)
           if (accuracy <= 10) {
             navigator.geolocation.clearWatch(gpsWatchRef.current);
-            const newLat = position.coords.latitude;
-            const newLng = position.coords.longitude;
-            setLat(newLat);
-            setLng(newLng);
-            if (!address.trim()) {
-              setAddress(`GPS: ${newLat.toFixed(5)}, ${newLng.toFixed(5)} (±${Math.round(accuracy)}m)`);
-            }
+            setLat(position.coords.latitude);
+            setLng(position.coords.longitude);
             setCapturingGPS(false);
             setGpsAccuracy(null);
+            setFormTouched(true);
           }
         },
         (error) => {
           navigator.geolocation.clearWatch(gpsWatchRef.current);
-          // If we have a position, use it even if not perfect
           if (bestPosition) {
-            const newLat = bestPosition.coords.latitude;
-            const newLng = bestPosition.coords.longitude;
-            setLat(newLat);
-            setLng(newLng);
-            if (!address.trim()) {
-              setAddress(`GPS: ${newLat.toFixed(5)}, ${newLng.toFixed(5)} (±${Math.round(bestAccuracy)}m)`);
-            }
+            setLat(bestPosition.coords.latitude);
+            setLng(bestPosition.coords.longitude);
+            setFormTouched(true);
           } else {
             alert('Kunde inte hämta position: ' + error.message);
           }
@@ -2850,36 +2956,26 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
         },
         { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 }
       );
-      
-      // Auto-stop after 15 seconds and use best position
+
       setTimeout(() => {
         if (gpsWatchRef.current && capturingGPS) {
           navigator.geolocation.clearWatch(gpsWatchRef.current);
           if (bestPosition) {
-            const newLat = bestPosition.coords.latitude;
-            const newLng = bestPosition.coords.longitude;
-            setLat(newLat);
-            setLng(newLng);
-            if (!address.trim()) {
-              setAddress(`GPS: ${newLat.toFixed(5)}, ${newLng.toFixed(5)} (±${Math.round(bestAccuracy)}m)`);
-            }
+            setLat(bestPosition.coords.latitude);
+            setLng(bestPosition.coords.longitude);
+            setFormTouched(true);
           }
           setCapturingGPS(false);
           setGpsAccuracy(null);
         }
       }, 15000);
     } else {
-      // Simple GPS mode - just get current position quickly
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          const newLat = position.coords.latitude;
-          const newLng = position.coords.longitude;
-          setLat(newLat);
-          setLng(newLng);
-          if (!address.trim()) {
-            setAddress(`GPS: ${newLat.toFixed(5)}, ${newLng.toFixed(5)}`);
-          }
+          setLat(position.coords.latitude);
+          setLng(position.coords.longitude);
           setCapturingGPS(false);
+          setFormTouched(true);
         },
         (error) => {
           alert('Kunde inte hämta position: ' + error.message);
@@ -2889,24 +2985,55 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
       );
     }
   };
-  
-  // Cleanup GPS watch on unmount
-  useEffect(() => {
-    return () => {
-      if (gpsWatchRef.current) {
-        navigator.geolocation.clearWatch(gpsWatchRef.current);
-      }
-    };
-  }, []);
 
   const handleMapSelect = (latitude, longitude) => {
     setLat(latitude);
     setLng(longitude);
-    // Only set address if user hasn't entered one
-    if (!address.trim()) {
-      setAddress(`Karta: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
-    }
     setShowMapPicker(false);
+    setFormTouched(true);
+  };
+
+  const handleImageFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || uploadingImage) return;
+
+    setUploadingImage(true);
+    try {
+      try {
+        const gpsData = await extractGPSFromImage(file);
+        if (gpsData && lat === null && lng === null) {
+          setLat(gpsData.lat);
+          setLng(gpsData.lng);
+          setFormTouched(true);
+        }
+      } catch (e) { /* ignore */ }
+
+      let fileToUpload = file;
+      try {
+        const resizedBlob = await resizeImage(file, 2000, 0.85);
+        if (resizedBlob) fileToUpload = resizedBlob;
+      } catch (e) { /* ignore */ }
+
+      const formData = new FormData();
+      formData.append('file', fileToUpload, file.name);
+      formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
+      const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) throw new Error('Upload failed');
+      const data = await response.json();
+      setImageUrl(data.secure_url);
+      setFormTouched(true);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    } catch (err) {
+      console.error('Upload error:', err);
+      alert('Kunde inte ladda upp bild. Försök igen!');
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const handleSubmit = () => {
@@ -2916,24 +3043,24 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
     }
 
     const blocks = [{ type: 'title', data: { text: title.trim() } }];
-    if (!inheritLocation) {
-      // Add location block if we have coords OR just address (for area objects)
-      if ((lat !== null && lat !== undefined && lng !== null && lng !== undefined) || address.trim()) {
-        const locationData = { 
-          lat: (lat !== null && lat !== undefined) ? Number(lat) : null,
-          lng: (lng !== null && lng !== undefined) ? Number(lng) : null,
-          address: address.trim() || ((lat !== null && lat !== undefined && lng !== null && lng !== undefined) ? `${lat.toFixed(5)}, ${lng.toFixed(5)}` : '')
-        };
-        blocks.push({ type: 'location', data: locationData });
-      }
+    
+    if (!inheritLocation && ((lat !== null && lng !== null) || address.trim())) {
+      blocks.push({ 
+        type: 'location', 
+        data: { 
+          lat: lat !== null ? Number(lat) : null,
+          lng: lng !== null ? Number(lng) : null,
+          address: address.trim() || (lat !== null && lng !== null ? `${lat.toFixed(5)}, ${lng.toFixed(5)}` : '')
+        }
+      });
     }
+
     if (imageUrl.trim()) {
       const imageData = { url: imageUrl.trim(), cropMode: imageCropMode };
       if (imageFocalPoint) imageData.focalPoint = imageFocalPoint;
       blocks.push({ type: 'image', data: imageData });
     }
-    
-    // Add custom blocks (text, checklist, todo) from array
+
     customBlocks.forEach(block => {
       if (block.content.trim()) {
         if (block.type === 'text') {
@@ -2948,139 +3075,86 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
       }
     });
 
-    const objectData = { 
-      type: selectedType, 
-      layerId: 'default', 
-      blocks,
-      parentId: parentId || null
-    };
-
-    onSave(objectData, isEdit ? editObject.id : null);
+    onSave({ type: selectedType, layerId: 'default', blocks, parentId: parentId || null }, isEdit ? editObject.id : null);
   };
 
-  const handleImageFile = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (uploadingImage) return; // Prevent double uploads
-
-    setUploadingImage(true);
-    try {
-      // Extract EXIF GPS data if available (non-blocking)
-      try {
-        const gpsData = await extractGPSFromImage(file);
-        if (gpsData && (lat === null || lat === undefined) && (lng === null || lng === undefined)) {
-          setLat(gpsData.lat);
-          setLng(gpsData.lng);
-          if (!address.trim()) {
-            setAddress(`Bild GPS: ${gpsData.lat.toFixed(5)}, ${gpsData.lng.toFixed(5)}`);
-          }
-        }
-      } catch (gpsErr) {
-        console.warn('GPS extraction failed:', gpsErr);
-        // Continue with upload even if GPS fails
-      }
-
-      // Resize image before upload (with fallback to original)
-      let fileToUpload = file;
-      try {
-        const resizedBlob = await resizeImage(file, 2000, 0.85);
-        if (resizedBlob) fileToUpload = resizedBlob;
-      } catch (resizeErr) {
-        console.warn('Image resize failed, uploading original:', resizeErr);
-        // Continue with original file
-      }
-      
-      const formData = new FormData();
-      formData.append('file', fileToUpload, file.name);
-      formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-
-      const response = await fetch(
-        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
-        {
-          method: 'POST',
-          body: formData
-        }
-      );
-
-      if (!response.ok) throw new Error('Upload failed');
-      
-      const data = await response.json();
-      setImageUrl(data.secure_url);
-      
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    } catch (err) {
-      console.error('Upload error:', err);
-      alert('Kunde inte ladda upp bild. Försök igen!');
-    } finally {
-      setUploadingImage(false);
-    }
+  const addCustomBlock = (type) => {
+    setCustomBlocks(prev => [...prev, { id: Math.random().toString(36).substr(2, 9), type, title: '', content: '' }]);
+    setFormTouched(true);
   };
 
+  const updateCustomBlock = (id, updates) => {
+    setCustomBlocks(prev => prev.map(b => b.id === id ? { ...b, ...updates } : b));
+    setFormTouched(true);
+  };
+
+  const removeCustomBlock = (id) => {
+    setCustomBlocks(prev => prev.filter(b => b.id !== id));
+    setFormTouched(true);
+  };
+
+  const moveCustomBlock = (id, delta) => {
+    setCustomBlocks(prev => {
+      const items = [...prev];
+      const from = items.findIndex(b => b.id === id);
+      const to = from + delta;
+      if (from === -1 || to < 0 || to >= items.length) return prev;
+      const [moved] = items.splice(from, 1);
+      items.splice(to, 0, moved);
+      return items;
+    });
+    setFormTouched(true);
+  };
+
+  // ========== RENDER ==========
   return (
     <>
+      {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-black/80 sm:bg-black/70 backdrop-blur-sm z-[1000] flex items-end sm:items-center justify-center sm:p-8"
-        onClick={(e) => !saving && e.target === e.currentTarget && onClose()}
+        className="fixed inset-0 bg-black/80 z-[1000] flex items-end sm:items-center justify-center sm:p-8"
+        onClick={(e) => { if (!saving && e.target === e.currentTarget) onClose(); }}
       >
-        <div 
-          ref={modalRef}
-          className="bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-xl border-t sm:border border-white/10 sm:border-white/[0.08] w-full sm:max-w-2xl sm:w-[90%] h-full sm:h-auto sm:max-h-[90vh] overflow-hidden flex flex-col transition-transform duration-200 ease-out relative sm:shadow-2xl sm:shadow-black/50"
-          style={{ transform: `translateX(${touchDelta}px)`, opacity: touchDelta > 0 ? 1 - (touchDelta / 300) : 1 }}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Subtle decorative gradient */}
-          <div 
-            className="absolute top-0 left-0 right-0 h-48 pointer-events-none"
-            style={{ background: 'linear-gradient(to bottom, rgba(59, 130, 246, 0.08), rgba(59, 130, 246, 0.02) 50%, transparent)' }}
-          />
+        {/* Modal */}
+        <div className="bg-gray-900 sm:rounded-xl border-t sm:border border-white/10 w-full sm:max-w-2xl h-full sm:h-auto sm:max-h-[90vh] overflow-hidden flex flex-col">
           
-          {/* Fixed header */}
-          <div className="sticky top-0 z-10 px-4 py-4 sm:p-5 border-b border-white/5 bg-gradient-to-r from-gray-900/98 via-gray-900/95 to-gray-900/98 backdrop-blur-xl flex items-center justify-between shadow-[0_1px_12px_rgba(0,0,0,0.4)]">
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+          {/* Header */}
+          <div className="flex-shrink-0 px-4 py-4 border-b border-white/10 flex items-center justify-between bg-gray-900">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
                 <Plus size={20} className="text-blue-400" />
               </div>
-              <div className="min-w-0 flex-1">
-                <h2 className="text-lg sm:text-xl font-bold text-white truncate">{isEdit ? 'Redigera objekt' : 'Skapa nytt objekt'}</h2>
-                <span className="text-xs text-gray-400">{isEdit ? 'Uppdatera detaljer' : 'Fyll i detaljer nedan'}</span>
+              <div>
+                <h2 className="text-lg font-bold text-white">{isEdit ? 'Redigera objekt' : 'Skapa nytt objekt'}</h2>
+                <p className="text-xs text-gray-400">{isEdit ? 'Uppdatera detaljer' : 'Fyll i detaljer nedan'}</p>
               </div>
             </div>
             <button 
+              type="button"
               onClick={onClose} 
-              className="w-11 h-11 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 active:bg-white/20 text-gray-400 hover:text-white transition-all touch-manipulation disabled:opacity-50 flex-shrink-0 ml-2"
               disabled={saving}
-              aria-label="Stäng"
+              className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
             >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
+              <X size={20} />
             </button>
           </div>
-          
-          {/* Scrollable content */}
-          <div className="overflow-y-auto flex-1 p-4 sm:p-5">
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-3">Välj kategori</label>
-                {selectedType && !categories.find(c => c.id === selectedType) && (
-                  <div className="mb-3 text-sm text-yellow-400 bg-yellow-400/10 px-3 py-2 rounded border border-yellow-400/20">
-                    ⚠️ Nuvarande kategori "{selectedType}" finns inte längre. Välj en ny kategori nedan.
-                  </div>
-                )}
-                <div className="grid grid-cols-4 gap-2">
-                  {categories.map(cat => {
-                    const Icon = getIconComponent(cat.icon);
-                    return (
-                      <button
+
+          {/* Scrollable Content */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-6">
+            
+            {/* Category selector */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-3">Välj kategori</label>
+              <div className="grid grid-cols-4 gap-2">
+                {categories.map(cat => {
+                  const Icon = getIconComponent(cat.icon);
+                  const isSelected = selectedType === cat.id;
+                  return (
+                    <button
                       key={cat.id}
                       type="button"
-                      onClick={() => setSelectedType(cat.id)}
+                      onClick={() => handleCategorySelect(cat.id)}
                       disabled={saving}
-                      className={`p-2.5 rounded-lg border-2 transition-all ${selectedType === cat.id ? 'border-blue-500 bg-blue-500/20' : 'border-white/10 bg-white/5 hover:border-white/20'} ${saving ? 'opacity-50' : ''}`}
+                      className={`p-2.5 rounded-lg border-2 transition-colors ${isSelected ? 'border-blue-500 bg-blue-500/20' : 'border-white/10 bg-white/5 hover:border-white/20'}`}
                     >
                       <Icon size={20} className="mx-auto mb-1 text-blue-400" />
                       <div className="text-[10px] text-gray-300 truncate">{cat.label}</div>
@@ -3089,239 +3163,140 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
                 })}
               </div>
             </div>
+
+            {/* Title */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">Titel *</label>
-              <div className="relative">
-                <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="T.ex. Sommarstugan i Dalarna" disabled={saving} className="w-full px-4 py-3 pr-10 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-50" />
-                {title && (
-                  <button
-                    type="button"
-                    onClick={() => setTitle('')}
-                    disabled={saving}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors disabled:opacity-50"
-                  >
-                    <X size={16} />
-                  </button>
-                )}
-              </div>
+              <input 
+                type="text" 
+                value={title} 
+                onChange={(e) => { setTitle(e.target.value); setFormTouched(true); }} 
+                placeholder="T.ex. Sommarstugan i Dalarna" 
+                disabled={saving} 
+                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500"
+              />
             </div>
+
+            {/* Parent selector */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">Lägg under objekt (valfritt)</label>
               <select 
                 value={parentId} 
-                onChange={(e) => setParentId(e.target.value)} 
+                onChange={(e) => { setParentId(e.target.value); setFormTouched(true); }} 
                 disabled={saving}
-                className="w-full px-4 py-3 rounded-xl bg-gray-800 border border-white/10 text-white focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-50"
-                style={{ colorScheme: 'dark' }}
+                className="w-full px-4 py-3 rounded-xl bg-gray-800 border border-white/10 text-white focus:outline-none focus:border-blue-500"
               >
-                <option value="" className="bg-gray-800 text-white">- Inget parent-objekt -</option>
-                {(() => {
-                  // Group objects by category
-                  const grouped = availableParents.reduce((acc, obj) => {
-                    const categoryId = obj.type;
-                    if (!acc[categoryId]) acc[categoryId] = [];
-                    acc[categoryId].push(obj);
-                    return acc;
-                  }, {});
-
-                  // Sort objects within each group: top-level first, then by title
-                  Object.keys(grouped).forEach(catId => {
-                    grouped[catId].sort((a, b) => {
-                      const aIsTopLevel = !a.parentId;
-                      const bIsTopLevel = !b.parentId;
-                      
-                      // Top-level objects come first
-                      if (aIsTopLevel && !bIsTopLevel) return -1;
-                      if (!aIsTopLevel && bIsTopLevel) return 1;
-                      
-                      // Within same level, sort alphabetically
-                      const titleA = a.blocks.find(b => b.type === 'title')?.data?.text || 'Namnlöst';
-                      const titleB = b.blocks.find(b => b.type === 'title')?.data?.text || 'Namnlöst';
-                      return titleA.localeCompare(titleB, 'sv');
-                    });
-                  });
-
-                  // Render optgroups for each category
-                  return categories.map(category => {
-                    const objectsInCategory = grouped[category.id] || [];
-                    if (objectsInCategory.length === 0) return null;
-
-                    return (
-                      <optgroup key={category.id} label={category.label} className="bg-gray-800 text-gray-300">
-                        {objectsInCategory.map(obj => {
-                          const titleBlock = obj.blocks.find(b => b.type === 'title');
-                          const title = titleBlock?.data?.text || 'Namnlöst';
-                          const isChild = !!obj.parentId;
-                          
-                          // If child, find parent name
-                          let displayText = title;
-                          if (isChild) {
-                            const parent = availableParents.find(p => p.id === obj.parentId);
-                            const parentTitle = parent?.blocks.find(b => b.type === 'title')?.data?.text || 'Okänd';
-                            displayText = `└─ ${title} (under ${parentTitle})`;
-                          }
-                          
-                          return (
-                            <option key={obj.id} value={obj.id} className="bg-gray-800 text-white">
-                              {displayText}
-                            </option>
-                          );
-                        })}
-                      </optgroup>
-                    );
-                  });
-                })()}
+                <option value="">- Inget parent-objekt -</option>
+                {categories.map(category => {
+                  const objectsInCategory = availableParents.filter(obj => obj.type === category.id);
+                  if (objectsInCategory.length === 0) return null;
+                  return (
+                    <optgroup key={category.id} label={category.label}>
+                      {objectsInCategory.map(obj => {
+                        const objTitle = obj.blocks.find(b => b.type === 'title')?.data?.text || 'Namnlöst';
+                        return <option key={obj.id} value={obj.id}>{objTitle}</option>;
+                      })}
+                    </optgroup>
+                  );
+                })}
               </select>
-              <p className="text-xs text-gray-500 mt-1">T.ex. lägg "Huset" under "Sommarstugan"</p>
             </div>
+
+            {/* Inherit location checkbox */}
             {parentId && parentHasLocation && (
               <div className="flex items-center gap-2 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
                 <input 
                   type="checkbox" 
-                  id="inheritLocation" 
+                  id="inheritLoc" 
                   checked={inheritLocation} 
-                  onChange={(e) => {
-                    setInheritLocation(e.target.checked);
-                    if (e.target.checked) setAddress('');
-                  }}
+                  onChange={(e) => { setInheritLocation(e.target.checked); setFormTouched(true); }}
                   disabled={saving}
-                  className="w-4 h-4 rounded border-blue-500 text-blue-500 focus:ring-blue-500"
+                  className="w-4 h-4"
                 />
-                <label htmlFor="inheritLocation" className="text-sm text-gray-200 cursor-pointer">
-                  Använd samma plats som {selectedParent?.blocks?.find(b => b.type === 'title')?.data?.text || 'parent-objektet'}
+                <label htmlFor="inheritLoc" className="text-sm text-gray-200">
+                  Använd samma plats som {selectedParent?.blocks?.find(b => b.type === 'title')?.data?.text}
                 </label>
               </div>
             )}
+
+            {/* Location */}
             {!inheritLocation && (
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">Plats</label>
                 <div className="space-y-3">
-                  <div className="relative">
-                    <input 
-                      type="text" 
-                      value={address} 
-                      onChange={(e) => setAddress(e.target.value)} 
-                      placeholder="Skriv plats/beskrivning (t.ex. Kantarellstället vid stigen)" 
-                      disabled={saving} 
-                      className="w-full px-4 py-3 pr-10 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-50" 
-                    />
-                    {address && (
-                      <button
-                        type="button"
-                        onClick={() => setAddress('')}
-                        disabled={saving}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors disabled:opacity-50"
-                      >
-                        <X size={16} />
-                      </button>
-                    )}
-                  </div>
+                  <input 
+                    type="text" 
+                    value={address} 
+                    onChange={(e) => { setAddress(e.target.value); setFormTouched(true); }} 
+                    placeholder="Skriv plats/beskrivning" 
+                    disabled={saving} 
+                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                  />
                   <div className="flex gap-2">
                     <button
                       type="button"
                       onClick={handleGPSCapture}
                       disabled={saving || capturingGPS}
-                      className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                      className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 flex items-center justify-center gap-2"
                     >
                       <Navigation size={18} className={capturingGPS ? 'animate-pulse' : ''} />
-                      <span className="text-sm font-medium">
-                        {capturingGPS 
-                          ? (gpsAccuracy ? `±${gpsAccuracy}m...` : 'Hämtar...') 
-                          : (preciseGPS ? 'Precis GPS' : 'Använd min plats')}
+                      <span className="text-sm">
+                        {capturingGPS ? (gpsAccuracy ? `±${gpsAccuracy}m...` : 'Hämtar...') : 'Använd min plats'}
                       </span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setShowMapPicker(true)}
                       disabled={saving}
-                      className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                      className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 flex items-center justify-center gap-2"
                     >
                       <MapIcon size={18} />
-                      <span className="text-sm font-medium">Markera på karta</span>
+                      <span className="text-sm">Markera på karta</span>
                     </button>
                   </div>
-                  {lat && lng && (
-                    <div className="flex items-center gap-2 text-xs text-gray-500 bg-white/5 p-2 rounded-lg">
-                      <span className="flex-1">📍 Koordinater: {lat.toFixed(5)}, {lng.toFixed(5)}</span>
+                  {lat !== null && lng !== null && (
+                    <div className="flex items-center justify-between text-xs text-gray-500 bg-white/5 p-2 rounded-lg">
+                      <span>📍 {lat.toFixed(5)}, {lng.toFixed(5)}</span>
                       <button
                         type="button"
-                        onClick={() => {
-                          setLat(null);
-                          setLng(null);
-                        }}
-                        disabled={saving}
-                        className="px-2 py-1 rounded bg-red-500/20 hover:bg-red-500/30 text-red-400 transition-all disabled:opacity-50 flex items-center gap-1"
-                        title="Rensa koordinater"
+                        onClick={() => { setLat(null); setLng(null); setFormTouched(true); }}
+                        className="text-red-400 hover:text-red-300"
                       >
-                        <X size={14} />
-                        <span className="text-xs">Rensa</span>
+                        Rensa
                       </button>
                     </div>
                   )}
                 </div>
               </div>
             )}
+
+            {/* Image */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">Bild</label>
               <div className="space-y-3">
                 {imageUrl && (
-                  <>
-                    <div className="relative w-full h-40 rounded-xl overflow-hidden border border-white/10 bg-gray-900">
-                      <img 
-                        src={getTransformedImageUrl(imageUrl, imageFocalPoint ? 'custom' : imageCropMode, 800, 600, imageFocalPoint)} 
-                        alt="Preview" 
-                        className="w-full h-full object-cover" 
-                        style={getFocalPointStyles(imageFocalPoint)}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setImageUrl('');
-                          setImageCropMode('auto');
-                          setImageFocalPoint(null);
-                        }}
-                        disabled={uploadingImage || saving}
-                        className="absolute top-2 right-2 bg-red-500/80 hover:bg-red-600 text-white p-2 rounded-lg transition-all disabled:opacity-50"
-                      >
-                        <X size={16} />
-                      </button>
-                      {/* Button to open focal point picker */}
-                      <button
-                        type="button"
-                        onClick={() => setShowFocalPointPicker(true)}
-                        disabled={uploadingImage || saving}
-                        className="absolute bottom-2 right-2 bg-black/60 hover:bg-black/80 text-white px-3 py-1.5 rounded-lg transition-all disabled:opacity-50 flex items-center gap-1.5 text-xs font-medium"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <circle cx="12" cy="12" r="3"></circle>
-                          <path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path>
-                        </svg>
-                        {imageFocalPoint ? 'Ändra' : 'Justera'}
-                      </button>
-                    </div>
-                    {imageFocalPoint && (
-                      <div className="flex items-center justify-between text-xs text-gray-500 px-1">
-                        <span className="flex items-center gap-1.5">
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="20 6 9 17 4 12"></polyline>
-                          </svg>
-                          Justerad{imageFocalPoint.zoom > 1 ? ` (${Math.round((imageFocalPoint.zoom - 1) * 100)}% zoom)` : ''}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setImageFocalPoint(null)}
-                          className="text-blue-400 hover:text-blue-300"
-                        >
-                          Återställ till auto
-                        </button>
-                      </div>
-                    )}
-                  </>
+                  <div className="relative w-full h-40 rounded-xl overflow-hidden border border-white/10">
+                    <img src={imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => { setImageUrl(''); setImageFocalPoint(null); setFormTouched(true); }}
+                      className="absolute top-2 right-2 bg-red-500/80 hover:bg-red-600 text-white p-2 rounded-lg"
+                    >
+                      <X size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowFocalPointPicker(true)}
+                      className="absolute bottom-2 right-2 bg-black/60 hover:bg-black/80 text-white px-3 py-1.5 rounded-lg text-xs"
+                    >
+                      {imageFocalPoint ? 'Ändra fokus' : 'Justera'}
+                    </button>
+                  </div>
                 )}
                 <div className="flex gap-2">
-                  <label className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center gap-2">
+                  <label className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 cursor-pointer flex items-center justify-center gap-2">
                     <Upload size={18} />
-                    <span className="text-sm font-medium">{uploadingImage ? 'Laddar...' : 'Ladda upp'}</span>
+                    <span className="text-sm">{uploadingImage ? 'Laddar...' : 'Ladda upp'}</span>
                     <input
                       ref={fileInputRef}
                       type="file"
@@ -3334,297 +3309,82 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
                   <button
                     type="button"
                     onClick={() => {
-                      const url = prompt('Eller klistra in bild-URL:');
-                      if (url?.trim()) setImageUrl(url.trim());
+                      const url = prompt('Klistra in bild-URL:');
+                      if (url?.trim()) { setImageUrl(url.trim()); setFormTouched(true); }
                     }}
                     disabled={uploadingImage || saving}
-                    className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm font-medium"
+                    className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm"
                   >
                     URL
                   </button>
                 </div>
               </div>
             </div>
-            
-            {/* Dynamic custom blocks */}
-            <div className="space-y-4">
-              {customBlocks.map((block) => {
-                const isDragging = draggingBlockId === block.id;
-                const isDragOver = dragOverBlockId === block.id && draggingBlockId !== block.id;
 
-                const handleDrop = (targetId) => {
-                  if (!draggingBlockId || draggingBlockId === targetId) return;
-                  setCustomBlocks(prev => {
-                    const items = [...prev];
-                    const from = items.findIndex(b => b.id === draggingBlockId);
-                    const to = items.findIndex(b => b.id === targetId);
-                    if (from === -1 || to === -1) return prev;
-                    const [moved] = items.splice(from, 1);
-                    items.splice(to, 0, moved);
-                    return items;
-                  });
-                };
-
-                const handleMove = (delta) => {
-                  setCustomBlocks(prev => {
-                    const items = [...prev];
-                    const from = items.findIndex(b => b.id === block.id);
-                    const to = from + delta;
-                    if (from === -1 || to < 0 || to >= items.length) return prev;
-                    const [moved] = items.splice(from, 1);
-                    items.splice(to, 0, moved);
-                    return items;
-                  });
-                };
-
-                return (
-                  <div
-                    key={block.id}
-                    draggable
-                    onDragStart={() => setDraggingBlockId(block.id)}
-                    onDragEnd={() => { setDraggingBlockId(null); setDragOverBlockId(null); }}
-                    onDragOver={(e) => { e.preventDefault(); setDragOverBlockId(block.id); }}
-                    onDragLeave={() => setDragOverBlockId(null)}
-                    onDrop={(e) => { e.preventDefault(); setDragOverBlockId(null); handleDrop(block.id); }}
-                    className={`rounded-xl border border-white/10 p-3 bg-white/5 transition-all ${isDragging ? 'opacity-70 border-blue-400' : ''} ${isDragOver ? 'ring-2 ring-blue-400 ring-offset-0 ring-offset-transparent' : ''}`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <label className="text-sm font-medium text-gray-300 flex items-center gap-2">
-                          {block.type === 'text' && (
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-400">
-                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                            </svg>
-                          )}
-                          {block.type === 'text' && 'Anteckning'}
-                          {block.type === 'checklist' && <Check size={14} className="text-blue-400" />}
-                          {block.type === 'checklist' && 'Checklista'}
-                          {block.type === 'todo' && <Circle size={14} className="text-green-400" />}
-                          {block.type === 'todo' && 'Att göra'}
-                        </label>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => handleMove(-1)}
-                            disabled={saving}
-                            className="w-7 h-7 rounded-md bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 transition-all disabled:opacity-50 flex items-center justify-center"
-                            title="Flytta upp"
-                          >
-                            <ArrowUp size={14} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleMove(1)}
-                            disabled={saving}
-                            className="w-7 h-7 rounded-md bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 transition-all disabled:opacity-50 flex items-center justify-center"
-                            title="Flytta ner"
-                          >
-                            <ArrowDown size={14} />
-                          </button>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setCustomBlocks(customBlocks.filter(b => b.id !== block.id))}
-                          disabled={saving}
-                          className="w-7 h-7 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all disabled:opacity-50 flex items-center justify-center"
-                          title="Ta bort"
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="relative mb-2">
-                      <input
-                        type="text"
-                        value={block.title}
-                        onChange={(e) => setCustomBlocks(customBlocks.map(b => b.id === block.id ? { ...b, title: e.target.value } : b))}
-                        placeholder={block.type === 'text' ? 'T.ex. Mat plan' : block.type === 'checklist' ? 'T.ex. Före semester' : 'T.ex. Packlista'}
-                        disabled={saving}
-                        className="w-full px-4 py-2 pr-8 rounded-lg bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors disabled:opacity-50 text-sm"
-                      />
-                      {block.title && (
-                        <button
-                          type="button"
-                          onClick={() => setCustomBlocks(customBlocks.map(b => b.id === block.id ? { ...b, title: '' } : b))}
-                          disabled={saving}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors disabled:opacity-50"
-                        >
-                          <X size={14} />
-                        </button>
-                      )}
-                    </div>
-                    {block.type === 'text' && (
-                      <div className="flex items-center gap-1 mb-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const textarea = document.getElementById(`textarea-${block.id}`);
-                            if (!textarea) return;
-                            const start = textarea.selectionStart;
-                            const end = textarea.selectionEnd;
-                            const text = block.content;
-                            const selected = text.substring(start, end);
-                            const newContent = text.substring(0, start) + `**${selected}**` + text.substring(end);
-                            setCustomBlocks(customBlocks.map(b => b.id === block.id ? { ...b, content: newContent } : b));
-                            setTimeout(() => {
-                              textarea.focus();
-                              textarea.setSelectionRange(start + 2, end + 2);
-                            }, 0);
-                          }}
-                          className="px-2 py-1 rounded bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white transition-all text-xs font-bold"
-                          title="Fetstil **text**"
-                        >
-                          B
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const textarea = document.getElementById(`textarea-${block.id}`);
-                            if (!textarea) return;
-                            const start = textarea.selectionStart;
-                            const end = textarea.selectionEnd;
-                            const text = block.content;
-                            const selected = text.substring(start, end);
-                            const newContent = text.substring(0, start) + `*${selected}*` + text.substring(end);
-                            setCustomBlocks(customBlocks.map(b => b.id === block.id ? { ...b, content: newContent } : b));
-                            setTimeout(() => {
-                              textarea.focus();
-                              textarea.setSelectionRange(start + 1, end + 1);
-                            }, 0);
-                          }}
-                          className="px-2 py-1 rounded bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white transition-all text-xs italic"
-                          title="Kursiv *text*"
-                        >
-                          I
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const textarea = document.getElementById(`textarea-${block.id}`);
-                            if (!textarea) return;
-                            const start = textarea.selectionStart;
-                            const text = block.content;
-                            // Find start of current line
-                            const lineStart = text.lastIndexOf('\n', start - 1) + 1;
-                            const newContent = text.substring(0, lineStart) + '- ' + text.substring(lineStart);
-                            setCustomBlocks(customBlocks.map(b => b.id === block.id ? { ...b, content: newContent } : b));
-                            setTimeout(() => {
-                              textarea.focus();
-                              textarea.setSelectionRange(start + 2, start + 2);
-                            }, 0);
-                          }}
-                          className="px-2 py-1 rounded bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white transition-all text-xs"
-                          title="Punktlista"
-                        >
-                          • Lista
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const textarea = document.getElementById(`textarea-${block.id}`);
-                            if (!textarea) return;
-                            const start = textarea.selectionStart;
-                            const text = block.content;
-                            const lineStart = text.lastIndexOf('\n', start - 1) + 1;
-                            const newContent = text.substring(0, lineStart) + '# ' + text.substring(lineStart);
-                            setCustomBlocks(customBlocks.map(b => b.id === block.id ? { ...b, content: newContent } : b));
-                            setTimeout(() => {
-                              textarea.focus();
-                              textarea.setSelectionRange(start + 2, start + 2);
-                            }, 0);
-                          }}
-                          className="px-2 py-1 rounded bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white transition-all text-xs font-bold"
-                          title="Rubrik # text"
-                        >
-                          H1
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const textarea = document.getElementById(`textarea-${block.id}`);
-                            if (!textarea) return;
-                            const start = textarea.selectionStart;
-                            const text = block.content;
-                            const lineStart = text.lastIndexOf('\n', start - 1) + 1;
-                            const newContent = text.substring(0, lineStart) + '## ' + text.substring(lineStart);
-                            setCustomBlocks(customBlocks.map(b => b.id === block.id ? { ...b, content: newContent } : b));
-                            setTimeout(() => {
-                              textarea.focus();
-                              textarea.setSelectionRange(start + 3, start + 3);
-                            }, 0);
-                          }}
-                          className="px-2 py-1 rounded bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white transition-all text-xs font-semibold"
-                          title="Underrubrik ## text"
-                        >
-                          H2
-                        </button>
-                        <span className="text-[10px] text-gray-600 ml-1"># rubrik</span>
-                      </div>
-                    )}
-                    <textarea 
-                      id={`textarea-${block.id}`}
-                      value={block.content} 
-                      onChange={(e) => setCustomBlocks(customBlocks.map(b => b.id === block.id ? { ...b, content: e.target.value } : b))}
-                      placeholder={block.type === 'text' ? 'Stöder # rubrik, **fet**, *kursiv*, - lista' : 'En per rad'}
-                      rows={3} 
-                      disabled={saving}
-                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors resize-none disabled:opacity-50 font-mono text-sm"
-                    />
-                  </div>
-                );
-              })}
-            </div>
+            {/* Custom blocks */}
+            {customBlocks.map((block, index) => (
+              <BlockEditor
+                key={block.id}
+                block={block}
+                onUpdate={updateCustomBlock}
+                onRemove={removeCustomBlock}
+                onMove={moveCustomBlock}
+                index={index}
+                total={customBlocks.length}
+                saving={saving}
+              />
+            ))}
 
             {/* Add block buttons */}
-            <div className="mt-4 pt-4 border-t border-white/10">
-              <div className="text-xs text-gray-500 uppercase tracking-wide mb-3">Lägg till block</div>
+            <div className="pt-4 border-t border-white/10">
+              <div className="text-xs text-gray-500 uppercase mb-3">Lägg till block</div>
               <div className="flex gap-2 flex-wrap">
-                <button
-                  type="button"
-                  onClick={() => setCustomBlocks([...customBlocks, { id: Math.random().toString(36).substr(2, 9), type: 'text', title: '', content: '' }])}
-                  disabled={saving}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:border-blue-500/30 hover:text-white text-sm transition-all disabled:opacity-50"
-                >
-                  <Plus size={16} />
-                  <span>Anteckning</span>
+                <button type="button" onClick={() => addCustomBlock('text')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
+                  <FileText size={16} className="text-blue-400" /> Anteckning
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setCustomBlocks([...customBlocks, { id: Math.random().toString(36).substr(2, 9), type: 'checklist', title: '', content: '' }])}
-                  disabled={saving}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:border-blue-500/30 hover:text-white text-sm transition-all disabled:opacity-50"
-                >
-                  <Plus size={16} />
-                  <span>Checklista</span>
+                <button type="button" onClick={() => addCustomBlock('checklist')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
+                  <CheckSquare size={16} className="text-green-400" /> Checklista
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setCustomBlocks([...customBlocks, { id: Math.random().toString(36).substr(2, 9), type: 'todo', title: '', content: '' }])}
-                  disabled={saving}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:border-blue-500/30 hover:text-white text-sm transition-all disabled:opacity-50"
-                >
-                  <Plus size={16} />
-                  <span>Att göra</span>
+                <button type="button" onClick={() => addCustomBlock('todo')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
+                  <ClipboardList size={16} className="text-amber-400" /> Att göra
                 </button>
               </div>
             </div>
-            </div>
           </div>
-          
-          {/* Fixed footer with action buttons */}
-          <div className="sticky bottom-0 p-4 sm:p-5 border-t border-white/5 bg-gradient-to-t from-gray-950 via-gray-900/98 to-gray-900/95 backdrop-blur-xl">
+
+          {/* Footer */}
+          <div className="flex-shrink-0 p-4 border-t border-white/10 bg-gray-900">
             <div className="flex gap-3">
-              <button type="button" onClick={onClose} disabled={saving} className="flex-1 px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 transition-all disabled:opacity-50">Avbryt</button>
-              <button type="button" onClick={handleSubmit} disabled={saving} className="flex-1 px-6 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2">
-                {saving ? <><Loader size={18} className="animate-spin" /><span>Sparar...</span></> : <span>{isEdit ? 'Uppdatera' : 'Skapa objekt'}</span>}
+              <button 
+                type="button" 
+                onClick={onClose} 
+                disabled={saving} 
+                className="flex-1 px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10"
+              >
+                Avbryt
+              </button>
+              <button 
+                type="button" 
+                onClick={handleSubmit}
+                disabled={saving || (isEdit && !hasChanges)} 
+                className={`flex-1 px-6 py-3 rounded-xl font-medium flex items-center justify-center gap-2 ${
+                  isEdit && !hasChanges 
+                    ? 'bg-gray-600 text-gray-400' 
+                    : 'bg-blue-500 hover:bg-blue-600 text-white'
+                }`}
+              >
+                {saving ? (
+                  <><Loader size={18} className="animate-spin" /> Sparar...</>
+                ) : (
+                  isEdit ? (hasChanges ? 'Uppdatera' : 'Inga ändringar') : 'Skapa objekt'
+                )}
               </button>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Map Picker Modal */}
       {showMapPicker && (
         <MapPicker
           onSelect={handleMapSelect}
@@ -3633,14 +3393,13 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
           userLocation={userLocation}
         />
       )}
+
+      {/* Focal Point Picker Modal */}
       {showFocalPointPicker && imageUrl && (
         <FocalPointPicker
           imageUrl={imageUrl}
           currentFocalPoint={imageFocalPoint}
-          onSelect={(point) => {
-            setImageFocalPoint(point);
-            setShowFocalPointPicker(false);
-          }}
+          onSelect={(point) => { setImageFocalPoint(point); setShowFocalPointPicker(false); setFormTouched(true); }}
           onClose={() => setShowFocalPointPicker(false)}
         />
       )}
@@ -4534,8 +4293,19 @@ function App() {
   };
 
   const handleEdit = (obj) => {
-    if (!user || (obj.id && obj.ownerId !== user.uid)) {
-      alert('Du kan bara redigera dina objekt!');
+    if (!user) {
+      alert('Du måste vara inloggad för att redigera!');
+      return;
+    }
+    
+    // Check if user can edit: owner, admin, or editor role
+    const isOwner = obj.ownerId === user.uid;
+    const userEmailKey = user.email ? emailToKey(user.email.toLowerCase()) : null;
+    const shareRole = userEmailKey ? obj.shares?.[userEmailKey]?.role : null;
+    const canEditObj = isOwner || isAdmin || shareRole === 'editor';
+    
+    if (obj.id && !canEditObj) {
+      alert('Du har inte behörighet att redigera detta objekt!');
       return;
     }
     if (obj.parentId) {
@@ -4968,9 +4738,12 @@ function App() {
           objects={objects}
           categories={categories}
           onClose={() => setShowObjectsAdmin(false)}
-          onEditObject={(obj) => {
-            setEditingObject(obj);
-            setShowCreateModal(true);
+          onViewObject={(obj) => {
+            // Add object to list temporarily if not already there (for admin viewing other users' objects)
+            if (!objects.find(o => o.id === obj.id)) {
+              setObjects(prev => [...prev, { ...obj, _adminView: true }]);
+            }
+            setSelectedObject(obj);
           }}
         />
       )}
