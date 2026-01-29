@@ -15,6 +15,33 @@ export const getIconComponent = (iconName) => {
   return iconMap[iconName] || Home;
 };
 
+// List of available icons for categories
+export const AVAILABLE_ICONS = [
+  { name: 'Home', label: 'Hem' },
+  { name: 'Coffee', label: 'Kafé' },
+  { name: 'Mountain', label: 'Berg' },
+  { name: 'Star', label: 'Stjärna' },
+  { name: 'MapPin', label: 'Plats' },
+  { name: 'Calendar', label: 'Kalender' },
+  { name: 'Folder', label: 'Mapp' },
+  { name: 'Navigation', label: 'Navigation' },
+  { name: 'Plane', label: 'Resor' },
+  { name: 'UtensilsCrossed', label: 'Mat och dryck' },
+  { name: 'Pizza', label: 'Pizza' },
+  { name: 'Wine', label: 'Vin' },
+  { name: 'Beer', label: 'Öl' },
+  { name: 'Gamepad2', label: 'Nöjen' },
+  { name: 'Music', label: 'Musik' },
+  { name: 'Film', label: 'Film' },
+  { name: 'PartyPopper', label: 'Fest' },
+  { name: 'Bike', label: 'Aktiviteter' },
+  { name: 'Dumbbell', label: 'Träning' },
+  { name: 'Waves', label: 'Vatten' },
+  { name: 'TreePine', label: 'Skog' },
+  { name: 'Shell', label: 'Strand' },
+  { name: 'Sprout', label: 'Svamp' },
+];
+
 // Legacy emoji mapping for backward compatibility (will be phased out)
 export const PREDEFINED_ICONS = {
   '🏡': { icon: Home, label: 'Fastighet' },
