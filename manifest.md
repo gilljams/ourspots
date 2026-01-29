@@ -383,4 +383,44 @@ service cloud.firestore {
 - Repo: https://github.com/gilljams/ourspots
 - Live: https://gilljams.github.io/ourspots/
 - Deploy: `npm run deploy` (builds + pushes to gh-pages)
-- Latest: commit 84ca332 (Security: Filtrera objekt baserat på ownerId)
+- Latest: commit 91aa530 (Fix Folder icon size in ObjectDetail)
+
+12. PROJEKTSTRUKTUR (Refaktorerad Jan 29, 2026)
+
+App.jsx har delats upp från ~5000 rader till ~1400 rader genom att extrahera komponenter och utilities.
+
+```
+src/
+├── App.jsx              (1401 rader) - Huvudapp, state, routing
+├── firebase.js          - Firebase konfiguration
+├── main.jsx             - Entry point
+├── index.css            - Tailwind imports
+│
+├── utils/
+│   ├── imageUtils.js    - Cloudinary, resize, GPS-extrahering
+│   ├── geoUtils.js      - Avstånd, formatering
+│   ├── mapIcons.js      - Leaflet marker-ikoner
+│   └── iconHelpers.js   - Lucide icon helpers, AVAILABLE_ICONS
+│
+└── components/
+    ├── blocks/
+    │   └── index.jsx    - TitleBlock, LocationBlock, ImageBlock, etc.
+    │
+    ├── ObjectCard.jsx   (~180 rader) - Objektkort i listvy
+    ├── ObjectDetail.jsx (~440 rader) - Detaljvy med swipe-to-close
+    ├── MapView.jsx      (~300 rader) - Kartkomponent med clustering
+    ├── MapPicker.jsx    (~200 rader) - Interaktiv kartväljare
+    │
+    ├── CreateObjectModal.jsx    (~560 rader) - Skapa/redigera objekt
+    ├── ShareModal.jsx           (~350 rader) - Delningshantering
+    ├── DeleteConfirmModal.jsx   (~80 rader)  - Bekräftelsedialog
+    ├── FocalPointPicker.jsx     (~175 rader) - Bildbrännpunkt
+    ├── BlockEditor.jsx          (~50 rader)  - Block-redigerare
+    │
+    ├── ObjectsAdminModal.jsx    (~300 rader) - Admin: alla objekt
+    └── CategoryAdminModal.jsx   (~410 rader) - Admin: kategorier
+```
+
+### Backup
+- Branch `pre-split-backup` skapades Jan 29, 2026 innan refaktoriseringen
+- Kan återställas med `git checkout pre-split-backup` vid behov
