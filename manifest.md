@@ -76,6 +76,8 @@ Block:
 - type: "text", content
 - type: "checklist", items[]
 - type: "todo", items[]
+- type: "links", title, items[{title, url, icon}] ✅ NY
+- type: "table", title, template, columns[], rows[] ✅ NY
 - Modulära block kan adderas senare
 
 Category: ✅ IMPLEMENTERAT
@@ -156,12 +158,12 @@ Default block sets per typ/kategori (för enkelhet):
   - Hämta objekt delade med användaren (shares[email] query)
   - Firestore Security Rules för shares och publika objekt
   
-📋 Planerat (v1.6+)
+📋 Planerat (v1.8+)
   - Badges på kort när objekt är delat
   - Filter: Mina/Alla objekt
   - Markdown editor för textfält (bullet lists, bold, bilder)
   - PWA-implementation (manifest.json, service worker, installbar)
-  - Fler blocktyper (Link, Audio/Video, PDF, Väder, Timer, Kontakt)
+  - Fler blocktyper (Audio/Video, PDF, Väder, Timer)
   - Lager/samlingar för resor och projekt
 
 8. DELNING / SHARING SYSTEM ✅ DELVIS IMPLEMENTERAT
@@ -258,7 +260,30 @@ Default block sets per typ/kategori (för enkelhet):
 - ✅ Admin-sektion synlig endast för administratörer
 - ✅ Skydd mot obehörig åtkomst
 
-### Planerade admin-funktioner (v1.6+)
+### LinksBlock (Implementerat v1.7) ✅ NY
+- ✅ Ett eller flera länkar med titel och URL
+- ✅ Ikonväljare med 11 ikoner (Link, ExternalLink, Globe, FileText, ShoppingCart, etc.)
+- ✅ Collapsible visning när >1 länk (visar antal i header)
+- ✅ Kompakt visning för enstaka länkar (inline med rubrik)
+- ✅ Klickbara länkar öppnas i ny flik
+- ✅ iOS-optimerad (16px font förhindrar zoom)
+
+### TableBlock (Implementerat v1.7) ✅ NY
+- ✅ 6 färdiga mallar:
+  - Önskelista (Vem, Vad, Från, ✓)
+  - Knytkalas (Rätt, Vem, Portioner, ✓)
+  - Uppgifter (Uppgift, Ansvarig, ✓)
+  - Inköpslista (Vara, Antal, ✓)
+  - Gästlista (Namn, Anteckning, ✓)
+  - Kontakter (Namn, Telefon)
+- ✅ Progress bar för checkboxar (X/Y klara)
+- ✅ Klickbara checkboxar direkt i visningsläge
+- ✅ Klickbara telefonnummer (tel: länk)
+- ✅ Collapsible med radräkning i header
+- ✅ Bekräftelsedialog vid mallbyte med data
+- ✅ iOS-optimerad (inputMode="numeric" för siffror)
+
+### Planerade admin-funktioner (v1.8+)
 - Lager: lägg till, redigera, ta bort, färg, ikon, typ
 - Objekt: flytta mellan lager, flytta i hierarki, redigera metadata, public flag
 - Delning / access: lägg till / ta bort användare, set roll Viewer/Editor
