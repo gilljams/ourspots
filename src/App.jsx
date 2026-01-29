@@ -1,11 +1,9 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { 
-  MapPin, Home, Coffee, Mountain, Star, Calendar, X, Plus, Image, Edit2, Trash2, 
-  Loader, LogOut, LogIn, Check, Circle, Upload, Folder, Navigation, Plane, 
+  X, Plus, Image, Edit2, Trash2, 
+  Loader, LogOut, LogIn, Check, Circle, Upload, 
   Map as MapIcon, List, ChevronDown, ArrowUp, ArrowDown, Search, Settings,
-  UtensilsCrossed, Pizza, Wine, Beer, Gamepad2, Music, Film, PartyPopper, 
-  Bike, Dumbbell, Waves, TreePine, Shell, Sprout, RotateCcw, Target, Lightbulb,
-  SlidersHorizontal, Menu, Filter, Share2, UserPlus, UserMinus, Users, Mail,
+  Target, Lightbulb, SlidersHorizontal, Menu, Filter, Share2, UserPlus, UserMinus, Users, Mail,
   FileText, CheckSquare, ClipboardList
 } from 'lucide-react';
 
@@ -19,6 +17,8 @@ import {
   extractGPSFromImage 
 } from './utils/imageUtils';
 import { getDistance, getObjectDistance as getObjectDistanceUtil, formatDistance } from './utils/geoUtils';
+import { createColoredIcon, createUserIcon, createAreaIcon } from './utils/mapIcons';
+import { iconMap, getIconComponent, PREDEFINED_ICONS, emailToKey, keyToEmail } from './utils/iconHelpers';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap, Tooltip, Popup } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
@@ -34,71 +34,6 @@ L.Icon.Default.mergeOptions({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
-
-// Custom colored marker icons per category
-const createColoredIcon = (color) => {
-  return L.divIcon({
-    html: `<div style="background-color: ${color}; width: 25px; height: 25px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"></div>`,
-    className: 'custom-marker-icon',
-    iconSize: [25, 25],
-    iconAnchor: [12, 24],
-    popupAnchor: [0, -24],
-  });
-};
-
-const createUserIcon = () => {
-  return L.divIcon({
-    html: `<div class="user-position-marker" style="width: 20px; height: 20px; border-radius: 50%; background: #3B82F6; border: 3px solid white; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3), 0 2px 8px rgba(0,0,0,0.3); position: relative;">
-      <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 8px; height: 8px; background: white; border-radius: 50%;"></div>
-      <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 40px; height: 40px; border-radius: 50%; border: 2px solid rgba(59, 130, 246, 0.4); animation: pulse 2s infinite;"></div>
-    </div>`,
-    className: 'user-position-icon',
-    iconSize: [20, 20],
-    iconAnchor: [10, 10],
-    popupAnchor: [0, -10],
-  });
-};
-
-const createAreaIcon = (color) => {
-  return L.divIcon({
-    html: `<div style="background-color: ${color}; width: 35px; height: 35px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.4); opacity: 0.7; display: flex; align-items: center; justify-content: center;">
-      <div style="width: 20px; height: 20px; border-radius: 50%; border: 2px dashed white; opacity: 0.8;"></div>
-    </div>`,
-    className: 'area-marker-icon',
-    iconSize: [35, 35],
-    iconAnchor: [17, 35],
-    popupAnchor: [0, -35],
-  });
-};
-
-// Helper to get icon component from string name
-const iconMap = {
-  MapPin, Home, Coffee, Mountain, Star, Calendar, Folder, Navigation, Plane,
-  UtensilsCrossed, Pizza, Wine, Beer, Gamepad2, Music, Film, PartyPopper,
-  Bike, Dumbbell, Waves, TreePine, Shell, Sprout, RotateCcw
-};
-
-const getIconComponent = (iconName) => {
-  return iconMap[iconName] || Home;
-};
-
-// Email key helpers for Firestore (dots are not allowed in object keys)
-const emailToKey = (email) => email.replace(/\./g, '_DOT_');
-const keyToEmail = (key) => key.replace(/_DOT_/g, '.');
-
-// Legacy emoji mapping for backward compatibility (will be phased out)
-const PREDEFINED_ICONS = {
-  '🏡': { icon: Home, label: 'Fastighet' },
-  '🏠': { icon: Home, label: 'Hus' },
-  '☕': { icon: Coffee, label: 'Kafé' },
-  '🏞️': { icon: Mountain, label: 'Natur' },
-  '⭐': { icon: Star, label: 'Favorit' },
-  '✈️': { icon: Calendar, label: 'Resa' },
-  // New string-based IDs
-  'property': { icon: Home, label: 'Fastighet' },
-  'cafe': { icon: Coffee, label: 'Kafé' },
-  'nature': { icon: Mountain, label: 'Natur' }
-};
 
 const TitleBlock = ({ data }) => (
   <h2 className="text-2xl font-bold text-white mb-2">{data.text}</h2>
