@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, Plus, Upload, Loader, Navigation, 
-  Map as MapIcon, FileText, CheckSquare, ClipboardList 
+  Map as MapIcon, FileText, CheckSquare, ClipboardList, Link2, Table2 
 } from 'lucide-react';
 import { 
   CLOUDINARY_CLOUD_NAME, 
@@ -35,13 +35,33 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
   const [customBlocks, setCustomBlocks] = useState(() => {
     if (!editObject) return [];
     return editObject.blocks
-      .filter(b => ['text', 'checklist', 'todo'].includes(b.type))
-      .map(b => ({
-        id: Math.random().toString(36).substr(2, 9),
-        type: b.type,
-        title: b.data.title || '',
-        content: b.type === 'text' ? b.data.content : b.data.items.map(i => i.text).join('\n')
-      }));
+      .filter(b => ['text', 'checklist', 'todo', 'links', 'table'].includes(b.type))
+      .map(b => {
+        if (b.type === 'links') {
+          return {
+            id: Math.random().toString(36).substr(2, 9),
+            type: 'links',
+            title: b.data.title || '',
+            links: b.data.items || []
+          };
+        }
+        if (b.type === 'table') {
+          return {
+            id: Math.random().toString(36).substr(2, 9),
+            type: 'table',
+            title: b.data.title || '',
+            template: b.data.template || 'tasks',
+            rows: b.data.rows || [],
+            columns: b.data.columns || []
+          };
+        }
+        return {
+          id: Math.random().toString(36).substr(2, 9),
+          type: b.type,
+          title: b.data.title || '',
+          content: b.type === 'text' ? b.data.content : b.data.items.map(i => i.text).join('\n')
+        };
+      });
   });
 
   // UI state
@@ -231,7 +251,36 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
     }
 
     customBlocks.forEach(block => {
-      if (block.content.trim()) {
+      if (block.type === 'links') {
+        // Links block - check if has any links with url
+        const validLinks = (block.links || []).filter(l => l.url?.trim());
+        if (validLinks.length > 0) {
+          blocks.push({ 
+            type: 'links', 
+            data: { 
+              title: (block.title || 'Länkar').trim(), 
+              items: validLinks.map(l => ({
+                title: l.title?.trim() || '',
+                url: l.url.trim(),
+                icon: l.icon || 'Link'
+              }))
+            } 
+          });
+        }
+      } else if (block.type === 'table') {
+        // Table block
+        if (block.rows && block.rows.length > 0) {
+          blocks.push({ 
+            type: 'table', 
+            data: { 
+              title: (block.title || '').trim(), 
+              template: block.template || 'tasks',
+              columns: block.columns || [],
+              rows: block.rows
+            } 
+          });
+        }
+      } else if (block.content.trim()) {
         if (block.type === 'text') {
           blocks.push({ type: 'text', data: { title: (block.title || 'Anteckning').trim(), content: block.content.trim() } });
         } else if (block.type === 'checklist') {
@@ -248,7 +297,16 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
   };
 
   const addCustomBlock = (type) => {
-    setCustomBlocks(prev => [...prev, { id: Math.random().toString(36).substr(2, 9), type, title: '', content: '' }]);
+    const newBlock = { id: Math.random().toString(36).substr(2, 9), type, title: '', content: '' };
+    if (type === 'links') {
+      newBlock.links = [{ title: '', url: '', icon: 'Link' }];
+    }
+    if (type === 'table') {
+      newBlock.template = 'tasks';
+      newBlock.rows = [];
+      newBlock.columns = [];
+    }
+    setCustomBlocks(prev => [...prev, newBlock]);
     setFormTouched(true);
   };
 
@@ -516,6 +574,12 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
                 </button>
                 <button type="button" onClick={() => addCustomBlock('todo')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
                   <ClipboardList size={16} className="text-amber-400" /> Att göra
+                </button>
+                <button type="button" onClick={() => addCustomBlock('links')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
+                  <Link2 size={16} className="text-purple-400" /> Länkar
+                </button>
+                <button type="button" onClick={() => addCustomBlock('table')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
+                  <Table2 size={16} className="text-amber-400" /> Tabell
                 </button>
               </div>
             </div>

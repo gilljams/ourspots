@@ -1,14 +1,18 @@
 import { 
   MapPin, Home, Coffee, Mountain, Star, Calendar, Folder, Navigation, Plane,
   UtensilsCrossed, Pizza, Wine, Beer, Gamepad2, Music, Film, PartyPopper,
-  Bike, Dumbbell, Waves, TreePine, Shell, Sprout, RotateCcw
+  Bike, Dumbbell, Waves, TreePine, Shell, Sprout, RotateCcw,
+  Link, ExternalLink, Globe, FileText, ShoppingCart, CreditCard, Phone, Mail, Instagram, Youtube, Facebook,
+  Gift, ClipboardList, Users, UserCircle
 } from 'lucide-react';
 
 // Helper to get icon component from string name
 export const iconMap = {
   MapPin, Home, Coffee, Mountain, Star, Calendar, Folder, Navigation, Plane,
   UtensilsCrossed, Pizza, Wine, Beer, Gamepad2, Music, Film, PartyPopper,
-  Bike, Dumbbell, Waves, TreePine, Shell, Sprout, RotateCcw
+  Bike, Dumbbell, Waves, TreePine, Shell, Sprout, RotateCcw,
+  Link, ExternalLink, Globe, FileText, ShoppingCart, CreditCard, Phone, Mail, Instagram, Youtube, Facebook,
+  Gift, ClipboardList, Users, UserCircle
 };
 
 export const getIconComponent = (iconName) => {
@@ -40,6 +44,26 @@ export const AVAILABLE_ICONS = [
   { name: 'TreePine', label: 'Skog' },
   { name: 'Shell', label: 'Strand' },
   { name: 'Sprout', label: 'Svamp' },
+];
+
+// Icons available for links
+export const LINK_ICONS = [
+  { name: 'Link', label: 'Länk' },
+  { name: 'ExternalLink', label: 'Extern länk' },
+  { name: 'Globe', label: 'Webb' },
+  { name: 'FileText', label: 'Dokument' },
+  { name: 'Calendar', label: 'Bokning' },
+  { name: 'ShoppingCart', label: 'Köp' },
+  { name: 'CreditCard', label: 'Betala' },
+  { name: 'Phone', label: 'Ring' },
+  { name: 'Mail', label: 'E-post' },
+  { name: 'MapPin', label: 'Karta' },
+  { name: 'Instagram', label: 'Instagram' },
+  { name: 'Youtube', label: 'YouTube' },
+  { name: 'Facebook', label: 'Facebook' },
+  { name: 'UtensilsCrossed', label: 'Meny' },
+  { name: 'Star', label: 'Recension' },
+  { name: 'Music', label: 'Musik' },
 ];
 
 // Legacy emoji mapping for backward compatibility (will be phased out)

@@ -23,7 +23,7 @@ import { iconMap, getIconComponent, PREDEFINED_ICONS, AVAILABLE_ICONS, emailToKe
 // Components
 import { 
   TitleBlock, LocationBlock, ImageBlock, TextBlock, 
-  ChecklistBlock, TodoBlock, blockComponents, renderMarkdown 
+  ChecklistBlock, TodoBlock, LinksBlock, TableBlock, blockComponents, renderMarkdown 
 } from './components/blocks';
 import ObjectCard from './components/ObjectCard';
 import MapPicker from './components/MapPicker';

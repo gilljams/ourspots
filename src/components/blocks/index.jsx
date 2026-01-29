@@ -1,6 +1,7 @@
 import React from 'react';
-import { MapPin, Map as MapIcon, X, Check, RotateCcw } from 'lucide-react';
+import { MapPin, Map as MapIcon, X, Check, RotateCcw, ExternalLink } from 'lucide-react';
 import { getTransformedImageUrl, getFocalPointStyles } from '../../utils/imageUtils';
+import { getIconComponent } from '../../utils/iconHelpers';
 
 export const TitleBlock = ({ data }) => (
   <h2 className="text-2xl font-bold text-white mb-2">{data.text}</h2>
@@ -357,11 +358,266 @@ export const TodoBlock = ({ data, objectId, blockIndex, onUpdate }) => {
   );
 };
 
+export const LinksBlock = ({ data }) => {
+  const items = data.items || [];
+  const isSingleLink = items.length === 1;
+  
+  return (
+    <div className={`${isSingleLink ? '' : 'bg-white/[0.03] rounded-xl overflow-hidden divide-y divide-white/5'}`}>
+      {items.length === 0 ? (
+        <div className="px-4 py-3 text-sm text-gray-500">Inga länkar</div>
+      ) : (
+        items.map((item, i) => {
+          const IconComponent = getIconComponent(item.icon || 'Link');
+          return (
+            <a
+              key={i}
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`flex items-center gap-2.5 hover:bg-white/[0.02] transition-colors group ${
+                isSingleLink ? 'py-1' : 'px-4 py-3'
+              }`}
+            >
+              <div className={`rounded-lg flex items-center justify-center flex-shrink-0 ${
+                isSingleLink 
+                  ? 'w-6 h-6 bg-white/5 group-hover:bg-white/10' 
+                  : 'w-8 h-8 bg-purple-500/20'
+              }`}>
+                <IconComponent size={14} className="text-purple-400" />
+              </div>
+              <span className={`text-gray-200 flex-1 truncate group-hover:text-white transition-colors ${
+                isSingleLink ? 'text-sm font-medium' : 'text-sm'
+              }`}>
+                {item.title || item.url}
+              </span>
+              <ExternalLink size={14} className="text-gray-500 group-hover:text-purple-400 transition-colors flex-shrink-0" />
+            </a>
+          );
+        })
+      )}
+    </div>
+  );
+};
+
+// Table templates definition
+export const TABLE_TEMPLATES = {
+  wishlist: {
+    id: 'wishlist',
+    name: 'Önskelista',
+    icon: 'Gift',
+    showSum: false,
+    columns: [
+      { id: 'who', label: 'Vem', type: 'text', width: 'w-20' },
+      { id: 'item', label: 'Vad', type: 'text', width: 'flex-1' },
+      { id: 'from', label: 'Från', type: 'text', width: 'w-20' },
+      { id: 'done', label: '✓', type: 'checkbox', width: 'w-10' }
+    ]
+  },
+  potluck: {
+    id: 'potluck',
+    name: 'Knytkalas',
+    icon: 'UtensilsCrossed',
+    showSum: false,
+    columns: [
+      { id: 'dish', label: 'Rätt', type: 'text', width: 'flex-1' },
+      { id: 'who', label: 'Vem', type: 'text', width: 'w-24' },
+      { id: 'portions', label: 'Port.', type: 'number', width: 'w-16' },
+      { id: 'done', label: '✓', type: 'checkbox', width: 'w-10' }
+    ]
+  },
+  tasks: {
+    id: 'tasks',
+    name: 'Uppgifter',
+    icon: 'ClipboardList',
+    showSum: false,
+    columns: [
+      { id: 'task', label: 'Uppgift', type: 'text', width: 'flex-1' },
+      { id: 'who', label: 'Ansvarig', type: 'text', width: 'w-24' },
+      { id: 'done', label: '✓', type: 'checkbox', width: 'w-10' }
+    ]
+  },
+  shopping: {
+    id: 'shopping',
+    name: 'Inköpslista',
+    icon: 'ShoppingCart',
+    showSum: false,
+    columns: [
+      { id: 'item', label: 'Vara', type: 'text', width: 'flex-1' },
+      { id: 'qty', label: 'Antal', type: 'number', width: 'w-16' },
+      { id: 'done', label: '✓', type: 'checkbox', width: 'w-10' }
+    ]
+  },
+  guests: {
+    id: 'guests',
+    name: 'Gästlista',
+    icon: 'Users',
+    showSum: false,
+    columns: [
+      { id: 'name', label: 'Namn', type: 'text', width: 'flex-1' },
+      { id: 'note', label: 'Anteckning', type: 'text', width: 'w-32' },
+      { id: 'confirmed', label: '✓', type: 'checkbox', width: 'w-10' }
+    ]
+  },
+  contacts: {
+    id: 'contacts',
+    name: 'Kontakter',
+    icon: 'UserCircle',
+    showSum: false,
+    columns: [
+      { id: 'name', label: 'Namn', type: 'text', width: 'flex-1' },
+      { id: 'phone', label: 'Telefon', type: 'text', width: 'w-28' }
+    ]
+  }
+};
+
+export const TableBlock = ({ data, objectId, blockIndex, onUpdate }) => {
+  const template = TABLE_TEMPLATES[data.template] || TABLE_TEMPLATES.tasks;
+  const columns = data.columns || template.columns;
+  const rows = data.rows || [];
+
+  const handleCheckboxToggle = async (rowIndex, colId) => {
+    if (!onUpdate) return;
+    const newRows = rows.map((row, i) => 
+      i === rowIndex ? { ...row, [colId]: !row[colId] } : row
+    );
+    await onUpdate(objectId, blockIndex, { ...data, rows: newRows });
+  };
+
+  // Calculate sums for number columns (only if template allows it)
+  const sums = {};
+  const shouldShowSum = template.showSum !== false;
+  if (shouldShowSum) {
+    columns.forEach(col => {
+      if (col.type === 'number') {
+        sums[col.id] = rows.reduce((sum, row) => sum + (Number(row[col.id]) || 0), 0);
+      }
+    });
+  }
+  const hasNumberColumns = Object.keys(sums).length > 0;
+  const hasSums = Object.values(sums).some(s => s > 0);
+
+  // Count completed checkboxes
+  const checkboxCol = columns.find(c => c.type === 'checkbox');
+  const checkedCount = checkboxCol ? rows.filter(r => r[checkboxCol.id]).length : 0;
+  const totalCount = rows.length;
+
+  return (
+    <div className="bg-white/[0.03] rounded-xl overflow-hidden">
+      {/* Progress bar if has checkboxes */}
+      {checkboxCol && totalCount > 0 && (
+        <div className="flex items-center gap-3 px-4 py-2 border-b border-white/5">
+          <div className="h-1.5 w-20 bg-gray-800 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-gradient-to-r from-amber-500 to-orange-400 transition-all duration-300"
+              style={{ width: `${(checkedCount / totalCount) * 100}%` }}
+            />
+          </div>
+          <span className="text-xs text-gray-500">{checkedCount}/{totalCount}</span>
+        </div>
+      )}
+
+      {/* Table */}
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[300px]">
+          {/* Header */}
+          <thead>
+            <tr className="border-b border-white/10">
+              {columns.map(col => (
+                <th 
+                  key={col.id} 
+                  className={`px-3 py-2.5 text-left text-xs font-medium text-gray-400 uppercase tracking-wider ${col.width} ${col.type === 'checkbox' ? 'text-center' : ''} ${col.type === 'number' ? 'text-right' : ''}`}
+                >
+                  {col.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+
+          {/* Body */}
+          <tbody className="divide-y divide-white/5">
+            {rows.length === 0 ? (
+              <tr>
+                <td colSpan={columns.length} className="px-3 py-4 text-center text-sm text-gray-500">
+                  Inga rader ännu
+                </td>
+              </tr>
+            ) : (
+              rows.map((row, rowIndex) => (
+                <tr key={row.id || rowIndex} className="hover:bg-white/[0.02] transition-colors">
+                  {columns.map(col => (
+                    <td 
+                      key={col.id} 
+                      className={`px-3 py-2.5 ${col.width} ${col.type === 'number' ? 'text-right' : ''}`}
+                    >
+                      {col.type === 'checkbox' ? (
+                        <button
+                          onClick={() => handleCheckboxToggle(rowIndex, col.id)}
+                          className="w-full flex justify-center"
+                        >
+                          <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+                            row[col.id] ? 'bg-amber-500 border-amber-500' : 'border-gray-600 hover:border-amber-400'
+                          }`}>
+                            {row[col.id] && <Check size={14} className="text-white" />}
+                          </div>
+                        </button>
+                      ) : col.type === 'number' ? (
+                        <span className={`text-sm tabular-nums ${row[col.id] ? 'text-gray-200' : 'text-gray-500'}`}>
+                          {row[col.id] || '–'}
+                        </span>
+                      ) : col.id === 'phone' && row[col.id] ? (
+                        <a 
+                          href={`tel:${row[col.id].replace(/\s/g, '')}`}
+                          className="text-sm text-blue-400 hover:text-blue-300 underline"
+                        >
+                          {row[col.id]}
+                        </a>
+                      ) : (
+                        <span className={`text-sm ${row[col.id] ? 'text-gray-200' : 'text-gray-500'}`}>
+                          {row[col.id] || '–'}
+                        </span>
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              ))
+            )}
+          </tbody>
+
+          {/* Footer with sums */}
+          {hasNumberColumns && hasSums && (
+            <tfoot>
+              <tr className="border-t border-white/10 bg-white/[0.02]">
+                {columns.map((col, i) => (
+                  <td 
+                    key={col.id} 
+                    className={`px-3 py-2.5 ${col.width} ${col.type === 'number' ? 'text-right' : ''}`}
+                  >
+                    {i === 0 ? (
+                      <span className="text-xs font-medium text-gray-400 uppercase">Summa</span>
+                    ) : col.type === 'number' ? (
+                      <span className="text-sm font-semibold text-amber-400 tabular-nums">
+                        {sums[col.id]}
+                      </span>
+                    ) : null}
+                  </td>
+                ))}
+              </tr>
+            </tfoot>
+          )}
+        </table>
+      </div>
+    </div>
+  );
+};
+
 export const blockComponents = {
   title: TitleBlock,
   location: LocationBlock,
   image: ImageBlock,
   text: TextBlock,
   checklist: ChecklistBlock,
-  todo: TodoBlock
+  todo: TodoBlock,
+  links: LinksBlock,
+  table: TableBlock
 };

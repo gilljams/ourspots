@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Plus, Edit2, Trash2, Settings, ChevronDown, 
-  Share2, Users, UserMinus, Home
+  Share2, Users, UserMinus, Home, Link2, Table2
 } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -116,7 +116,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
   }
   
   const blocksToRender = rawBlocks.sort((a, b) => {
-    const order = { 'title': 0, 'image': 1, 'location': 2, 'text': 3, 'checklist': 3, 'todo': 3 };
+    const order = { 'title': 0, 'image': 1, 'location': 2, 'text': 3, 'checklist': 3, 'todo': 3, 'links': 3 };
     const aOrder = order[a.type] !== undefined ? order[a.type] : 4;
     const bOrder = order[b.type] !== undefined ? order[b.type] : 4;
     return aOrder - bOrder;
@@ -245,7 +245,11 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
                 const showBlockLabel = sameTypeBlocks.length > 1;
                 const customTitle = block.data?.title;
                 const shouldShowLabel = customTitle || showBlockLabel;
-                const isCollapsible = ['text', 'checklist', 'todo'].includes(block.type);
+                // Links are collapsible only if they have more than 1 link
+                const linksItemCount = block.type === 'links' ? (block.data?.items?.length || 0) : 0;
+                // Tables are always collapsible
+                const tableRowCount = block.type === 'table' ? (block.data?.rows?.length || 0) : 0;
+                const isCollapsible = ['text', 'checklist', 'todo', 'table'].includes(block.type) || (block.type === 'links' && linksItemCount > 1);
                 
                 // For location blocks, show delete if there are multiple AND user can edit
                 const locationBlocks = blocksToRender.filter(b => b.type === 'location' && !b.inherited);
@@ -299,12 +303,20 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
                               <polyline points="12 6 12 12 16 14"></polyline>
                             </svg>
                           )}
+                          {block.type === 'links' && (
+                            <Link2 size={14} className="text-purple-400" />
+                          )}
+                          {block.type === 'table' && (
+                            <Table2 size={14} className="text-amber-400" />
+                          )}
                           <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">
                             {customTitle ? customTitle : (
                               <>
                                 {block.type === 'text' && (showBlockLabel ? `Anteckning ${blockNumber}` : 'Anteckning')}
                                 {block.type === 'checklist' && (showBlockLabel ? `Checklista ${blockNumber}` : 'Checklista')}
                                 {block.type === 'todo' && (showBlockLabel ? `Att göra ${blockNumber}` : 'Att göra')}
+                                {block.type === 'links' && (showBlockLabel ? `Länkar ${blockNumber}` : `Länkar (${linksItemCount})`)}
+                                {block.type === 'table' && (showBlockLabel ? `Tabell ${blockNumber}` : `Tabell (${tableRowCount})`)}
                               </>
                             )}
                           </span>
