@@ -8,6 +8,17 @@ import {
   SlidersHorizontal, Menu, Filter, Share2, UserPlus, UserMinus, Users, Mail,
   FileText, CheckSquare, ClipboardList
 } from 'lucide-react';
+
+// Utils
+import { 
+  CLOUDINARY_CLOUD_NAME, 
+  CLOUDINARY_UPLOAD_PRESET, 
+  getTransformedImageUrl, 
+  getFocalPointStyles, 
+  resizeImage, 
+  extractGPSFromImage 
+} from './utils/imageUtils';
+import { getDistance, getObjectDistance as getObjectDistanceUtil, formatDistance } from './utils/geoUtils';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap, Tooltip, Popup } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
@@ -58,194 +69,6 @@ const createAreaIcon = (color) => {
     iconAnchor: [17, 35],
     popupAnchor: [0, -35],
   });
-};
-
-const CLOUDINARY_CLOUD_NAME = 'dkpwqradh';
-const CLOUDINARY_UPLOAD_PRESET = 'ourspots_unsigned';
-
-// Helper to transform Cloudinary URLs - only does basic resize, cropping handled by CSS
-const getTransformedImageUrl = (url, cropMode = 'auto', width = 800, height = 600, focalPoint = null) => {
-  if (!url || !url.includes('cloudinary.com')) return url; // Return non-Cloudinary URLs as-is
-  
-  // If we have a custom focal point, don't use Cloudinary cropping - we'll handle it with CSS
-  if (focalPoint && focalPoint.x !== undefined && focalPoint.y !== undefined) {
-    // Just resize, don't crop - CSS object-position will handle positioning
-    const transformation = `c_limit,w_${width * 2},h_${height * 2},q_auto`;
-    return url.replace('/upload/', `/upload/${transformation}/`);
-  }
-  
-  const gravityMap = {
-    'auto': 'g_auto',
-    'face': 'g_face', 
-    'center': 'g_center'
-  };
-  const gravity = gravityMap[cropMode] || 'g_auto';
-  const transformation = `c_fill,${gravity},w_${width},h_${height}`;
-  
-  // Insert transformation into Cloudinary URL
-  return url.replace('/upload/', `/upload/${transformation}/`);
-};
-
-// Helper to get CSS styles for focal point positioning
-const getFocalPointStyles = (focalPoint) => {
-  if (!focalPoint || focalPoint.x === undefined || focalPoint.y === undefined) {
-    return {};
-  }
-  return {
-    objectPosition: `${focalPoint.x}% ${focalPoint.y}%`,
-    transform: focalPoint.zoom ? `scale(${focalPoint.zoom})` : undefined
-  };
-};
-
-// Helper to resize image before upload
-const resizeImage = (file, maxSize = 2000, quality = 0.85) => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = document.createElement('img');
-      img.onload = () => {
-        let width = img.width;
-        let height = img.height;
-        
-        // Only resize if larger than maxSize
-        if (width <= maxSize && height <= maxSize) {
-          resolve(file);
-          return;
-        }
-        
-        // Calculate new dimensions
-        if (width > height) {
-          if (width > maxSize) {
-            height = (height * maxSize) / width;
-            width = maxSize;
-          }
-        } else {
-          if (height > maxSize) {
-            width = (width * maxSize) / height;
-            height = maxSize;
-          }
-        }
-        
-        // Create canvas and resize
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-        
-        // Convert to blob
-        canvas.toBlob((blob) => {
-          resolve(blob);
-        }, file.type, quality);
-      };
-      img.onerror = reject;
-      img.src = e.target.result;
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-};
-
-// Helper to extract GPS coordinates from image EXIF data
-const extractGPSFromImage = (file) => {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const view = new DataView(e.target.result);
-        
-        // Check for JPEG signature
-        if (view.getUint16(0, false) !== 0xFFD8) {
-          resolve(null);
-          return;
-        }
-        
-        let offset = 2;
-        const length = view.byteLength;
-        
-        // Find EXIF marker
-        while (offset < length) {
-          if (view.getUint16(offset, false) === 0xFFE1) {
-            const exifOffset = offset + 10;
-            
-            // Check for EXIF signature
-            if (view.getUint32(exifOffset - 6, false) !== 0x45786966) {
-              break;
-            }
-            
-            const littleEndian = view.getUint16(exifOffset, false) === 0x4949;
-            const gpsOffset = findGPSOffset(view, exifOffset, littleEndian);
-            
-            if (gpsOffset) {
-              const coords = parseGPS(view, gpsOffset, exifOffset, littleEndian);
-              resolve(coords);
-              return;
-            }
-          }
-          offset += 2 + view.getUint16(offset + 2, false);
-        }
-        resolve(null);
-      } catch (err) {
-        console.error('EXIF parsing error:', err);
-        resolve(null);
-      }
-    };
-    reader.onerror = () => resolve(null);
-    reader.readAsArrayBuffer(file);
-  });
-};
-
-const findGPSOffset = (view, exifOffset, littleEndian) => {
-  const ifdOffset = exifOffset + view.getUint32(exifOffset + 4, littleEndian);
-  const tags = view.getUint16(ifdOffset, littleEndian);
-  
-  for (let i = 0; i < tags; i++) {
-    const tagOffset = ifdOffset + 2 + (i * 12);
-    const tag = view.getUint16(tagOffset, littleEndian);
-    
-    // GPS IFD Pointer tag
-    if (tag === 0x8825) {
-      return exifOffset + view.getUint32(tagOffset + 8, littleEndian);
-    }
-  }
-  return null;
-};
-
-const parseGPS = (view, gpsOffset, exifOffset, littleEndian) => {
-  const tags = view.getUint16(gpsOffset, littleEndian);
-  let latRef, lat, lngRef, lng;
-  
-  for (let i = 0; i < tags; i++) {
-    const tagOffset = gpsOffset + 2 + (i * 12);
-    const tag = view.getUint16(tagOffset, littleEndian);
-    // Value offset is relative to TIFF header (exifOffset)
-    const valueOffset = exifOffset + view.getUint32(tagOffset + 8, littleEndian);
-    
-    if (tag === 1) { // GPSLatitudeRef
-      latRef = String.fromCharCode(view.getUint8(tagOffset + 8));
-    } else if (tag === 2) { // GPSLatitude
-      lat = parseGPSCoordinate(view, valueOffset, littleEndian);
-    } else if (tag === 3) { // GPSLongitudeRef
-      lngRef = String.fromCharCode(view.getUint8(tagOffset + 8));
-    } else if (tag === 4) { // GPSLongitude
-      lng = parseGPSCoordinate(view, valueOffset, littleEndian);
-    }
-  }
-  
-  if (lat && lng) {
-    return {
-      lat: latRef === 'S' ? -lat : lat,
-      lng: lngRef === 'W' ? -lng : lng
-    };
-  }
-  return null;
-};
-
-const parseGPSCoordinate = (view, offset, littleEndian) => {
-  const deg = view.getUint32(offset, littleEndian) / view.getUint32(offset + 4, littleEndian);
-  const min = view.getUint32(offset + 8, littleEndian) / view.getUint32(offset + 12, littleEndian);
-  const sec = view.getUint32(offset + 16, littleEndian) / view.getUint32(offset + 20, littleEndian);
-  return deg + min / 60 + sec / 3600;
 };
 
 // Helper to get icon component from string name
@@ -3648,26 +3471,8 @@ function App() {
   const seedingRef = useRef(false);
   const wakeLockRef = useRef(null);
 
-  // Distance helper (Haversine formula)
-  const getDistance = (lat1, lng1, lat2, lng2) => {
-    const R = 6371; // km
-    const dLat = ((lat2 - lat1) * Math.PI) / 180;
-    const dLng = ((lng2 - lng1) * Math.PI) / 180;
-    const a = Math.sin(dLat/2)*Math.sin(dLat/2) + 
-              Math.cos((lat1*Math.PI)/180)*Math.cos((lat2*Math.PI)/180)*
-              Math.sin(dLng/2)*Math.sin(dLng/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
-  };
-
-  const getObjectDistance = (obj) => {
-    if (!userLocation) return undefined;
-    const locBlock = obj.blocks?.find(b => b.type === 'location');
-    if (locBlock?.data?.lat && locBlock?.data?.lng) {
-      return getDistance(userLocation.lat, userLocation.lng, locBlock.data.lat, locBlock.data.lng);
-    }
-    return undefined;
-  };
+  // Wrapper to use imported distance function with userLocation state
+  const getObjectDistance = (obj) => getObjectDistanceUtil(obj, userLocation);
 
   // Save sortByDistance preference
   useEffect(() => {

@@ -1,5 +1,15 @@
 {
   "projects": {
     "default": "ourspots-b536b"
-  }
+  },
+  "targets": {
+    "ourspots-b536b": {
+      "hosting": {
+        "myapp": [
+          "ourspots-b536b"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }
