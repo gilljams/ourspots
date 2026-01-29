@@ -7,7 +7,7 @@ import {
   Bike, Dumbbell, Waves, TreePine, Shell, Sprout, RotateCcw, Target, Lightbulb,
   SlidersHorizontal, Menu, Filter, Share2, UserPlus, UserMinus, Users, Mail
 } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, useMapEvents, Tooltip, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap, Tooltip, Popup } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -36,16 +36,14 @@ const createColoredIcon = (color) => {
 
 const createUserIcon = () => {
   return L.divIcon({
-    html: `<div style="width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); border: 3px solid white; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4), inset 0 0 0 2px #1E40AF; display: flex; align-items: center; justify-content: center; position: relative;">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" style="position: absolute;">
-        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-        <circle cx="12" cy="7" r="4"></circle>
-      </svg>
+    html: `<div class="user-position-marker" style="width: 20px; height: 20px; border-radius: 50%; background: #3B82F6; border: 3px solid white; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3), 0 2px 8px rgba(0,0,0,0.3); position: relative;">
+      <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 8px; height: 8px; background: white; border-radius: 50%;"></div>
+      <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 40px; height: 40px; border-radius: 50%; border: 2px solid rgba(59, 130, 246, 0.4); animation: pulse 2s infinite;"></div>
     </div>`,
     className: 'user-position-icon',
-    iconSize: [30, 30],
-    iconAnchor: [15, 30],
-    popupAnchor: [0, -30],
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+    popupAnchor: [0, -10],
   });
 };
 
@@ -2037,8 +2035,30 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
   );
 }
 
-function MapView({ objects, onSelectObject, currentUser, userLocation, categories, mapCenter }) {
+function MapView({ objects, onSelectObject, currentUser, userLocation, categories, mapCenter, showFilters }) {
   const [hasRequestedPermission, setHasRequestedPermission] = useState(false);
+  const [mapHeight, setMapHeight] = useState('70vh');
+  const containerRef = useRef(null);
+
+  // Calculate available height dynamically
+  useEffect(() => {
+    const updateHeight = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        const availableHeight = window.innerHeight - rect.top - 24; // 24px bottom padding
+        setMapHeight(`${Math.max(300, availableHeight)}px`);
+      }
+    };
+    
+    // Initial calculation with small delay to ensure DOM is ready
+    const timer = setTimeout(updateHeight, 50);
+    window.addEventListener('resize', updateHeight);
+    
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', updateHeight);
+    };
+  }, [showFilters]);
 
   // Helper to get all positions for an object (can have multiple location blocks)
   const getObjectPositions = (obj) => {
@@ -2103,12 +2123,17 @@ function MapView({ objects, onSelectObject, currentUser, userLocation, categorie
     });
   });
 
-  const center = markersData.length > 0
-    ? [
-        markersData.reduce((sum, m) => sum + m._position.lat, 0) / markersData.length,
-        markersData.reduce((sum, m) => sum + m._position.lng, 0) / markersData.length
-      ]
-    : [59.33, 18.06];
+  // Priority: 1. mapCenter (from clicking object), 2. userLocation, 3. average of markers, 4. Stockholm
+  const defaultCenter = userLocation 
+    ? [userLocation.lat, userLocation.lng]
+    : markersData.length > 0
+      ? [
+          markersData.reduce((sum, m) => sum + m._position.lat, 0) / markersData.length,
+          markersData.reduce((sum, m) => sum + m._position.lng, 0) / markersData.length
+        ]
+      : [59.33, 18.06];
+  
+  const center = defaultCenter;
 
   const isTouchDevice = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
 
@@ -2265,14 +2290,14 @@ function MapView({ objects, onSelectObject, currentUser, userLocation, categorie
   };
 
   return (
-    <div className="w-full relative z-10 rounded-xl overflow-hidden border border-white/10 shadow-2xl bg-gray-900/80 transition-all duration-300" style={{ height: 'calc(100vh - 200px)' }}>
-      <MapContainer center={mapCenter || center} zoom={mapCenter ? 14 : (markersData.length > 0 ? 7 : 6)} style={{ height: '100%', width: '100%' }} key={mapCenter ? `${mapCenter.lat}-${mapCenter.lng}` : 'default'}>
+    <div ref={containerRef} className="w-full relative z-10 rounded-xl overflow-hidden border border-white/10 shadow-2xl bg-gray-900/80 transition-all duration-300" style={{ height: mapHeight }}>
+      <MapContainer center={mapCenter || center} zoom={mapCenter ? 14 : (userLocation ? 13 : (markersData.length > 0 ? 7 : 6))} style={{ height: '100%', width: '100%' }} key={mapCenter ? `${mapCenter.lat}-${mapCenter.lng}` : (userLocation ? `user-${userLocation.lat}-${userLocation.lng}` : 'default')}>
         <TileLayer
           attribution='&copy; <a href="https://carto.com/">CARTO</a>'
           url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
         />
         {userLocation && (
-          <Marker position={[userLocation.lat, userLocation.lng]} icon={createUserIcon()}>
+          <Marker position={[userLocation.lat, userLocation.lng]} icon={createUserIcon()} zIndexOffset={1000}>
             <Tooltip permanent={false} direction="top">Din plats</Tooltip>
           </Marker>
         )}
@@ -2289,9 +2314,23 @@ function MapView({ objects, onSelectObject, currentUser, userLocation, categorie
           ))}
         </MarkerClusterGroup>
         <CenterOnLocationButton />
+        <InvalidateSizeOnChange showFilters={showFilters} />
       </MapContainer>
     </div>
   );
+}
+
+// Component to invalidate map size when filters change
+function InvalidateSizeOnChange({ showFilters }) {
+  const map = useMap();
+  useEffect(() => {
+    // Small delay to let DOM update, then invalidate
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [showFilters, map]);
+  return null;
 }
 
 function MapPicker({ onSelect, onClose, initialPosition, userLocation }) {
@@ -4396,6 +4435,7 @@ function App() {
       blocks: obj.blocks.map((b, i) => i === blockIndex ? { ...b, data: newBlockData } : b)
     });
 
+    // Optimistic update
     setObjects(prev => prev.map(obj => obj.id === objectId ? applyBlockUpdate(obj) : obj));
     setSelectedObject(prev => (prev && prev.id === objectId) ? applyBlockUpdate(prev) : prev);
 
@@ -4405,7 +4445,7 @@ function App() {
       const updatedBlocks = obj.blocks.map((b, i) => i === blockIndex ? { ...b, data: newBlockData } : b);
       await updateDoc(doc(db, 'objects', objectId), { blocks: updatedBlocks, updatedAt: Timestamp.now() });
     } catch (err) {
-      console.error('Error updating block:', err);
+      // Silently fail - optimistic update already applied
     }
   };
 
@@ -4482,7 +4522,8 @@ function App() {
       
       await updateDoc(doc(db, 'objects', obj.id), {
         [`shares.${emailKey}`]: deleteField(),
-        sharedWithEmails: arrayRemove(userEmail)
+        sharedWithEmails: arrayRemove(userEmail),
+        acceptedShareEmails: arrayRemove(userEmail)
       });
       
       setSelectedObject(null);
@@ -4599,9 +4640,11 @@ function App() {
                         onClick={async () => {
                           try {
                             const emailKey = emailToKey(user.email.toLowerCase());
+                            const userEmail = user.email.toLowerCase();
                             await updateDoc(doc(db, 'objects', obj.id), {
                               [`shares.${emailKey}.status`]: 'accepted',
-                              [`shares.${emailKey}.respondedAt`]: Timestamp.now()
+                              [`shares.${emailKey}.respondedAt`]: Timestamp.now(),
+                              acceptedShareEmails: arrayUnion(userEmail)
                             });
                             if (pendingInvitations.length === 1) setShowInvitations(false);
                           } catch (err) {
@@ -4619,7 +4662,8 @@ function App() {
                             const userEmail = user.email.toLowerCase();
                             await updateDoc(doc(db, 'objects', obj.id), {
                               [`shares.${emailKey}`]: deleteField(),
-                              sharedWithEmails: arrayRemove(userEmail)
+                              sharedWithEmails: arrayRemove(userEmail),
+                              acceptedShareEmails: arrayRemove(userEmail)
                             });
                             if (pendingInvitations.length === 1) setShowInvitations(false);
                           } catch (err) {
@@ -4805,7 +4849,7 @@ function App() {
             )}
           </div>
         ) : (
-          <MapView objects={filteredObjects} onSelectObject={setSelectedObject} currentUser={user} userLocation={userLocation} categories={categories} mapCenter={mapCenter} />
+          <MapView objects={filteredObjects} onSelectObject={setSelectedObject} currentUser={user} userLocation={userLocation} categories={categories} mapCenter={mapCenter} showFilters={showFilters} />
         )}
       </main>
 
@@ -4827,6 +4871,9 @@ function App() {
                   setViewMode(newMode);
                   if (newMode === 'map') {
                     window.scrollTo(0, 0);
+                  } else {
+                    // Clear mapCenter when leaving map view so next open focuses on user location
+                    setMapCenter(null);
                   }
                 }}
                 className="fixed bottom-24 right-6 w-14 h-14 bg-gray-800/90 hover:bg-gray-700 backdrop-blur-sm rounded-2xl shadow-xl flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 z-[1200] border border-white/10"

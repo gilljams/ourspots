@@ -52,7 +52,24 @@ input, textarea, select {
   }
 }
 
-/* Ensure user marker is always on top of other markers */
+/* Pulse animation for user location marker */
+@keyframes pulse {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.5);
+    opacity: 0.3;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2);
+    opacity: 0;
+  }
+}
+
+/* Ensure user marker is always on top of other markers visually, but click-through */
 .user-position-icon {
   z-index: 1000 !important;
+  pointer-events: none !important;
 }
