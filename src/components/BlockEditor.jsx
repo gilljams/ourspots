@@ -466,7 +466,7 @@ function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }
       </div>
       <input
         type="text"
-        defaultValue={block.title}
+        value={title}
         onChange={(e) => setTitle(e.target.value)}
         onBlur={syncTitle}
         placeholder="Rubrik (valfritt)"
@@ -475,7 +475,7 @@ function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }
       />
       <div className="relative">
         <textarea
-          defaultValue={block.content}
+          value={content}
           onChange={(e) => setContent(e.target.value)}
           onBlur={syncContent}
           placeholder={block.type === 'text' ? 'Skriv text här...' : 'En per rad'}
