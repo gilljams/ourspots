@@ -741,6 +741,7 @@ function App() {
             if (shareData.includeChildren) {
               inheritedShares[emailKey] = {
                 ...shareData,
+                status: 'inherited', // Use 'inherited' status - no notification needed
                 includeChildren: false, // Children don't cascade further
                 inheritedFrom: objectData.parentId
               };
@@ -1324,7 +1325,7 @@ function App() {
           object={showShareModal}
           onClose={() => setShowShareModal(null)}
           currentUserEmail={user?.email?.toLowerCase()}
-          childObjects={objects.filter(o => o.parentId === showShareModal.id)}
+          allObjects={objects}
         />
       )}
 

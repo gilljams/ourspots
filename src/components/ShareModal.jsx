@@ -1,16 +1,30 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Share2, X, Mail, Loader, UserPlus, UserMinus, Users } from 'lucide-react';
 import { doc, updateDoc, onSnapshot, Timestamp, deleteField, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from '../firebase';
 import { emailToKey, keyToEmail } from '../utils/iconHelpers';
 
-function ShareModal({ object, onClose, currentUserEmail, childObjects = [] }) {
+function ShareModal({ object, onClose, currentUserEmail, allObjects = [] }) {
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('viewer');
   const [includeChildren, setIncludeChildren] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [shares, setShares] = useState(object.shares || {});
+  
+  // Get all descendants recursively (children, grandchildren, etc.)
+  const allDescendants = useMemo(() => {
+    const descendants = [];
+    const findDescendants = (parentId) => {
+      const children = allObjects.filter(o => o.parentId === parentId);
+      children.forEach(child => {
+        descendants.push(child);
+        findDescendants(child.id); // Recurse into grandchildren
+      });
+    };
+    findDescendants(object.id);
+    return descendants;
+  }, [object.id, allObjects]);
   
   // Swipe to close state
   const [touchStart, setTouchStart] = useState(null);
@@ -131,22 +145,22 @@ function ShareModal({ object, onClose, currentUserEmail, childObjects = [] }) {
         sharedWithEmails: arrayUnion(trimmedEmail)
       });
 
-      // If includeChildren, also share with all child objects
-      if (includeChildren && childObjects.length > 0) {
-        const childShareData = {
+      // If includeChildren, also share with all descendants (children, grandchildren, etc.)
+      if (includeChildren && allDescendants.length > 0) {
+        const descendantShareData = {
           email: trimmedEmail,
           role,
-          status: 'pending',
-          includeChildren: false, // Children don't cascade further
+          status: 'inherited', // Use 'inherited' instead of 'pending' - no separate notification needed
+          includeChildren: false, // Descendants don't cascade further
           invitedAt: Timestamp.now(),
           respondedAt: null,
-          inheritedFrom: object.id // Track that this was inherited
+          inheritedFrom: object.id // Track that this was inherited from parent
         };
 
-        // Update all children in parallel
-        await Promise.all(childObjects.map(child =>
-          updateDoc(doc(db, 'objects', child.id), {
-            [`shares.${emailKey}`]: childShareData,
+        // Update all descendants in parallel
+        await Promise.all(allDescendants.map(descendant =>
+          updateDoc(doc(db, 'objects', descendant.id), {
+            [`shares.${emailKey}`]: descendantShareData,
             sharedWithEmails: arrayUnion(trimmedEmail)
           })
         ));
@@ -172,10 +186,10 @@ function ShareModal({ object, onClose, currentUserEmail, childObjects = [] }) {
         sharedWithEmails: arrayRemove(displayEmail)
       });
 
-      // If this share included children, also remove from children
-      if (shareData?.includeChildren && childObjects.length > 0) {
-        await Promise.all(childObjects.map(child =>
-          updateDoc(doc(db, 'objects', child.id), {
+      // If this share included children, also remove from all descendants
+      if (shareData?.includeChildren && allDescendants.length > 0) {
+        await Promise.all(allDescendants.map(descendant =>
+          updateDoc(doc(db, 'objects', descendant.id), {
             [`shares.${emailKey}`]: deleteField(),
             sharedWithEmails: arrayRemove(displayEmail)
           })
@@ -194,10 +208,10 @@ function ShareModal({ object, onClose, currentUserEmail, childObjects = [] }) {
         [`shares.${emailKey}.role`]: newRole
       });
 
-      // If this share included children, also update children
-      if (shareData?.includeChildren && childObjects.length > 0) {
-        await Promise.all(childObjects.map(child =>
-          updateDoc(doc(db, 'objects', child.id), {
+      // If this share included children, also update all descendants
+      if (shareData?.includeChildren && allDescendants.length > 0) {
+        await Promise.all(allDescendants.map(descendant =>
+          updateDoc(doc(db, 'objects', descendant.id), {
             [`shares.${emailKey}.role`]: newRole
           })
         ));
