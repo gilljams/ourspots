@@ -284,7 +284,9 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
     }
     
     // Preserve extra location blocks (e.g., mushroom spots added via quick capture)
-    if (isEdit && extraLocationBlocks.length > 0) {
+    // For edit: keep the extra locations from the original object
+    // For duplicate: copy ALL locations from source (so the copy also gets mushroom spots)
+    if ((isEdit || isDuplicate) && extraLocationBlocks.length > 0) {
       extraLocationBlocks.forEach(locBlock => {
         blocks.push({ type: 'location', data: locBlock.data });
       });
