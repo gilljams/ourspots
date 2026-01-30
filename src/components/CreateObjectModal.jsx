@@ -395,25 +395,13 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
 
   // ========== RENDER ==========
   
-  // Helper to blur any focused element (fixes iOS touch issues)
-  const blurActiveElement = () => {
-    if (document.activeElement && document.activeElement.blur) {
-      document.activeElement.blur();
-    }
-  };
-  
   return (
     <>
       {/* Backdrop */}
       <div 
         className="fixed inset-0 bg-black/80 z-[1000] flex items-end sm:items-center justify-center sm:p-8"
         onClick={(e) => { 
-          blurActiveElement();
           if (!saving && e.target === e.currentTarget) onClose(); 
-        }}
-        onTouchStart={(e) => {
-          // Blur on touch outside inputs to release iOS focus
-          if (e.target === e.currentTarget) blurActiveElement();
         }}
       >
         {/* Modal */}
