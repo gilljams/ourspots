@@ -666,18 +666,24 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                 type="button" 
                 onClick={onClose} 
                 disabled={saving} 
-                className="flex-1 px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10"
+                className="flex-1 px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 active:bg-white/20 touch-manipulation"
               >
                 Avbryt
               </button>
               <button 
                 type="button" 
-                onClick={handleSubmit}
+                onClick={(e) => {
+                  // Blur any focused input first to ensure iOS processes the click
+                  if (document.activeElement && document.activeElement.blur) {
+                    document.activeElement.blur();
+                  }
+                  handleSubmit(e);
+                }}
                 disabled={saving || (isEdit && !hasChanges)} 
-                className={`flex-1 px-6 py-3 rounded-xl font-medium flex items-center justify-center gap-2 ${
+                className={`flex-1 px-6 py-3 rounded-xl font-medium flex items-center justify-center gap-2 touch-manipulation ${
                   isEdit && !hasChanges 
                     ? 'bg-gray-600 text-gray-400' 
-                    : 'bg-blue-500 hover:bg-blue-600 text-white'
+                    : 'bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white'
                 }`}
               >
                 {saving ? (
