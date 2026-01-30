@@ -519,15 +519,15 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                     disabled={saving} 
                     className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500"
                   />
-                  <div className="flex gap-2">
+                  <div className="flex gap-3">
                     <button
                       type="button"
                       onClick={handleGPSCapture}
                       disabled={saving || capturingGPS}
-                      className="flex-1 px-3 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 flex items-center justify-center gap-1.5"
+                      className="flex-1 px-3 py-3.5 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 active:bg-white/20 flex items-center justify-center gap-2 touch-manipulation"
                     >
-                      <Navigation size={16} className={capturingGPS ? 'animate-pulse' : ''} />
-                      <span className="text-sm">
+                      <Navigation size={18} className={capturingGPS ? 'animate-pulse' : ''} />
+                      <span className="text-sm font-medium">
                         {capturingGPS ? (gpsAccuracy ? `±${gpsAccuracy}m` : '...') : 'Min plats'}
                       </span>
                     </button>
@@ -535,20 +535,20 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                       type="button"
                       onClick={() => setShowMapPicker(true)}
                       disabled={saving}
-                      className="flex-1 px-3 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 flex items-center justify-center gap-1.5"
+                      className="flex-1 px-3 py-3.5 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 active:bg-white/20 flex items-center justify-center gap-2 touch-manipulation"
                     >
-                      <MapIcon size={16} />
-                      <span className="text-sm">På karta</span>
+                      <MapIcon size={18} />
+                      <span className="text-sm font-medium">På karta</span>
                     </button>
                     {originalImageFile && (
                       <button
                         type="button"
                         onClick={handleExtractGPSFromImage}
                         disabled={saving || extractingGPS}
-                        className="flex-1 px-3 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 flex items-center justify-center gap-1.5"
+                        className="flex-1 px-3 py-3.5 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 active:bg-white/20 flex items-center justify-center gap-2 touch-manipulation"
                       >
-                        <ImageIcon size={16} className={extractingGPS ? 'animate-pulse' : ''} />
-                        <span className="text-sm">{extractingGPS ? '...' : 'Från bild'}</span>
+                        <ImageIcon size={18} className={extractingGPS ? 'animate-pulse' : ''} />
+                        <span className="text-sm font-medium">{extractingGPS ? '...' : 'Från bild'}</span>
                       </button>
                     )}
                   </div>
