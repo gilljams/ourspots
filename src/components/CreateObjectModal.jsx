@@ -444,16 +444,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
           </div>
 
           {/* Scrollable Content */}
-          <div 
-            className="flex-1 overflow-y-auto p-4 space-y-6"
-            onTouchStart={(e) => {
-              // If touching empty space (not an input/button), blur to release iOS focus lock
-              const tag = e.target.tagName.toLowerCase();
-              if (!['input', 'textarea', 'button', 'select'].includes(tag) && !e.target.closest('button')) {
-                blurActiveElement();
-              }
-            }}
-          >
+          <div className="flex-1 overflow-y-auto p-4 space-y-6">
             
             {/* Category selector */}
             <div>
