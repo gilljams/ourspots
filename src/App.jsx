@@ -756,8 +756,46 @@ function App() {
       }
       
       if (editId) {
+        // Check if parent changed - need to update descendants' ancestorIds
+        const existingObj = objects.find(o => o.id === editId);
+        const parentChanged = existingObj?.parentId !== objectData.parentId;
+        
         // Update existing
         await updateDoc(doc(db, 'objects', editId), { ...dataWithPath, updatedAt: Timestamp.now() });
+        
+        // If parent changed, update all descendants' ancestorIds
+        if (parentChanged) {
+          const descendants = objects.filter(o => o.ancestorIds?.includes(editId));
+          if (descendants.length > 0) {
+            // New ancestor path for the edited object
+            const newAncestorBase = [...ancestorIds, editId];
+            
+            await Promise.all(descendants.map(async (desc) => {
+              // Find where editId is in the descendant's ancestorIds
+              const editIdIndex = desc.ancestorIds.indexOf(editId);
+              if (editIdIndex !== -1) {
+                // Replace everything before editId with new ancestor path
+                const descendantSuffix = desc.ancestorIds.slice(editIdIndex + 1);
+                const newDescAncestorIds = [...newAncestorBase, ...descendantSuffix];
+                
+                // Also rebuild parentPath names
+                const newParentPath = [];
+                for (const ancId of newDescAncestorIds) {
+                  const anc = objects.find(o => o.id === ancId);
+                  if (anc) {
+                    const name = anc.blocks?.find(b => b.type === 'title')?.data?.text;
+                    if (name) newParentPath.push(name);
+                  }
+                }
+                
+                await updateDoc(doc(db, 'objects', desc.id), {
+                  ancestorIds: newDescAncestorIds,
+                  parentPath: newParentPath
+                });
+              }
+            }));
+          }
+        }
       } else {
         // Create new - use Promise.race with timeout
         const newObjectData = { 
