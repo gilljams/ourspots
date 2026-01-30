@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, Plus, Upload, Loader, Navigation, 
-  Map as MapIcon, FileText, CheckSquare, ClipboardList, Link2, Table2 
+  Map as MapIcon, FileText, CheckSquare, ClipboardList, Link2, Table2, Image as ImageIcon 
 } from 'lucide-react';
 import { 
   CLOUDINARY_CLOUD_NAME, 
@@ -70,6 +70,8 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
   const [showMapPicker, setShowMapPicker] = useState(false);
   const [showFocalPointPicker, setShowFocalPointPicker] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [originalImageFile, setOriginalImageFile] = useState(null);
+  const [extractingGPS, setExtractingGPS] = useState(false);
 
   // Refs
   const fileInputRef = useRef(null);
@@ -81,6 +83,8 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
   // ========== COMPUTED ==========
   const selectedParent = availableParents.find(p => p.id === parentId);
   const parentHasLocation = selectedParent?.blocks?.some(b => b.type === 'location');
+  const selectedCategory = categories.find(c => c.id === selectedType);
+  const hideLocation = selectedCategory?.hideLocation || false;
   
   // For edit mode, form is changed if it's been touched
   // For create mode, always allow submit
@@ -182,21 +186,35 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
     setFormTouched(true);
   };
 
+  const handleExtractGPSFromImage = async () => {
+    if (!originalImageFile || extractingGPS) return;
+    
+    setExtractingGPS(true);
+    try {
+      const gpsData = await extractGPSFromImage(originalImageFile);
+      if (gpsData) {
+        setLat(gpsData.lat);
+        setLng(gpsData.lng);
+        setFormTouched(true);
+      } else {
+        alert('Ingen platsdata hittades i bilden.');
+      }
+    } catch (e) {
+      alert('Kunde inte läsa platsdata från bilden.');
+    } finally {
+      setExtractingGPS(false);
+    }
+  };
+
   const handleImageFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file || uploadingImage) return;
 
+    // Store original file for potential GPS extraction later
+    setOriginalImageFile(file);
+
     setUploadingImage(true);
     try {
-      try {
-        const gpsData = await extractGPSFromImage(file);
-        if (gpsData && lat === null && lng === null) {
-          setLat(gpsData.lat);
-          setLng(gpsData.lng);
-          setFormTouched(true);
-        }
-      } catch (e) { /* ignore */ }
-
       let fileToUpload = file;
       try {
         const resizedBlob = await resizeImage(file, 2000, 0.85);
@@ -430,7 +448,7 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
             </div>
 
             {/* Inherit location checkbox */}
-            {parentId && parentHasLocation && (
+            {!hideLocation && parentId && parentHasLocation && (
               <div className="flex items-center gap-2 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
                 <input 
                   type="checkbox" 
@@ -447,7 +465,7 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
             )}
 
             {/* Location */}
-            {!inheritLocation && (
+            {!hideLocation && !inheritLocation && (
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">Plats</label>
                 <div className="space-y-3">
@@ -464,22 +482,33 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
                       type="button"
                       onClick={handleGPSCapture}
                       disabled={saving || capturingGPS}
-                      className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 flex items-center justify-center gap-2"
+                      className="flex-1 px-3 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 flex items-center justify-center gap-1.5"
                     >
-                      <Navigation size={18} className={capturingGPS ? 'animate-pulse' : ''} />
+                      <Navigation size={16} className={capturingGPS ? 'animate-pulse' : ''} />
                       <span className="text-sm">
-                        {capturingGPS ? (gpsAccuracy ? `±${gpsAccuracy}m...` : 'Hämtar...') : 'Använd min plats'}
+                        {capturingGPS ? (gpsAccuracy ? `±${gpsAccuracy}m` : '...') : 'Min plats'}
                       </span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setShowMapPicker(true)}
                       disabled={saving}
-                      className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 flex items-center justify-center gap-2"
+                      className="flex-1 px-3 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 flex items-center justify-center gap-1.5"
                     >
-                      <MapIcon size={18} />
-                      <span className="text-sm">Markera på karta</span>
+                      <MapIcon size={16} />
+                      <span className="text-sm">På karta</span>
                     </button>
+                    {originalImageFile && (
+                      <button
+                        type="button"
+                        onClick={handleExtractGPSFromImage}
+                        disabled={saving || extractingGPS}
+                        className="flex-1 px-3 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 flex items-center justify-center gap-1.5"
+                      >
+                        <ImageIcon size={16} className={extractingGPS ? 'animate-pulse' : ''} />
+                        <span className="text-sm">{extractingGPS ? '...' : 'Från bild'}</span>
+                      </button>
+                    )}
                   </div>
                   {lat !== null && lng !== null && (
                     <div className="flex items-center justify-between text-xs text-gray-500 bg-white/5 p-2 rounded-lg">
@@ -506,7 +535,7 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
                     <img src={imageUrl} alt="Preview" className="w-full h-full object-cover" />
                     <button
                       type="button"
-                      onClick={() => { setImageUrl(''); setImageFocalPoint(null); setFormTouched(true); }}
+                      onClick={() => { setImageUrl(''); setImageFocalPoint(null); setOriginalImageFile(null); setFormTouched(true); }}
                       className="absolute top-2 right-2 bg-red-500/80 hover:bg-red-600 text-white p-2 rounded-lg"
                     >
                       <X size={16} />

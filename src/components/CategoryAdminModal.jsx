@@ -1,14 +1,15 @@
 import React, { useState, useRef } from 'react';
-import { Settings, ArrowUp, ArrowDown, Edit2, Trash2 } from 'lucide-react';
+import { Settings, ArrowUp, ArrowDown, Edit2, Trash2, ChevronDown } from 'lucide-react';
 import { doc, setDoc, updateDoc, deleteDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { AVAILABLE_ICONS, getIconComponent } from '../utils/iconHelpers';
 
 function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
   const [editingCategory, setEditingCategory] = useState(null);
-  const [newCategory, setNewCategory] = useState({ label: '', icon: 'Home', color: '#6B7280' });
+  const [newCategory, setNewCategory] = useState({ label: '', icon: 'Home', color: '#6B7280', hideLocation: false });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [showIconPicker, setShowIconPicker] = useState(null); // 'new' or 'edit'
   
   // Swipe to close state
   const [touchStart, setTouchStart] = useState(null);
@@ -82,11 +83,12 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
         label: newCategory.label.trim(),
         icon: newCategory.icon,
         color: newCategory.color,
+        hideLocation: newCategory.hideLocation || false,
         order: maxOrder + 1,
         createdAt: Timestamp.now(),
         createdBy: currentUser.uid
       });
-      setNewCategory({ label: '', icon: 'Home', color: '#6B7280' });
+      setNewCategory({ label: '', icon: 'Home', color: '#6B7280', hideLocation: false });
     } catch (err) {
       console.error('Error saving category:', err);
       alert('Kunde inte spara kategori');
@@ -214,21 +216,47 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div>
+                <div className="relative">
                   <label className="block text-sm text-gray-300 mb-1">Ikon</label>
-                  <select
-                    value={newCategory.icon}
-                    onChange={(e) => setNewCategory({ ...newCategory, icon: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-white/10 text-white focus:outline-none focus:border-blue-400"
-                    style={{ colorScheme: 'dark' }}
+                  <button
+                    type="button"
+                    onClick={() => setShowIconPicker(showIconPicker === 'new' ? null : 'new')}
+                    className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white flex items-center justify-between hover:bg-white/10 transition-colors"
                   >
-                    {AVAILABLE_ICONS.map(icon => {
-                      const IconComp = getIconComponent(icon.name);
-                      return (
-                        <option key={icon.name} value={icon.name}>{icon.label}</option>
-                      );
-                    })}
-                  </select>
+                    <div className="flex items-center gap-2">
+                      {React.createElement(getIconComponent(newCategory.icon), { size: 18, className: 'text-gray-300' })}
+                      <span className="text-sm">{AVAILABLE_ICONS.find(i => i.name === newCategory.icon)?.label || 'Välj'}</span>
+                    </div>
+                    <ChevronDown size={16} className={`text-gray-400 transition-transform ${showIconPicker === 'new' ? 'rotate-180' : ''}`} />
+                  </button>
+                  {showIconPicker === 'new' && (
+                    <div className="absolute z-50 top-full left-0 right-0 mt-1 p-2 rounded-lg bg-gray-800 border border-white/20 shadow-xl max-h-48 overflow-y-auto">
+                      <div className="grid grid-cols-4 gap-1">
+                        {AVAILABLE_ICONS.map(icon => {
+                          const IconComp = getIconComponent(icon.name);
+                          const isSelected = newCategory.icon === icon.name;
+                          return (
+                            <button
+                              key={icon.name}
+                              type="button"
+                              onClick={() => {
+                                setNewCategory({ ...newCategory, icon: icon.name });
+                                setShowIconPicker(null);
+                              }}
+                              className={`p-2 rounded-lg transition-all flex flex-col items-center gap-1 ${
+                                isSelected
+                                  ? 'bg-blue-500/30 border border-blue-500'
+                                  : 'hover:bg-white/10'
+                              }`}
+                            >
+                              <IconComp size={20} className={isSelected ? 'text-blue-400' : 'text-gray-300'} />
+                              <span className="text-[10px] text-gray-400 truncate w-full text-center">{icon.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm text-gray-300 mb-1">Färg</label>
@@ -244,6 +272,18 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
                 {React.createElement(getIconComponent(newCategory.icon), { size: 20, style: { color: newCategory.color } })}
                 <span className="text-gray-300 text-sm">Förhandsgranskning</span>
               </div>
+              <label className="flex items-center gap-3 p-3 rounded-lg bg-white/5 border border-white/10 cursor-pointer hover:bg-white/10 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={newCategory.hideLocation}
+                  onChange={(e) => setNewCategory({ ...newCategory, hideLocation: e.target.checked })}
+                  className="w-4 h-4 rounded"
+                />
+                <div>
+                  <span className="text-sm text-gray-200">Platsoberoende (listor)</span>
+                  <p className="text-xs text-gray-500">Döljer GPS och kartfunktioner</p>
+                </div>
+              </label>
               <button
                 onClick={handleSaveCategory}
                 disabled={!newCategory.label.trim() || saving}
@@ -277,18 +317,47 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
                           />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
-                          <div>
+                          <div className="relative">
                             <label className="block text-sm text-gray-300 mb-1">Ikon</label>
-                            <select
-                              value={editingCategory.icon}
-                              onChange={(e) => setEditingCategory({ ...editingCategory, icon: e.target.value })}
-                              className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-white/10 text-white focus:outline-none focus:border-blue-400"
-                              style={{ colorScheme: 'dark' }}
+                            <button
+                              type="button"
+                              onClick={() => setShowIconPicker(showIconPicker === 'edit' ? null : 'edit')}
+                              className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white flex items-center justify-between hover:bg-white/10 transition-colors"
                             >
-                              {AVAILABLE_ICONS.map(icon => (
-                                <option key={icon.name} value={icon.name}>{icon.label}</option>
-                              ))}
-                            </select>
+                              <div className="flex items-center gap-2">
+                                {React.createElement(getIconComponent(editingCategory.icon), { size: 18, className: 'text-gray-300' })}
+                                <span className="text-sm">{AVAILABLE_ICONS.find(i => i.name === editingCategory.icon)?.label || 'Välj'}</span>
+                              </div>
+                              <ChevronDown size={16} className={`text-gray-400 transition-transform ${showIconPicker === 'edit' ? 'rotate-180' : ''}`} />
+                            </button>
+                            {showIconPicker === 'edit' && (
+                              <div className="absolute z-50 top-full left-0 right-0 mt-1 p-2 rounded-lg bg-gray-800 border border-white/20 shadow-xl max-h-48 overflow-y-auto">
+                                <div className="grid grid-cols-4 gap-1">
+                                  {AVAILABLE_ICONS.map(icon => {
+                                    const IconComp = getIconComponent(icon.name);
+                                    const isSelected = editingCategory.icon === icon.name;
+                                    return (
+                                      <button
+                                        key={icon.name}
+                                        type="button"
+                                        onClick={() => {
+                                          setEditingCategory({ ...editingCategory, icon: icon.name });
+                                          setShowIconPicker(null);
+                                        }}
+                                        className={`p-2 rounded-lg transition-all flex flex-col items-center gap-1 ${
+                                          isSelected
+                                            ? 'bg-blue-500/30 border border-blue-500'
+                                            : 'hover:bg-white/10'
+                                        }`}
+                                      >
+                                        <IconComp size={20} className={isSelected ? 'text-blue-400' : 'text-gray-300'} />
+                                        <span className="text-[10px] text-gray-400 truncate w-full text-center">{icon.label}</span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
                           </div>
                           <div>
                             <label className="block text-sm text-gray-300 mb-1">Färg</label>
@@ -300,9 +369,21 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
                             />
                           </div>
                         </div>
+                        <label className="flex items-center gap-3 p-3 rounded-lg bg-white/5 border border-white/10 cursor-pointer hover:bg-white/10 transition-colors">
+                          <input
+                            type="checkbox"
+                            checked={editingCategory.hideLocation || false}
+                            onChange={(e) => setEditingCategory({ ...editingCategory, hideLocation: e.target.checked })}
+                            className="w-4 h-4 rounded"
+                          />
+                          <div>
+                            <span className="text-sm text-gray-200">Platsoberoende (listor)</span>
+                            <p className="text-xs text-gray-500">Döljer GPS och kartfunktioner</p>
+                          </div>
+                        </label>
                         <div className="flex gap-2">
                           <button
-                            onClick={() => handleUpdateCategory(cat.id, { label: editingCategory.label, icon: editingCategory.icon, color: editingCategory.color })}
+                            onClick={() => handleUpdateCategory(cat.id, { label: editingCategory.label, icon: editingCategory.icon, color: editingCategory.color, hideLocation: editingCategory.hideLocation || false })}
                             disabled={saving}
                             className="flex-1 px-4 py-2 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all disabled:opacity-50"
                           >

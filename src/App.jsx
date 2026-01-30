@@ -3,7 +3,7 @@ import {
   X, Plus, Image, Edit2, Trash2, 
   Loader, LogOut, LogIn, Check, Circle, Upload, 
   Map as MapIcon, List, ChevronDown, ArrowUp, ArrowDown, Search, Settings,
-  Target, Lightbulb, SlidersHorizontal, Menu, Filter, Share2, UserPlus, UserMinus, Users, Mail,
+  Target, Lightbulb, SlidersHorizontal, Menu, Filter, Share2, UserPlus, UserMinus, Users, Mail, User,
   FileText, CheckSquare, ClipboardList, MapPin, Home, RotateCcw, Star, Navigation
 } from 'lucide-react';
 
@@ -67,6 +67,7 @@ function App() {
     return saved || 'all';
   });
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [showOnlyOwned, setShowOnlyOwned] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingObject, setEditingObject] = useState(null);
   const [showAllObjects, setShowAllObjects] = useState(false);
@@ -445,6 +446,9 @@ function App() {
     };
   }, [selectedObject, showCreateModal, showMenu, showCategoryAdmin, showObjectsAdmin, showCaptures]);
 
+  // Count only favorites that still exist in objects
+  const validFavoritesCount = favorites.filter(fid => objects.some(o => o.id === fid)).length;
+
   const searchTerm = searchQuery.trim().toLowerCase();
   const matchesSearch = (obj) => {
     if (!searchTerm) return true;
@@ -501,21 +505,38 @@ function App() {
     filteredObjects = filteredObjects.filter(o => favorites.includes(o.id));
   }
   
-  let displayObjects = showAllObjects ? filteredObjects : filteredObjects.filter(o => !o.parentId);
+  // Apply "only owned" filter
+  if (showOnlyOwned && user) {
+    filteredObjects = filteredObjects.filter(o => o.ownerId === user.uid);
+  }
   
-  // Apply search filter - include parents if any child matches
-  if (searchTerm) {
-    displayObjects = displayObjects.filter(obj => {
-      // Check if object itself matches
-      if (matchesSearch(obj)) return true;
-      // Check if any child matches
-      const children = objects.filter(o => o.parentId === obj.id);
-      return children.some(child => matchesSearch(child));
+  // Determine which objects to display
+  let displayObjects;
+  
+  if (showAllObjects) {
+    // Show all objects flat
+    displayObjects = filteredObjects;
+  } else if (searchTerm) {
+    // When searching: show all matching objects directly (including children)
+    displayObjects = filteredObjects.filter(obj => matchesSearch(obj));
+  } else {
+    // Normal mode: show top-level objects + "orphaned" children (whose parent user can't see)
+    const accessibleIds = new Set(filteredObjects.map(o => o.id));
+    displayObjects = filteredObjects.filter(o => {
+      // Include if no parent (top-level)
+      if (!o.parentId) return true;
+      // Include if parent is not accessible (orphaned child)
+      if (!accessibleIds.has(o.parentId)) return true;
+      return false;
     });
   }
 
   if (maxDistanceKm && userLocation) {
     displayObjects = displayObjects.filter(obj => {
+      // Always include objects from hideLocation categories (they have no location)
+      const cat = categories.find(c => c.id === obj.type);
+      if (cat?.hideLocation) return true;
+      
       const dist = getObjectDistance(obj);
       return typeof dist === 'number' && dist <= maxDistanceKm;
     });
@@ -524,6 +545,12 @@ function App() {
   // Apply distance sorting if enabled
   if (sortByDistance && userLocation) {
     displayObjects = [...displayObjects].sort((a, b) => {
+      // Put hideLocation objects last when sorting by distance
+      const catA = categories.find(c => c.id === a.type);
+      const catB = categories.find(c => c.id === b.type);
+      if (catA?.hideLocation && !catB?.hideLocation) return 1;
+      if (!catA?.hideLocation && catB?.hideLocation) return -1;
+      
       const distA = getObjectDistance(a);
       const distB = getObjectDistance(b);
       return (distA ?? Infinity) - (distB ?? Infinity);
@@ -666,13 +693,36 @@ function App() {
     try {
       let savedObjectId = editId;
       
+      // Build parent path for breadcrumb display (especially for shared objects)
+      const buildParentPath = (parentId) => {
+        if (!parentId) return [];
+        const path = [];
+        let currentId = parentId;
+        let depth = 0;
+        while (currentId && depth < 5) {
+          const p = objects.find(o => o.id === currentId);
+          if (p) {
+            const name = p.blocks?.find(b => b.type === 'title')?.data?.text;
+            if (name) path.unshift(name);
+            currentId = p.parentId;
+          } else {
+            break;
+          }
+          depth++;
+        }
+        return path;
+      };
+      
+      const parentPath = buildParentPath(objectData.parentId);
+      const dataWithPath = { ...objectData, parentPath };
+      
       if (editId) {
         // Update existing
-        await updateDoc(doc(db, 'objects', editId), { ...objectData, updatedAt: Timestamp.now() });
+        await updateDoc(doc(db, 'objects', editId), { ...dataWithPath, updatedAt: Timestamp.now() });
       } else {
         // Create new - use Promise.race with timeout
         const addOperation = addDoc(collection(db, 'objects'), { 
-          ...objectData, 
+          ...dataWithPath, 
           ownerId: user.uid, 
           ownerName: user.displayName, 
           ownerEmail: user.email, 
@@ -971,9 +1021,9 @@ function App() {
                   >
                     <Star size={16} className={showFavoritesOnly ? 'fill-white' : ''} />
                     <span>Favoriter</span>
-                    {favorites.length > 0 && (
+                    {validFavoritesCount > 0 && (
                       <span className={`px-1.5 py-0.5 rounded-full text-xs ${showFavoritesOnly ? 'bg-white/25' : 'bg-yellow-500/20 text-yellow-400'}`}>
-                        {favorites.length}
+                        {validFavoritesCount}
                       </span>
                     )}
                   </button>
@@ -985,6 +1035,15 @@ function App() {
                   >
                     <Navigation size={16} />
                     <span>Närmast</span>
+                  </button>
+                )}
+                {user && (
+                  <button 
+                    onClick={() => setShowOnlyOwned(!showOnlyOwned)}
+                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl transition-all text-sm font-medium ${showOnlyOwned ? 'bg-green-500/80 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20 border border-white/10'}`}
+                  >
+                    <User size={16} />
+                    <span>Mina</span>
                   </button>
                 )}
               </div>
@@ -1030,6 +1089,38 @@ function App() {
               {displayObjects.map(obj => {
                 const childCount = objects.filter(o => o.parentId === obj.id).length;
                 const distance = getObjectDistance(obj);
+                const parent = obj.parentId ? objects.find(o => o.id === obj.parentId) : null;
+                const isOrphanChild = obj.parentId && !parent;
+                
+                // Build parent chain for breadcrumb
+                // For orphans, use stored parentPath; otherwise build dynamically
+                const getParentChain = () => {
+                  if (!obj.parentId) return [];
+                  
+                  // For orphans, use stored parentPath if available
+                  if (isOrphanChild && obj.parentPath && obj.parentPath.length > 0) {
+                    return obj.parentPath;
+                  }
+                  
+                  // Build dynamically from accessible parents
+                  const chain = [];
+                  let currentId = obj.parentId;
+                  let depth = 0;
+                  while (currentId && depth < 5) {
+                    const p = objects.find(o => o.id === currentId);
+                    if (p) {
+                      const name = p.blocks?.find(b => b.type === 'title')?.data?.text;
+                      if (name) chain.unshift(name);
+                      currentId = p.parentId;
+                    } else {
+                      break;
+                    }
+                    depth++;
+                  }
+                  return chain;
+                };
+                const parentChain = getParentChain();
+                
                 return (
                   <ObjectCard 
                     key={obj.id} 
@@ -1041,6 +1132,9 @@ function App() {
                     categories={categories}
                     isFavorite={favorites.includes(obj.id)}
                     onToggleFavorite={handleToggleFavorite}
+                    isOrphanChild={isOrphanChild}
+                    parentChain={parentChain}
+                    showAsChild={!!obj.parentId && (searchTerm || isOrphanChild)}
                     onNavigate={(coords) => {
                       setViewMode('map');
                       setMapCenter(coords);
@@ -1068,7 +1162,10 @@ function App() {
             )}
           </div>
         ) : (
-          <MapView objects={filteredObjects} onSelectObject={setSelectedObject} currentUser={user} userLocation={userLocation} categories={categories} mapCenter={mapCenter} showFilters={showFilters} />
+          <MapView objects={filteredObjects.filter(obj => {
+            const cat = categories.find(c => c.id === obj.type);
+            return !cat?.hideLocation;
+          })} onSelectObject={setSelectedObject} currentUser={user} userLocation={userLocation} categories={categories} mapCenter={mapCenter} showFilters={showFilters} />
         )}
       </main>
 

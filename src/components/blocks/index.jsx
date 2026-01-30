@@ -465,8 +465,8 @@ export const TABLE_TEMPLATES = {
     icon: 'UserCircle',
     showSum: false,
     columns: [
-      { id: 'name', label: 'Namn', type: 'text', width: 'flex-1' },
-      { id: 'phone', label: 'Telefon', type: 'text', width: 'w-28' }
+      { id: 'name', label: 'Namn', type: 'text', width: 'w-32' },
+      { id: 'phone', label: 'Telefon', type: 'text', width: 'flex-1' }
     ]
   }
 };

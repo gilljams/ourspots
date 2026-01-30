@@ -1,9 +1,9 @@
 import React from 'react';
-import { Star, Share2, Users, Folder, MapPin, Map as MapIcon, Navigation, Home } from 'lucide-react';
+import { Star, Share2, Users, Folder, MapPin, Map as MapIcon, Navigation, Home, CornerDownRight, ChevronRight } from 'lucide-react';
 import { getTransformedImageUrl, getFocalPointStyles } from '../utils/imageUtils';
 import { getIconComponent, PREDEFINED_ICONS } from '../utils/iconHelpers';
 
-function ObjectCard({ object, onClick, currentUser, childCount, distance, categories, isFavorite, onToggleFavorite, onNavigate, onShare }) {
+function ObjectCard({ object, onClick, currentUser, childCount, distance, categories, isFavorite, onToggleFavorite, onNavigate, onShare, isOrphanChild, parentChain, showAsChild }) {
   // Find category to get icon
   const category = categories.find(c => c.id === object.type);
   const IconComponent = category ? getIconComponent(category.icon) : (PREDEFINED_ICONS[object.type]?.icon || Home);
@@ -44,12 +44,27 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
   // Get a preview snippet from text block
   const textPreview = textBlock?.data?.content?.slice(0, 80)?.replace(/[#*_-]/g, '')?.trim();
 
+  // Breadcrumb for orphan children or search results showing children
+  const showBreadcrumb = showAsChild && parentChain && parentChain.length > 0;
+
   return (
     <div onClick={onClick} className="bg-white/5 backdrop-blur-md rounded-2xl overflow-hidden border border-white/10 hover:border-blue-400/50 transition-all cursor-pointer transform hover:scale-[1.02] relative group">
+      {/* Parent breadcrumb for orphan/search children */}
+      {showBreadcrumb && (
+        <div className="px-3 py-1.5 bg-blue-500/10 border-b border-white/5 flex items-center gap-1 text-[10px] text-blue-300/80 overflow-hidden">
+          <CornerDownRight size={10} className="flex-shrink-0 opacity-60" />
+          {parentChain.map((name, i) => (
+            <React.Fragment key={i}>
+              {i > 0 && <ChevronRight size={8} className="flex-shrink-0 opacity-40" />}
+              <span className="truncate">{name}</span>
+            </React.Fragment>
+          ))}
+        </div>
+      )}
       {imageBlock ? (
         <>
           {/* Top left buttons: Favorite + Share */}
-          <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5">
+          <div className={`absolute ${showBreadcrumb ? 'top-8' : 'top-2'} left-2 z-10 flex items-center gap-1.5`}>
             {currentUser && (
               <button
                 onClick={handleFavoriteClick}
@@ -73,7 +88,7 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
             )}
           </div>
           {/* Top right badges: Shared indicator + Child count */}
-          <div className="absolute top-2 right-2 z-10 flex items-center gap-1.5">
+          <div className={`absolute ${showBreadcrumb ? 'top-8' : 'top-2'} right-2 z-10 flex items-center gap-1.5`}>
             {isSharedWithMe && (
               <div className="bg-purple-500/20 backdrop-blur-sm text-purple-300 text-xs px-2 py-1 rounded-full border border-purple-500/30 flex items-center gap-1" title={`Delad med dig som ${myShareRole === 'editor' ? 'redigerare' : 'läsare'}`}>
                 <Users size={12} />

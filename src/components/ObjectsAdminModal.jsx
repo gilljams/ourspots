@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { List, ChevronDown } from 'lucide-react';
+import { List, ChevronDown, RefreshCw } from 'lucide-react';
 import { collection, onSnapshot, doc, updateDoc, deleteField } from 'firebase/firestore';
 import { db } from '../firebase';
 
@@ -10,6 +10,8 @@ function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onView
   const [showFilters, setShowFilters] = useState(true);
   const [allObjects, setAllObjects] = useState([]);
   const [loadingAll, setLoadingAll] = useState(true);
+  const [migrating, setMigrating] = useState(false);
+  const [migrationResult, setMigrationResult] = useState(null);
   
   // Fetch ALL objects for admin view
   useEffect(() => {
@@ -97,6 +99,61 @@ function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onView
 
   const getChildCount = (objId) => {
     return objects.filter(o => o.parentId === objId).length;
+  };
+
+  // Migration function to update parentPath for all objects
+  const migrateParentPaths = async () => {
+    if (migrating) return;
+    
+    const objectsWithParent = objects.filter(o => o.parentId);
+    if (objectsWithParent.length === 0) {
+      setMigrationResult({ success: true, message: 'Inga objekt med föräldrar att uppdatera.' });
+      return;
+    }
+    
+    setMigrating(true);
+    setMigrationResult(null);
+    
+    try {
+      let updated = 0;
+      let skipped = 0;
+      
+      for (const obj of objectsWithParent) {
+        // Build parent path
+        const path = [];
+        let currentId = obj.parentId;
+        let depth = 0;
+        while (currentId && depth < 5) {
+          const p = objects.find(o => o.id === currentId);
+          if (p) {
+            const name = p.blocks?.find(b => b.type === 'title')?.data?.text;
+            if (name) path.unshift(name);
+            currentId = p.parentId;
+          } else {
+            break;
+          }
+          depth++;
+        }
+        
+        // Only update if we found a path
+        if (path.length > 0) {
+          await updateDoc(doc(db, 'objects', obj.id), { parentPath: path });
+          updated++;
+        } else {
+          skipped++;
+        }
+      }
+      
+      setMigrationResult({ 
+        success: true, 
+        message: `Klart! ${updated} objekt uppdaterade${skipped > 0 ? `, ${skipped} kunde inte bygga path för` : ''}.` 
+      });
+    } catch (error) {
+      console.error('Migration error:', error);
+      setMigrationResult({ success: false, message: `Fel: ${error.message}` });
+    } finally {
+      setMigrating(false);
+    }
   };
 
   // Get unique users from objects with their info
@@ -240,6 +297,23 @@ function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onView
                     >
                       Parent
                     </button>
+                  </div>
+                  
+                  {/* Migration button */}
+                  <div className="pt-3 border-t border-white/5">
+                    <button
+                      onClick={migrateParentPaths}
+                      disabled={migrating}
+                      className="w-full px-3 py-2 rounded-lg text-sm font-medium transition-all bg-orange-500/20 text-orange-300 hover:bg-orange-500/30 border border-orange-500/30 flex items-center justify-center gap-2"
+                    >
+                      <RefreshCw size={14} className={migrating ? 'animate-spin' : ''} />
+                      {migrating ? 'Uppdaterar...' : 'Uppdatera parentPath för alla objekt'}
+                    </button>
+                    {migrationResult && (
+                      <p className={`text-xs mt-2 ${migrationResult.success ? 'text-green-400' : 'text-red-400'}`}>
+                        {migrationResult.message}
+                      </p>
+                    )}
                   </div>
                 </div>
               )}

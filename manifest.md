@@ -1,8 +1,8 @@
 ========================
-OurSpots – Manifest / Blueprint (Updated Jan 28, 2026)
+OurSpots – Manifest / Blueprint (Updated Jan 30, 2026)
 ========================
 
-🚀 STATUS: v1.6 - Sharing System Complete
+🚀 STATUS: v1.8 - Orphan Children & Enhanced Filtering
 
 1. VISION
 - Mobilfokuserad app med premium dark theme
@@ -12,8 +12,12 @@ OurSpots – Manifest / Blueprint (Updated Jan 28, 2026)
 - Lämna delning-funktion för mottagare ✅
 - Objekt + block = återanvändbar struktur ✅
 - Hierarki för objekt (parent → child) ✅
+- Föräldralösa barn visas som toppnivå med breadcrumb ✅ NY
 - Favoriter med kombinerad filtrering (favoriter + kategori) ✅
-- Smart bildhantering med AI-beskärning och GPS-extrahering ✅
+- Filter "Mina" för att visa endast egna objekt ✅ NY
+- Smart bildhantering med AI-beskärning och manuell GPS-extrahering ✅
+- "Plats från bild"-knapp för kontrollerad GPS-utläsning ✅ NY
+- Platsoberoende kategorier (hideLocation) ✅ NY
 - Skärmhantering med Wake Lock API ✅
 - GPS-lägen: Snabb (standard) och Precis (±10m) ✅
 - Lager/samlingar för resor/projekt - planerad funktion
@@ -31,15 +35,18 @@ OurSpots – Manifest / Blueprint (Updated Jan 28, 2026)
 - Race condition-säkerhet för robusta uppdateringar ✅
 - Collapsed hantera-sektion för renare läsupplevelse ✅
 - Reset-funktionalitet för återkommande Todo/Checklist ✅
+- Grid/List toggle för barn-objekt med localStorage-persistens ✅ NY
 
 2. KATEGORI-SYSTEM
 - Dynamiska kategorier lagrade i Firebase ✅
 - Admin kan skapa, redigera, radera kategorier ✅
-- 24 valbara ikoner från Lucide React (optimerad import) ✅
+- 28 valbara ikoner från Lucide React (optimerad import) ✅
 - Anpassad färg per kategori ✅
 - Sorterbar ordning (upp/ner pilar) ✅
 - Automatisk hantering av objekt vid kategori-radering ✅
 - Reordnad layout: Favoriter → Alla → Kategorier ✅
+- Dropdown-ikonväljare med visuella ikoner ✅ NY
+- Platsoberoende kategorier (hideLocation flag) ✅ NY
 
 Tillgängliga ikoner:
 - Bas: Home, Coffee, Mountain, Star, MapPin, Calendar, Folder, Navigation, Plane, RotateCcw
@@ -47,11 +54,13 @@ Tillgängliga ikoner:
 - Nöjen: Gamepad2, Music, Film, PartyPopper
 - Aktiviteter: Bike, Dumbbell, Waves
 - Natur: TreePine, Shell, Sprout
+- Verktyg & övrigt: Wrench, BookOpen, Trophy, ClipboardList ✅ NY
 
 3. ARKITEKTUR / DATAMODELL
 Object:
 - id: string
 - parentId?: string
+- parentPath?: string[] (breadcrumb-namn på föräldrar, för delning) ✅ NY
 - layerId: string
 - type: kategori-id från categories collection
 - blocks: Block[]
@@ -86,6 +95,7 @@ Category: ✅ IMPLEMENTERAT
 - icon: string (Lucide icon name)
 - color: string (hex-färg)
 - order: number (sorteringsordning)
+- hideLocation?: boolean (platsoberoende kategori) ✅ NY
 - createdAt: Timestamp
 - createdBy: string (userId)
 
@@ -283,7 +293,34 @@ Default block sets per typ/kategori (för enkelhet):
 - ✅ Bekräftelsedialog vid mallbyte med data
 - ✅ iOS-optimerad (inputMode="numeric" för siffror)
 
-### Planerade admin-funktioner (v1.8+)
+### Föräldralösa barn & Filtrering (Implementerat v1.8) ✅ NY
+- ✅ Barn-objekt vars förälder användaren inte ser visas som toppnivå
+- ✅ Breadcrumb-rad på kort visar full hierarki (t.ex. "↳ Hälsingland › Stugan")
+- ✅ parentPath sparas på objekt för breadcrumb vid delning
+- ✅ Sökning visar matchade objekt direkt (inkl. barn)
+- ✅ Filter "Mina" - visa endast egna objekt (exkludera delade)
+- ✅ Favoriter-räknare exkluderar raderade objekt
+- ✅ Admin-funktion: "Uppdatera parentPath" för alla objekt (migration)
+
+### Platsoberoende kategorier (Implementerat v1.8) ✅ NY
+- ✅ hideLocation-flagga på kategorier
+- ✅ Döljer platsfält vid objektskapande
+- ✅ Exkluderar från kartvy
+- ✅ Alltid med i avståndsfiltret (räknas som inom räckvidd)
+
+### GPS-extrahering (Förbättrad v1.8) ✅ NY
+- ✅ Automatisk GPS-utläsning borttagen vid bilduppladdning
+- ✅ Ny knapp "Från bild" i platssektionen
+- ✅ Tre knappar på rad: "Min plats", "På karta", "Från bild"
+- ✅ "Från bild" visas endast när bild laddats upp
+- ✅ Döljs för platsoberoende kategorier
+
+### Barn-visning (Implementerat v1.8) ✅ NY
+- ✅ Toggle mellan grid och list för barn-objekt i ObjectDetail
+- ✅ Visas endast när >2 barn finns
+- ✅ localStorage-persistens för användarens preferens
+
+### Planerade admin-funktioner (v1.9+)
 - Lager: lägg till, redigera, ta bort, färg, ikon, typ
 - Objekt: flytta mellan lager, flytta i hierarki, redigera metadata, public flag
 - Delning / access: lägg till / ta bort användare, set roll Viewer/Editor
@@ -449,3 +486,49 @@ src/
 ### Backup
 - Branch `pre-split-backup` skapades Jan 29, 2026 innan refaktoriseringen
 - Kan återställas med `git checkout pre-split-backup` vid behov
+
+13. PRESTANDAÖVERVÄGANDEN (Framtida) 🔮
+
+### Nuvarande implementation
+- Alla objekt laddas via `onSnapshot` och filtreras client-side
+- `getParentChain()` körs för varje objekt i displayObjects vid render
+- Fungerar utmärkt för ~100-500 objekt
+
+### Vid 500+ objekt - överväg:
+1. **Pagination / "Visa fler"**
+   - Visa 30 objekt först
+   - Knapp för att visa fler
+   - Nollställs vid filterändring
+   - Enklast att implementera, inga nya dependencies
+
+2. **Virtualisering (react-window)**
+   - Renderar bara synliga kort i viewport
+   - Kräver dependency: react-window
+   - Bra för tusentals objekt
+
+3. **Memoization av parentChain**
+   ```javascript
+   // Bygg objectsById lookup-map
+   const objectsById = useMemo(() => 
+     new Map(objects.map(o => [o.id, o])), [objects]);
+   
+   // Memoize parentChain per objekt
+   const parentChains = useMemo(() => {
+     const chains = new Map();
+     objects.forEach(obj => {
+       if (obj.parentId) {
+         chains.set(obj.id, buildParentChain(obj, objectsById));
+       }
+     });
+     return chains;
+   }, [objects, objectsById]);
+   ```
+
+4. **Firestore index för parent/child**
+   - INTE nödvändigt - vi gör client-side filtrering
+   - Firestore-index hjälper bara server-side queries
+
+### Beslut (Jan 30, 2026)
+- **Avvakta** - nuvarande prestanda är bra
+- Implementera optimeringar först när lagg uppstår
+- YAGNI-principen: "You Aren't Gonna Need It"

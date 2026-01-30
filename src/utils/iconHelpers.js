@@ -3,7 +3,8 @@ import {
   UtensilsCrossed, Pizza, Wine, Beer, Gamepad2, Music, Film, PartyPopper,
   Bike, Dumbbell, Waves, TreePine, Shell, Sprout, RotateCcw,
   Link, ExternalLink, Globe, FileText, ShoppingCart, CreditCard, Phone, Mail, Instagram, Youtube, Facebook,
-  Gift, ClipboardList, Users, UserCircle
+  Gift, ClipboardList, Users, UserCircle,
+  Wrench, BookOpen, Trophy
 } from 'lucide-react';
 
 // Helper to get icon component from string name
@@ -12,7 +13,8 @@ export const iconMap = {
   UtensilsCrossed, Pizza, Wine, Beer, Gamepad2, Music, Film, PartyPopper,
   Bike, Dumbbell, Waves, TreePine, Shell, Sprout, RotateCcw,
   Link, ExternalLink, Globe, FileText, ShoppingCart, CreditCard, Phone, Mail, Instagram, Youtube, Facebook,
-  Gift, ClipboardList, Users, UserCircle
+  Gift, ClipboardList, Users, UserCircle,
+  Wrench, BookOpen, Trophy
 };
 
 export const getIconComponent = (iconName) => {
@@ -40,10 +42,14 @@ export const AVAILABLE_ICONS = [
   { name: 'PartyPopper', label: 'Fest' },
   { name: 'Bike', label: 'Aktiviteter' },
   { name: 'Dumbbell', label: 'Träning' },
+  { name: 'Trophy', label: 'Sport' },
   { name: 'Waves', label: 'Vatten' },
   { name: 'TreePine', label: 'Skog' },
   { name: 'Shell', label: 'Strand' },
   { name: 'Sprout', label: 'Svamp' },
+  { name: 'Wrench', label: 'Verktyg' },
+  { name: 'BookOpen', label: 'Manual' },
+  { name: 'ClipboardList', label: 'Listor' },
 ];
 
 // Icons available for links

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Plus, Edit2, Trash2, Settings, ChevronDown, 
-  Share2, Users, UserMinus, Home, Link2, Table2
+  Share2, Users, UserMinus, Home, Link2, Table2, List, LayoutGrid, FileText
 } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -21,6 +21,15 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [expandedBlocks, setExpandedBlocks] = useState(new Set([0])); // First block expanded by default
   const [showManageSection, setShowManageSection] = useState(false);
+  const [childViewMode, setChildViewMode] = useState(() => {
+    return localStorage.getItem('ourspots-child-view-mode') || 'grid';
+  });
+  
+  const toggleChildViewMode = () => {
+    const newMode = childViewMode === 'grid' ? 'list' : 'grid';
+    setChildViewMode(newMode);
+    localStorage.setItem('ourspots-child-view-mode', newMode);
+  };
   
   // Swipe to close state
   const [touchStart, setTouchStart] = useState(null);
@@ -348,43 +357,78 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
             </div>
             {childObjects.length > 0 && (
               <div className="mt-6 pt-6 border-t border-white/10">
-                <div className="flex items-center gap-2 mb-3">
-                  <Folder size={16} className="text-gray-400" />
-                  <h3 className="text-sm font-medium text-gray-400">Barn ({childObjects.length})</h3>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Folder size={16} className="text-gray-400" />
+                    <h3 className="text-sm font-medium text-gray-400">Barn ({childObjects.length})</h3>
+                  </div>
+                  {childObjects.length > 2 && (
+                    <button
+                      onClick={toggleChildViewMode}
+                      className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                      title={childViewMode === 'grid' ? 'Visa som lista' : 'Visa som kort'}
+                    >
+                      {childViewMode === 'grid' ? <List size={14} /> : <LayoutGrid size={14} />}
+                    </button>
+                  )}
                 </div>
-                <div className="grid grid-cols-3 gap-2 items-end">
-                  {childObjects.map(child => {
-                    const childTitle = child.blocks.find(b => b.type === 'title');
-                    const childImage = child.blocks.find(b => b.type === 'image');
-                    const ChildIcon = PREDEFINED_ICONS[child.type]?.icon || Home;
-                    return (
-                      <button
-                        key={child.id}
-                        onClick={() => onNavigate(child)}
-                        className="flex items-center gap-2 p-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:border-blue-400/50 transition-all text-left col-span-1"
-                      >
-                        {childImage ? (
-                          <div className="w-8 h-8 rounded overflow-hidden flex-shrink-0">
-                            <img 
-                              src={getTransformedImageUrl(childImage.data.url, childImage.data.focalPoint ? 'custom' : childImage.data.cropMode, 64, 64, childImage.data.focalPoint)} 
-                              alt="" 
-                              className="w-full h-full object-cover"
-                              style={getFocalPointStyles(childImage.data.focalPoint)}
-                            />
+                {childViewMode === 'list' ? (
+                  <div className="space-y-1">
+                    {[...childObjects]
+                      .sort((a, b) => {
+                        const titleA = a.blocks.find(bl => bl.type === 'title')?.data?.text || '';
+                        const titleB = b.blocks.find(bl => bl.type === 'title')?.data?.text || '';
+                        return titleA.localeCompare(titleB, 'sv');
+                      })
+                      .map(child => {
+                        const childTitle = child.blocks.find(bl => bl.type === 'title');
+                        return (
+                          <button
+                            key={child.id}
+                            onClick={() => onNavigate(child)}
+                            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 hover:border-blue-400/30 transition-all text-left"
+                          >
+                            <FileText size={14} className="text-gray-500 flex-shrink-0" />
+                            <span className="text-sm text-white truncate">{childTitle?.data?.text || 'Namnlöst'}</span>
+                          </button>
+                        );
+                      })}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-2 items-end">
+                    {childObjects.map(child => {
+                      const childTitle = child.blocks.find(bl => bl.type === 'title');
+                      const childImage = child.blocks.find(bl => bl.type === 'image');
+                      const ChildIcon = PREDEFINED_ICONS[child.type]?.icon || Home;
+                      return (
+                        <button
+                          key={child.id}
+                          onClick={() => onNavigate(child)}
+                          className="flex items-center gap-2 p-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:border-blue-400/50 transition-all text-left col-span-1"
+                        >
+                          {childImage ? (
+                            <div className="w-8 h-8 rounded overflow-hidden flex-shrink-0">
+                              <img 
+                                src={getTransformedImageUrl(childImage.data.url, childImage.data.focalPoint ? 'custom' : childImage.data.focalPoint, 64, 64, childImage.data.focalPoint)} 
+                                alt="" 
+                                className="w-full h-full object-cover"
+                                style={getFocalPointStyles(childImage.data.focalPoint)}
+                              />
+                            </div>
+                          ) : (
+                            <div className="w-8 h-8 rounded bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+                              <ChildIcon size={14} className="text-blue-400" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-medium text-white truncate">{childTitle?.data?.text || 'Namnlöst'}</div>
+                            <div className="text-xs text-gray-400 leading-tight">{PREDEFINED_ICONS[child.type]?.label}</div>
                           </div>
-                        ) : (
-                          <div className="w-8 h-8 rounded bg-blue-500/20 flex items-center justify-center flex-shrink-0">
-                            <ChildIcon size={14} className="text-blue-400" />
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs font-medium text-white truncate">{childTitle?.data?.text || 'Namnlöst'}</div>
-                          <div className="text-xs text-gray-400 leading-tight">{PREDEFINED_ICONS[child.type]?.label}</div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
             {(canManage || canEdit || isSharedWithMe) && (
