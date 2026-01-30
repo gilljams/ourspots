@@ -426,6 +426,7 @@ function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }
 
   const [title, setTitle] = useState(block.title);
   const [content, setContent] = useState(block.content);
+  const [isFocused, setIsFocused] = useState(false);
   
   // Use refs to always have latest values for blur handlers
   const titleRef = React.useRef(title);
@@ -434,7 +435,10 @@ function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }
   contentRef.current = content;
   
   const syncTitle = () => onUpdate(block.id, { title: titleRef.current });
-  const syncContent = () => onUpdate(block.id, { content: contentRef.current });
+  const syncContent = () => {
+    setIsFocused(false);
+    onUpdate(block.id, { content: contentRef.current });
+  };
   
   const handleClear = () => {
     setContent('');
@@ -477,11 +481,12 @@ function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }
         <textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
+          onFocus={() => setIsFocused(true)}
           onBlur={syncContent}
           placeholder={block.type === 'text' ? 'Skriv text här...' : 'En per rad'}
-          rows={3}
+          rows={isFocused ? 8 : 3}
           disabled={saving}
-          className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-none"
+          className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-none transition-all duration-200"
         />
         {hasContent && (
           <button
