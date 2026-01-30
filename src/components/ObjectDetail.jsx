@@ -53,6 +53,11 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
   const RESISTANCE = 0.5;
   
   const handleTouchStart = (e) => {
+    // Don't capture swipe if touching interactive elements
+    const target = e.target;
+    if (target.closest('button') || target.closest('a') || target.closest('input') || target.closest('[role="button"]')) {
+      return;
+    }
     setTouchStart(e.touches[0].clientX);
     setTouchStartY(e.touches[0].clientY);
     setIsSwipeActive(false);
@@ -152,7 +157,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
         <div 
           ref={modalRef}
           className="bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-xl border-t sm:border border-white/10 sm:border-white/[0.08] w-full sm:max-w-lg sm:w-[90%] h-full sm:h-auto sm:max-h-[85vh] overflow-hidden flex flex-col transition-transform duration-200 ease-out relative sm:shadow-2xl sm:shadow-black/50"
-          style={{ transform: `translateX(${touchDelta}px)`, opacity: touchDelta > 0 ? 1 - (touchDelta / 300) : 1 }}
+          style={{ transform: `translateX(${touchDelta}px)`, opacity: touchDelta > 0 ? 1 - (touchDelta / 300) : 1, touchAction: 'pan-y' }}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
