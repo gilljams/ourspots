@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Plus, Edit2, Trash2, Settings, ChevronDown, 
-  Share2, Users, UserMinus, Home, Link2, Table2, List, LayoutGrid, FileText
+  Share2, Users, UserMinus, Home, Link2, Table2, List, LayoutGrid, FileText, Copy
 } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -17,7 +17,7 @@ const Folder = ({ size = 24, ...props }) => (
   </svg>
 );
 
-function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, currentUser, allObjects, onNavigate, categories, isAdmin, onShowOnMap, onShare, onLeaveShare }) {
+function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockUpdate, currentUser, allObjects, onNavigate, categories, isAdmin, onShowOnMap, onShare, onLeaveShare }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [expandedBlocks, setExpandedBlocks] = useState(new Set([0])); // First block expanded by default
   const [showManageSection, setShowManageSection] = useState(false);
@@ -455,6 +455,15 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onBlockUpdate, curren
                       >
                         <Plus size={16} />
                         <span className="text-sm">Lägg till barn</span>
+                      </button>
+                    )}
+                    {onDuplicate && (
+                      <button
+                        onClick={() => onDuplicate(object)}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:text-white transition-all"
+                      >
+                        <Copy size={16} />
+                        <span className="text-sm">Kopiera</span>
                       </button>
                     )}
                     {canEdit && (

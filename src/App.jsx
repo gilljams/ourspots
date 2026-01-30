@@ -73,6 +73,7 @@ function App() {
   const [showOnlyOwned, setShowOnlyOwned] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingObject, setEditingObject] = useState(null);
+  const [duplicatingObject, setDuplicatingObject] = useState(null);
   const [showAllObjects, setShowAllObjects] = useState(false);
   const [defaultParentId, setDefaultParentId] = useState(null);
   const [viewMode, setViewMode] = useState('list');
@@ -828,6 +829,17 @@ function App() {
     setSelectedObject(null);
   };
 
+  const handleDuplicate = (obj) => {
+    if (!user) {
+      alert('Du måste vara inloggad för att kopiera!');
+      return;
+    }
+    setDuplicatingObject(obj);
+    setDefaultParentId(obj.parentId || null);
+    setShowCreateModal(true);
+    setSelectedObject(null);
+  };
+
   if (loading || !categoriesLoaded) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900/20 to-gray-900 flex items-center justify-center">
@@ -1238,6 +1250,7 @@ function App() {
           onClose={() => setSelectedObject(null)} 
           onEdit={handleEdit} 
           onDelete={handleDeleteObject} 
+          onDuplicate={handleDuplicate}
           onBlockUpdate={handleBlockUpdate} 
           currentUser={user} 
           allObjects={objects} 
@@ -1257,9 +1270,10 @@ function App() {
 
       {showCreateModal && (
         <CreateObjectModal 
-          onClose={() => { setShowCreateModal(false); setEditingObject(null); setDefaultParentId(null); }} 
+          onClose={() => { setShowCreateModal(false); setEditingObject(null); setDefaultParentId(null); setDuplicatingObject(null); }} 
           onSave={handleSaveObject} 
           editObject={editingObject} 
+          duplicateFromObject={duplicatingObject}
           saving={saving} 
           availableParents={objects.filter(o => {
             // Filter out the object itself

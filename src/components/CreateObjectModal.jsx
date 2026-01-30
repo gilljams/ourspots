@@ -14,27 +14,34 @@ import MapPicker from './MapPicker';
 import FocalPointPicker from './FocalPointPicker';
 import BlockEditor, { DateTagBlockEditor } from './BlockEditor';
 
-function CreateObjectModal({ onClose, onSave, editObject, saving, availableParents, defaultParentId, userLocation, categories, preciseGPS }) {
+function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, saving, availableParents, defaultParentId, userLocation, categories, preciseGPS }) {
   // ========== STATE ==========
   const isEdit = !!editObject;
+  const isDuplicate = !!duplicateFromObject;
+  const sourceObject = editObject || duplicateFromObject; // Use either for initial data
+  
   const defaultType = defaultParentId 
     ? (availableParents.find(p => p.id === defaultParentId)?.type || categories[0]?.id || 'property') 
     : (categories[0]?.id || 'property');
 
   // Form state
-  const [selectedType, setSelectedType] = useState(editObject?.type || defaultType);
-  const [parentId, setParentId] = useState(editObject?.parentId || defaultParentId || '');
+  const [selectedType, setSelectedType] = useState(sourceObject?.type || defaultType);
+  const [parentId, setParentId] = useState(sourceObject?.parentId || defaultParentId || '');
   const [inheritLocation, setInheritLocation] = useState(false);
-  const [title, setTitle] = useState(editObject?.blocks?.find(b => b.type === 'title')?.data?.text || '');
-  const [address, setAddress] = useState(editObject?.blocks?.find(b => b.type === 'location')?.data?.address || '');
-  const [lat, setLat] = useState(editObject?.blocks?.find(b => b.type === 'location')?.data?.lat ?? null);
-  const [lng, setLng] = useState(editObject?.blocks?.find(b => b.type === 'location')?.data?.lng ?? null);
-  const [imageUrl, setImageUrl] = useState(editObject?.blocks?.find(b => b.type === 'image')?.data?.url || '');
-  const [imageCropMode, setImageCropMode] = useState(editObject?.blocks?.find(b => b.type === 'image')?.data?.cropMode || 'auto');
-  const [imageFocalPoint, setImageFocalPoint] = useState(editObject?.blocks?.find(b => b.type === 'image')?.data?.focalPoint || null);
+  
+  // For duplicates, add " (kopia)" suffix to title
+  const originalTitle = sourceObject?.blocks?.find(b => b.type === 'title')?.data?.text || '';
+  const [title, setTitle] = useState(isDuplicate ? `${originalTitle} (kopia)` : originalTitle);
+  
+  const [address, setAddress] = useState(sourceObject?.blocks?.find(b => b.type === 'location')?.data?.address || '');
+  const [lat, setLat] = useState(sourceObject?.blocks?.find(b => b.type === 'location')?.data?.lat ?? null);
+  const [lng, setLng] = useState(sourceObject?.blocks?.find(b => b.type === 'location')?.data?.lng ?? null);
+  const [imageUrl, setImageUrl] = useState(sourceObject?.blocks?.find(b => b.type === 'image')?.data?.url || '');
+  const [imageCropMode, setImageCropMode] = useState(sourceObject?.blocks?.find(b => b.type === 'image')?.data?.cropMode || 'auto');
+  const [imageFocalPoint, setImageFocalPoint] = useState(sourceObject?.blocks?.find(b => b.type === 'image')?.data?.focalPoint || null);
   const [customBlocks, setCustomBlocks] = useState(() => {
-    if (!editObject) return [];
-    return editObject.blocks
+    if (!sourceObject) return [];
+    return sourceObject.blocks
       .filter(b => ['text', 'checklist', 'todo', 'links', 'table', 'datetag'].includes(b.type))
       .map(b => {
         if (b.type === 'links') {
@@ -390,8 +397,8 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
                 <Plus size={20} className="text-blue-400" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-white">{isEdit ? 'Redigera objekt' : 'Skapa nytt objekt'}</h2>
-                <p className="text-xs text-gray-400">{isEdit ? 'Uppdatera detaljer' : 'Fyll i detaljer nedan'}</p>
+                <h2 className="text-lg font-bold text-white">{isEdit ? 'Redigera objekt' : isDuplicate ? 'Kopiera objekt' : 'Skapa nytt objekt'}</h2>
+                <p className="text-xs text-gray-400">{isEdit ? 'Uppdatera detaljer' : isDuplicate ? 'Skapa kopia med nya ändringar' : 'Fyll i detaljer nedan'}</p>
               </div>
             </div>
             <button 
