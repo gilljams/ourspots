@@ -707,28 +707,30 @@ function App() {
     try {
       let savedObjectId = editId;
       
-      // Build parent path for breadcrumb display (especially for shared objects)
-      const buildParentPath = (parentId) => {
-        if (!parentId) return [];
+      // Build parent path for breadcrumb display AND ancestor IDs for fast lookups
+      const buildAncestorData = (parentId) => {
+        if (!parentId) return { parentPath: [], ancestorIds: [] };
         const path = [];
+        const ids = [];
         let currentId = parentId;
         let depth = 0;
-        while (currentId && depth < 5) {
+        while (currentId && depth < 10) {
           const p = objects.find(o => o.id === currentId);
           if (p) {
             const name = p.blocks?.find(b => b.type === 'title')?.data?.text;
             if (name) path.unshift(name);
+            ids.unshift(currentId); // Add ID to ancestor list
             currentId = p.parentId;
           } else {
             break;
           }
           depth++;
         }
-        return path;
+        return { parentPath: path, ancestorIds: ids };
       };
       
-      const parentPath = buildParentPath(objectData.parentId);
-      const dataWithPath = { ...objectData, parentPath };
+      const { parentPath, ancestorIds } = buildAncestorData(objectData.parentId);
+      const dataWithPath = { ...objectData, parentPath, ancestorIds };
       
       // Check if parent has shares with includeChildren - inherit them for new children
       let inheritedShares = {};

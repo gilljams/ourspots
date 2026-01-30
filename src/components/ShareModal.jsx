@@ -12,14 +12,24 @@ function ShareModal({ object, onClose, currentUserEmail, allObjects = [] }) {
   const [error, setError] = useState('');
   const [shares, setShares] = useState(object.shares || {});
   
-  // Get all descendants recursively (children, grandchildren, etc.)
+  // Get all descendants using ancestorIds for fast O(n) lookup, or fallback to recursive
   const allDescendants = useMemo(() => {
+    // Fast path: use ancestorIds if objects have them
+    const descendantsViaAncestorIds = allObjects.filter(o => 
+      o.ancestorIds && o.ancestorIds.includes(object.id)
+    );
+    
+    if (descendantsViaAncestorIds.length > 0) {
+      return descendantsViaAncestorIds;
+    }
+    
+    // Fallback: recursive traversal for objects without ancestorIds
     const descendants = [];
     const findDescendants = (parentId) => {
       const children = allObjects.filter(o => o.parentId === parentId);
       children.forEach(child => {
         descendants.push(child);
-        findDescendants(child.id); // Recurse into grandchildren
+        findDescendants(child.id);
       });
     };
     findDescendants(object.id);

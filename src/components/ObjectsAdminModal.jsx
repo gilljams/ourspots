@@ -101,7 +101,7 @@ function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onView
     return objects.filter(o => o.parentId === objId).length;
   };
 
-  // Migration function to update parentPath for all objects
+  // Migration function to update parentPath AND ancestorIds for all objects
   const migrateParentPaths = async () => {
     if (migrating) return;
     
@@ -119,15 +119,17 @@ function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onView
       let skipped = 0;
       
       for (const obj of objectsWithParent) {
-        // Build parent path
+        // Build parent path (names) AND ancestor IDs
         const path = [];
+        const ids = [];
         let currentId = obj.parentId;
         let depth = 0;
-        while (currentId && depth < 5) {
+        while (currentId && depth < 10) {
           const p = objects.find(o => o.id === currentId);
           if (p) {
             const name = p.blocks?.find(b => b.type === 'title')?.data?.text;
             if (name) path.unshift(name);
+            ids.unshift(currentId); // Add ID to ancestor list
             currentId = p.parentId;
           } else {
             break;
@@ -135,9 +137,12 @@ function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onView
           depth++;
         }
         
-        // Only update if we found a path
-        if (path.length > 0) {
-          await updateDoc(doc(db, 'objects', obj.id), { parentPath: path });
+        // Update with both parentPath and ancestorIds
+        if (ids.length > 0) {
+          await updateDoc(doc(db, 'objects', obj.id), { 
+            parentPath: path.length > 0 ? path : [], 
+            ancestorIds: ids 
+          });
           updated++;
         } else {
           skipped++;
@@ -146,7 +151,7 @@ function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onView
       
       setMigrationResult({ 
         success: true, 
-        message: `Klart! ${updated} objekt uppdaterade${skipped > 0 ? `, ${skipped} kunde inte bygga path för` : ''}.` 
+        message: `Klart! ${updated} objekt uppdaterade med parentPath + ancestorIds${skipped > 0 ? `, ${skipped} kunde inte bygga path för` : ''}.` 
       });
     } catch (error) {
       console.error('Migration error:', error);
@@ -301,13 +306,14 @@ function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onView
                   
                   {/* Migration button */}
                   <div className="pt-3 border-t border-white/5">
+                    <p className="text-xs text-gray-500 mb-2">Synkar hierarki-index (parentPath + ancestorIds)</p>
                     <button
                       onClick={migrateParentPaths}
                       disabled={migrating}
                       className="w-full px-3 py-2 rounded-lg text-sm font-medium transition-all bg-orange-500/20 text-orange-300 hover:bg-orange-500/30 border border-orange-500/30 flex items-center justify-center gap-2"
                     >
                       <RefreshCw size={14} className={migrating ? 'animate-spin' : ''} />
-                      {migrating ? 'Uppdaterar...' : 'Uppdatera parentPath för alla objekt'}
+                      {migrating ? 'Synkar...' : 'Synka hierarki'}
                     </button>
                     {migrationResult && (
                       <p className={`text-xs mt-2 ${migrationResult.success ? 'text-green-400' : 'text-red-400'}`}>
