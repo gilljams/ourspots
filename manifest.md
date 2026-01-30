@@ -2,16 +2,19 @@
 OurSpots – Manifest / Blueprint (Updated Jan 30, 2026)
 ========================
 
-🚀 STATUS: v1.9 - Object Duplication & DateTag Block
+🚀 STATUS: v2.0 - Hierarchy & User Management
 
 1. VISION
 - Mobilfokuserad app med premium dark theme
 - Hanterar fastigheter, smultronstellen/kaféer, resor/projekt
 - Delade objekt med viewer/editor-roller ✅
-- Pending/accepted delningsstatus ✅
+- Pending/accepted/inherited delningsstatus ✅
 - Lämna delning-funktion för mottagare ✅
+- Dela med barn (rekursiv delning av hierarki) ✅ NY
 - Objekt + block = återanvändbar struktur ✅
 - Hierarki för objekt (parent → child) ✅
+- ancestorIds för snabb hierarkiuppslagning ✅ NY
+- Kaskad-radering av objekt med barn ✅ NY
 - Föräldralösa barn visas som toppnivå med breadcrumb ✅
 - Favoriter med kombinerad filtrering (favoriter + kategori) ✅
 - Filter "Mina" för att visa endast egna objekt ✅
@@ -24,6 +27,7 @@ OurSpots – Manifest / Blueprint (Updated Jan 30, 2026)
 - Dynamiska kategorier med Firebase-baserad hantering ✅
 - Kategorihantering för administratörer ✅
 - Admin objekthantering (redigera/radera alla objekt) ✅
+- Admin användarhantering (lista, blockera, admin-roller) ✅ NY
 - Kartintegration med position och avstånd ✅
 - Egen positionsmarkör (användarikon) på karta ✅
 - Dark theme + glassmorphism + accentfärger ✅
@@ -36,8 +40,9 @@ OurSpots – Manifest / Blueprint (Updated Jan 30, 2026)
 - Collapsed hantera-sektion för renare läsupplevelse ✅
 - Reset-funktionalitet för återkommande Todo/Checklist ✅
 - Grid/List toggle för barn-objekt med localStorage-persistens ✅
-- Objektkopiering för återkommande events (resor, recept) ✅ NY
-- DateTag-block för års- och datumintervallmärkning ✅ NY
+- Objektkopiering för återkommande events (resor, recept) ✅
+- DateTag-block för års- och datumintervallmärkning ✅
+- Bevarar extra location-blocks (kantarellställen) vid redigering ✅ NY
 
 2. KATEGORI-SYSTEM
 - Dynamiska kategorier lagrade i Firebase ✅
@@ -62,12 +67,13 @@ Tillgängliga ikoner:
 Object:
 - id: string
 - parentId?: string
-- parentPath?: string[] (breadcrumb-namn på föräldrar, för delning) ✅ NY
+- parentPath?: string[] (breadcrumb-namn på föräldrar, för delning) ✅
+- ancestorIds?: string[] (alla förfäder för snabb uppslagning) ✅ NY
 - layerId: string
 - type: kategori-id från categories collection
 - blocks: Block[]
 - ownerId: string
-- shares?: { [emailKey: string]: { role: "viewer" | "editor", status: "pending" | "accepted", sharedAt: Timestamp, email: string } } ✅
+- shares?: { [emailKey: string]: { role: "viewer" | "editor", status: "pending" | "accepted" | "inherited", sharedAt: Timestamp, email: string } } ✅
 - sharedWithEmails?: string[] (för Firestore array-contains queries) ✅
 - isPublicShared?: boolean
 - publicShareToken?: string (UUID för publik delning)
@@ -79,6 +85,7 @@ Shares-system: ✅ IMPLEMENTERAT
 - Editor: Kan redigera objekt och blocks
 - Pending: Inbjudan skickad, väntar på accept
 - Accepted: Användaren har accepterat delning
+- Inherited: Automatiskt delad via förälder (ingen notifikation) ✅ NY
 - Lämna delning: Mottagare kan ta bort sig själv
 
 Block:
@@ -105,9 +112,13 @@ Category: ✅ IMPLEMENTERAT
 User: ✅ IMPLEMENTERAT
 - id: string (Firebase Auth UID)
 - email: string
+- displayName?: string
 - isAdmin: boolean
+- blocked?: boolean ✅ NY
+- blockedAt?: Timestamp ✅ NY
 - favorites: string[] (array av objekt-ID:n)
 - createdAt: Timestamp
+- updatedAt?: Timestamp
 
 Layer:
 - id: string
@@ -220,11 +231,11 @@ Default block sets per typ/kategori (för enkelhet):
   allow update: if resource.data.shares[request.auth.token.email].role == 'editor'
   ```
 
-### Planerade förbättringar (v1.6+)
+### Planerade förbättringar (v2.1+)
 - Email → UID mapping för snabbare queries
 - Badges på objektkort för delad status
-- Filter: Mina/Alla objekt
-- Dela barn-objekt tillsammans med förälder (shareChildren option)
+- Markdown editor för textfält (bullet lists, bold, bilder)
+- PWA-implementation (manifest.json, service worker, installbar)
 
 9. ADMINISTRATIVA FUNKTIONER ✅ IMPLEMENTERAT
 
@@ -333,14 +344,52 @@ Default block sets per typ/kategori (för enkelhet):
 - ✅ Sökbart: Sökning matchar årtal och månadsnamn
 - ✅ Kompakt visning som inline-chips
 
-### Objektkopiering (Implementerat v1.9) ✅ NY
+### Objektkopiering (Implementerat v1.9) ✅
 - ✅ "Kopiera"-knapp bredvid "Lägg till barn" i Hantera-sektionen
 - ✅ Kopierar all data: titel, plats, bild, alla block
 - ✅ Titeln får suffix " (kopia)" automatiskt
 - ✅ Behåller samma parent som originalet
 - ✅ Skapar nytt objekt (nytt ID, ingen koppling till original)
 - ✅ Barn-objekt kopieras INTE (bara själva objektet)
+- ✅ Kopierar ALLA location-blocks (inkl. kantarellställen) ✅ NY
 - ✅ Perfekt för återkommande events: årliga resor, recept, etc.
+
+### Hierarki & ancestorIds (Implementerat v2.0) ✅ NY
+- ✅ ancestorIds: Array med alla förfäders ID från rot till direkt förälder
+- ✅ Beräknas automatiskt vid skapande/redigering
+- ✅ Uppdateras rekursivt när förälder ändras
+- ✅ Möjliggör O(n) uppslagning av alla ättlingar
+- ✅ Admin-knapp "Synka hierarki" för migration av befintliga objekt
+- ✅ Används för: rekursiv delning, kaskad-radering, snabb filtrering
+
+### Kaskad-radering (Implementerat v2.0) ✅ NY
+- ✅ Raderar objekt OCH alla dess ättlingar (barn, barnbarn, etc.)
+- ✅ Varningsdialog visar antal objekt som kommer raderas
+- ✅ Knappen visar "Ta bort X objekt" istället för bara "Ta bort"
+- ✅ Endast owner/admin kan radera (editor ser inte knappen)
+- ✅ Använder ancestorIds för att hitta alla ättlingar
+
+### Rekursiv delning (Implementerat v2.0) ✅ NY
+- ✅ "Inkludera barn" checkbox i ShareModal
+- ✅ Delar alla ättlingar (barn, barnbarn, etc.) rekursivt
+- ✅ Ättlingar får status "inherited" (ingen notifikation)
+- ✅ Nya barn ärver automatiskt förälderns shares
+- ✅ Använder ancestorIds för snabb uppslagning
+
+### Extra location-blocks (Förbättrat v2.0) ✅ NY
+- ✅ Bevarar alla extra positioner vid redigering
+- ✅ Kopierar alla positioner vid duplicering
+- ✅ Perfekt för kantarellställen och multi-position objekt
+
+### Användaradministration (Implementerat v2.0) ✅ NY
+- ✅ UsersAdminModal: Lista alla användare med statistik
+- ✅ Sök och filtrera: Admin/Blockerade/Aktiva
+- ✅ Sortering: Namn, antal objekt, skapandedatum
+- ✅ Statistik per användare: objekt, delningar
+- ✅ Ge/ta admin-behörighet med en knapptryckning
+- ✅ Blockera/avblockera användare
+- ✅ Blockerade kan inte logga in (får meddelande)
+- ✅ Kan inte ändra egen admin-status eller blockera sig själv
 
 ### Block Editor UX (Förbättrad v1.9) ✅ NY
 - ✅ Expanderande textarea: 3 rader → 8 rader vid fokus
@@ -502,14 +551,15 @@ src/
     ├── MapView.jsx      (~300 rader) - Kartkomponent med clustering
     ├── MapPicker.jsx    (~200 rader) - Interaktiv kartväljare
     │
-    ├── CreateObjectModal.jsx    (~560 rader) - Skapa/redigera objekt
-    ├── ShareModal.jsx           (~350 rader) - Delningshantering
-    ├── DeleteConfirmModal.jsx   (~80 rader)  - Bekräftelsedialog
+    ├── CreateObjectModal.jsx    (~580 rader) - Skapa/redigera objekt
+    ├── ShareModal.jsx           (~380 rader) - Delningshantering
+    ├── DeleteConfirmModal.jsx   (~50 rader)  - Bekräftelsedialog med ättlingsräknare
     ├── FocalPointPicker.jsx     (~175 rader) - Bildbrännpunkt
     ├── BlockEditor.jsx          (~50 rader)  - Block-redigerare
     │
-    ├── ObjectsAdminModal.jsx    (~300 rader) - Admin: alla objekt
-    └── CategoryAdminModal.jsx   (~410 rader) - Admin: kategorier
+    ├── ObjectsAdminModal.jsx    (~420 rader) - Admin: alla objekt + synka hierarki
+    ├── CategoryAdminModal.jsx   (~410 rader) - Admin: kategorier
+    └── UsersAdminModal.jsx      (~350 rader) - Admin: användare ✅ NY
 ```
 
 ### Backup
@@ -561,3 +611,35 @@ src/
 - **Avvakta** - nuvarande prestanda är bra
 - Implementera optimeringar först när lagg uppstår
 - YAGNI-principen: "You Aren't Gonna Need It"
+- **ancestorIds** ger redan O(n) uppslagning för hierarki ✅
+
+14. CHANGELOG v2.0 (Jan 30, 2026)
+
+### Hierarki & Prestanda
+- ✅ ancestorIds: Array av alla förfäders ID för snabb uppslagning
+- ✅ Beräknas automatiskt vid skapa/redigera
+- ✅ Uppdateras rekursivt vid förälderbyte
+- ✅ Admin "Synka hierarki"-knapp för migration
+
+### Delning
+- ✅ Rekursiv delning: "Inkludera barn" delar alla ättlingar
+- ✅ "inherited" status: ättlingar får ingen notifikation
+- ✅ Nya barn ärver automatiskt förälderns shares
+
+### Radering
+- ✅ Kaskad-radering: tar bort alla ättlingar
+- ✅ Varning visar antal objekt som raderas
+- ✅ Endast owner/admin kan radera
+
+### Användarhantering
+- ✅ UsersAdminModal: Lista, sök, filtrera användare
+- ✅ Blockera/avblockera användare
+- ✅ Ge/ta admin-behörighet
+- ✅ Blockerade får meddelande och loggas ut
+
+### Bugfixar
+- ✅ Extra location-blocks bevaras vid redigering
+- ✅ Alla locations kopieras vid duplicering
+- ✅ Kopiera-knapp bredvid "Lägg till barn"
+- ✅ Rensa-knapp för text/checklista/todo-block
+- ✅ Expanderande textarea (3→8 rader vid fokus)
