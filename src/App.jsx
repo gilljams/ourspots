@@ -1294,6 +1294,7 @@ function App() {
           object={showShareModal}
           onClose={() => setShowShareModal(null)}
           currentUserEmail={user?.email?.toLowerCase()}
+          childObjects={objects.filter(o => o.parentId === showShareModal.id)}
         />
       )}
 

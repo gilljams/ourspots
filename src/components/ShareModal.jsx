@@ -4,7 +4,7 @@ import { doc, updateDoc, onSnapshot, Timestamp, deleteField, arrayUnion, arrayRe
 import { db } from '../firebase';
 import { emailToKey, keyToEmail } from '../utils/iconHelpers';
 
-function ShareModal({ object, onClose, currentUserEmail }) {
+function ShareModal({ object, onClose, currentUserEmail, childObjects = [] }) {
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('viewer');
   const [includeChildren, setIncludeChildren] = useState(true);
@@ -116,17 +116,42 @@ function ShareModal({ object, onClose, currentUserEmail }) {
     setError('');
 
     try {
+      const shareData = {
+        email: trimmedEmail, // Store original email for display
+        role,
+        status: 'pending',
+        includeChildren,
+        invitedAt: Timestamp.now(),
+        respondedAt: null
+      };
+
+      // Update parent object
       await updateDoc(doc(db, 'objects', object.id), {
-        [`shares.${emailKey}`]: {
-          email: trimmedEmail, // Store original email for display
-          role,
-          status: 'pending',
-          includeChildren,
-          invitedAt: Timestamp.now(),
-          respondedAt: null
-        },
+        [`shares.${emailKey}`]: shareData,
         sharedWithEmails: arrayUnion(trimmedEmail)
       });
+
+      // If includeChildren, also share with all child objects
+      if (includeChildren && childObjects.length > 0) {
+        const childShareData = {
+          email: trimmedEmail,
+          role,
+          status: 'pending',
+          includeChildren: false, // Children don't cascade further
+          invitedAt: Timestamp.now(),
+          respondedAt: null,
+          inheritedFrom: object.id // Track that this was inherited
+        };
+
+        // Update all children in parallel
+        await Promise.all(childObjects.map(child =>
+          updateDoc(doc(db, 'objects', child.id), {
+            [`shares.${emailKey}`]: childShareData,
+            sharedWithEmails: arrayUnion(trimmedEmail)
+          })
+        ));
+      }
+
       setEmail('');
     } catch (err) {
       console.error('Error sharing:', err);
@@ -136,26 +161,47 @@ function ShareModal({ object, onClose, currentUserEmail }) {
     }
   };
 
-  const handleRemoveShare = async (emailKey, originalEmail) => {
+  const handleRemoveShare = async (emailKey, originalEmail, shareData) => {
     const displayEmail = originalEmail || keyToEmail(emailKey);
     if (!confirm(`Ta bort delning för ${displayEmail}?`)) return;
     
     try {
+      // Remove from parent object
       await updateDoc(doc(db, 'objects', object.id), {
         [`shares.${emailKey}`]: deleteField(),
         sharedWithEmails: arrayRemove(displayEmail)
       });
+
+      // If this share included children, also remove from children
+      if (shareData?.includeChildren && childObjects.length > 0) {
+        await Promise.all(childObjects.map(child =>
+          updateDoc(doc(db, 'objects', child.id), {
+            [`shares.${emailKey}`]: deleteField(),
+            sharedWithEmails: arrayRemove(displayEmail)
+          })
+        ));
+      }
     } catch (err) {
       console.error('Error removing share:', err);
       alert('Kunde inte ta bort delningen');
     }
   };
 
-  const handleUpdateRole = async (emailKey, newRole) => {
+  const handleUpdateRole = async (emailKey, newRole, shareData) => {
     try {
+      // Update parent object
       await updateDoc(doc(db, 'objects', object.id), {
         [`shares.${emailKey}.role`]: newRole
       });
+
+      // If this share included children, also update children
+      if (shareData?.includeChildren && childObjects.length > 0) {
+        await Promise.all(childObjects.map(child =>
+          updateDoc(doc(db, 'objects', child.id), {
+            [`shares.${emailKey}.role`]: newRole
+          })
+        ));
+      }
     } catch (err) {
       console.error('Error updating role:', err);
     }
@@ -289,7 +335,7 @@ function ShareModal({ object, onClose, currentUserEmail }) {
                     </div>
                     <select
                       value={share.role}
-                      onChange={(e) => handleUpdateRole(share.key, e.target.value)}
+                      onChange={(e) => handleUpdateRole(share.key, e.target.value, share)}
                       className="px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-purple-500 appearance-none cursor-pointer"
                       style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239CA3AF'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 6px center', backgroundSize: '14px', paddingRight: '24px' }}
                     >
@@ -297,7 +343,7 @@ function ShareModal({ object, onClose, currentUserEmail }) {
                       <option value="editor" className="bg-gray-800 text-white">Redigerare</option>
                     </select>
                     <button
-                      onClick={() => handleRemoveShare(share.key, share.email)}
+                      onClick={() => handleRemoveShare(share.key, share.email, share)}
                       className="p-2 rounded-lg hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition-colors"
                       title="Ta bort delning"
                     >
