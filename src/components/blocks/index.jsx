@@ -256,7 +256,7 @@ export const ChecklistBlock = ({ data, objectId, blockIndex, onUpdate }) => {
         {checkedCount > 0 && onUpdate && (
           <button
             onClick={handleReset}
-            className="flex items-center gap-1.5 px-2 py-1 text-xs text-gray-500 hover:text-blue-400 transition-all"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-gray-500 hover:text-blue-400 active:text-blue-300 transition-all touch-manipulation"
             title="Nollställ alla markeringar"
           >
             <RotateCcw size={12} />
@@ -270,7 +270,7 @@ export const ChecklistBlock = ({ data, objectId, blockIndex, onUpdate }) => {
           <div 
             key={i}
             onClick={() => handleToggle(i)}
-            className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-white/[0.02] transition-colors group"
+            className="flex items-center gap-3 px-4 py-3.5 cursor-pointer hover:bg-white/[0.02] active:bg-white/[0.05] transition-colors group touch-manipulation"
           >
             <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all flex-shrink-0 ${
               item.checked ? 'bg-blue-500 border-blue-500' : 'border-gray-600 group-hover:border-blue-400'
@@ -325,7 +325,7 @@ export const TodoBlock = ({ data, objectId, blockIndex, onUpdate }) => {
         {doneItems > 0 && onUpdate && (
           <button
             onClick={handleReset}
-            className="flex items-center gap-1.5 px-2 py-1 text-xs text-gray-500 hover:text-green-400 transition-all"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-gray-500 hover:text-green-400 active:text-green-300 transition-all touch-manipulation"
             title="Nollställ alla markeringar"
           >
             <RotateCcw size={12} />
@@ -339,7 +339,7 @@ export const TodoBlock = ({ data, objectId, blockIndex, onUpdate }) => {
           <div 
             key={i}
             onClick={() => handleToggle(i)}
-            className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-white/[0.02] transition-colors group"
+            className="flex items-center gap-3 px-4 py-3.5 cursor-pointer hover:bg-white/[0.02] active:bg-white/[0.05] transition-colors group touch-manipulation"
           >
             <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0 ${
               item.done ? 'bg-green-500 border-green-500' : 'border-gray-600 group-hover:border-green-400'
@@ -553,12 +553,12 @@ export const TableBlock = ({ data, objectId, blockIndex, onUpdate }) => {
                       {col.type === 'checkbox' ? (
                         <button
                           onClick={() => handleCheckboxToggle(rowIndex, col.id)}
-                          className="w-full flex justify-center"
+                          className="w-full flex justify-center py-1 touch-manipulation active:bg-white/[0.03]"
                         >
-                          <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+                          <div className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-all ${
                             row[col.id] ? 'bg-amber-500 border-amber-500' : 'border-gray-600 hover:border-amber-400'
                           }`}>
-                            {row[col.id] && <Check size={14} className="text-white" />}
+                            {row[col.id] && <Check size={16} className="text-white" />}
                           </div>
                         </button>
                       ) : col.type === 'number' ? (

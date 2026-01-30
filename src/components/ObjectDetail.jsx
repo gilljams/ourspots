@@ -286,7 +286,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                     {isCollapsible && (
                       <button
                         onClick={toggleExpanded}
-                        className="w-full flex items-center gap-2.5 py-1 group"
+                        className="w-full flex items-center gap-2.5 py-2 group touch-manipulation"
                       >
                         <div className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
                           <ChevronDown 
