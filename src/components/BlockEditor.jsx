@@ -437,6 +437,7 @@ function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }
   const [title, setTitle] = useState(block.title);
   const [content, setContent] = useState(block.content);
   const [isFocused, setIsFocused] = useState(false);
+  const textareaRef = React.useRef(null);
   
   // Use refs to always have latest values for blur handlers
   const titleRef = React.useRef(title);
@@ -454,6 +455,44 @@ function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }
     setContent('');
     contentRef.current = '';
     onUpdate(block.id, { content: '' });
+  };
+  
+  // Markdown helper - wraps selected text or inserts at cursor
+  const insertMarkdown = (prefix, suffix = prefix, placeholder = '') => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = content.substring(start, end);
+    const textToWrap = selectedText || placeholder;
+    
+    const before = content.substring(0, start);
+    const after = content.substring(end);
+    const newContent = before + prefix + textToWrap + suffix + after;
+    
+    setContent(newContent);
+    contentRef.current = newContent;
+    
+    // Set cursor position after insertion
+    setTimeout(() => {
+      textarea.focus();
+      if (selectedText) {
+        // If text was selected, select the wrapped text
+        textarea.setSelectionRange(start + prefix.length, start + prefix.length + textToWrap.length);
+      } else {
+        // Place cursor after placeholder
+        const cursorPos = start + prefix.length + textToWrap.length + suffix.length;
+        textarea.setSelectionRange(cursorPos, cursorPos);
+      }
+    }, 0);
+  };
+  
+  const insertLink = () => {
+    const url = prompt('Ange URL:');
+    if (url) {
+      insertMarkdown('[', `](${url})`, 'länktext');
+    }
   };
   
   const hasContent = content && content.trim().length > 0;
@@ -487,8 +526,54 @@ function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }
         disabled={saving}
         className="w-full px-3 py-2 mb-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500"
       />
+      {/* Markdown toolbar - only for text blocks */}
+      {block.type === 'text' && (
+        <div className="flex gap-1 mb-2">
+          <button
+            type="button"
+            onClick={() => insertMarkdown('**', '**', 'text')}
+            className="w-8 h-8 rounded bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center font-bold text-sm transition-colors"
+            title="Fetstil (**text**)"
+          >
+            B
+          </button>
+          <button
+            type="button"
+            onClick={() => insertMarkdown('*', '*', 'text')}
+            className="w-8 h-8 rounded bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center italic text-sm transition-colors"
+            title="Kursiv (*text*)"
+          >
+            I
+          </button>
+          <button
+            type="button"
+            onClick={() => insertMarkdown('# ', '', 'Rubrik')}
+            className="w-8 h-8 rounded bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center text-sm transition-colors"
+            title="Rubrik (# Rubrik)"
+          >
+            H
+          </button>
+          <button
+            type="button"
+            onClick={() => insertMarkdown('> ', '', 'citat')}
+            className="w-8 h-8 rounded bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center text-sm transition-colors"
+            title="Citat (> citat)"
+          >
+            "
+          </button>
+          <button
+            type="button"
+            onClick={insertLink}
+            className="w-8 h-8 rounded bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition-colors"
+            title="Länk ([text](url))"
+          >
+            <Link2 size={14} />
+          </button>
+        </div>
+      )}
       <div className="relative">
         <textarea
+          ref={textareaRef}
           value={content}
           onChange={(e) => setContent(e.target.value)}
           onFocus={() => setIsFocused(true)}

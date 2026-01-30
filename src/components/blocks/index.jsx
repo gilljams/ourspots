@@ -102,7 +102,7 @@ export const ImageBlock = ({ data }) => {
   );
 };
 
-// Lightweight markdown renderer - supports **bold**, *italic*, - bullets, numbered lists
+// Lightweight markdown renderer - supports **bold**, *italic*, [links](url), > quotes, # headings, - bullets, numbered lists
 export const renderMarkdown = (text) => {
   if (!text) return null;
   
@@ -110,6 +110,7 @@ export const renderMarkdown = (text) => {
   const elements = [];
   let listItems = [];
   let listType = null; // 'ul' or 'ol'
+  let quoteLines = []; // For multi-line quotes
   
   const flushList = () => {
     if (listItems.length > 0) {
@@ -131,27 +132,50 @@ export const renderMarkdown = (text) => {
     }
   };
   
+  const flushQuote = () => {
+    if (quoteLines.length > 0) {
+      elements.push(
+        <blockquote key={`quote-${elements.length}`} className="border-l-2 border-blue-500/50 pl-3 my-2 text-gray-400 italic">
+          {quoteLines.map((line, i) => <p key={i}>{formatInline(line)}</p>)}
+        </blockquote>
+      );
+      quoteLines = [];
+    }
+  };
+  
   const formatInline = (line) => {
-    // Process bold and italic
+    // Process links, bold and italic
     const parts = [];
     let remaining = line;
     let keyIndex = 0;
     
     while (remaining.length > 0) {
+      // Check for [link](url)
+      const linkMatch = remaining.match(/\[([^\]]+)\]\(([^)]+)\)/);
       // Check for **bold**
       const boldMatch = remaining.match(/\*\*(.+?)\*\*/);
       // Check for *italic* (but not **)
       const italicMatch = remaining.match(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/);
       
+      // Find the first match
       let firstMatch = null;
       let matchType = null;
+      let matchIndex = Infinity;
       
-      if (boldMatch && (!italicMatch || boldMatch.index <= italicMatch.index)) {
+      if (linkMatch && linkMatch.index < matchIndex) {
+        firstMatch = linkMatch;
+        matchType = 'link';
+        matchIndex = linkMatch.index;
+      }
+      if (boldMatch && boldMatch.index < matchIndex) {
         firstMatch = boldMatch;
         matchType = 'bold';
-      } else if (italicMatch) {
+        matchIndex = boldMatch.index;
+      }
+      if (italicMatch && italicMatch.index < matchIndex) {
         firstMatch = italicMatch;
         matchType = 'italic';
+        matchIndex = italicMatch.index;
       }
       
       if (firstMatch) {
@@ -160,7 +184,19 @@ export const renderMarkdown = (text) => {
           parts.push(remaining.substring(0, firstMatch.index));
         }
         // Add formatted text
-        if (matchType === 'bold') {
+        if (matchType === 'link') {
+          parts.push(
+            <a 
+              key={keyIndex++} 
+              href={firstMatch[2]} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-blue-400 hover:text-blue-300 underline"
+            >
+              {firstMatch[1]}
+            </a>
+          );
+        } else if (matchType === 'bold') {
           parts.push(<strong key={keyIndex++} className="font-semibold text-white">{firstMatch[1]}</strong>);
         } else {
           parts.push(<em key={keyIndex++} className="italic text-gray-300">{firstMatch[1]}</em>);
@@ -176,6 +212,8 @@ export const renderMarkdown = (text) => {
   };
   
   lines.forEach((line, index) => {
+    // Check for quote (> )
+    const quoteMatch = line.match(/^>\s*(.*)/);
     // Check for H1 heading (# )
     const h1Match = line.match(/^#\s+(.+)/);
     // Check for H2 heading (## )
@@ -185,22 +223,30 @@ export const renderMarkdown = (text) => {
     // Check for numbered list (1. 2. etc)
     const numberedMatch = line.match(/^\s*\d+\.\s+(.+)/);
     
-    if (h2Match) {
+    if (quoteMatch) {
       flushList();
+      quoteLines.push(quoteMatch[1]);
+    } else if (h2Match) {
+      flushList();
+      flushQuote();
       elements.push(<h3 key={`h2-${index}`} className="text-base font-semibold text-white mt-3 mb-1">{formatInline(h2Match[1])}</h3>);
     } else if (h1Match) {
       flushList();
+      flushQuote();
       elements.push(<h2 key={`h1-${index}`} className="text-lg font-bold text-white mt-4 mb-2">{formatInline(h1Match[1])}</h2>);
     } else if (bulletMatch) {
+      flushQuote();
       if (listType !== 'ul') flushList();
       listType = 'ul';
       listItems.push(<li key={`li-${index}`} className="text-gray-200">{formatInline(bulletMatch[1])}</li>);
     } else if (numberedMatch) {
+      flushQuote();
       if (listType !== 'ol') flushList();
       listType = 'ol';
       listItems.push(<li key={`li-${index}`} className="text-gray-200">{formatInline(numberedMatch[1])}</li>);
     } else {
       flushList();
+      flushQuote();
       if (line.trim() === '') {
         elements.push(<div key={`br-${index}`} className="h-2" />);
       } else {
@@ -210,6 +256,7 @@ export const renderMarkdown = (text) => {
   });
   
   flushList();
+  flushQuote();
   return elements;
 };
 
