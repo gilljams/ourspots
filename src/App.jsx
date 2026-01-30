@@ -39,6 +39,7 @@ import BlockEditor from './components/BlockEditor';
 import CreateObjectModal from './components/CreateObjectModal';
 import ObjectsAdminModal from './components/ObjectsAdminModal';
 import CategoryAdminModal from './components/CategoryAdminModal';
+import UsersAdminModal from './components/UsersAdminModal';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap, Tooltip, Popup } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
@@ -90,6 +91,7 @@ function App() {
   const [showInvitations, setShowInvitations] = useState(false);
   const [showCategoryAdmin, setShowCategoryAdmin] = useState(false);
   const [showObjectsAdmin, setShowObjectsAdmin] = useState(false);
+  const [showUsersAdmin, setShowUsersAdmin] = useState(false);
   const [captures, setCaptures] = useState(() => {
     try {
       const saved = localStorage.getItem('ourspots_captures');
@@ -230,8 +232,17 @@ function App() {
 
           const userDoc = await getDoc(doc(db, 'users', u.uid));
           if (userDoc.exists()) {
-            const adminFlag = userDoc.data()?.isAdmin === true;
-            const userFavorites = userDoc.data()?.favorites || [];
+            const userData = userDoc.data();
+            
+            // Check if user is blocked
+            if (userData?.blocked) {
+              alert('Ditt konto har blivit blockerat. Kontakta administratören.');
+              await signOut(auth);
+              return;
+            }
+            
+            const adminFlag = userData?.isAdmin === true;
+            const userFavorites = userData?.favorites || [];
 
             setIsAdmin(adminFlag);
             setFavorites(userFavorites);
@@ -438,7 +449,7 @@ function App() {
 
   // Lock background scroll when any modal is open
   useEffect(() => {
-    const hasModalOpen = !!selectedObject || !!showCreateModal || !!showMenu || !!showCategoryAdmin || !!showObjectsAdmin || !!showCaptures;
+    const hasModalOpen = !!selectedObject || !!showCreateModal || !!showMenu || !!showCategoryAdmin || !!showObjectsAdmin || !!showUsersAdmin || !!showCaptures;
     const previousOverflow = document.body.style.overflow;
     if (hasModalOpen) {
       document.body.style.overflow = 'hidden';
@@ -448,7 +459,7 @@ function App() {
     return () => {
       document.body.style.overflow = previousOverflow;
     };
-  }, [selectedObject, showCreateModal, showMenu, showCategoryAdmin, showObjectsAdmin, showCaptures]);
+  }, [selectedObject, showCreateModal, showMenu, showCategoryAdmin, showObjectsAdmin, showUsersAdmin, showCaptures]);
 
   // Count only favorites that still exist in objects
   const validFavoritesCount = favorites.filter(fid => objects.some(o => o.id === fid)).length;
@@ -1402,6 +1413,14 @@ function App() {
         />
       )}
 
+      {showUsersAdmin && (
+        <UsersAdminModal
+          objects={objects}
+          currentUserId={user?.uid}
+          onClose={() => setShowUsersAdmin(false)}
+        />
+      )}
+
       {/* Captures Modal */}
       {showCaptures && (
         <div 
@@ -1545,6 +1564,16 @@ function App() {
                       >
                         <Settings size={18} className="text-purple-400" />
                         <span className="font-medium">Alla objekt</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowUsersAdmin(true);
+                          setShowMenu(false);
+                        }}
+                        className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-all group"
+                      >
+                        <Users size={18} className="text-green-400" />
+                        <span className="font-medium">Användare</span>
                       </button>
                     </div>
                   </div>
