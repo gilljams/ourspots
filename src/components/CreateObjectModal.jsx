@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, Plus, Upload, Loader, Navigation, 
-  Map as MapIcon, FileText, CheckSquare, ClipboardList, Link2, Table2, Image as ImageIcon, Calendar 
+  Map as MapIcon, FileText, CheckSquare, ClipboardList, Link2, Table2, Image as ImageIcon, Calendar, Phone 
 } from 'lucide-react';
 import { 
   CLOUDINARY_CLOUD_NAME, 
@@ -366,6 +366,11 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
     if (type === 'datetag') {
       newBlock.tags = [];
     }
+    if (type === 'contact') {
+      newBlock.phone = '';
+      newBlock.email = '';
+      newBlock.website = '';
+    }
     setCustomBlocks(prev => [...prev, newBlock]);
     setFormTouched(true);
   };
@@ -651,6 +656,9 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                 </button>
                 <button type="button" onClick={() => addCustomBlock('todo')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
                   <ClipboardList size={16} className="text-amber-400" /> Att göra
+                </button>
+                <button type="button" onClick={() => addCustomBlock('contact')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
+                  <Phone size={16} className="text-green-400" /> Kontakt
                 </button>
                 <button type="button" onClick={() => addCustomBlock('links')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
                   <Link2 size={16} className="text-purple-400" /> Länkar

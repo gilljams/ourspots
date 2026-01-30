@@ -133,7 +133,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
   }
   
   const blocksToRender = rawBlocks.sort((a, b) => {
-    const order = { 'title': 0, 'image': 1, 'location': 2, 'text': 3, 'checklist': 3, 'todo': 3, 'links': 3 };
+    const order = { 'title': 0, 'image': 1, 'location': 2, 'contact': 2.5, 'text': 3, 'checklist': 3, 'todo': 3, 'links': 3 };
     const aOrder = order[a.type] !== undefined ? order[a.type] : 4;
     const bOrder = order[b.type] !== undefined ? order[b.type] : 4;
     return aOrder - bOrder;
