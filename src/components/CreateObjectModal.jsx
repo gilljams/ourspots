@@ -47,7 +47,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
   const [customBlocks, setCustomBlocks] = useState(() => {
     if (!sourceObject) return [];
     return sourceObject.blocks
-      .filter(b => ['text', 'checklist', 'todo', 'links', 'table', 'datetag'].includes(b.type))
+      .filter(b => ['text', 'checklist', 'todo', 'links', 'table', 'datetag', 'contact'].includes(b.type))
       .map(b => {
         if (b.type === 'links') {
           return {
@@ -72,6 +72,15 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             id: Math.random().toString(36).substr(2, 9),
             type: 'datetag',
             tags: b.data.tags || []
+          };
+        }
+        if (b.type === 'contact') {
+          return {
+            id: Math.random().toString(36).substr(2, 9),
+            type: 'contact',
+            phone: b.data.phone || '',
+            email: b.data.email || '',
+            website: b.data.website || ''
           };
         }
         return {
@@ -334,6 +343,18 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             type: 'datetag', 
             data: { 
               tags: block.tags
+            } 
+          });
+        }
+      } else if (block.type === 'contact') {
+        // Save contact block if any field is filled
+        if (block.phone?.trim() || block.email?.trim() || block.website?.trim()) {
+          blocks.push({ 
+            type: 'contact', 
+            data: { 
+              phone: (block.phone || '').trim(),
+              email: (block.email || '').trim(),
+              website: (block.website || '').trim()
             } 
           });
         }
