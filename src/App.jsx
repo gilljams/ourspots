@@ -730,19 +730,49 @@ function App() {
       const parentPath = buildParentPath(objectData.parentId);
       const dataWithPath = { ...objectData, parentPath };
       
+      // Check if parent has shares with includeChildren - inherit them for new children
+      let inheritedShares = {};
+      let inheritedSharedWithEmails = [];
+      if (!editId && objectData.parentId) {
+        const parent = objects.find(o => o.id === objectData.parentId);
+        if (parent?.shares) {
+          // Find shares that have includeChildren enabled
+          Object.entries(parent.shares).forEach(([emailKey, shareData]) => {
+            if (shareData.includeChildren) {
+              inheritedShares[emailKey] = {
+                ...shareData,
+                includeChildren: false, // Children don't cascade further
+                inheritedFrom: objectData.parentId
+              };
+              if (shareData.email) {
+                inheritedSharedWithEmails.push(shareData.email);
+              }
+            }
+          });
+        }
+      }
+      
       if (editId) {
         // Update existing
         await updateDoc(doc(db, 'objects', editId), { ...dataWithPath, updatedAt: Timestamp.now() });
       } else {
         // Create new - use Promise.race with timeout
-        const addOperation = addDoc(collection(db, 'objects'), { 
+        const newObjectData = { 
           ...dataWithPath, 
           ownerId: user.uid, 
           ownerName: user.displayName, 
           ownerEmail: user.email, 
           createdAt: Timestamp.now(), 
-          updatedAt: Timestamp.now() 
-        });
+          updatedAt: Timestamp.now()
+        };
+        
+        // Add inherited shares if any
+        if (Object.keys(inheritedShares).length > 0) {
+          newObjectData.shares = inheritedShares;
+          newObjectData.sharedWithEmails = inheritedSharedWithEmails;
+        }
+        
+        const addOperation = addDoc(collection(db, 'objects'), newObjectData);
         
         const timeoutPromise = new Promise((_, reject) => 
           setTimeout(() => reject(new Error('Timeout')), 10000)
