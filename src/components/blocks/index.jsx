@@ -185,10 +185,15 @@ export const renderMarkdown = (text) => {
         }
         // Add formatted text
         if (matchType === 'link') {
+          // Ensure URL is absolute
+          let url = firstMatch[2];
+          if (!/^https?:\/\//i.test(url)) {
+            url = 'https://' + url;
+          }
           parts.push(
             <a 
               key={keyIndex++} 
-              href={firstMatch[2]} 
+              href={url} 
               target="_blank" 
               rel="noopener noreferrer"
               className="text-blue-400 hover:text-blue-300 underline"
