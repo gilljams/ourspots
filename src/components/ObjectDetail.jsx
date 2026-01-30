@@ -448,23 +448,27 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                 </button>
                 {showManageSection && (
                   <div className="mt-3 p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-3 animate-in slide-in-from-top-2 duration-200">
-                    {canManage && (
-                      <button
-                        onClick={() => onEdit({ parentId: object.id })}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:text-white transition-all"
-                      >
-                        <Plus size={16} />
-                        <span className="text-sm">Lägg till barn</span>
-                      </button>
-                    )}
-                    {onDuplicate && (
-                      <button
-                        onClick={() => onDuplicate(object)}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:text-white transition-all"
-                      >
-                        <Copy size={16} />
-                        <span className="text-sm">Kopiera</span>
-                      </button>
+                    {(canManage || onDuplicate) && (
+                      <div className="flex gap-2">
+                        {canManage && (
+                          <button
+                            onClick={() => onEdit({ parentId: object.id })}
+                            className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:text-white transition-all"
+                          >
+                            <Plus size={16} />
+                            <span className="text-sm">Lägg till barn</span>
+                          </button>
+                        )}
+                        {onDuplicate && (
+                          <button
+                            onClick={() => onDuplicate(object)}
+                            className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:text-white transition-all"
+                          >
+                            <Copy size={16} />
+                            <span className="text-sm">Kopiera</span>
+                          </button>
+                        )}
+                      </div>
                     )}
                     {canEdit && (
                       <div className="flex gap-2">

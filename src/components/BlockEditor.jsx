@@ -436,6 +436,14 @@ function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }
   const syncTitle = () => onUpdate(block.id, { title: titleRef.current });
   const syncContent = () => onUpdate(block.id, { content: contentRef.current });
   
+  const handleClear = () => {
+    setContent('');
+    contentRef.current = '';
+    onUpdate(block.id, { content: '' });
+  };
+  
+  const hasContent = content && content.trim().length > 0;
+  
   return (
     <div className="rounded-xl border border-white/10 p-3 bg-white/5">
       <div className="flex items-center justify-between mb-2">
@@ -465,15 +473,28 @@ function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }
         disabled={saving}
         className="w-full px-3 py-2 mb-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500"
       />
-      <textarea
-        defaultValue={block.content}
-        onChange={(e) => setContent(e.target.value)}
-        onBlur={syncContent}
-        placeholder={block.type === 'text' ? 'Skriv text här...' : 'En per rad'}
-        rows={3}
-        disabled={saving}
-        className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-none"
-      />
+      <div className="relative">
+        <textarea
+          defaultValue={block.content}
+          onChange={(e) => setContent(e.target.value)}
+          onBlur={syncContent}
+          placeholder={block.type === 'text' ? 'Skriv text här...' : 'En per rad'}
+          rows={3}
+          disabled={saving}
+          className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-none"
+        />
+        {hasContent && (
+          <button
+            type="button"
+            onClick={handleClear}
+            disabled={saving}
+            className="absolute bottom-2 right-2 px-2 py-1 rounded bg-white/10 text-gray-400 hover:bg-red-500/20 hover:text-red-400 text-xs flex items-center gap-1 transition-colors"
+            title="Rensa innehåll"
+          >
+            <Trash2 size={12} /> Rensa
+          </button>
+        )}
+      </div>
     </div>
   );
 }
