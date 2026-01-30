@@ -2,7 +2,7 @@
 OurSpots – Manifest / Blueprint (Updated Jan 30, 2026)
 ========================
 
-🚀 STATUS: v1.8 - Orphan Children & Enhanced Filtering
+🚀 STATUS: v1.9 - Object Duplication & DateTag Block
 
 1. VISION
 - Mobilfokuserad app med premium dark theme
@@ -12,12 +12,12 @@ OurSpots – Manifest / Blueprint (Updated Jan 30, 2026)
 - Lämna delning-funktion för mottagare ✅
 - Objekt + block = återanvändbar struktur ✅
 - Hierarki för objekt (parent → child) ✅
-- Föräldralösa barn visas som toppnivå med breadcrumb ✅ NY
+- Föräldralösa barn visas som toppnivå med breadcrumb ✅
 - Favoriter med kombinerad filtrering (favoriter + kategori) ✅
-- Filter "Mina" för att visa endast egna objekt ✅ NY
+- Filter "Mina" för att visa endast egna objekt ✅
 - Smart bildhantering med AI-beskärning och manuell GPS-extrahering ✅
-- "Plats från bild"-knapp för kontrollerad GPS-utläsning ✅ NY
-- Platsoberoende kategorier (hideLocation) ✅ NY
+- "Plats från bild"-knapp för kontrollerad GPS-utläsning ✅
+- Platsoberoende kategorier (hideLocation) ✅
 - Skärmhantering med Wake Lock API ✅
 - GPS-lägen: Snabb (standard) och Precis (±10m) ✅
 - Lager/samlingar för resor/projekt - planerad funktion
@@ -35,7 +35,9 @@ OurSpots – Manifest / Blueprint (Updated Jan 30, 2026)
 - Race condition-säkerhet för robusta uppdateringar ✅
 - Collapsed hantera-sektion för renare läsupplevelse ✅
 - Reset-funktionalitet för återkommande Todo/Checklist ✅
-- Grid/List toggle för barn-objekt med localStorage-persistens ✅ NY
+- Grid/List toggle för barn-objekt med localStorage-persistens ✅
+- Objektkopiering för återkommande events (resor, recept) ✅ NY
+- DateTag-block för års- och datumintervallmärkning ✅ NY
 
 2. KATEGORI-SYSTEM
 - Dynamiska kategorier lagrade i Firebase ✅
@@ -85,8 +87,9 @@ Block:
 - type: "text", content
 - type: "checklist", items[]
 - type: "todo", items[]
-- type: "links", title, items[{title, url, icon}] ✅ NY
-- type: "table", title, template, columns[], rows[] ✅ NY
+- type: "links", title, items[{title, url, icon}] ✅
+- type: "table", title, template, columns[], rows[] ✅
+- type: "datetag", tags[{type: "year"|"range", year?, startDate?, endDate?}] ✅ NY
 - Modulära block kan adderas senare
 
 Category: ✅ IMPLEMENTERAT
@@ -293,7 +296,7 @@ Default block sets per typ/kategori (för enkelhet):
 - ✅ Bekräftelsedialog vid mallbyte med data
 - ✅ iOS-optimerad (inputMode="numeric" för siffror)
 
-### Föräldralösa barn & Filtrering (Implementerat v1.8) ✅ NY
+### Föräldralösa barn & Filtrering (Implementerat v1.8) ✅
 - ✅ Barn-objekt vars förälder användaren inte ser visas som toppnivå
 - ✅ Breadcrumb-rad på kort visar full hierarki (t.ex. "↳ Hälsingland › Stugan")
 - ✅ parentPath sparas på objekt för breadcrumb vid delning
@@ -302,25 +305,51 @@ Default block sets per typ/kategori (för enkelhet):
 - ✅ Favoriter-räknare exkluderar raderade objekt
 - ✅ Admin-funktion: "Uppdatera parentPath" för alla objekt (migration)
 
-### Platsoberoende kategorier (Implementerat v1.8) ✅ NY
+### Platsoberoende kategorier (Implementerat v1.8) ✅
 - ✅ hideLocation-flagga på kategorier
 - ✅ Döljer platsfält vid objektskapande
 - ✅ Exkluderar från kartvy
 - ✅ Alltid med i avståndsfiltret (räknas som inom räckvidd)
 
-### GPS-extrahering (Förbättrad v1.8) ✅ NY
+### GPS-extrahering (Förbättrad v1.8) ✅
 - ✅ Automatisk GPS-utläsning borttagen vid bilduppladdning
 - ✅ Ny knapp "Från bild" i platssektionen
 - ✅ Tre knappar på rad: "Min plats", "På karta", "Från bild"
 - ✅ "Från bild" visas endast när bild laddats upp
 - ✅ Döljs för platsoberoende kategorier
 
-### Barn-visning (Implementerat v1.8) ✅ NY
+### Barn-visning (Implementerat v1.8) ✅
 - ✅ Toggle mellan grid och list för barn-objekt i ObjectDetail
 - ✅ Visas endast när >2 barn finns
 - ✅ localStorage-persistens för användarens preferens
 
-### Planerade admin-funktioner (v1.9+)
+### DateTag Block (Implementerat v1.9) ✅ NY
+- ✅ Märka objekt med årtal (blå chips, t.ex. "2024", "2025")
+- ✅ Märka objekt med datumintervall (lila chips, t.ex. "15 jun – 22 jun 2025")
+- ✅ Flera taggar per block
+- ✅ Lägg till via dropdown-meny med två alternativ
+- ✅ År: Nummerfält med current year som default
+- ✅ Intervall: Start- och slutdatum med native date pickers
+- ✅ Sökbart: Sökning matchar årtal och månadsnamn
+- ✅ Kompakt visning som inline-chips
+
+### Objektkopiering (Implementerat v1.9) ✅ NY
+- ✅ "Kopiera"-knapp bredvid "Lägg till barn" i Hantera-sektionen
+- ✅ Kopierar all data: titel, plats, bild, alla block
+- ✅ Titeln får suffix " (kopia)" automatiskt
+- ✅ Behåller samma parent som originalet
+- ✅ Skapar nytt objekt (nytt ID, ingen koppling till original)
+- ✅ Barn-objekt kopieras INTE (bara själva objektet)
+- ✅ Perfekt för återkommande events: årliga resor, recept, etc.
+
+### Block Editor UX (Förbättrad v1.9) ✅ NY
+- ✅ Expanderande textarea: 3 rader → 8 rader vid fokus
+- ✅ Smidig animation med transition-all
+- ✅ "Rensa"-knapp i nedre högra hörnet för text/checklista/todo
+- ✅ Rensa-knappen syns endast när innehåll finns
+- ✅ Kontrollerade komponenter för omedelbar UI-uppdatering
+
+### Planerade admin-funktioner (v2.0+)
 - Lager: lägg till, redigera, ta bort, färg, ikon, typ
 - Objekt: flytta mellan lager, flytta i hierarki, redigera metadata, public flag
 - Delning / access: lägg till / ta bort användare, set roll Viewer/Editor
