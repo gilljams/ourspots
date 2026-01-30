@@ -2,7 +2,7 @@
 OurSpots – Manifest / Blueprint (Updated Jan 30, 2026)
 ========================
 
-🚀 STATUS: v2.0 - Hierarchy & User Management
+🚀 STATUS: v2.1 - Markdown & Contact Block
 
 1. VISION
 - Mobilfokuserad app med premium dark theme
@@ -91,12 +91,13 @@ Shares-system: ✅ IMPLEMENTERAT
 Block:
 - type: "image", url, cropMode (auto/face/center)
 - type: "location", lat, lng
-- type: "text", content
+- type: "text", content (stöder markdown: **bold**, *italic*, [länkar](url), > citat, # rubriker) ✅ NY
 - type: "checklist", items[]
 - type: "todo", items[]
 - type: "links", title, items[{title, url, icon}] ✅
 - type: "table", title, template, columns[], rows[] ✅
-- type: "datetag", tags[{type: "year"|"range", year?, startDate?, endDate?}] ✅ NY
+- type: "datetag", tags[{type: "year"|"range", year?, startDate?, endDate?}] ✅
+- type: "contact", phone, email, website ✅ NY
 - Modulära block kan adderas senare
 
 Category: ✅ IMPLEMENTERAT
@@ -185,7 +186,7 @@ Default block sets per typ/kategori (för enkelhet):
 📋 Planerat (v1.8+)
   - Badges på kort när objekt är delat
   - Filter: Mina/Alla objekt
-  - Markdown editor för textfält (bullet lists, bold, bilder)
+  - ✅ Markdown editor för textfält (bullet lists, bold, bilder) - KLART v2.1
   - PWA-implementation (manifest.json, service worker, installbar)
   - Fler blocktyper (Audio/Video, PDF, Väder, Timer)
   - Lager/samlingar för resor och projekt
@@ -397,6 +398,29 @@ Default block sets per typ/kategori (för enkelhet):
 - ✅ "Rensa"-knapp i nedre högra hörnet för text/checklista/todo
 - ✅ Rensa-knappen syns endast när innehåll finns
 - ✅ Kontrollerade komponenter för omedelbar UI-uppdatering
+
+### Markdown-stöd i textblock (Implementerat v2.1) ✅ NY
+- ✅ **Fetstil** med dubbla asterisker
+- ✅ *Kursiv* med enkla asterisker
+- ✅ [Länkar](url) med automatisk https-prefix
+- ✅ > Citat med grå bakgrund och vänsterborder
+- ✅ # Rubriker (H1-H3) med olika storlekar
+- ✅ Punktlistor och numrerade listor
+- ✅ Enkel toolbar med 5 knappar: B, I, H, ", Länk
+- ✅ Länkar öppnas i ny flik med rel="noopener noreferrer"
+
+### Contact Block (Implementerat v2.1) ✅ NY
+- ✅ Tre fält: Telefon, Email, Webbplats
+- ✅ Telefon: Klickbar tel:-länk med ikon
+- ✅ Email: Klickbar mailto:-länk med ikon
+- ✅ Webbplats: Ikon-knapp (kompakt) med tooltip
+- ✅ Enhetlig blå färg för alla ikoner
+- ✅ Sorteras efter location-block i detaljvyn
+
+### iOS Touch-optimering (Implementerat v2.1) ✅ NY
+- ✅ Global touch-manipulation CSS förhindrar dubbelklick-zoom
+- ✅ Swipe-to-close ignorerar interaktiva element (knappar, länkar)
+- ✅ Förbättrad inputhantering utan aggressiva blur-handlers
 
 ### Planerade admin-funktioner (v2.0+)
 - Lager: lägg till, redigera, ta bort, färg, ikon, typ
