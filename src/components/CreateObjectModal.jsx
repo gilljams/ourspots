@@ -33,9 +33,14 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
   const originalTitle = sourceObject?.blocks?.find(b => b.type === 'title')?.data?.text || '';
   const [title, setTitle] = useState(isDuplicate ? `${originalTitle} (kopia)` : originalTitle);
   
-  const [address, setAddress] = useState(sourceObject?.blocks?.find(b => b.type === 'location')?.data?.address || '');
-  const [lat, setLat] = useState(sourceObject?.blocks?.find(b => b.type === 'location')?.data?.lat ?? null);
-  const [lng, setLng] = useState(sourceObject?.blocks?.find(b => b.type === 'location')?.data?.lng ?? null);
+  // Location handling - preserve extra location blocks (e.g., mushroom spots added via quick capture)
+  const locationBlocks = sourceObject?.blocks?.filter(b => b.type === 'location') || [];
+  const primaryLocation = locationBlocks[0];
+  const [address, setAddress] = useState(primaryLocation?.data?.address || '');
+  const [lat, setLat] = useState(primaryLocation?.data?.lat ?? null);
+  const [lng, setLng] = useState(primaryLocation?.data?.lng ?? null);
+  // Extra locations (index 1+) are preserved but not editable in the modal
+  const extraLocationBlocks = locationBlocks.slice(1);
   const [imageUrl, setImageUrl] = useState(sourceObject?.blocks?.find(b => b.type === 'image')?.data?.url || '');
   const [imageCropMode, setImageCropMode] = useState(sourceObject?.blocks?.find(b => b.type === 'image')?.data?.cropMode || 'auto');
   const [imageFocalPoint, setImageFocalPoint] = useState(sourceObject?.blocks?.find(b => b.type === 'image')?.data?.focalPoint || null);
@@ -275,6 +280,13 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
           lng: lng !== null ? Number(lng) : null,
           address: address.trim() || (lat !== null && lng !== null ? `${lat.toFixed(5)}, ${lng.toFixed(5)}` : '')
         }
+      });
+    }
+    
+    // Preserve extra location blocks (e.g., mushroom spots added via quick capture)
+    if (isEdit && extraLocationBlocks.length > 0) {
+      extraLocationBlocks.forEach(locBlock => {
+        blocks.push({ type: 'location', data: locBlock.data });
       });
     }
 
