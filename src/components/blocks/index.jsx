@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, Map as MapIcon, X, Check, RotateCcw, ExternalLink } from 'lucide-react';
+import { MapPin, Map as MapIcon, X, Check, RotateCcw, ExternalLink, Calendar } from 'lucide-react';
 import { getTransformedImageUrl, getFocalPointStyles } from '../../utils/imageUtils';
 import { getIconComponent } from '../../utils/iconHelpers';
 
@@ -611,6 +611,48 @@ export const TableBlock = ({ data, objectId, blockIndex, onUpdate }) => {
   );
 };
 
+// DateTag Block - for marking years or date ranges
+export const DateTagBlock = ({ data }) => {
+  const tags = data.tags || [];
+  
+  const formatTag = (tag) => {
+    if (tag.type === 'year') {
+      return tag.value;
+    } else if (tag.type === 'range') {
+      const start = new Date(tag.start);
+      const end = new Date(tag.end);
+      const formatDate = (d) => d.toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' });
+      const startYear = start.getFullYear();
+      const endYear = end.getFullYear();
+      if (startYear === endYear) {
+        return `${formatDate(start)} – ${formatDate(end)} ${startYear}`;
+      }
+      return `${formatDate(start)} ${startYear} – ${formatDate(end)} ${endYear}`;
+    }
+    return '';
+  };
+
+  if (tags.length === 0) return null;
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {tags.map((tag, i) => (
+        <div 
+          key={i}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium ${
+            tag.type === 'year' 
+              ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' 
+              : 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+          }`}
+        >
+          <Calendar size={14} />
+          <span>{formatTag(tag)}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 export const blockComponents = {
   title: TitleBlock,
   location: LocationBlock,
@@ -619,5 +661,6 @@ export const blockComponents = {
   checklist: ChecklistBlock,
   todo: TodoBlock,
   links: LinksBlock,
-  table: TableBlock
+  table: TableBlock,
+  datetag: DateTagBlock
 };

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, Plus, Upload, Loader, Navigation, 
-  Map as MapIcon, FileText, CheckSquare, ClipboardList, Link2, Table2, Image as ImageIcon 
+  Map as MapIcon, FileText, CheckSquare, ClipboardList, Link2, Table2, Image as ImageIcon, Calendar 
 } from 'lucide-react';
 import { 
   CLOUDINARY_CLOUD_NAME, 
@@ -12,7 +12,7 @@ import {
 import { getIconComponent } from '../utils/iconHelpers';
 import MapPicker from './MapPicker';
 import FocalPointPicker from './FocalPointPicker';
-import BlockEditor from './BlockEditor';
+import BlockEditor, { DateTagBlockEditor } from './BlockEditor';
 
 function CreateObjectModal({ onClose, onSave, editObject, saving, availableParents, defaultParentId, userLocation, categories, preciseGPS }) {
   // ========== STATE ==========
@@ -35,7 +35,7 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
   const [customBlocks, setCustomBlocks] = useState(() => {
     if (!editObject) return [];
     return editObject.blocks
-      .filter(b => ['text', 'checklist', 'todo', 'links', 'table'].includes(b.type))
+      .filter(b => ['text', 'checklist', 'todo', 'links', 'table', 'datetag'].includes(b.type))
       .map(b => {
         if (b.type === 'links') {
           return {
@@ -53,6 +53,13 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
             template: b.data.template || 'tasks',
             rows: b.data.rows || [],
             columns: b.data.columns || []
+          };
+        }
+        if (b.type === 'datetag') {
+          return {
+            id: Math.random().toString(36).substr(2, 9),
+            type: 'datetag',
+            tags: b.data.tags || []
           };
         }
         return {
@@ -76,6 +83,8 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
   // Refs
   const fileInputRef = useRef(null);
   const gpsWatchRef = useRef(null);
+  const customBlocksRef = useRef(customBlocks);
+  customBlocksRef.current = customBlocks;
   
   // Track if form has been modified (simpler than deep comparison)
   const [formTouched, setFormTouched] = useState(false);
@@ -243,14 +252,14 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
     }
   };
 
-  const handleSubmit = () => {
-    if (!title.trim()) {
+  const handleSubmit = async () => {
+    if (!title || !title.trim()) {
       alert('Titel måste fyllas i!');
       return;
     }
 
     const blocks = [{ type: 'title', data: { text: title.trim() } }];
-    
+  
     if (!inheritLocation && ((lat !== null && lng !== null) || address.trim())) {
       blocks.push({ 
         type: 'location', 
@@ -268,9 +277,10 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
       blocks.push({ type: 'image', data: imageData });
     }
 
-    customBlocks.forEach(block => {
+    const currentCustomBlocks = customBlocksRef.current;
+    
+    currentCustomBlocks.forEach(block => {
       if (block.type === 'links') {
-        // Links block - check if has any links with url
         const validLinks = (block.links || []).filter(l => l.url?.trim());
         if (validLinks.length > 0) {
           blocks.push({ 
@@ -286,7 +296,6 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
           });
         }
       } else if (block.type === 'table') {
-        // Table block
         if (block.rows && block.rows.length > 0) {
           blocks.push({ 
             type: 'table', 
@@ -298,7 +307,16 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
             } 
           });
         }
-      } else if (block.content.trim()) {
+      } else if (block.type === 'datetag') {
+        if (block.tags && block.tags.length > 0) {
+          blocks.push({ 
+            type: 'datetag', 
+            data: { 
+              tags: block.tags
+            } 
+          });
+        }
+      } else if (block.content && block.content.trim()) {
         if (block.type === 'text') {
           blocks.push({ type: 'text', data: { title: (block.title || 'Anteckning').trim(), content: block.content.trim() } });
         } else if (block.type === 'checklist') {
@@ -323,6 +341,9 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
       newBlock.template = 'tasks';
       newBlock.rows = [];
       newBlock.columns = [];
+    }
+    if (type === 'datetag') {
+      newBlock.tags = [];
     }
     setCustomBlocks(prev => [...prev, newBlock]);
     setFormTouched(true);
@@ -609,6 +630,9 @@ function CreateObjectModal({ onClose, onSave, editObject, saving, availableParen
                 </button>
                 <button type="button" onClick={() => addCustomBlock('table')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
                   <Table2 size={16} className="text-amber-400" /> Tabell
+                </button>
+                <button type="button" onClick={() => addCustomBlock('datetag')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
+                  <Calendar size={16} className="text-cyan-400" /> Datum
                 </button>
               </div>
             </div>

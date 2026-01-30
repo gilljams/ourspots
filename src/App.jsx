@@ -7,6 +7,9 @@ import {
   FileText, CheckSquare, ClipboardList, MapPin, Home, RotateCcw, Star, Navigation
 } from 'lucide-react';
 
+// Version for cache-busting visual indicator (remove in production)
+// const APP_VERSION = 'v9';
+
 // Utils
 import { 
   CLOUDINARY_CLOUD_NAME, 
@@ -464,6 +467,16 @@ function App() {
       if ((block.type === 'checklist' || block.type === 'todo') && Array.isArray(block.data?.items)) {
         block.data.items.forEach(item => {
           if (item?.text) values.push(item.text);
+        });
+      }
+      if (block.type === 'datetag' && Array.isArray(block.data?.tags)) {
+        block.data.tags.forEach(tag => {
+          if (tag.type === 'year') {
+            values.push(tag.value.toString());
+          } else if (tag.type === 'range') {
+            values.push(tag.start);
+            values.push(tag.end);
+          }
         });
       }
     });
