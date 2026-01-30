@@ -94,7 +94,7 @@ function LinksBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
               <div className="relative">
                 <button
                   type="button"
-                  onClick={() => setShowIconPicker(showIconPicker === linkIndex ? null : linkIndex)}
+                  onClick={(e) => { e.stopPropagation(); setShowIconPicker(showIconPicker === linkIndex ? null : linkIndex); }}
                   className="w-10 h-10 rounded-lg bg-purple-500/20 border border-white/10 flex items-center justify-center hover:bg-purple-500/30 transition-colors"
                   title="Välj ikon"
                 >
@@ -103,24 +103,34 @@ function LinksBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
                 
                 {/* Icon dropdown */}
                 {showIconPicker === linkIndex && (
-                  <div className="absolute top-12 left-0 z-50 bg-gray-800 border border-white/10 rounded-xl p-2 shadow-xl grid grid-cols-4 gap-1 w-48">
-                    {LINK_ICONS.map(({ name, label }) => {
-                      const Icon = getIconComponent(name);
-                      return (
-                        <button
-                          key={name}
-                          type="button"
-                          onClick={() => selectIcon(linkIndex, name)}
-                          className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
-                            link.icon === name ? 'bg-purple-500/30 text-purple-300' : 'hover:bg-white/10 text-gray-400'
-                          }`}
-                          title={label}
-                        >
-                          <Icon size={18} />
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <>
+                    {/* Backdrop to close on outside click */}
+                    <div 
+                      className="fixed inset-0 z-[100]" 
+                      onClick={(e) => { e.stopPropagation(); setShowIconPicker(null); }}
+                    />
+                    <div 
+                      className="absolute top-12 left-0 z-[101] bg-gray-800 border border-white/10 rounded-xl p-2 shadow-xl grid grid-cols-4 gap-1 w-48"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {LINK_ICONS.map(({ name, label }) => {
+                        const Icon = getIconComponent(name);
+                        return (
+                          <button
+                            key={name}
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); selectIcon(linkIndex, name); }}
+                            className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
+                              link.icon === name ? 'bg-purple-500/30 text-purple-300' : 'hover:bg-white/10 text-gray-400'
+                            }`}
+                            title={label}
+                          >
+                            <Icon size={18} />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
                 )}
               </div>
 
