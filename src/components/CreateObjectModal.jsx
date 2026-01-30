@@ -394,15 +394,33 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
   };
 
   // ========== RENDER ==========
+  
+  // Helper to blur any focused element (fixes iOS touch issues)
+  const blurActiveElement = () => {
+    if (document.activeElement && document.activeElement.blur) {
+      document.activeElement.blur();
+    }
+  };
+  
   return (
     <>
       {/* Backdrop */}
       <div 
         className="fixed inset-0 bg-black/80 z-[1000] flex items-end sm:items-center justify-center sm:p-8"
-        onClick={(e) => { if (!saving && e.target === e.currentTarget) onClose(); }}
+        onClick={(e) => { 
+          blurActiveElement();
+          if (!saving && e.target === e.currentTarget) onClose(); 
+        }}
+        onTouchStart={(e) => {
+          // Blur on touch outside inputs to release iOS focus
+          if (e.target === e.currentTarget) blurActiveElement();
+        }}
       >
         {/* Modal */}
-        <div className="bg-gray-900 sm:rounded-xl border-t sm:border border-white/10 w-full sm:max-w-2xl h-full sm:h-auto sm:max-h-[90vh] overflow-hidden flex flex-col">
+        <div 
+          className="bg-gray-900 sm:rounded-xl border-t sm:border border-white/10 w-full sm:max-w-2xl h-full sm:h-auto sm:max-h-[90vh] overflow-hidden flex flex-col"
+          style={{ touchAction: 'pan-y' }}
+        >
           
           {/* Header */}
           <div className="flex-shrink-0 px-4 py-4 border-b border-white/10 flex items-center justify-between bg-gray-900">
@@ -426,7 +444,16 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
           </div>
 
           {/* Scrollable Content */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-6">
+          <div 
+            className="flex-1 overflow-y-auto p-4 space-y-6"
+            onTouchStart={(e) => {
+              // If touching empty space (not an input/button), blur to release iOS focus lock
+              const tag = e.target.tagName.toLowerCase();
+              if (!['input', 'textarea', 'button', 'select'].includes(tag) && !e.target.closest('button')) {
+                blurActiveElement();
+              }
+            }}
+          >
             
             {/* Category selector */}
             <div>
