@@ -112,6 +112,9 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
   const childObjects = allObjects.filter(o => o.parentId === object.id);
   const parentObject = object.parentId ? allObjects.find(o => o.id === object.parentId) : null;
   
+  // Find all descendants (children, grandchildren, etc.) for cascade delete warning
+  const allDescendants = allObjects.filter(o => o.ancestorIds?.includes(object.id));
+  
   // Inherit location from parent if child doesn't have one
   const hasOwnLocation = object.blocks.some(b => b.type === 'location');
   const parentLocation = parentObject?.blocks?.find(b => b.type === 'location');

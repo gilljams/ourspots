@@ -846,8 +846,17 @@ function App() {
 
   const handleDeleteObject = async (id) => {
     try {
-      await deleteDoc(doc(db, 'objects', id));
+      // Find all descendants using ancestorIds
+      const descendants = objects.filter(o => o.ancestorIds?.includes(id));
+      
+      // Delete all descendants first, then the object itself
+      const allToDelete = [...descendants.map(d => d.id), id];
+      
+      await Promise.all(allToDelete.map(objId => 
+        deleteDoc(doc(db, 'objects', objId))
+      ));
     } catch (err) {
+      console.error('Error deleting objects:', err);
       alert('Kunde inte ta bort!');
     }
   };
