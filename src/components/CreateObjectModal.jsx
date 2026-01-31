@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, Plus, Upload, Loader, Navigation, 
-  Map as MapIcon, FileText, CheckSquare, ClipboardList, Link2, Table2, Image as ImageIcon, Calendar, Phone 
+  Map as MapIcon, FileText, CheckSquare, ClipboardList, Link2, Table2, Image as ImageIcon, Calendar, Phone, Timer 
 } from 'lucide-react';
 import { 
   CLOUDINARY_CLOUD_NAME, 
@@ -12,7 +12,7 @@ import {
 import { getIconComponent } from '../utils/iconHelpers';
 import MapPicker from './MapPicker';
 import FocalPointPicker from './FocalPointPicker';
-import BlockEditor, { DateTagBlockEditor } from './BlockEditor';
+import BlockEditor, { DateTagBlockEditor, TimerBlockEditor } from './BlockEditor';
 
 function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, saving, availableParents, defaultParentId, userLocation, categories, preciseGPS }) {
   // ========== STATE ==========
@@ -48,7 +48,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
   const [customBlocks, setCustomBlocks] = useState(() => {
     if (!sourceObject) return [];
     return sourceObject.blocks
-      .filter(b => ['text', 'checklist', 'todo', 'links', 'table', 'datetag', 'contact'].includes(b.type))
+      .filter(b => ['text', 'checklist', 'todo', 'links', 'table', 'datetag', 'contact', 'timer'].includes(b.type))
       .map(b => {
         if (b.type === 'links') {
           return {
@@ -82,6 +82,13 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             phone: b.data.phone || '',
             email: b.data.email || '',
             website: b.data.website || ''
+          };
+        }
+        if (b.type === 'timer') {
+          return {
+            id: Math.random().toString(36).substr(2, 9),
+            type: 'timer',
+            timers: b.data.timers || []
           };
         }
         return {
@@ -359,6 +366,16 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             } 
           });
         }
+      } else if (block.type === 'timer') {
+        // Save timer block if any timers exist
+        if (block.timers && block.timers.length > 0) {
+          blocks.push({ 
+            type: 'timer', 
+            data: { 
+              timers: block.timers
+            } 
+          });
+        }
       } else if (block.content && block.content.trim()) {
         if (block.type === 'text') {
           blocks.push({ type: 'text', data: { title: (block.title || 'Anteckning').trim(), content: block.content.trim() } });
@@ -392,6 +409,9 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
       newBlock.phone = '';
       newBlock.email = '';
       newBlock.website = '';
+    }
+    if (type === 'timer') {
+      newBlock.timers = [];
     }
     setCustomBlocks(prev => [...prev, newBlock]);
     setFormTouched(true);
@@ -654,16 +674,40 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
 
             {/* Custom blocks */}
             {customBlocks.map((block, index) => (
-              <BlockEditor
-                key={block.id}
-                block={block}
-                onUpdate={updateCustomBlock}
-                onRemove={removeCustomBlock}
-                onMove={moveCustomBlock}
-                index={index}
-                total={customBlocks.length}
-                saving={saving}
-              />
+              block.type === 'datetag' ? (
+                <DateTagBlockEditor
+                  key={block.id}
+                  block={block}
+                  onUpdate={updateCustomBlock}
+                  onRemove={removeCustomBlock}
+                  onMove={moveCustomBlock}
+                  index={index}
+                  total={customBlocks.length}
+                  saving={saving}
+                />
+              ) : block.type === 'timer' ? (
+                <TimerBlockEditor
+                  key={block.id}
+                  block={block}
+                  onUpdate={updateCustomBlock}
+                  onRemove={removeCustomBlock}
+                  onMove={moveCustomBlock}
+                  index={index}
+                  total={customBlocks.length}
+                  saving={saving}
+                />
+              ) : (
+                <BlockEditor
+                  key={block.id}
+                  block={block}
+                  onUpdate={updateCustomBlock}
+                  onRemove={removeCustomBlock}
+                  onMove={moveCustomBlock}
+                  index={index}
+                  total={customBlocks.length}
+                  saving={saving}
+                />
+              )
             ))}
 
             {/* Add block buttons */}
@@ -690,6 +734,9 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                 </button>
                 <button type="button" onClick={() => addCustomBlock('datetag')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
                   <Calendar size={16} className="text-cyan-400" /> Datum
+                </button>
+                <button type="button" onClick={() => addCustomBlock('timer')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
+                  <Timer size={16} className="text-orange-400" /> Timers
                 </button>
               </div>
             </div>

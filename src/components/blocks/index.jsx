@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { MapPin, Map as MapIcon, X, Check, RotateCcw, ExternalLink, Calendar, Maximize2 } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { MapPin, Map as MapIcon, X, Check, RotateCcw, ExternalLink, Calendar, Maximize2, Timer, Play, Pause, RotateCw } from 'lucide-react';
 import { getTransformedImageUrl, getFocalPointStyles } from '../../utils/imageUtils';
 import { getIconComponent } from '../../utils/iconHelpers';
 
@@ -815,6 +815,175 @@ export const DateTagBlock = ({ data }) => {
   );
 };
 
+// Timer Block - multiple countdown timers for recipes etc.
+export const TimerBlock = ({ data }) => {
+  const timers = data.timers || [];
+  const [timerStates, setTimerStates] = useState(() => 
+    timers.map(t => ({ 
+      remaining: t.duration * 60, // Convert minutes to seconds
+      isRunning: false,
+      isFinished: false
+    }))
+  );
+  const intervalRefs = useRef([]);
+  const audioRef = useRef(null);
+
+  // Cleanup intervals on unmount
+  useEffect(() => {
+    return () => {
+      intervalRefs.current.forEach(id => clearInterval(id));
+    };
+  }, []);
+
+  // Play alarm sound
+  const playAlarm = () => {
+    try {
+      // Create a simple beep using Web Audio API
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const playBeep = () => {
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        oscillator.frequency.value = 800;
+        oscillator.type = 'sine';
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.3);
+      };
+      // Play 3 beeps
+      playBeep();
+      setTimeout(playBeep, 400);
+      setTimeout(playBeep, 800);
+    } catch (e) {
+      // Audio not supported
+    }
+  };
+
+  const startTimer = (index) => {
+    if (timerStates[index].isRunning || timerStates[index].remaining <= 0) return;
+    
+    setTimerStates(prev => prev.map((s, i) => 
+      i === index ? { ...s, isRunning: true, isFinished: false } : s
+    ));
+
+    intervalRefs.current[index] = setInterval(() => {
+      setTimerStates(prev => {
+        const newStates = [...prev];
+        if (newStates[index].remaining <= 1) {
+          clearInterval(intervalRefs.current[index]);
+          newStates[index] = { ...newStates[index], remaining: 0, isRunning: false, isFinished: true };
+          playAlarm();
+          // Vibrate if supported
+          if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
+        } else {
+          newStates[index] = { ...newStates[index], remaining: newStates[index].remaining - 1 };
+        }
+        return newStates;
+      });
+    }, 1000);
+  };
+
+  const pauseTimer = (index) => {
+    clearInterval(intervalRefs.current[index]);
+    setTimerStates(prev => prev.map((s, i) => 
+      i === index ? { ...s, isRunning: false } : s
+    ));
+  };
+
+  const resetTimer = (index) => {
+    clearInterval(intervalRefs.current[index]);
+    setTimerStates(prev => prev.map((s, i) => 
+      i === index ? { remaining: timers[i].duration * 60, isRunning: false, isFinished: false } : s
+    ));
+  };
+
+  const formatTime = (seconds) => {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    if (h > 0) {
+      return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    }
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
+  if (timers.length === 0) {
+    return <div className="text-sm text-gray-500">Inga timers</div>;
+  }
+
+  return (
+    <div className="space-y-2">
+      {timers.map((timer, index) => {
+        const state = timerStates[index] || { remaining: timer.duration * 60, isRunning: false, isFinished: false };
+        const progress = state.remaining / (timer.duration * 60);
+        
+        return (
+          <div 
+            key={index}
+            className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
+              state.isFinished 
+                ? 'bg-green-500/20 border-green-500/50 animate-pulse' 
+                : state.isRunning 
+                  ? 'bg-amber-500/10 border-amber-500/30' 
+                  : 'bg-white/5 border-white/10'
+            }`}
+          >
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <Timer size={14} className={state.isFinished ? 'text-green-400' : state.isRunning ? 'text-amber-400' : 'text-gray-400'} />
+                <span className="text-sm font-medium text-white truncate">{timer.label || 'Timer'}</span>
+                <span className="text-xs text-gray-500">({timer.duration} min)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full transition-all duration-1000 ${state.isFinished ? 'bg-green-500' : state.isRunning ? 'bg-amber-500' : 'bg-blue-500'}`}
+                    style={{ width: `${progress * 100}%` }}
+                  />
+                </div>
+                <span className={`text-lg font-mono font-bold tabular-nums min-w-[4.5rem] text-right ${
+                  state.isFinished ? 'text-green-400' : state.isRunning ? 'text-amber-400' : 'text-white'
+                }`}>
+                  {state.isFinished ? '✓ Klar!' : formatTime(state.remaining)}
+                </span>
+              </div>
+            </div>
+            <div className="flex gap-1">
+              {!state.isRunning && !state.isFinished && (
+                <button
+                  onClick={() => startTimer(index)}
+                  className="w-9 h-9 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 flex items-center justify-center transition-colors"
+                  title="Starta"
+                >
+                  <Play size={16} />
+                </button>
+              )}
+              {state.isRunning && (
+                <button
+                  onClick={() => pauseTimer(index)}
+                  className="w-9 h-9 rounded-lg bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 flex items-center justify-center transition-colors"
+                  title="Pausa"
+                >
+                  <Pause size={16} />
+                </button>
+              )}
+              <button
+                onClick={() => resetTimer(index)}
+                className="w-9 h-9 rounded-lg bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white flex items-center justify-center transition-colors"
+                title="Återställ"
+              >
+                <RotateCw size={16} />
+              </button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
 export const blockComponents = {
   title: TitleBlock,
   location: LocationBlock,
@@ -825,5 +994,6 @@ export const blockComponents = {
   contact: ContactBlock,
   links: LinksBlock,
   table: TableBlock,
-  datetag: DateTagBlock
+  datetag: DateTagBlock,
+  timer: TimerBlock
 };

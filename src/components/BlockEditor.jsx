@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ArrowUp, ArrowDown, FileText, CheckSquare, ClipboardList, Link2, Plus, ChevronDown, Table2, Trash2, GripVertical, Calendar, Phone, Mail, Globe } from 'lucide-react';
+import { X, ArrowUp, ArrowDown, FileText, CheckSquare, ClipboardList, Link2, Plus, ChevronDown, Table2, Trash2, GripVertical, Calendar, Phone, Mail, Globe, Timer } from 'lucide-react';
 import { getIconComponent, LINK_ICONS } from '../utils/iconHelpers';
 import { TABLE_TEMPLATES } from './blocks';
 
@@ -892,6 +892,109 @@ function DateTagBlockEditor({ block, onUpdate, onRemove, onMove, index, total, s
   );
 }
 
-export { DateTagBlockEditor };
+// Timer block editor component
+function TimerBlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }) {
+  const [timers, setTimers] = useState(block.timers || []);
+  const [newLabel, setNewLabel] = useState('');
+  const [newDuration, setNewDuration] = useState('');
+
+  // Use ref for sync
+  const timersRef = React.useRef(timers);
+  timersRef.current = timers;
+
+  const syncToParent = (newTimers) => {
+    timersRef.current = newTimers;
+    onUpdate(block.id, { timers: newTimers });
+  };
+
+  const addTimer = () => {
+    const duration = parseInt(newDuration);
+    if (!newLabel.trim() || isNaN(duration) || duration <= 0) return;
+    
+    const updated = [...timers, { label: newLabel.trim(), duration }];
+    setTimers(updated);
+    syncToParent(updated);
+    setNewLabel('');
+    setNewDuration('');
+  };
+
+  const removeTimer = (timerIndex) => {
+    const updated = timers.filter((_, i) => i !== timerIndex);
+    setTimers(updated);
+    syncToParent(updated);
+  };
+
+  return (
+    <div className="rounded-xl border border-white/10 p-3 bg-white/5">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-sm font-medium text-gray-300 flex items-center gap-2">
+          <Timer size={16} className="text-orange-400" /> Timers
+        </span>
+        <div className="flex gap-1">
+          <button type="button" onClick={() => onMove(block.id, -1)} disabled={index === 0} className="w-7 h-7 rounded bg-white/5 text-gray-400 hover:bg-white/10 flex items-center justify-center disabled:opacity-30">
+            <ArrowUp size={14} />
+          </button>
+          <button type="button" onClick={() => onMove(block.id, 1)} disabled={index === total - 1} className="w-7 h-7 rounded bg-white/5 text-gray-400 hover:bg-white/10 flex items-center justify-center disabled:opacity-30">
+            <ArrowDown size={14} />
+          </button>
+          <button type="button" onClick={() => onRemove(block.id)} className="w-7 h-7 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center">
+            <X size={14} />
+          </button>
+        </div>
+      </div>
+
+      {/* Existing timers */}
+      {timers.length > 0 && (
+        <div className="space-y-2 mb-3">
+          {timers.map((timer, i) => (
+            <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-white/5">
+              <Timer size={14} className="text-orange-400 flex-shrink-0" />
+              <span className="flex-1 text-sm text-white truncate">{timer.label}</span>
+              <span className="text-sm text-gray-400">{timer.duration} min</span>
+              <button
+                type="button"
+                onClick={() => removeTimer(i)}
+                className="w-6 h-6 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center"
+              >
+                <X size={12} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Add new timer */}
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={newLabel}
+          onChange={(e) => setNewLabel(e.target.value)}
+          placeholder="Namn (t.ex. Potatisgratäng)"
+          disabled={saving}
+          className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-orange-500"
+        />
+        <input
+          type="number"
+          value={newDuration}
+          onChange={(e) => setNewDuration(e.target.value)}
+          placeholder="Min"
+          min="1"
+          disabled={saving}
+          className="w-20 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-orange-500"
+        />
+        <button
+          type="button"
+          onClick={addTimer}
+          disabled={saving || !newLabel.trim() || !newDuration}
+          className="px-3 py-2 rounded-lg bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 disabled:opacity-50 transition-colors"
+        >
+          <Plus size={18} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export { DateTagBlockEditor, TimerBlockEditor };
 
 export default BlockEditor;
