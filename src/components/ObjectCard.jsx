@@ -163,7 +163,7 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
             {childCount > 0 && (
               <span className="flex items-center gap-1">
                 <Folder size={12} />
-                {childCount} barn
+                {childCount} objekt
               </span>
             )}
             {distance !== undefined && (
