@@ -1,7 +1,289 @@
-import React, { useState, useEffect } from 'react';
-import { X, ArrowUp, ArrowDown, FileText, CheckSquare, ClipboardList, Link2, Plus, ChevronDown, Table2, Trash2, GripVertical, Calendar, Phone, Mail, Globe, Timer } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { X, ArrowUp, ArrowDown, FileText, CheckSquare, ClipboardList, Link2, Plus, ChevronDown, Table2, Trash2, GripVertical, Calendar, Phone, Mail, Globe, Timer, Check, Maximize2, RotateCcw } from 'lucide-react';
 import { getIconComponent, LINK_ICONS } from '../utils/iconHelpers';
 import { TABLE_TEMPLATES } from './blocks';
+
+// Fullscreen text editor for mobile - iOS Notes-like experience
+function FullscreenTextEditor({ content, title, onSave, onCancel }) {
+  const [text, setText] = useState(content || '');
+  const textareaRef = useRef(null);
+  const containerRef = useRef(null);
+  const [availableHeight, setAvailableHeight] = useState(window.innerHeight - 104);
+  const [viewportOffset, setViewportOffset] = useState(0);
+  const scrollYRef = useRef(0);
+  const rafRef = useRef(null);
+  const lastValuesRef = useRef({ height: 0, offset: 0 });
+  
+  // Fixed heights
+  const HEADER_HEIGHT = 48;
+  const TOOLBAR_HEIGHT = 56;
+  
+  // Handle viewport changes (keyboard open/close)
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    
+    const updateLayout = () => {
+      // Cancel any pending RAF
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+      }
+      
+      // Use RAF to batch updates and reduce jitter
+      rafRef.current = requestAnimationFrame(() => {
+        if (viewport) {
+          const visibleHeight = viewport.height;
+          const textareaHeight = visibleHeight - HEADER_HEIGHT - TOOLBAR_HEIGHT;
+          const newHeight = Math.max(100, textareaHeight);
+          const newOffset = viewport.offsetTop;
+          
+          // Only update if values changed significantly (reduce jitter)
+          if (Math.abs(newHeight - lastValuesRef.current.height) > 2 ||
+              Math.abs(newOffset - lastValuesRef.current.offset) > 2) {
+            lastValuesRef.current = { height: newHeight, offset: newOffset };
+            setAvailableHeight(newHeight);
+            setViewportOffset(newOffset);
+          }
+        } else {
+          setAvailableHeight(window.innerHeight - HEADER_HEIGHT - TOOLBAR_HEIGHT - 300);
+          setViewportOffset(0);
+        }
+      });
+    };
+    
+    if (viewport) {
+      viewport.addEventListener('resize', updateLayout);
+      viewport.addEventListener('scroll', updateLayout);
+    }
+    window.addEventListener('resize', updateLayout);
+    
+    // Initial calculation
+    updateLayout();
+    
+    // Save scroll position and lock body scroll
+    scrollYRef.current = window.scrollY;
+    const scrollY = scrollYRef.current;
+    
+    // Set background color on html element to prevent white flash
+    document.documentElement.style.backgroundColor = '#111827';
+    document.body.style.backgroundColor = '#111827';
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.overflow = 'hidden';
+    
+    // Focus textarea after a short delay to open keyboard
+    setTimeout(() => {
+      textareaRef.current?.focus();
+      // Recalculate after keyboard opens
+      setTimeout(updateLayout, 300);
+    }, 150);
+    
+    return () => {
+      // Restore
+      document.documentElement.style.backgroundColor = '';
+      document.body.style.backgroundColor = '';
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.left = '';
+      document.body.style.right = '';
+      document.body.style.overflow = '';
+      window.scrollTo(0, scrollYRef.current);
+      
+      if (viewport) {
+        viewport.removeEventListener('resize', updateLayout);
+        viewport.removeEventListener('scroll', updateLayout);
+      }
+      window.removeEventListener('resize', updateLayout);
+    };
+  }, []);
+  
+  // Markdown helper - wraps selected text or inserts at cursor
+  const insertMarkdown = useCallback((prefix, suffix = prefix, placeholder = '') => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = text.substring(start, end);
+    const textToWrap = selectedText || placeholder;
+    
+    const before = text.substring(0, start);
+    const after = text.substring(end);
+    const newContent = before + prefix + textToWrap + suffix + after;
+    
+    setText(newContent);
+    
+    // Restore focus and selection after state update
+    requestAnimationFrame(() => {
+      textarea.focus();
+      const newCursorPos = selectedText 
+        ? start + prefix.length + selectedText.length + suffix.length
+        : start + prefix.length + placeholder.length + suffix.length;
+      textarea.setSelectionRange(newCursorPos, newCursorPos);
+    });
+  }, [text]);
+  
+  const insertLink = useCallback(() => {
+    // Save selection before prompt steals focus
+    const textarea = textareaRef.current;
+    const start = textarea?.selectionStart || 0;
+    const end = textarea?.selectionEnd || 0;
+    const selectedText = text.substring(start, end);
+    
+    const url = prompt('Ange URL:');
+    if (url) {
+      const linkText = selectedText || 'länktext';
+      const before = text.substring(0, start);
+      const after = text.substring(end);
+      const newContent = before + `[${linkText}](${url})` + after;
+      setText(newContent);
+      
+      requestAnimationFrame(() => {
+        textarea?.focus();
+      });
+    }
+  }, [text]);
+  
+  const handleSave = () => {
+    onSave(text);
+  };
+  
+  const handleClear = useCallback(() => {
+    if (text && confirm('Rensa all text?')) {
+      setText('');
+      textareaRef.current?.focus();
+    }
+  }, [text]);
+  
+  // Toolbar button - use onTouchStart to prevent keyboard dismissal
+  const ToolbarButton = ({ onPress, children, title, variant }) => {
+    const handlePress = (e) => {
+      e.preventDefault(); // Prevent focus loss
+      e.stopPropagation();
+      onPress();
+    };
+    
+    const baseClass = variant === 'danger' 
+      ? 'w-8 h-8 rounded-md bg-white/5 active:bg-red-500/30 text-gray-500 active:text-red-400 flex items-center justify-center text-sm font-medium transition-colors touch-manipulation'
+      : 'w-8 h-8 rounded-md bg-white/5 active:bg-white/20 text-gray-400 active:text-white flex items-center justify-center text-sm font-medium transition-colors touch-manipulation';
+    
+    return (
+      <button
+        type="button"
+        onTouchStart={handlePress}
+        onMouseDown={handlePress}
+        className={baseClass}
+        title={title}
+      >
+        {children}
+      </button>
+    );
+  };
+  
+  return (
+    <>
+      {/* Full screen backdrop to prevent seeing through */}
+      <div 
+        className="fixed inset-0 z-[1999] bg-gray-900"
+        onTouchMove={(e) => e.preventDefault()}
+      />
+      
+      {/* Main editor container - positioned to visible viewport */}
+      <div 
+        ref={containerRef}
+        className="fixed left-0 right-0 z-[2000] bg-gray-900 flex flex-col"
+        style={{ 
+          top: `${viewportOffset}px`,
+          height: `${availableHeight + HEADER_HEIGHT + TOOLBAR_HEIGHT}px`
+        }}
+        onTouchMove={(e) => {
+          // Only allow touchmove on the textarea
+          if (e.target !== textareaRef.current) {
+            e.preventDefault();
+          }
+        }}
+      >
+        {/* Header - fixed height */}
+        <div 
+          className="flex-shrink-0 flex items-center justify-between px-2 border-b border-white/10 bg-gray-900"
+          style={{ height: `${HEADER_HEIGHT}px` }}
+        >
+          <span className="text-sm text-gray-400 truncate flex-1 pl-2">
+            {title || 'Anteckning'}
+        </span>
+        <button
+          type="button"
+          onTouchEnd={(e) => { e.preventDefault(); onCancel(); }}
+          onClick={onCancel}
+          className="w-12 h-12 flex items-center justify-center text-gray-400 active:text-white transition-colors touch-manipulation"
+        >
+          <X size={24} />
+        </button>
+      </div>
+      
+      {/* Markdown toolbar - fixed height */}
+      <div 
+        className="flex-shrink-0 px-3 py-2 border-b border-white/5 bg-gray-900"
+        style={{ height: `${TOOLBAR_HEIGHT}px` }}
+      >
+        <div className="flex items-center gap-1">
+          <ToolbarButton onPress={() => insertMarkdown('**', '**', 'text')} title="Fetstil">
+            <span className="font-bold text-sm">B</span>
+          </ToolbarButton>
+          <ToolbarButton onPress={() => insertMarkdown('*', '*', 'text')} title="Kursiv">
+            <span className="italic text-sm">I</span>
+          </ToolbarButton>
+          <ToolbarButton onPress={() => insertMarkdown('# ', '', 'Rubrik')} title="Rubrik">
+            <span className="text-sm">H</span>
+          </ToolbarButton>
+          <ToolbarButton onPress={() => insertMarkdown('> ', '', 'citat')} title="Citat">
+            <span className="text-sm">"</span>
+          </ToolbarButton>
+          <ToolbarButton onPress={() => insertMarkdown('- ', '', 'punkt')} title="Punktlista">
+            <span className="text-sm">•</span>
+          </ToolbarButton>
+          <ToolbarButton onPress={() => insertMarkdown('1. ', '', 'punkt')} title="Numrerad lista">
+            <span className="text-sm">1.</span>
+          </ToolbarButton>
+          <ToolbarButton onPress={insertLink} title="Länk">
+            <Link2 size={16} />
+          </ToolbarButton>
+          <div className="flex-1" />
+          <ToolbarButton onPress={handleClear} title="Rensa" variant="danger">
+            <Trash2 size={16} />
+          </ToolbarButton>
+        </div>
+      </div>
+      
+      {/* Textarea container with floating button */}
+      <div className="relative flex-1">
+        <textarea
+          ref={textareaRef}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Skriv text här..."
+          className="absolute inset-0 w-full h-full px-4 py-3 bg-gray-900 text-white text-base placeholder-gray-600 focus:outline-none resize-none leading-relaxed overflow-auto"
+          style={{ fontSize: '16px' }}
+          autoCapitalize="sentences"
+          autoCorrect="on"
+          spellCheck="true"
+        />
+        
+        {/* Save button - absolute inside textarea area */}
+        <button
+          type="button"
+          onTouchEnd={(e) => { e.preventDefault(); handleSave(); }}
+          onClick={handleSave}
+          className="absolute bottom-4 right-4 w-14 h-14 rounded-full bg-blue-500 text-white shadow-lg shadow-blue-500/30 active:bg-blue-600 active:scale-95 transition-transform touch-manipulation flex items-center justify-center"
+        >
+          <Check size={24} />
+        </button>
+      </div>
+      </div>
+    </>
+  );
+}
 
 // Contact block editor component
 function ContactBlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }) {
@@ -534,7 +816,13 @@ function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }
   const [title, setTitle] = useState(block.title);
   const [content, setContent] = useState(block.content);
   const [isFocused, setIsFocused] = useState(false);
+  const [showFullscreenEditor, setShowFullscreenEditor] = useState(false);
   const textareaRef = React.useRef(null);
+  
+  // Detect mobile (simple check for touch device + small screen)
+  const isMobile = typeof window !== 'undefined' && 
+    ('ontouchstart' in window || navigator.maxTouchPoints > 0) && 
+    window.innerWidth < 768;
   
   // Use refs to always have latest values for blur handlers
   const titleRef = React.useRef(title);
@@ -546,6 +834,23 @@ function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }
   const syncContent = () => {
     setIsFocused(false);
     onUpdate(block.id, { content: contentRef.current });
+  };
+  
+  // Handle fullscreen editor save
+  const handleFullscreenSave = (newContent) => {
+    setContent(newContent);
+    contentRef.current = newContent;
+    onUpdate(block.id, { content: newContent });
+    setShowFullscreenEditor(false);
+  };
+  
+  // Handle textarea click on mobile - open fullscreen for text blocks
+  const handleTextareaClick = (e) => {
+    if (isMobile && block.type === 'text') {
+      e.preventDefault();
+      e.target.blur();
+      setShowFullscreenEditor(true);
+    }
   };
   
   const handleClear = () => {
@@ -623,8 +928,8 @@ function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }
         disabled={saving}
         className="w-full px-3 py-2 mb-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500"
       />
-      {/* Markdown toolbar - only for text blocks */}
-      {block.type === 'text' && (
+      {/* Markdown toolbar - only for text blocks, hidden on mobile (uses fullscreen editor) */}
+      {block.type === 'text' && !isMobile && (
         <div className="flex gap-1 mb-2">
           <button
             type="button"
@@ -682,6 +987,17 @@ function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }
           >
             <Link2 size={14} />
           </button>
+          {/* Fullscreen button on mobile */}
+          {isMobile && (
+            <button
+              type="button"
+              onClick={() => setShowFullscreenEditor(true)}
+              className="w-8 h-8 rounded bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition-colors ml-auto"
+              title="Redigera i helskärm"
+            >
+              <Maximize2 size={14} />
+            </button>
+          )}
         </div>
       )}
       <div className="relative">
@@ -689,14 +1005,16 @@ function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }
           ref={textareaRef}
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          onFocus={() => setIsFocused(true)}
+          onClick={handleTextareaClick}
+          onFocus={() => !isMobile && setIsFocused(true)}
           onBlur={syncContent}
-          placeholder={block.type === 'text' ? 'Skriv text här...' : 'En per rad'}
+          placeholder={block.type === 'text' ? (isMobile ? 'Tryck för att redigera...' : 'Skriv text här...') : 'En per rad'}
           rows={isFocused ? 8 : 3}
           disabled={saving}
-          className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-none transition-all duration-200"
+          readOnly={isMobile && block.type === 'text'}
+          className={`w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-none transition-all duration-200 ${isMobile && block.type === 'text' ? 'cursor-pointer' : ''}`}
         />
-        {hasContent && (
+        {hasContent && !isMobile && (
           <button
             type="button"
             onClick={handleClear}
@@ -708,6 +1026,16 @@ function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }
           </button>
         )}
       </div>
+      
+      {/* Fullscreen editor modal */}
+      {showFullscreenEditor && (
+        <FullscreenTextEditor
+          content={content}
+          title={title}
+          onSave={handleFullscreenSave}
+          onCancel={() => setShowFullscreenEditor(false)}
+        />
+      )}
     </div>
   );
 }

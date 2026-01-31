@@ -2,7 +2,7 @@
 OurSpots – Manifest / Blueprint (Updated Jan 31, 2026)
 ========================
 
-🚀 STATUS: v2.2 - Timer Block & UI Improvements
+🚀 STATUS: v2.3 - Fullscreen Text Editor & UX Improvements
 
 1. VISION
 - Mobilfokuserad app med premium dark theme
@@ -47,6 +47,8 @@ OurSpots – Manifest / Blueprint (Updated Jan 31, 2026)
 - Konsekvent SVG-ikoner (ersatt emojis i inbjudningar och share modal) ✅ NY
 - Block-ordning respekterar användarens sortering ✅ NY
 - iOS scroll-fix för inputfält i modaler ✅ NY
+- Fullscreen text editor för mobil (iOS Notes-liknande) ✅ NY v2.3
+- Grupperade blocktyper med "Fler"-knapp ✅ NY v2.3
 
 2. KATEGORI-SYSTEM
 - Dynamiska kategorier lagrade i Firebase ✅
@@ -96,6 +98,7 @@ Block:
 - type: "image", url, cropMode (auto/face/center)
 - type: "location", lat, lng
 - type: "text", content (stöder markdown: **bold**, *italic*, [länkar](url), > citat, # rubriker) ✅ NY
+- type: "text" fullscreen editor på mobil med iOS-optimerad tangentbordshantering ✅ NY v2.3
 - type: "checklist", items[]
 - type: "todo", items[]
 - type: "links", title, items[{title, url, icon}] ✅
@@ -414,6 +417,29 @@ Default block sets per typ/kategori (för enkelhet):
 - ✅ Punktlistor och numrerade listor
 - ✅ Enkel toolbar med 5 knappar: B, I, H, ", Länk
 - ✅ Länkar öppnas i ny flik med rel="noopener noreferrer"
+
+### Fullscreen Text Editor (Implementerat v2.3) ✅ NY
+- ✅ iOS Notes-liknande fullscreen-läge för textblock på mobil
+- ✅ Öppnas automatiskt när man trycker på textblock på mobil
+- ✅ visualViewport API för korrekt tangentbordshantering
+- ✅ Header med titel och X-knapp (stäng utan spara)
+- ✅ Floating check-knapp (✓) för att spara
+- ✅ Markdown-toolbar med 8 knappar: B, I, H, ", •, 1., Länk, 🗑️
+- ✅ Kompakta knappar (w-8 h-8) med vänsterjustering
+- ✅ Rensa-knapp (trash-ikon) med bekräftelsedialog
+- ✅ Debounced viewport-uppdateringar (requestAnimationFrame)
+- ✅ Body scroll lock för att förhindra bakgrundsscroll
+- ✅ Full bakgrundstäckning (ingen genomskinlighet)
+- ✅ 16px font-size för att förhindra iOS-zoom
+- ✅ Touch-safe knappar (onTouchStart + preventDefault)
+
+### Blocktyps-gruppering (Implementerat v2.3) ✅ NY
+- ✅ Primära blocktyper alltid synliga: Text, Lista, URL
+- ✅ Kompakta knappar som får plats på en rad
+- ✅ "Fler"-knapp expanderar sekundära blocktyper
+- ✅ Sekundära: Att göra, Kontakt, Tabell, Datum, Timers
+- ✅ Auto-scroll vid expandering (100px nedåt)
+- ✅ "Färre"-knapp kollapsar tillbaka
 
 ### Contact Block (Implementerat v2.1) ✅ NY
 - ✅ Tre fält: Telefon, Email, Webbplats

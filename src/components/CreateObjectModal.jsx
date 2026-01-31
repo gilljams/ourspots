@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  X, Plus, Upload, Loader, Navigation, 
+  X, Plus, Upload, Loader, Navigation, ChevronDown, ChevronUp,
   Map as MapIcon, FileText, CheckSquare, ClipboardList, Link2, Table2, Image as ImageIcon, Calendar, Phone, Timer 
 } from 'lucide-react';
 import { 
@@ -108,6 +108,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
   const [uploadingImage, setUploadingImage] = useState(false);
   const [originalImageFile, setOriginalImageFile] = useState(null);
   const [extractingGPS, setExtractingGPS] = useState(false);
+  const [showMoreBlocks, setShowMoreBlocks] = useState(false);
 
   // Refs
   const fileInputRef = useRef(null);
@@ -713,32 +714,62 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             {/* Add block buttons */}
             <div className="pt-4 border-t border-white/10">
               <div className="text-xs text-gray-500 uppercase mb-3">Lägg till block</div>
-              <div className="flex gap-2 flex-wrap">
-                <button type="button" onClick={() => addCustomBlock('text')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
-                  <FileText size={16} className="text-blue-400" /> Anteckning
+              
+              {/* Primary blocks - always visible, compact to fit one row */}
+              <div className="flex gap-2">
+                <button type="button" onClick={() => addCustomBlock('text')} disabled={saving} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
+                  <FileText size={16} className="text-blue-400" /> Text
                 </button>
-                <button type="button" onClick={() => addCustomBlock('checklist')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
-                  <CheckSquare size={16} className="text-green-400" /> Checklista
+                <button type="button" onClick={() => addCustomBlock('checklist')} disabled={saving} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
+                  <CheckSquare size={16} className="text-green-400" /> Lista
                 </button>
-                <button type="button" onClick={() => addCustomBlock('todo')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
-                  <ClipboardList size={16} className="text-amber-400" /> Att göra
+                <button type="button" onClick={() => addCustomBlock('links')} disabled={saving} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
+                  <Link2 size={16} className="text-purple-400" /> URL
                 </button>
-                <button type="button" onClick={() => addCustomBlock('contact')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
-                  <Phone size={16} className="text-green-400" /> Kontakt
-                </button>
-                <button type="button" onClick={() => addCustomBlock('links')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
-                  <Link2 size={16} className="text-purple-400" /> Länkar
-                </button>
-                <button type="button" onClick={() => addCustomBlock('table')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
-                  <Table2 size={16} className="text-amber-400" /> Tabell
-                </button>
-                <button type="button" onClick={() => addCustomBlock('datetag')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
-                  <Calendar size={16} className="text-cyan-400" /> Datum
-                </button>
-                <button type="button" onClick={() => addCustomBlock('timer')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
-                  <Timer size={16} className="text-orange-400" /> Timers
+                
+                {/* Expand/collapse button */}
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    const willExpand = !showMoreBlocks;
+                    setShowMoreBlocks(willExpand);
+                    if (willExpand) {
+                      // Scroll down to show expanded content
+                      setTimeout(() => {
+                        const scrollContainer = document.querySelector('.overflow-y-auto');
+                        if (scrollContainer) {
+                          scrollContainer.scrollBy({ top: 100, behavior: 'smooth' });
+                        }
+                      }, 50);
+                    }
+                  }} 
+                  className="flex items-center gap-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-gray-300 text-sm"
+                >
+                  {showMoreBlocks ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                  {showMoreBlocks ? 'Färre' : 'Fler'}
                 </button>
               </div>
+              
+              {/* Secondary blocks - expandable */}
+              {showMoreBlocks && (
+                <div className="flex gap-2 flex-wrap mt-2 pt-2 border-t border-white/5">
+                  <button type="button" onClick={() => addCustomBlock('todo')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
+                    <ClipboardList size={16} className="text-amber-400" /> Att göra
+                  </button>
+                  <button type="button" onClick={() => addCustomBlock('contact')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
+                    <Phone size={16} className="text-green-400" /> Kontakt
+                  </button>
+                  <button type="button" onClick={() => addCustomBlock('table')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
+                    <Table2 size={16} className="text-amber-400" /> Tabell
+                  </button>
+                  <button type="button" onClick={() => addCustomBlock('datetag')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
+                    <Calendar size={16} className="text-cyan-400" /> Datum
+                  </button>
+                  <button type="button" onClick={() => addCustomBlock('timer')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
+                    <Timer size={16} className="text-orange-400" /> Timers
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
