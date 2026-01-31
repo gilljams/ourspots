@@ -18,7 +18,7 @@ export const getTransformedImageUrl = (url, cropMode = 'auto', width = 800, heig
     'center': 'g_center'
   };
   const gravity = gravityMap[cropMode] || 'g_auto';
-  const transformation = `c_fill,${gravity},w_${width},h_${height}`;
+  const transformation = `c_fill,${gravity},w_${width},h_${height},q_auto:best`;
   
   return url.replace('/upload/', `/upload/${transformation}/`);
 };

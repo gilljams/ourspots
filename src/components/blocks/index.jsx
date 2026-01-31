@@ -1,5 +1,5 @@
-import React from 'react';
-import { MapPin, Map as MapIcon, X, Check, RotateCcw, ExternalLink, Calendar } from 'lucide-react';
+import React, { useState } from 'react';
+import { MapPin, Map as MapIcon, X, Check, RotateCcw, ExternalLink, Calendar, Maximize2 } from 'lucide-react';
 import { getTransformedImageUrl, getFocalPointStyles } from '../../utils/imageUtils';
 import { getIconComponent } from '../../utils/iconHelpers';
 
@@ -89,16 +89,55 @@ export const LocationBlock = ({ data, inherited, onDelete, canDelete, positionNu
 };
 
 export const ImageBlock = ({ data }) => {
+  const [showFullscreen, setShowFullscreen] = useState(false);
   const focalStyles = getFocalPointStyles(data.focalPoint);
+  
+  // Get original image URL (no cropping transformations)
+  const getOriginalUrl = (url) => {
+    if (!url || !url.includes('cloudinary.com')) return url;
+    // Just optimize quality without cropping
+    return url.replace('/upload/', '/upload/q_auto:best/');
+  };
+  
   return (
-    <div className="w-full h-48 rounded-xl overflow-hidden mb-4 border border-white/10 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.7)]">
-      <img 
-        src={getTransformedImageUrl(data.url, data.focalPoint ? 'custom' : data.cropMode, 800, 480, data.focalPoint)} 
-        alt="" 
-        className="w-full h-full object-cover"
-        style={focalStyles}
-      />
-    </div>
+    <>
+      <div className="relative w-full h-48 rounded-xl overflow-hidden mb-4 border border-white/10 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.7)] group">
+        <img 
+          src={getTransformedImageUrl(data.url, data.focalPoint ? 'custom' : data.cropMode, 800, 480, data.focalPoint)} 
+          alt="" 
+          className="w-full h-full object-cover"
+          style={focalStyles}
+        />
+        <button
+          onClick={() => setShowFullscreen(true)}
+          className="absolute bottom-2 right-2 p-2 rounded-lg bg-black/50 backdrop-blur-sm text-white/80 hover:text-white hover:bg-black/70 transition-all opacity-0 group-hover:opacity-100 sm:opacity-100"
+          title="Visa hela bilden"
+        >
+          <Maximize2 size={16} />
+        </button>
+      </div>
+      
+      {/* Fullscreen image modal */}
+      {showFullscreen && (
+        <div 
+          className="fixed inset-0 z-[2000] bg-black/95 flex items-center justify-center p-4"
+          onClick={() => setShowFullscreen(false)}
+        >
+          <button
+            onClick={() => setShowFullscreen(false)}
+            className="absolute top-4 right-4 p-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors z-10"
+          >
+            <X size={24} />
+          </button>
+          <img 
+            src={getOriginalUrl(data.url)} 
+            alt="" 
+            className="max-w-full max-h-full object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
+    </>
   );
 };
 
