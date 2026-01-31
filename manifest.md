@@ -500,6 +500,36 @@ Default block sets per typ/kategori (för enkelhet):
 
 11. KÄNDA PROBLEM & KVARSTÅENDE ARBETE (v1.5)
 
+### ⚠️ OBS! iOS Safari Viewport-problem (Återkommande)
+**Problem:** iOS Safari zoomar automatiskt när tangentbordet öppnas och återställer inte alltid viewport korrekt när det stängs. Detta kan orsaka "spök-klick" där touch-händelser registreras på fel element.
+
+**Symptom:**
+- Klickar på "Uppdatera" men inget händer
+- Klickar på ett fält men ett annat element aktiveras (t.ex. dropdown öppnas)
+- Måste pinch-zooma för att få rätt fokus
+
+**Lösning (implementerad i CreateObjectModal):**
+```javascript
+// iOS viewport fix - lyssnar på focusout och tvingar viewport-reset
+useEffect(() => {
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  if (!isIOS) return;
+  
+  const handleFocusOut = (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+      setTimeout(() => {
+        window.scrollTo(0, window.scrollY);
+      }, 100);
+    }
+  };
+  
+  document.addEventListener('focusout', handleFocusOut);
+  return () => document.removeEventListener('focusout', handleFocusOut);
+}, []);
+```
+
+**Om problemet återkommer:** Kontrollera att denna fix finns i alla modaler med input-fält. Fixen tvingar Safari att räkna om viewport-koordinater efter att tangentbordet stängts.
+
 ### Högprioriterade buggar
 1. **PublicObjectView block-rendering** 🔴
    - Symptom: Text- och todo-block med innehåll visas inte

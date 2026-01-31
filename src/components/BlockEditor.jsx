@@ -379,6 +379,21 @@ function LinksBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
   titleRef.current = title;
   linksRef.current = links;
 
+  // Prevent iOS scroll-to-top on input focus
+  const handleInputFocus = (e) => {
+    const scrollParent = e.target.closest('.overflow-y-auto');
+    if (scrollParent) {
+      const scrollTop = scrollParent.scrollTop;
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (scrollParent.scrollTop !== scrollTop) {
+            scrollParent.scrollTop = scrollTop;
+          }
+        });
+      });
+    }
+  };
+
   const syncToParent = (newTitle, newLinks) => {
     titleRef.current = newTitle;
     linksRef.current = newLinks;
@@ -443,6 +458,7 @@ function LinksBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         onBlur={() => syncToParent(title, links)}
+        onFocus={handleInputFocus}
         placeholder="Rubrik (valfritt)"
         disabled={saving}
         className="w-full px-3 py-2 mb-3 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-purple-500"
@@ -505,6 +521,7 @@ function LinksBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
                   value={link.title}
                   onChange={(e) => updateLink(linkIndex, 'title', e.target.value)}
                   onBlur={() => syncLink(linkIndex)}
+                  onFocus={handleInputFocus}
                   placeholder="Länktext (t.ex. Boka bord)"
                   disabled={saving}
                   className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-purple-500"
@@ -514,6 +531,7 @@ function LinksBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
                   value={link.url}
                   onChange={(e) => updateLink(linkIndex, 'url', e.target.value)}
                   onBlur={() => syncLink(linkIndex)}
+                  onFocus={handleInputFocus}
                   placeholder="https://..."
                   disabled={saving}
                   className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-purple-500"
@@ -1232,23 +1250,6 @@ function TimerBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
     setTimers(block.timers || []);
   }, [block.id, block.timers]);
 
-  // Prevent iOS scroll-to-top on input focus
-  const handleInputFocus = (e) => {
-    // Find scrollable parent and save its scroll position
-    const scrollParent = e.target.closest('.overflow-y-auto');
-    if (scrollParent) {
-      const scrollTop = scrollParent.scrollTop;
-      // Restore scroll position after iOS does its thing
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          if (scrollParent.scrollTop !== scrollTop) {
-            scrollParent.scrollTop = scrollTop;
-          }
-        });
-      });
-    }
-  };
-
   const syncToParent = (newTimers) => {
     onUpdate(block.id, { timers: newTimers });
   };
@@ -1317,7 +1318,6 @@ function TimerBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
           type="text"
           value={newLabel}
           onChange={(e) => setNewLabel(e.target.value)}
-          onFocus={handleInputFocus}
           placeholder="Namn"
           disabled={saving}
           autoComplete="off"
@@ -1329,7 +1329,6 @@ function TimerBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
           inputMode="decimal"
           value={newDuration}
           onChange={(e) => setNewDuration(e.target.value)}
-          onFocus={handleInputFocus}
           placeholder="Min"
           disabled={saving}
           autoComplete="off"

@@ -119,6 +119,27 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
   // Track if form has been modified (simpler than deep comparison)
   const [formTouched, setFormTouched] = useState(false);
 
+  // ========== iOS VIEWPORT FIX ==========
+  // Fix for iOS Safari viewport zoom issues when keyboard closes
+  useEffect(() => {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    if (!isIOS) return;
+
+    const handleFocusOut = (e) => {
+      // When leaving an input/textarea, force viewport reset
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        // Small delay to let iOS finish its animations
+        setTimeout(() => {
+          // Force scroll to trigger viewport recalculation
+          window.scrollTo(0, window.scrollY);
+        }, 100);
+      }
+    };
+
+    document.addEventListener('focusout', handleFocusOut);
+    return () => document.removeEventListener('focusout', handleFocusOut);
+  }, []);
+
   // ========== COMPUTED ==========
   const selectedParent = availableParents.find(p => p.id === parentId);
   const parentHasLocation = selectedParent?.blocks?.some(b => b.type === 'location');
