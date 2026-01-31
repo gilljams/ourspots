@@ -92,16 +92,15 @@ export const ImageBlock = ({ data }) => {
   const [showFullscreen, setShowFullscreen] = useState(false);
   const focalStyles = getFocalPointStyles(data.focalPoint);
   
-  // Get original image URL (no cropping transformations)
-  const getOriginalUrl = (url) => {
+  // Get optimized full image URL - max 1600px wide for good mobile quality without being huge
+  const getFullImageUrl = (url) => {
     if (!url || !url.includes('cloudinary.com')) return url;
-    // Just optimize quality without cropping
-    return url.replace('/upload/', '/upload/q_auto:best/');
+    return url.replace('/upload/', '/upload/c_limit,w_1600,q_auto:good/');
   };
   
   return (
     <>
-      <div className="relative w-full h-48 rounded-xl overflow-hidden mb-4 border border-white/10 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.7)] group">
+      <div className="relative w-full h-48 rounded-xl overflow-hidden mb-4 border border-white/10 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.7)]">
         <img 
           src={getTransformedImageUrl(data.url, data.focalPoint ? 'custom' : data.cropMode, 800, 480, data.focalPoint)} 
           alt="" 
@@ -110,10 +109,10 @@ export const ImageBlock = ({ data }) => {
         />
         <button
           onClick={() => setShowFullscreen(true)}
-          className="absolute bottom-2 right-2 p-2 rounded-lg bg-black/50 backdrop-blur-sm text-white/80 hover:text-white hover:bg-black/70 transition-all opacity-0 group-hover:opacity-100 sm:opacity-100"
+          className="absolute bottom-2 right-2 p-1.5 rounded-md bg-black/30 text-white/70 hover:text-white hover:bg-black/50 transition-all"
           title="Visa hela bilden"
         >
-          <Maximize2 size={16} />
+          <Maximize2 size={14} />
         </button>
       </div>
       
@@ -130,7 +129,7 @@ export const ImageBlock = ({ data }) => {
             <X size={24} />
           </button>
           <img 
-            src={getOriginalUrl(data.url)} 
+            src={getFullImageUrl(data.url)} 
             alt="" 
             className="max-w-full max-h-full object-contain"
             onClick={(e) => e.stopPropagation()}
