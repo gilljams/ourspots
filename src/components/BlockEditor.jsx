@@ -660,6 +660,22 @@ function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }
           </button>
           <button
             type="button"
+            onClick={() => insertMarkdown('- ', '', 'punkt')}
+            className="w-8 h-8 rounded bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center text-sm transition-colors"
+            title="Punktlista (- punkt)"
+          >
+            •
+          </button>
+          <button
+            type="button"
+            onClick={() => insertMarkdown('1. ', '', 'punkt')}
+            className="w-8 h-8 rounded bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center text-sm transition-colors"
+            title="Numrerad lista (1. punkt)"
+          >
+            1.
+          </button>
+          <button
+            type="button"
             onClick={insertLink}
             className="w-8 h-8 rounded bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition-colors"
             title="Länk ([text](url))"

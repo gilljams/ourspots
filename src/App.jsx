@@ -886,7 +886,8 @@ function App() {
       await updateDoc(doc(db, 'objects', obj.id), {
         [`shares.${emailKey}`]: deleteField(),
         sharedWithEmails: arrayRemove(userEmail),
-        acceptedShareEmails: arrayRemove(userEmail)
+        acceptedShareEmails: arrayRemove(userEmail),
+        editorEmails: arrayRemove(userEmail)
       });
       
       setSelectedObject(null);
@@ -1026,11 +1027,16 @@ function App() {
                           try {
                             const emailKey = emailToKey(user.email.toLowerCase());
                             const userEmail = user.email.toLowerCase();
-                            await updateDoc(doc(db, 'objects', obj.id), {
+                            const updateData = {
                               [`shares.${emailKey}.status`]: 'accepted',
                               [`shares.${emailKey}.respondedAt`]: Timestamp.now(),
                               acceptedShareEmails: arrayUnion(userEmail)
-                            });
+                            };
+                            // Add to editorEmails if editor role (for Firestore security rules)
+                            if (shareInfo?.role === 'editor') {
+                              updateData.editorEmails = arrayUnion(userEmail);
+                            }
+                            await updateDoc(doc(db, 'objects', obj.id), updateData);
                             if (pendingInvitations.length === 1) setShowInvitations(false);
                           } catch (err) {
                             alert('Kunde inte acceptera');
@@ -1048,7 +1054,8 @@ function App() {
                             await updateDoc(doc(db, 'objects', obj.id), {
                               [`shares.${emailKey}`]: deleteField(),
                               sharedWithEmails: arrayRemove(userEmail),
-                              acceptedShareEmails: arrayRemove(userEmail)
+                              acceptedShareEmails: arrayRemove(userEmail),
+                              editorEmails: arrayRemove(userEmail)
                             });
                             if (pendingInvitations.length === 1) setShowInvitations(false);
                           } catch (err) {

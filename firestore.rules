@@ -16,13 +16,12 @@ service cloud.firestore {
              request.auth.token.email.lower() in objectData.sharedWithEmails;
     }
     
-    // Check if user has ACCEPTED share access (for editing) - needs shares map
-    function hasAcceptedEditorAccess(objectData) {
+    // Check if user has editor role - uses editorEmails array for reliable checking
+    // (shares map keys use _DOT_ escaping which doesn't work with email.lower())
+    function hasEditorAccess(objectData) {
       return request.auth != null && 
-             objectData.shares != null &&
-             request.auth.token.email.lower() in objectData.shares &&
-             objectData.shares[request.auth.token.email.lower()].status == 'accepted' &&
-             objectData.shares[request.auth.token.email.lower()].role == 'editor';
+             objectData.editorEmails != null &&
+             request.auth.token.email.lower() in objectData.editorEmails;
     }
     
     // Check if user has ANY accepted share access (viewer or editor)
@@ -60,7 +59,7 @@ service cloud.firestore {
       allow update: if request.auth != null && (
                        request.auth.uid == resource.data.ownerId ||  // Owner
                        isAdmin() ||                                   // Admin
-                       hasAcceptedEditorAccess(resource.data) ||      // Editor role (accepted)
+                       hasEditorAccess(resource.data) ||              // Editor role (via editorEmails array)
                        // Allow any shared user to update shares, sharedWithEmails, acceptedShareEmails (accept/decline/leave)
                        (isInSharedList(resource.data) &&
                         request.resource.data.diff(resource.data).affectedKeys()

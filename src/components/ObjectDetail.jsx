@@ -407,7 +407,8 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                     {childObjects.map(child => {
                       const childTitle = child.blocks.find(bl => bl.type === 'title');
                       const childImage = child.blocks.find(bl => bl.type === 'image');
-                      const ChildIcon = PREDEFINED_ICONS[child.type]?.icon || Home;
+                      const childCategory = categories?.find(c => c.id === child.type);
+                      const ChildIcon = childCategory ? getIconComponent(childCategory.icon) : (PREDEFINED_ICONS[child.type]?.icon || Home);
                       return (
                         <button
                           key={child.id}

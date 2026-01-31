@@ -150,10 +150,15 @@ function ShareModal({ object, onClose, currentUserEmail, allObjects = [] }) {
       };
 
       // Update parent object
-      await updateDoc(doc(db, 'objects', object.id), {
+      const updateData = {
         [`shares.${emailKey}`]: shareData,
         sharedWithEmails: arrayUnion(trimmedEmail)
-      });
+      };
+      // Add to editorEmails if editor role (for Firestore security rules)
+      if (role === 'editor') {
+        updateData.editorEmails = arrayUnion(trimmedEmail);
+      }
+      await updateDoc(doc(db, 'objects', object.id), updateData);
 
       // If includeChildren, also share with all descendants (children, grandchildren, etc.)
       if (includeChildren && allDescendants.length > 0) {
@@ -168,12 +173,16 @@ function ShareModal({ object, onClose, currentUserEmail, allObjects = [] }) {
         };
 
         // Update all descendants in parallel
-        await Promise.all(allDescendants.map(descendant =>
-          updateDoc(doc(db, 'objects', descendant.id), {
+        await Promise.all(allDescendants.map(descendant => {
+          const descUpdateData = {
             [`shares.${emailKey}`]: descendantShareData,
             sharedWithEmails: arrayUnion(trimmedEmail)
-          })
-        ));
+          };
+          if (role === 'editor') {
+            descUpdateData.editorEmails = arrayUnion(trimmedEmail);
+          }
+          return updateDoc(doc(db, 'objects', descendant.id), descUpdateData);
+        }));
       }
 
       setEmail('');
@@ -193,7 +202,9 @@ function ShareModal({ object, onClose, currentUserEmail, allObjects = [] }) {
       // Remove from parent object
       await updateDoc(doc(db, 'objects', object.id), {
         [`shares.${emailKey}`]: deleteField(),
-        sharedWithEmails: arrayRemove(displayEmail)
+        sharedWithEmails: arrayRemove(displayEmail),
+        editorEmails: arrayRemove(displayEmail),
+        acceptedShareEmails: arrayRemove(displayEmail)
       });
 
       // If this share included children, also remove from all descendants
@@ -201,7 +212,9 @@ function ShareModal({ object, onClose, currentUserEmail, allObjects = [] }) {
         await Promise.all(allDescendants.map(descendant =>
           updateDoc(doc(db, 'objects', descendant.id), {
             [`shares.${emailKey}`]: deleteField(),
-            sharedWithEmails: arrayRemove(displayEmail)
+            sharedWithEmails: arrayRemove(displayEmail),
+            editorEmails: arrayRemove(displayEmail),
+            acceptedShareEmails: arrayRemove(displayEmail)
           })
         ));
       }
@@ -212,19 +225,33 @@ function ShareModal({ object, onClose, currentUserEmail, allObjects = [] }) {
   };
 
   const handleUpdateRole = async (emailKey, newRole, shareData) => {
+    const userEmail = shareData?.email || keyToEmail(emailKey);
     try {
       // Update parent object
-      await updateDoc(doc(db, 'objects', object.id), {
+      const updateData = {
         [`shares.${emailKey}.role`]: newRole
-      });
+      };
+      // Update editorEmails array based on new role
+      if (newRole === 'editor') {
+        updateData.editorEmails = arrayUnion(userEmail);
+      } else {
+        updateData.editorEmails = arrayRemove(userEmail);
+      }
+      await updateDoc(doc(db, 'objects', object.id), updateData);
 
       // If this share included children, also update all descendants
       if (shareData?.includeChildren && allDescendants.length > 0) {
-        await Promise.all(allDescendants.map(descendant =>
-          updateDoc(doc(db, 'objects', descendant.id), {
+        await Promise.all(allDescendants.map(descendant => {
+          const descUpdateData = {
             [`shares.${emailKey}.role`]: newRole
-          })
-        ));
+          };
+          if (newRole === 'editor') {
+            descUpdateData.editorEmails = arrayUnion(userEmail);
+          } else {
+            descUpdateData.editorEmails = arrayRemove(userEmail);
+          }
+          return updateDoc(doc(db, 'objects', descendant.id), descUpdateData);
+        }));
       }
     } catch (err) {
       console.error('Error updating role:', err);

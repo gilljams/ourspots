@@ -29,9 +29,10 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
   const [parentId, setParentId] = useState(sourceObject?.parentId || defaultParentId || '');
   const [inheritLocation, setInheritLocation] = useState(false);
   
-  // For duplicates, add " (kopia)" suffix to title
+  // For duplicates, add " (kopia)" suffix to title (strip existing suffixes first)
   const originalTitle = sourceObject?.blocks?.find(b => b.type === 'title')?.data?.text || '';
-  const [title, setTitle] = useState(isDuplicate ? `${originalTitle} (kopia)` : originalTitle);
+  const cleanTitle = originalTitle.replace(/( \(kopia\))+$/g, ''); // Remove existing (kopia) suffixes
+  const [title, setTitle] = useState(isDuplicate ? `${cleanTitle} (kopia)` : originalTitle);
   
   // Location handling - preserve extra location blocks (e.g., mushroom spots added via quick capture)
   const locationBlocks = sourceObject?.blocks?.filter(b => b.type === 'location') || [];
