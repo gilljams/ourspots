@@ -90,12 +90,19 @@ export const LocationBlock = ({ data, inherited, onDelete, canDelete, positionNu
 
 export const ImageBlock = ({ data }) => {
   const [showFullscreen, setShowFullscreen] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
   const focalStyles = getFocalPointStyles(data.focalPoint);
   
   // Get optimized full image URL - max 1600px wide for good mobile quality without being huge
   const getFullImageUrl = (url) => {
     if (!url || !url.includes('cloudinary.com')) return url;
     return url.replace('/upload/', '/upload/c_limit,w_1600,q_auto:good/');
+  };
+  
+  // Reset loading state when opening fullscreen
+  const openFullscreen = () => {
+    setImageLoaded(false);
+    setShowFullscreen(true);
   };
   
   return (
@@ -108,7 +115,7 @@ export const ImageBlock = ({ data }) => {
           style={focalStyles}
         />
         <button
-          onClick={() => setShowFullscreen(true)}
+          onClick={openFullscreen}
           className="absolute bottom-2 right-2 p-1.5 rounded-md bg-black/30 text-white/70 hover:text-white hover:bg-black/50 transition-all"
           title="Visa hela bilden"
         >
@@ -128,11 +135,18 @@ export const ImageBlock = ({ data }) => {
           >
             <X size={24} />
           </button>
+          {/* Loading spinner */}
+          {!imageLoaded && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+            </div>
+          )}
           <img 
             src={getFullImageUrl(data.url)} 
             alt="" 
-            className="max-w-full max-h-full object-contain"
+            className={`max-w-full max-h-full object-contain transition-opacity duration-200 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
             onClick={(e) => e.stopPropagation()}
+            onLoad={() => setImageLoaded(true)}
           />
         </div>
       )}
