@@ -1,8 +1,8 @@
 ========================
-OurSpots – Manifest / Blueprint (Updated Jan 30, 2026)
+OurSpots – Manifest / Blueprint (Updated Jan 31, 2026)
 ========================
 
-🚀 STATUS: v2.1 - Markdown & Contact Block
+🚀 STATUS: v2.2 - Timer Block & UI Improvements
 
 1. VISION
 - Mobilfokuserad app med premium dark theme
@@ -43,6 +43,10 @@ OurSpots – Manifest / Blueprint (Updated Jan 30, 2026)
 - Objektkopiering för återkommande events (resor, recept) ✅
 - DateTag-block för års- och datumintervallmärkning ✅
 - Bevarar extra location-blocks (kantarellställen) vid redigering ✅ NY
+- Timer-block med compact/expanded läge och iOS-kompatibelt ljud ✅ NY
+- Konsekvent SVG-ikoner (ersatt emojis i inbjudningar och share modal) ✅ NY
+- Block-ordning respekterar användarens sortering ✅ NY
+- iOS scroll-fix för inputfält i modaler ✅ NY
 
 2. KATEGORI-SYSTEM
 - Dynamiska kategorier lagrade i Firebase ✅
@@ -98,6 +102,7 @@ Block:
 - type: "table", title, template, columns[], rows[] ✅
 - type: "datetag", tags[{type: "year"|"range", year?, startDate?, endDate?}] ✅
 - type: "contact", phone, email, website ✅ NY
+- type: "timer", timers[{label, duration}] (med iOS-ljud och compact view) ✅ NY
 - Modulära block kan adderas senare
 
 Category: ✅ IMPLEMENTERAT
@@ -187,8 +192,9 @@ Default block sets per typ/kategori (för enkelhet):
   - Badges på kort när objekt är delat
   - Filter: Mina/Alla objekt
   - ✅ Markdown editor för textfält (bullet lists, bold, bilder) - KLART v2.1
+  - ✅ Timer-block med countdown och ljud - KLART v2.2
   - PWA-implementation (manifest.json, service worker, installbar)
-  - Fler blocktyper (Audio/Video, PDF, Väder, Timer)
+  - Fler blocktyper (Audio/Video, PDF, Väder)
   - Lager/samlingar för resor och projekt
 
 8. DELNING / SHARING SYSTEM ✅ DELVIS IMPLEMENTERAT

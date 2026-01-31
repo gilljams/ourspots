@@ -133,10 +133,20 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
   }
   
   const blocksToRender = rawBlocks.sort((a, b) => {
-    const order = { 'title': 0, 'image': 1, 'location': 2, 'contact': 2.5, 'text': 3, 'checklist': 3, 'todo': 3, 'links': 3 };
-    const aOrder = order[a.type] !== undefined ? order[a.type] : 4;
-    const bOrder = order[b.type] !== undefined ? order[b.type] : 4;
-    return aOrder - bOrder;
+    // Explicit order for certain block types, others keep their original position
+    const order = { 'title': 0, 'image': 1, 'location': 2, 'contact': 2.5 };
+    const aOrder = order[a.type];
+    const bOrder = order[b.type];
+    
+    // If both have explicit order, sort by that
+    if (aOrder !== undefined && bOrder !== undefined) {
+      return aOrder - bOrder;
+    }
+    // If only one has explicit order, it comes first
+    if (aOrder !== undefined) return -1;
+    if (bOrder !== undefined) return 1;
+    // If neither has explicit order, maintain original array order
+    return a.objectBlockIndex - b.objectBlockIndex;
   });
   
   const handleDelete = async () => {

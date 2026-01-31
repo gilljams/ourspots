@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Share2, X, Mail, Loader, UserPlus, UserMinus, Users } from 'lucide-react';
+import { Share2, X, Mail, Loader, UserPlus, UserMinus, Users, Clock, Check, CornerDownRight, XCircle, Eye, Edit3 } from 'lucide-react';
 import { doc, updateDoc, onSnapshot, Timestamp, deleteField, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from '../firebase';
 import { emailToKey, keyToEmail } from '../utils/iconHelpers';
@@ -362,7 +362,7 @@ function ShareModal({ object, onClose, currentUserEmail, allObjects = [] }) {
               />
               <div>
                 <span className="text-gray-200 text-sm">Inkludera barn-objekt</span>
-                <p className="text-xs text-gray-500">Dela också alla objekt under detta</p>
+                <p className="text-xs text-gray-500">Dela också alla objekt under detta. Kan inte ändras senare – ta bort och lägg till igen vid behov.</p>
               </div>
             </label>
           </div>
@@ -379,9 +379,13 @@ function ShareModal({ object, onClose, currentUserEmail, allObjects = [] }) {
                   <div key={share.key} className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10">
                     <div className="flex-1 min-w-0">
                       <p className="text-white text-sm truncate">{share.email}</p>
-                      <p className="text-xs text-gray-500">
-                        {share.status === 'pending' ? '⏳ Väntar på svar' : share.status === 'accepted' ? '✓ Accepterad' : '✗ Nekad'}
-                        {share.includeChildren && ' • Inkl. barn'}
+                      <p className="text-xs text-gray-500 flex items-center gap-1">
+                        {share.status === 'pending' ? <><Clock size={10} className="text-amber-400" /> <span>Väntar på svar</span></> : 
+                         share.status === 'accepted' ? <><Check size={10} className="text-green-400" /> <span>Accepterad</span></> : 
+                         share.status === 'inherited' ? <><CornerDownRight size={10} className="text-blue-400" /> <span>Via förälder</span></> :
+                         share.status === 'declined' ? <><XCircle size={10} className="text-red-400" /> <span>Nekad</span></> : 
+                         <><Clock size={10} className="text-amber-400" /> <span>Väntar på svar</span></>}
+                        {share.includeChildren && <span className="ml-1">• Inkl. barn</span>}
                       </p>
                     </div>
                     <select

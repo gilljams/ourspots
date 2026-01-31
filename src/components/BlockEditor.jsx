@@ -897,18 +897,38 @@ function TimerBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
   const [timers, setTimers] = useState(block.timers || []);
   const [newLabel, setNewLabel] = useState('');
   const [newDuration, setNewDuration] = useState('');
+  const containerRef = React.useRef(null);
 
-  // Use ref for sync
-  const timersRef = React.useRef(timers);
-  timersRef.current = timers;
+  // Sync timers state when block changes (e.g., after move)
+  React.useEffect(() => {
+    setTimers(block.timers || []);
+  }, [block.id, block.timers]);
+
+  // Prevent iOS scroll-to-top on input focus
+  const handleInputFocus = (e) => {
+    // Find scrollable parent and save its scroll position
+    const scrollParent = e.target.closest('.overflow-y-auto');
+    if (scrollParent) {
+      const scrollTop = scrollParent.scrollTop;
+      // Restore scroll position after iOS does its thing
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (scrollParent.scrollTop !== scrollTop) {
+            scrollParent.scrollTop = scrollTop;
+          }
+        });
+      });
+    }
+  };
 
   const syncToParent = (newTimers) => {
-    timersRef.current = newTimers;
     onUpdate(block.id, { timers: newTimers });
   };
 
   const addTimer = () => {
-    const duration = parseInt(newDuration);
+    // Support both . and , as decimal separator
+    const normalizedDuration = newDuration.replace(',', '.');
+    const duration = parseFloat(normalizedDuration);
     if (!newLabel.trim() || isNaN(duration) || duration <= 0) return;
     
     const updated = [...timers, { label: newLabel.trim(), duration }];
@@ -950,7 +970,7 @@ function TimerBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
             <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-white/5">
               <Timer size={14} className="text-orange-400 flex-shrink-0" />
               <span className="flex-1 text-sm text-white truncate">{timer.label}</span>
-              <span className="text-sm text-gray-400">{timer.duration} min</span>
+              <span className="text-sm text-gray-400">{timer.duration % 1 === 0 ? timer.duration : timer.duration.toFixed(1)} min</span>
               <button
                 type="button"
                 onClick={() => removeTimer(i)}
@@ -969,24 +989,29 @@ function TimerBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
           type="text"
           value={newLabel}
           onChange={(e) => setNewLabel(e.target.value)}
-          placeholder="Namn (t.ex. Potatisgratäng)"
+          onFocus={handleInputFocus}
+          placeholder="Namn"
           disabled={saving}
-          className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-orange-500"
+          autoComplete="off"
+          autoCorrect="off"
+          className="w-0 flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-orange-500"
         />
         <input
-          type="number"
+          type="text"
+          inputMode="decimal"
           value={newDuration}
           onChange={(e) => setNewDuration(e.target.value)}
+          onFocus={handleInputFocus}
           placeholder="Min"
-          min="1"
           disabled={saving}
-          className="w-20 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-orange-500"
+          autoComplete="off"
+          className="w-16 flex-shrink-0 px-2 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-orange-500 text-center"
         />
         <button
           type="button"
           onClick={addTimer}
           disabled={saving || !newLabel.trim() || !newDuration}
-          className="px-3 py-2 rounded-lg bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 disabled:opacity-50 transition-colors"
+          className="w-10 h-10 flex-shrink-0 rounded-lg bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 disabled:opacity-50 transition-colors flex items-center justify-center"
         >
           <Plus size={18} />
         </button>

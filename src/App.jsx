@@ -4,7 +4,7 @@ import {
   Loader, LogOut, LogIn, Check, Circle, Upload, 
   Map as MapIcon, List, ChevronDown, ArrowUp, ArrowDown, Search, Settings,
   Target, Lightbulb, SlidersHorizontal, Menu, Filter, Share2, UserPlus, UserMinus, Users, Mail, User,
-  FileText, CheckSquare, ClipboardList, MapPin, Home, RotateCcw, Star, Navigation
+  FileText, CheckSquare, ClipboardList, MapPin, Home, RotateCcw, Star, Navigation, Eye, Edit3
 } from 'lucide-react';
 
 // Version for cache-busting visual indicator (remove in production)
@@ -1016,9 +1016,9 @@ function App() {
                   <div key={obj.id} className="flex items-center gap-2 p-2.5 rounded-lg bg-white/5 border border-white/10">
                     <div className="flex-1 min-w-0">
                       <p className="text-white text-sm font-medium truncate">{titleBlock?.data?.text || 'Namnlöst'}</p>
-                      <p className="text-xs text-gray-400">
-                        {shareInfo?.role === 'editor' ? '✏️ Redigerare' : '👁️ Läsare'}
-                        {shareInfo?.includeChildren && ' • Inkl. barn'}
+                      <p className="text-xs text-gray-400 flex items-center gap-1">
+                        {shareInfo?.role === 'editor' ? <><Edit3 size={10} /> <span>Redigerare</span></> : <><Eye size={10} /> <span>Läsare</span></>}
+                        {shareInfo?.includeChildren && <span className="ml-1">• Inkl. barn</span>}
                       </p>
                     </div>
                     <div className="flex gap-1">
@@ -1042,9 +1042,9 @@ function App() {
                             alert('Kunde inte acceptera');
                           }
                         }}
-                        className="px-2.5 py-1.5 rounded-lg bg-green-500/20 text-green-300 text-xs font-medium hover:bg-green-500/30 transition-colors"
+                        className="px-2.5 py-1.5 rounded-lg bg-green-500/20 text-green-300 text-xs font-medium hover:bg-green-500/30 transition-colors flex items-center justify-center"
                       >
-                        ✓
+                        <Check size={14} />
                       </button>
                       <button
                         onClick={async () => {
@@ -1062,9 +1062,9 @@ function App() {
                             alert('Kunde inte neka');
                           }
                         }}
-                        className="px-2.5 py-1.5 rounded-lg bg-red-500/20 text-red-300 text-xs font-medium hover:bg-red-500/30 transition-colors"
+                        className="px-2.5 py-1.5 rounded-lg bg-red-500/20 text-red-300 text-xs font-medium hover:bg-red-500/30 transition-colors flex items-center justify-center"
                       >
-                        ✗
+                        <X size={14} />
                       </button>
                     </div>
                   </div>
