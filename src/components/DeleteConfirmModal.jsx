@@ -21,7 +21,7 @@ function DeleteConfirmModal({ object, onConfirm, onCancel, descendantCount = 0 }
           <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 mb-4">
             <AlertTriangle size={20} className="text-amber-400 flex-shrink-0 mt-0.5" />
             <p className="text-amber-200 text-sm">
-              <span className="font-semibold">{descendantCount} {descendantCount === 1 ? 'barnobjekt' : 'barnobjekt'}</span> kommer också att raderas.
+              <span className="font-semibold">{descendantCount} underobjekt</span> kommer också att raderas.
             </p>
           </div>
         )}

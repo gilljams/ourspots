@@ -368,7 +368,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <Folder size={16} className="text-gray-400" />
-                    <h3 className="text-sm font-medium text-gray-400">Barn ({childObjects.length})</h3>
+                    <h3 className="text-sm font-medium text-gray-400">{childObjects.length} objekt</h3>
                   </div>
                   {childObjects.length > 2 && (
                     <button
@@ -465,7 +465,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                             className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:text-white transition-all"
                           >
                             <Plus size={16} />
-                            <span className="text-sm">Lägg till barn</span>
+                            <span className="text-sm">Lägg till objekt</span>
                           </button>
                         )}
                         {onDuplicate && (
