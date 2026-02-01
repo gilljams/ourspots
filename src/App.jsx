@@ -765,8 +765,8 @@ function App() {
       return;
     }
     
-    // Check object limit for new objects (not edits)
-    if (!editId) {
+    // Check object limit for new objects (not edits) - admins have no limit
+    if (!editId && !isAdmin) {
       const ownedObjectsCount = objects.filter(o => o.ownerId === user.uid).length;
       const limit = userApproved ? appSettings.approvedObjectLimit : appSettings.defaultObjectLimit;
       

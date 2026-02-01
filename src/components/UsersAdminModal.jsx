@@ -38,6 +38,8 @@ function UsersAdminModal({ currentUserId, onClose }) {
   }, []);
   
   // Save app settings
+  const [settingsSaved, setSettingsSaved] = useState(false);
+  
   const saveSettings = async () => {
     setSavingSettings(true);
     try {
@@ -46,6 +48,8 @@ function UsersAdminModal({ currentUserId, onClose }) {
         approvedObjectLimit: appSettings.approvedObjectLimit,
         updatedAt: Timestamp.now()
       });
+      setSettingsSaved(true);
+      setTimeout(() => setSettingsSaved(false), 2000);
     } catch (err) {
       console.error('Error saving settings:', err);
       alert('Kunde inte spara inställningar');
@@ -350,7 +354,7 @@ function UsersAdminModal({ currentUserId, onClose }) {
                 />
               </div>
               <div>
-                <label className="text-xs text-gray-400 block mb-1">Godkända användare (max objekt)</label>
+                <label className="text-xs text-gray-400 block mb-1">Godkända användare</label>
                 <input
                   type="number"
                   min="1"
@@ -360,7 +364,10 @@ function UsersAdminModal({ currentUserId, onClose }) {
                 />
               </div>
             </div>
-            <div className="flex justify-end mt-3">
+            <div className="flex justify-end items-center gap-3 mt-3">
+              {settingsSaved && (
+                <span className="text-xs text-green-400">✓ Sparat!</span>
+              )}
               <button
                 onClick={saveSettings}
                 disabled={savingSettings}
