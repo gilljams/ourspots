@@ -4,7 +4,7 @@ import { doc, updateDoc, onSnapshot, Timestamp, deleteField, arrayUnion, arrayRe
 import { db } from '../firebase';
 import { emailToKey, keyToEmail } from '../utils/iconHelpers';
 
-function ShareModal({ object, onClose, currentUserEmail, allObjects = [] }) {
+function ShareModal({ object, onClose, currentUserEmail, allObjects = [], sharedContacts = [], onAddContact }) {
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('viewer');
   const [includeChildren, setIncludeChildren] = useState(true);
@@ -185,6 +185,11 @@ function ShareModal({ object, onClose, currentUserEmail, allObjects = [] }) {
         }));
       }
 
+      // Save contact to user's sharedContacts
+      if (onAddContact && !sharedContacts.includes(trimmedEmail)) {
+        onAddContact(trimmedEmail);
+      }
+
       setEmail('');
     } catch (err) {
       console.error('Error sharing:', err);
@@ -336,6 +341,31 @@ function ShareModal({ object, onClose, currentUserEmail, allObjects = [] }) {
                 </button>
               </div>
               {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
+              
+              {/* Recent contacts */}
+              {sharedContacts.length > 0 && (
+                <div className="mt-3">
+                  <span className="text-xs text-gray-500 mb-2 block">Senaste kontakter</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {sharedContacts
+                      .filter(c => c !== currentUserEmail && !shares[emailToKey(c)])
+                      .slice(0, 8)
+                      .map(contact => (
+                        <button
+                          key={contact}
+                          onClick={() => setEmail(contact)}
+                          className={`px-2.5 py-1 rounded-lg text-xs transition-colors ${
+                            email === contact 
+                              ? 'bg-purple-500/30 text-purple-300 border border-purple-500/50' 
+                              : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white border border-transparent'
+                          }`}
+                        >
+                          {contact.split('@')[0]}
+                        </button>
+                      ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex gap-4">

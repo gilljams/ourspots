@@ -92,6 +92,9 @@ function App() {
   const [showCategoryAdmin, setShowCategoryAdmin] = useState(false);
   const [showObjectsAdmin, setShowObjectsAdmin] = useState(false);
   const [showUsersAdmin, setShowUsersAdmin] = useState(false);
+  const [showProfileSettings, setShowProfileSettings] = useState(false);
+  const [displayName, setDisplayName] = useState('');
+  const [sharedContacts, setSharedContacts] = useState([]);
   const [captures, setCaptures] = useState(() => {
     try {
       const saved = localStorage.getItem('ourspots_captures');
@@ -243,9 +246,13 @@ function App() {
             
             const adminFlag = userData?.isAdmin === true;
             const userFavorites = userData?.favorites || [];
+            const userDisplayName = userData?.displayName || '';
+            const userSharedContacts = userData?.sharedContacts || [];
 
             setIsAdmin(adminFlag);
             setFavorites(userFavorites);
+            setDisplayName(userDisplayName);
+            setSharedContacts(userSharedContacts);
           } else {
 
             // Create user doc if it doesn't exist
@@ -253,10 +260,14 @@ function App() {
               email: u.email,
               isAdmin: false,
               favorites: [],
+              displayName: '',
+              sharedContacts: [],
               createdAt: Timestamp.now()
             });
             setIsAdmin(false);
             setFavorites([]);
+            setDisplayName('');
+            setSharedContacts([]);
           }
         } catch (err) {
           console.error('Error fetching user doc:', err);
@@ -266,6 +277,8 @@ function App() {
       } else {
         setIsAdmin(false);
         setFavorites([]);
+        setDisplayName('');
+        setSharedContacts([]);
       }
     });
     return () => unsubAuth();
@@ -1351,6 +1364,7 @@ function App() {
           onDuplicate={handleDuplicate}
           onBlockUpdate={handleBlockUpdate} 
           currentUser={user} 
+          userDisplayName={displayName}
           allObjects={objects} 
           onNavigate={(obj) => setSelectedObject(obj)} 
           categories={categories} 
@@ -1393,6 +1407,16 @@ function App() {
           onClose={() => setShowShareModal(null)}
           currentUserEmail={user?.email?.toLowerCase()}
           allObjects={objects}
+          sharedContacts={sharedContacts}
+          onAddContact={async (email) => {
+            const newContacts = [...sharedContacts.filter(c => c !== email), email].slice(-20); // Keep last 20
+            setSharedContacts(newContacts);
+            try {
+              await updateDoc(doc(db, 'users', user.uid), { sharedContacts: newContacts });
+            } catch (err) {
+              console.error('Error saving contact:', err);
+            }
+          }}
         />
       )}
 
@@ -1587,6 +1611,30 @@ function App() {
                 )}
                 <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">Inställningar</div>
                 <div className="space-y-2">
+                  {/* Profile / Nickname */}
+                  <div className="p-3 rounded-xl bg-white/5 border border-white/10">
+                    <div className="flex-1 mb-2">
+                      <div className="text-sm font-medium text-white">Visningsnamn</div>
+                      <div className="text-xs text-gray-400 mt-0.5">Hur andra ser dig vid delning</div>
+                    </div>
+                    <input
+                      type="text"
+                      value={displayName}
+                      onChange={(e) => setDisplayName(e.target.value)}
+                      onBlur={async () => {
+                        if (user) {
+                          try {
+                            await updateDoc(doc(db, 'users', user.uid), { displayName: displayName.trim() });
+                          } catch (err) {
+                            console.error('Error saving displayName:', err);
+                          }
+                        }
+                      }}
+                      placeholder={user?.email?.split('@')[0] || 'Ditt namn'}
+                      className="w-full bg-gray-800 border border-white/10 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                  
                   <div className="p-3 rounded-xl bg-white/5 border border-white/10">
                     <div className="flex items-center justify-between">
                       <div className="flex-1">

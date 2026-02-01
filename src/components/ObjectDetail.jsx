@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Plus, Edit2, Trash2, Settings, ChevronDown, 
-  Share2, Users, UserMinus, Home, Link2, Table2, List, LayoutGrid, FileText, Copy
+  Share2, Users, UserMinus, Home, Link2, Table2, List, LayoutGrid, FileText, Copy, Vote
 } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -17,7 +17,7 @@ const Folder = ({ size = 24, ...props }) => (
   </svg>
 );
 
-function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockUpdate, currentUser, allObjects, onNavigate, categories, isAdmin, onShowOnMap, onShare, onLeaveShare }) {
+function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockUpdate, currentUser, userDisplayName, allObjects, onNavigate, categories, isAdmin, onShowOnMap, onShare, onLeaveShare }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [expandedBlocks, setExpandedBlocks] = useState(new Set([0])); // First block expanded by default
   const [showManageSection, setShowManageSection] = useState(false);
@@ -276,7 +276,9 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                 const linksItemCount = block.type === 'links' ? (block.data?.items?.length || 0) : 0;
                 // Tables are always collapsible
                 const tableRowCount = block.type === 'table' ? (block.data?.rows?.length || 0) : 0;
-                const isCollapsible = ['text', 'checklist', 'todo', 'table'].includes(block.type) || (block.type === 'links' && linksItemCount > 1);
+                // Polls show option count
+                const pollOptionCount = block.type === 'poll' ? (block.data?.options?.length || 0) : 0;
+                const isCollapsible = ['text', 'checklist', 'todo', 'table', 'poll'].includes(block.type) || (block.type === 'links' && linksItemCount > 1);
                 
                 // For location blocks, show delete if there are multiple AND user can edit
                 const locationBlocks = blocksToRender.filter(b => b.type === 'location' && !b.inherited);
@@ -336,6 +338,9 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                           {block.type === 'table' && (
                             <Table2 size={14} className="text-amber-400" />
                           )}
+                          {block.type === 'poll' && (
+                            <Vote size={14} className="text-indigo-400" />
+                          )}
                           <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">
                             {customTitle ? customTitle : (
                               <>
@@ -344,6 +349,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                                 {block.type === 'todo' && (showBlockLabel ? `Att göra ${blockNumber}` : 'Att göra')}
                                 {block.type === 'links' && (showBlockLabel ? `Länkar ${blockNumber}` : `Länkar (${linksItemCount})`)}
                                 {block.type === 'table' && (showBlockLabel ? `Tabell ${blockNumber}` : `Tabell (${tableRowCount})`)}
+                                {block.type === 'poll' && (showBlockLabel ? `Omröstning ${blockNumber}` : `Omröstning (${pollOptionCount})`)}
                               </>
                             )}
                           </span>
@@ -365,6 +371,22 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                           onDelete={handleDeleteBlock}
                           positionNumber={locationBlocks.length > 1 ? locationIndex : null}
                           onShowOnMap={onShowOnMap}
+                          // Poll-specific props
+                          currentUser={currentUser}
+                          userDisplayName={userDisplayName}
+                          shares={object.shares || {}}
+                          onVote={block.type === 'poll' ? async (newVotes) => {
+                            try {
+                              const updatedBlocks = [...object.blocks];
+                              updatedBlocks[actualBlockIndex] = {
+                                ...updatedBlocks[actualBlockIndex],
+                                data: { ...updatedBlocks[actualBlockIndex].data, votes: newVotes }
+                              };
+                              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
+                            } catch (err) {
+                              console.error('Error saving vote:', err);
+                            }
+                          } : undefined}
                         />
                       </div>
                     )}

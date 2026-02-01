@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, ArrowUp, ArrowDown, FileText, CheckSquare, ClipboardList, Link2, Plus, ChevronDown, Table2, Trash2, GripVertical, Calendar, Phone, Mail, Globe, Timer, Check, Maximize2, RotateCcw } from 'lucide-react';
+import { X, ArrowUp, ArrowDown, FileText, CheckSquare, ClipboardList, Link2, Plus, ChevronDown, Table2, Trash2, GripVertical, Calendar, Phone, Mail, Globe, Timer, Check, Maximize2, RotateCcw, Vote } from 'lucide-react';
 import { getIconComponent, LINK_ICONS } from '../utils/iconHelpers';
 import { TABLE_TEMPLATES } from './blocks';
 
@@ -1347,6 +1347,158 @@ function TimerBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
   );
 }
 
-export { DateTagBlockEditor, TimerBlockEditor };
+// Poll block editor component - for admin to create poll options
+function PollBlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }) {
+  const [title, setTitle] = useState(block.title || '');
+  const [options, setOptions] = useState(block.options || []);
+  const [newOption, setNewOption] = useState('');
+
+  // Use refs to always have latest values
+  const titleRef = React.useRef(title);
+  const optionsRef = React.useRef(options);
+  titleRef.current = title;
+  optionsRef.current = options;
+
+  const syncToParent = (newTitle, newOptions, newVotes = block.votes || {}) => {
+    titleRef.current = newTitle;
+    optionsRef.current = newOptions;
+    onUpdate(block.id, { title: newTitle, options: newOptions, votes: newVotes });
+  };
+
+  const resetVotes = () => {
+    if (window.confirm('Vill du nollställa alla röster? Detta kan inte ångras.')) {
+      syncToParent(title, options, {});
+    }
+  };
+
+  const voteCount = Object.keys(block.votes || {}).length;
+
+  const addOption = () => {
+    if (!newOption.trim()) return;
+    const newOpt = {
+      id: Math.random().toString(36).substr(2, 9),
+      label: newOption.trim()
+    };
+    const newOptions = [...options, newOpt];
+    setOptions(newOptions);
+    setNewOption('');
+    syncToParent(title, newOptions);
+  };
+
+  const updateOption = (optionId, label) => {
+    const newOptions = options.map(opt => 
+      opt.id === optionId ? { ...opt, label } : opt
+    );
+    setOptions(newOptions);
+    optionsRef.current = newOptions;
+  };
+
+  const syncOption = () => {
+    syncToParent(titleRef.current, optionsRef.current);
+  };
+
+  const removeOption = (optionId) => {
+    const newOptions = options.filter(opt => opt.id !== optionId);
+    setOptions(newOptions);
+    syncToParent(title, newOptions);
+  };
+
+  return (
+    <div className="rounded-xl border border-white/10 p-3 bg-white/5">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-sm font-medium text-gray-300 flex items-center gap-2">
+          <Vote size={16} className="text-indigo-400" /> Omröstning
+        </span>
+        <div className="flex gap-1">
+          <button type="button" onClick={() => onMove(block.id, -1)} disabled={index === 0} className="w-7 h-7 rounded bg-white/5 text-gray-400 hover:bg-white/10 flex items-center justify-center disabled:opacity-30">
+            <ArrowUp size={14} />
+          </button>
+          <button type="button" onClick={() => onMove(block.id, 1)} disabled={index === total - 1} className="w-7 h-7 rounded bg-white/5 text-gray-400 hover:bg-white/10 flex items-center justify-center disabled:opacity-30">
+            <ArrowDown size={14} />
+          </button>
+          <button type="button" onClick={() => onRemove(block.id)} className="w-7 h-7 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center">
+            <X size={14} />
+          </button>
+        </div>
+      </div>
+
+      {/* Poll title */}
+      <input
+        type="text"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        onBlur={() => syncToParent(title, options)}
+        placeholder="Fråga (t.ex. 'När passar helgen?')"
+        disabled={saving}
+        className="w-full px-3 py-2 mb-3 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+      />
+
+      {/* Options list */}
+      {options.length > 0 && (
+        <div className="space-y-2 mb-3">
+          {options.map((option, i) => (
+            <div key={option.id} className="flex items-center gap-2">
+              <span className="text-gray-500 text-sm w-5">{i + 1}.</span>
+              <input
+                type="text"
+                value={option.label}
+                onChange={(e) => updateOption(option.id, e.target.value)}
+                onBlur={syncOption}
+                disabled={saving}
+                className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base focus:outline-none focus:border-indigo-500"
+              />
+              <button
+                type="button"
+                onClick={() => removeOption(option.id)}
+                className="w-8 h-8 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Add new option */}
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={newOption}
+          onChange={(e) => setNewOption(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addOption())}
+          placeholder="Nytt alternativ (t.ex. '14-16 mars')"
+          disabled={saving}
+          className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+        />
+        <button
+          type="button"
+          onClick={addOption}
+          disabled={saving || !newOption.trim()}
+          className="w-10 h-10 flex-shrink-0 rounded-lg bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30 disabled:opacity-50 transition-colors flex items-center justify-center"
+        >
+          <Plus size={18} />
+        </button>
+      </div>
+
+      {/* Instructions + Reset button */}
+      <div className="flex items-center justify-between mt-3">
+        <p className="text-xs text-gray-500">
+          Deltagare med tillgång till objektet kan rösta direkt i vyn.
+        </p>
+        {voteCount > 0 && (
+          <button
+            type="button"
+            onClick={resetVotes}
+            className="text-xs text-red-400 hover:text-red-300 hover:underline"
+          >
+            Nollställ röster ({voteCount})
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export { DateTagBlockEditor, TimerBlockEditor, PollBlockEditor };
 
 export default BlockEditor;

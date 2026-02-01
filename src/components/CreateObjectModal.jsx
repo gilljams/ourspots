@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, Plus, Upload, Loader, Navigation, ChevronDown, ChevronUp,
-  Map as MapIcon, FileText, CheckSquare, ClipboardList, Link2, Table2, Image as ImageIcon, Calendar, Phone, Timer 
+  Map as MapIcon, FileText, CheckSquare, ClipboardList, Link2, Table2, Image as ImageIcon, Calendar, Phone, Timer, Vote 
 } from 'lucide-react';
 import { 
   CLOUDINARY_CLOUD_NAME, 
@@ -12,7 +12,7 @@ import {
 import { getIconComponent } from '../utils/iconHelpers';
 import MapPicker from './MapPicker';
 import FocalPointPicker from './FocalPointPicker';
-import BlockEditor, { DateTagBlockEditor, TimerBlockEditor } from './BlockEditor';
+import BlockEditor, { DateTagBlockEditor, TimerBlockEditor, PollBlockEditor } from './BlockEditor';
 
 function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, saving, availableParents, defaultParentId, userLocation, categories, preciseGPS }) {
   // ========== STATE ==========
@@ -48,7 +48,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
   const [customBlocks, setCustomBlocks] = useState(() => {
     if (!sourceObject) return [];
     return sourceObject.blocks
-      .filter(b => ['text', 'checklist', 'todo', 'links', 'table', 'datetag', 'contact', 'timer'].includes(b.type))
+      .filter(b => ['text', 'checklist', 'todo', 'links', 'table', 'datetag', 'contact', 'timer', 'poll'].includes(b.type))
       .map(b => {
         if (b.type === 'links') {
           return {
@@ -89,6 +89,15 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             id: Math.random().toString(36).substr(2, 9),
             type: 'timer',
             timers: b.data.timers || []
+          };
+        }
+        if (b.type === 'poll') {
+          return {
+            id: Math.random().toString(36).substr(2, 9),
+            type: 'poll',
+            title: b.data.title || '',
+            options: b.data.options || [],
+            votes: isDuplicate ? {} : (b.data.votes || {}) // Clear votes when duplicating
           };
         }
         return {
@@ -398,6 +407,18 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             } 
           });
         }
+      } else if (block.type === 'poll') {
+        // Save poll block if any options exist
+        if (block.options && block.options.length > 0) {
+          blocks.push({ 
+            type: 'poll', 
+            data: { 
+              title: (block.title || 'Omröstning').trim(),
+              options: block.options,
+              votes: block.votes || {}
+            } 
+          });
+        }
       } else if (block.content && block.content.trim()) {
         if (block.type === 'text') {
           blocks.push({ type: 'text', data: { title: (block.title || 'Anteckning').trim(), content: block.content.trim() } });
@@ -434,6 +455,10 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
     }
     if (type === 'timer') {
       newBlock.timers = [];
+    }
+    if (type === 'poll') {
+      newBlock.options = [];
+      newBlock.votes = {};
     }
     setCustomBlocks(prev => [...prev, newBlock]);
     setFormTouched(true);
@@ -718,6 +743,17 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   total={customBlocks.length}
                   saving={saving}
                 />
+              ) : block.type === 'poll' ? (
+                <PollBlockEditor
+                  key={block.id}
+                  block={block}
+                  onUpdate={updateCustomBlock}
+                  onRemove={removeCustomBlock}
+                  onMove={moveCustomBlock}
+                  index={index}
+                  total={customBlocks.length}
+                  saving={saving}
+                />
               ) : (
                 <BlockEditor
                   key={block.id}
@@ -788,6 +824,9 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   </button>
                   <button type="button" onClick={() => addCustomBlock('timer')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
                     <Timer size={16} className="text-orange-400" /> Timers
+                  </button>
+                  <button type="button" onClick={() => addCustomBlock('poll')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
+                    <Vote size={16} className="text-indigo-400" /> Omröstning
                   </button>
                 </div>
               )}

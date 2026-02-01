@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapPin, Map as MapIcon, X, Check, RotateCcw, ExternalLink, Calendar, Maximize2, Timer, Play, Pause, RotateCw } from 'lucide-react';
+import { MapPin, Map as MapIcon, X, Check, RotateCcw, ExternalLink, Calendar, Maximize2, Timer, Play, Pause, RotateCw, Vote, HelpCircle, Trophy, ChevronDown } from 'lucide-react';
 import { getTransformedImageUrl, getFocalPointStyles } from '../../utils/imageUtils';
 import { getIconComponent } from '../../utils/iconHelpers';
 
@@ -1067,6 +1067,229 @@ export const TimerBlock = ({ data }) => {
   );
 };
 
+// Poll block - allows viewers to vote
+export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayName = '' }) => {
+  const [showDetails, setShowDetails] = useState(false);
+  const options = data.options || [];
+  const votes = data.votes || {};
+  const title = data.title || 'Omröstning';
+  
+  // Get current user's email key
+  const getUserEmailKey = (email) => {
+    if (!email) return null;
+    return email.replace(/\./g, '_DOT_');
+  };
+  
+  const currentUserKey = currentUser?.email ? getUserEmailKey(currentUser.email) : null;
+  // votes[emailKey] can be { displayName: string, votes: { optionId: voteType } } or legacy { optionId: voteType }
+  const currentUserData = currentUserKey ? (votes[currentUserKey] || {}) : {};
+  // Support both new format (votes nested) and legacy format (votes at root)
+  const currentUserVotes = currentUserData.votes || (typeof currentUserData === 'object' && !currentUserData.displayName ? currentUserData : {});
+  
+  // Get all participants (owner + shared users)
+  const getParticipants = () => {
+    const participants = [];
+    
+    // Add all users who have voted
+    Object.entries(votes).forEach(([emailKey, userData]) => {
+      const email = emailKey.replace(/_DOT_/g, '.');
+      // Support both new format and legacy format
+      const userVotes = userData.votes || (typeof userData === 'object' && !userData.displayName ? userData : {});
+      const displayName = userData.displayName || email.split('@')[0];
+      
+      // Only add if they have actual votes
+      if (Object.keys(userVotes).length > 0) {
+        participants.push({
+          emailKey,
+          email,
+          displayName,
+          votes: userVotes
+        });
+      }
+    });
+    
+    return participants;
+  };
+  
+  const participants = getParticipants();
+  
+  // Calculate results for each option
+  const getOptionResults = (optionId) => {
+    let yes = 0, no = 0, maybe = 0;
+    const voterDetails = { yes: [], no: [], maybe: [] };
+    
+    participants.forEach(p => {
+      const vote = p.votes[optionId];
+      if (vote === 'yes') {
+        yes++;
+        voterDetails.yes.push(p.displayName);
+      } else if (vote === 'no') {
+        no++;
+        voterDetails.no.push(p.displayName);
+      } else if (vote === 'maybe') {
+        maybe++;
+        voterDetails.maybe.push(p.displayName);
+      }
+    });
+    
+    return { yes, no, maybe, total: participants.length, voterDetails };
+  };
+  
+  // Find best option (most "yes" votes, least "no" votes as tiebreaker)
+  const getBestOptions = () => {
+    if (options.length === 0) return [];
+    
+    // Calculate scores for all options
+    const optionScores = options.map(opt => {
+      const results = getOptionResults(opt.id);
+      const score = results.yes * 10 - results.no * 5 + results.maybe;
+      return { option: opt, results, score };
+    });
+    
+    // Find the best score
+    const bestScore = Math.max(...optionScores.map(o => o.score));
+    
+    // Return all options with the best score
+    return optionScores.filter(o => o.score === bestScore);
+  };
+  
+  const handleVote = (optionId, voteType) => {
+    if (!currentUserKey || !onVote) return;
+    
+    // Toggle: if same vote, remove it
+    const currentVote = currentUserVotes[optionId];
+    const newVote = currentVote === voteType ? null : voteType;
+    
+    const newUserVotes = { ...currentUserVotes };
+    if (newVote === null) {
+      delete newUserVotes[optionId];
+    } else {
+      newUserVotes[optionId] = newVote;
+    }
+    
+    // Save with displayName in new format
+    const effectiveDisplayName = userDisplayName || currentUser?.email?.split('@')[0] || '';
+    const newVotes = { 
+      ...votes, 
+      [currentUserKey]: {
+        displayName: effectiveDisplayName,
+        votes: newUserVotes
+      }
+    };
+    onVote(newVotes);
+  };
+  
+  const bestOptions = getBestOptions();
+  const bestOptionIds = new Set(bestOptions.map(b => b.option.id));
+  
+  // Compact vote button component
+  const VoteButton = ({ optionId, voteType, icon, activeClass }) => {
+    const isActive = currentUserVotes[optionId] === voteType;
+    return (
+      <button
+        onClick={() => handleVote(optionId, voteType)}
+        disabled={!currentUserKey || !onVote}
+        className={`w-8 h-8 rounded-md flex items-center justify-center transition-all ${
+          isActive 
+            ? activeClass
+            : `bg-white/5 text-gray-500 hover:bg-white/10 ${!currentUserKey ? 'opacity-50 cursor-not-allowed' : ''}`
+        }`}
+        title={voteType === 'yes' ? 'Kan' : voteType === 'no' ? 'Kan inte' : 'Kanske'}
+      >
+        {icon}
+      </button>
+    );
+  };
+  
+  if (options.length === 0) {
+    return (
+      <div className="text-gray-500 text-sm py-2">
+        Inga alternativ har lagts till än.
+      </div>
+    );
+  }
+  
+  return (
+    <div className="space-y-2">
+      {/* Options with voting */}
+      {options.map((option) => {
+        const results = getOptionResults(option.id);
+        const isBest = bestOptionIds.has(option.id) && participants.length > 0 && results.yes > 0;
+        const isTied = bestOptions.length > 1 && isBest;
+        
+        return (
+          <div 
+            key={option.id} 
+            className={`flex items-center gap-3 p-2 rounded-lg ${isBest ? 'bg-white/10' : 'bg-white/5'}`}
+          >
+            {/* Best indicator - show trophy for winners, dimmed if tied */}
+            {isBest && (
+              <Trophy size={14} className={`flex-shrink-0 ${isTied ? 'text-amber-400/60' : 'text-amber-400'}`} />
+            )}
+            
+            {/* Option label and results */}
+            <div className="flex-1 min-w-0">
+              <span className={`text-sm truncate block ${isBest ? 'text-white font-medium' : 'text-gray-300'}`}>
+                {option.label}
+              </span>
+              {/* Compact results */}
+              {participants.length > 0 && (
+                <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
+                  <span>{results.yes}/{participants.length}</span>
+                  {showDetails && results.yes > 0 && (
+                    <span className="truncate">({results.voterDetails.yes.join(', ')})</span>
+                  )}
+                </div>
+              )}
+            </div>
+            
+            {/* Vote buttons */}
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <VoteButton 
+                optionId={option.id} 
+                voteType="yes" 
+                icon={<Check size={14} />} 
+                activeClass="bg-green-500/20 text-green-400"
+              />
+              <VoteButton 
+                optionId={option.id} 
+                voteType="maybe" 
+                icon={<HelpCircle size={14} />} 
+                activeClass="bg-amber-500/20 text-amber-400"
+              />
+              <VoteButton 
+                optionId={option.id} 
+                voteType="no" 
+                icon={<X size={14} />} 
+                activeClass="bg-red-500/20 text-red-400"
+              />
+            </div>
+          </div>
+        );
+      })}
+      
+      {/* Footer with toggle and summary */}
+      <div className="flex items-center justify-between pt-1">
+        {participants.length > 0 ? (
+          <button
+            onClick={() => setShowDetails(!showDetails)}
+            className="text-xs text-gray-500 hover:text-gray-400 flex items-center gap-1"
+          >
+            <ChevronDown size={12} className={`transition-transform ${showDetails ? 'rotate-180' : ''}`} />
+            {showDetails ? 'Kompakt' : 'Visa namn'}
+          </button>
+        ) : (
+          <span className="text-xs text-gray-500">Ingen har röstat än</span>
+        )}
+        
+        {!currentUserKey && (
+          <span className="text-xs text-gray-500 italic">Logga in för att rösta</span>
+        )}
+      </div>
+    </div>
+  );
+};
+
 export const blockComponents = {
   title: TitleBlock,
   location: LocationBlock,
@@ -1078,5 +1301,6 @@ export const blockComponents = {
   links: LinksBlock,
   table: TableBlock,
   datetag: DateTagBlock,
-  timer: TimerBlock
+  timer: TimerBlock,
+  poll: PollBlock
 };

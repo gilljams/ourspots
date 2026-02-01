@@ -1,8 +1,8 @@
 ========================
-OurSpots – Manifest / Blueprint (Updated Jan 31, 2026)
+OurSpots – Manifest / Blueprint (Updated Feb 1, 2026)
 ========================
 
-🚀 STATUS: v2.3 - Fullscreen Text Editor & UX Improvements
+🚀 STATUS: v2.4 - Poll Block, Display Names & Sharing UX
 
 1. VISION
 - Mobilfokuserad app med premium dark theme
@@ -49,6 +49,10 @@ OurSpots – Manifest / Blueprint (Updated Jan 31, 2026)
 - iOS scroll-fix för inputfält i modaler ✅ NY
 - Fullscreen text editor för mobil (iOS Notes-liknande) ✅ NY v2.3
 - Grupperade blocktyper med "Fler"-knapp ✅ NY v2.3
+- Poll-block för gruppomröstningar (datum/helger) ✅ NY v2.4
+- Display name / nickname i profilinställningar ✅ NY v2.4
+- Senaste kontakter för snabbare delning ✅ NY v2.4
+- iOS Safari viewport fix (ghost clicks) ✅ NY v2.4
 
 2. KATEGORI-SYSTEM
 - Dynamiska kategorier lagrade i Firebase ✅
@@ -106,6 +110,7 @@ Block:
 - type: "datetag", tags[{type: "year"|"range", year?, startDate?, endDate?}] ✅
 - type: "contact", phone, email, website ✅ NY
 - type: "timer", timers[{label, duration}] (med iOS-ljud och compact view) ✅ NY
+- type: "poll", title, options[{id, label}], votes{emailKey: {displayName, votes: {optionId: "yes"|"no"|"maybe"}}} ✅ NY v2.4
 - Modulära block kan adderas senare
 
 Category: ✅ IMPLEMENTERAT
@@ -121,11 +126,12 @@ Category: ✅ IMPLEMENTERAT
 User: ✅ IMPLEMENTERAT
 - id: string (Firebase Auth UID)
 - email: string
-- displayName?: string
+- displayName?: string (nickname för profil och polls) ✅ NY v2.4
 - isAdmin: boolean
 - blocked?: boolean ✅ NY
 - blockedAt?: Timestamp ✅ NY
 - favorites: string[] (array av objekt-ID:n)
+- sharedContacts?: string[] (senast delade med, för snabb delning) ✅ NY v2.4
 - createdAt: Timestamp
 - updatedAt?: Timestamp
 
@@ -246,6 +252,25 @@ Default block sets per typ/kategori (för enkelhet):
 - Badges på objektkort för delad status
 - Markdown editor för textfält (bullet lists, bold, bilder)
 - PWA-implementation (manifest.json, service worker, installbar)
+
+### ROADMAP / TODO
+
+#### Delad Ekonomi Block (Planerad v2.5)
+Mål: Enkelt sätt att dela och spåra utgifter inom en grupp (t.ex. resa, hushåll).
+- Expense-block med: belopp, betalare, deltagare, beskrivning
+- Automatisk beräkning: vem är skyldig vem
+- Stöd för olika valutor (SEK, EUR, USD)
+- Integration med Poll-deltagare (samma shares-system)
+- "Splitta lika" eller manuell fördelning
+- Historik med datum
+- Sammanfattningsvy: totalt spenderat, per person
+- Möjlig Swish-integration (öppna Swish med förifyllt belopp)
+- Export till CSV/PDF för bokföring
+
+#### Andra planerade features
+- Lager/samlingar för resor/projekt
+- Publik vy för gäster eller externa användare
+- PWA möjlig för offline / haptics
 
 9. ADMINISTRATIVA FUNKTIONER ✅ IMPLEMENTERAT
 
@@ -448,6 +473,34 @@ Default block sets per typ/kategori (för enkelhet):
 - ✅ Webbplats: Ikon-knapp (kompakt) med tooltip
 - ✅ Enhetlig blå färg för alla ikoner
 - ✅ Sorteras efter location-block i detaljvyn
+
+### Poll Block (Implementerat v2.4) ✅ NY
+- ✅ Omröstning för grupper (t.ex. "vilken helg passar?")
+- ✅ Alternativ med label (t.ex. "14-16 mars", "21-23 mars")
+- ✅ Tre rösttyper: Ja (grön), Nej (röd), Kanske (gul)
+- ✅ Toggle-röstning (klicka igen för att ta bort röst)
+- ✅ Automatisk ranking med poängsystem (yes=10, maybe=1, no=-5)
+- ✅ Trophy-ikon för bästa alternativ
+- ✅ Delad förstaplats: alla vinnare får tonad pokal
+- ✅ Kompakt vy (default) med expanderbar detaljerad vy
+- ✅ Visar vem som röstat vad i detaljerad vy
+- ✅ Nickname/displayName visas istället för email
+- ✅ Collapsible block med ChevronDown
+- ✅ Nollställ röster-knapp i editor (med bekräftelse)
+- ✅ Röster nollställs automatiskt vid objektduplicering
+
+### Display Name & Sharing UX (Implementerat v2.4) ✅ NY
+- ✅ Nickname/display name i profilinställningar (kugghjulet i menyn)
+- ✅ Sparas i Firebase users-collection
+- ✅ Visas i Poll-röster istället för email-prefix
+- ✅ Senaste kontakter: sparar email vid delning
+- ✅ Snabbval-chips i ShareModal för att dela igen
+- ✅ Max 10 senaste kontakter sparas
+
+### iOS Safari Viewport Fix (Implementerat v2.4) ✅ NY
+- ✅ Fixar "ghost clicks" efter iOS zoom på inputfält
+- ✅ focusout-listener som återställer viewport
+- ✅ 100ms delay för att låta Safari stabilisera sig
 
 ### iOS Touch-optimering (Implementerat v2.1) ✅ NY
 - ✅ Global touch-manipulation CSS förhindrar dubbelklick-zoom
