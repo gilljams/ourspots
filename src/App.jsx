@@ -1458,6 +1458,7 @@ function App() {
           userLocation={userLocation} 
           categories={categories}
           preciseGPS={preciseGPS}
+          isAdmin={isAdmin}
         />
       )}
 

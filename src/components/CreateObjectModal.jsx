@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, Plus, Upload, Loader, Navigation, ChevronDown, ChevronUp,
-  Map as MapIcon, FileText, CheckSquare, ClipboardList, Link2, Table2, Image as ImageIcon, Calendar, Phone, Timer, BarChart3, Folder, MapPin 
+  Map as MapIcon, FileText, CheckSquare, ClipboardList, Link2, Table2, Image as ImageIcon, Calendar, Phone, Timer, BarChart3, Folder, MapPin, Music 
 } from 'lucide-react';
 import { 
   CLOUDINARY_CLOUD_NAME, 
@@ -12,9 +12,9 @@ import {
 import { getIconComponent } from '../utils/iconHelpers';
 import MapPicker from './MapPicker';
 import FocalPointPicker from './FocalPointPicker';
-import BlockEditor, { DateTagBlockEditor, TimerBlockEditor, PollBlockEditor } from './BlockEditor';
+import BlockEditor, { DateTagBlockEditor, TimerBlockEditor, PollBlockEditor, AudioBlockEditor } from './BlockEditor';
 
-function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, saving, availableParents, defaultParentId, userLocation, categories, preciseGPS }) {
+function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, saving, availableParents, defaultParentId, userLocation, categories, preciseGPS, isAdmin }) {
   // ========== STATE ==========
   const isEdit = !!editObject;
   const isDuplicate = !!duplicateFromObject;
@@ -48,7 +48,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
   const [customBlocks, setCustomBlocks] = useState(() => {
     if (!sourceObject) return [];
     return sourceObject.blocks
-      .filter(b => ['text', 'links', 'table', 'datetag', 'contact', 'timer', 'poll'].includes(b.type))
+      .filter(b => ['text', 'links', 'table', 'datetag', 'contact', 'timer', 'poll', 'audio'].includes(b.type))
       .map(b => {
         if (b.type === 'links') {
           return {
@@ -105,6 +105,14 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             votes: isDuplicate ? {} : (b.data.votes || {}), // Clear votes when duplicating
             closed: isDuplicate ? false : (b.data.closed || false), // Reset closed when duplicating
             defaultCollapsed: b.data.defaultCollapsed || false
+          };
+        }
+        if (b.type === 'audio') {
+          return {
+            id: Math.random().toString(36).substr(2, 9),
+            type: 'audio',
+            title: b.data.title || '',
+            url: b.data.url || ''
           };
         }
         // Text blocks
@@ -444,6 +452,17 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             } 
           });
         }
+      } else if (block.type === 'audio') {
+        // Save audio block if URL exists
+        if (block.url && block.url.trim()) {
+          blocks.push({ 
+            type: 'audio', 
+            data: { 
+              title: (block.title || 'Ljud').trim(),
+              url: block.url.trim()
+            } 
+          });
+        }
       } else if (block.content && block.content.trim()) {
         if (block.type === 'text') {
           blocks.push({ type: 'text', data: { title: (block.title || 'Anteckning').trim(), content: block.content.trim(), defaultCollapsed: block.defaultCollapsed || false } });
@@ -480,6 +499,10 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
       newBlock.options = [];
       newBlock.votes = {};
       newBlock.closed = false;
+    }
+    if (type === 'audio') {
+      newBlock.title = '';
+      newBlock.url = '';
     }
     setCustomBlocks(prev => [...prev, newBlock]);
     setFormTouched(true);
@@ -804,6 +827,17 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   total={customBlocks.length}
                   saving={saving}
                 />
+              ) : block.type === 'audio' ? (
+                <AudioBlockEditor
+                  key={block.id}
+                  block={block}
+                  onUpdate={updateCustomBlock}
+                  onRemove={removeCustomBlock}
+                  onMove={moveCustomBlock}
+                  index={index}
+                  total={customBlocks.length}
+                  saving={saving}
+                />
               ) : (
                 <BlockEditor
                   key={block.id}
@@ -875,6 +909,11 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   <button type="button" onClick={() => addCustomBlock('poll')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
                     <BarChart3 size={16} className="text-indigo-400" /> Omröstning
                   </button>
+                  {isAdmin && (
+                    <button type="button" onClick={() => addCustomBlock('audio')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-300 hover:bg-purple-500/20 text-sm">
+                      <Music size={16} className="text-purple-400" /> Ljud
+                    </button>
+                  )}
                 </div>
               )}
             </div>

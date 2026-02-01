@@ -1991,6 +1991,86 @@ function PollBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
   );
 }
 
-export { DateTagBlockEditor, TimerBlockEditor, PollBlockEditor };
+// Audio Block Editor - for admin-only audio blocks
+function AudioBlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }) {
+  const [title, setTitle] = useState(block.title || '');
+  const [url, setUrl] = useState(block.url || '');
+
+  // Sync with block changes
+  useEffect(() => {
+    setTitle(block.title || '');
+    setUrl(block.url || '');
+  }, [block.id, block.title, block.url]);
+
+  const handleTitleChange = (value) => {
+    setTitle(value);
+    onUpdate(block.id, { title: value });
+  };
+
+  const handleUrlChange = (value) => {
+    setUrl(value);
+    onUpdate(block.id, { url: value });
+  };
+
+  return (
+    <div className="rounded-xl bg-white/5 border border-white/10 overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between p-3 bg-purple-500/10 border-b border-white/5">
+        <div className="flex items-center gap-2">
+          <span className="text-purple-400">🎵</span>
+          <span className="text-sm font-medium text-white">Ljud (admin)</span>
+        </div>
+        <div className="flex items-center gap-1">
+          {onMove && index > 0 && (
+            <button type="button" onClick={() => onMove(index, index - 1)} className="p-1.5 rounded-lg hover:bg-white/10 text-gray-400">
+              <ArrowUp size={14} />
+            </button>
+          )}
+          {onMove && index < total - 1 && (
+            <button type="button" onClick={() => onMove(index, index + 1)} className="p-1.5 rounded-lg hover:bg-white/10 text-gray-400">
+              <ArrowDown size={14} />
+            </button>
+          )}
+          {onRemove && (
+            <button type="button" onClick={() => onRemove(block.id)} className="p-1.5 rounded-lg hover:bg-red-500/20 text-gray-400 hover:text-red-400">
+              <Trash2 size={14} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="p-3 space-y-3">
+        <div>
+          <label className="text-xs text-gray-400 mb-1 block">Titel</label>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => handleTitleChange(e.target.value)}
+            placeholder="T.ex. Vår låt"
+            disabled={saving}
+            className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-purple-500"
+          />
+        </div>
+        <div>
+          <label className="text-xs text-gray-400 mb-1 block">URL till ljudfil</label>
+          <input
+            type="text"
+            value={url}
+            onChange={(e) => handleUrlChange(e.target.value)}
+            placeholder="/ourspots/media/låt.mp3 eller https://..."
+            disabled={saving}
+            className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-purple-500"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Lägg filer i public/media/ för /ourspots/media/filnamn.mp3
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export { DateTagBlockEditor, TimerBlockEditor, PollBlockEditor, AudioBlockEditor };
 
 export default BlockEditor;

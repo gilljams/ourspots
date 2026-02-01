@@ -171,6 +171,10 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
     // If neither has explicit order, maintain original array order
     return a.objectBlockIndex - b.objectBlockIndex;
   });
+
+  // Get first audio block URL (for location block play button)
+  const audioBlock = object.blocks.find(b => b.type === 'audio');
+  const audioUrl = audioBlock?.data?.url || null;
   
   const handleDelete = async () => {
     await onDelete(object.id);
@@ -383,6 +387,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                           onDelete={handleDeleteBlock}
                           positionNumber={locationBlocks.length > 1 ? locationIndex : null}
                           onShowOnMap={onShowOnMap}
+                          audioUrl={block.type === 'location' && !block.inherited ? audioUrl : undefined}
                           // Poll-specific props
                           currentUser={currentUser}
                           userDisplayName={userDisplayName}
