@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Users, Shield, ShieldOff, Ban, CheckCircle, Search, X, ChevronDown, Mail, Package, Share2, Calendar } from 'lucide-react';
-import { collection, onSnapshot, doc, updateDoc, Timestamp } from 'firebase/firestore';
+import { Users, Shield, ShieldOff, Ban, CheckCircle, Search, X, ChevronDown, Mail, Package, Share2, Calendar, UserCheck, Settings, Save } from 'lucide-react';
+import { collection, onSnapshot, doc, updateDoc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 
 function UsersAdminModal({ currentUserId, onClose }) {
@@ -8,9 +8,50 @@ function UsersAdminModal({ currentUserId, onClose }) {
   const [allObjects, setAllObjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all'); // all, admin, blocked, active
+  const [filterStatus, setFilterStatus] = useState('all'); // all, admin, blocked, active, pending
   const [sortBy, setSortBy] = useState('name'); // name, objects, created
   const [updating, setUpdating] = useState(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [appSettings, setAppSettings] = useState({
+    defaultObjectLimit: 5,
+    approvedObjectLimit: 100
+  });
+  const [savingSettings, setSavingSettings] = useState(false);
+  
+  // Fetch app settings
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const settingsDoc = await getDoc(doc(db, 'settings', 'app'));
+        if (settingsDoc.exists()) {
+          const data = settingsDoc.data();
+          setAppSettings({
+            defaultObjectLimit: data.defaultObjectLimit ?? 5,
+            approvedObjectLimit: data.approvedObjectLimit ?? 100
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching settings:', err);
+      }
+    };
+    fetchSettings();
+  }, []);
+  
+  // Save app settings
+  const saveSettings = async () => {
+    setSavingSettings(true);
+    try {
+      await setDoc(doc(db, 'settings', 'app'), {
+        defaultObjectLimit: appSettings.defaultObjectLimit,
+        approvedObjectLimit: appSettings.approvedObjectLimit,
+        updatedAt: Timestamp.now()
+      });
+    } catch (err) {
+      console.error('Error saving settings:', err);
+      alert('Kunde inte spara inställningar');
+    }
+    setSavingSettings(false);
+  };
   
   // Fetch all users
   useEffect(() => {
@@ -71,7 +112,9 @@ function UsersAdminModal({ currentUserId, onClose }) {
   } else if (filterStatus === 'blocked') {
     filteredUsers = filteredUsers.filter(u => u.blocked);
   } else if (filterStatus === 'active') {
-    filteredUsers = filteredUsers.filter(u => !u.blocked && !u.isAdmin);
+    filteredUsers = filteredUsers.filter(u => !u.blocked && !u.isAdmin && u.approved);
+  } else if (filterStatus === 'pending') {
+    filteredUsers = filteredUsers.filter(u => !u.blocked && !u.isAdmin && !u.approved);
   }
   
   filteredUsers.sort((a, b) => {
@@ -129,6 +172,22 @@ function UsersAdminModal({ currentUserId, onClose }) {
     } catch (err) {
       console.error('Error updating blocked status:', err);
       alert('Kunde inte uppdatera blockerad-status');
+    }
+    setUpdating(null);
+  };
+  
+  // Toggle approved status
+  const toggleApproved = async (userId, currentStatus) => {
+    setUpdating(userId);
+    try {
+      await updateDoc(doc(db, 'users', userId), {
+        approved: !currentStatus,
+        approvedAt: !currentStatus ? Timestamp.now() : null,
+        updatedAt: Timestamp.now()
+      });
+    } catch (err) {
+      console.error('Error updating approved status:', err);
+      alert('Kunde inte uppdatera godkännande-status');
     }
     setUpdating(null);
   };
@@ -193,7 +252,8 @@ function UsersAdminModal({ currentUserId, onClose }) {
   
   const adminCount = users.filter(u => u.isAdmin).length;
   const blockedCount = users.filter(u => u.blocked).length;
-  const activeCount = users.filter(u => !u.blocked && !u.isAdmin).length;
+  const pendingCount = users.filter(u => !u.blocked && !u.isAdmin && !u.approved).length;
+  const activeCount = users.filter(u => !u.blocked && !u.isAdmin && u.approved).length;
 
   return (
     <div 
@@ -225,7 +285,7 @@ function UsersAdminModal({ currentUserId, onClose }) {
         </div>
         
         {/* Stats bar */}
-        <div className="px-4 py-3 border-b border-white/5 flex gap-4 text-xs">
+        <div className="px-4 py-3 border-b border-white/5 flex flex-wrap gap-2 text-xs">
           <button 
             onClick={() => setFilterStatus('all')}
             className={`flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors ${filterStatus === 'all' ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white'}`}
@@ -234,8 +294,22 @@ function UsersAdminModal({ currentUserId, onClose }) {
             <span>Alla ({users.length})</span>
           </button>
           <button 
+            onClick={() => setFilterStatus('pending')}
+            className={`flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors ${filterStatus === 'pending' ? 'bg-amber-500/20 text-amber-400' : 'text-gray-400 hover:text-amber-400'}`}
+          >
+            <UserCheck size={14} />
+            <span>Väntar ({pendingCount})</span>
+          </button>
+          <button 
+            onClick={() => setFilterStatus('active')}
+            className={`flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors ${filterStatus === 'active' ? 'bg-green-500/20 text-green-400' : 'text-gray-400 hover:text-green-400'}`}
+          >
+            <CheckCircle size={14} />
+            <span>Godkända ({activeCount})</span>
+          </button>
+          <button 
             onClick={() => setFilterStatus('admin')}
-            className={`flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors ${filterStatus === 'admin' ? 'bg-amber-500/20 text-amber-400' : 'text-gray-400 hover:text-amber-400'}`}
+            className={`flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors ${filterStatus === 'admin' ? 'bg-purple-500/20 text-purple-400' : 'text-gray-400 hover:text-purple-400'}`}
           >
             <Shield size={14} />
             <span>Admin ({adminCount})</span>
@@ -247,14 +321,57 @@ function UsersAdminModal({ currentUserId, onClose }) {
             <Ban size={14} />
             <span>Blockerade ({blockedCount})</span>
           </button>
+          <div className="flex-1" />
           <button 
-            onClick={() => setFilterStatus('active')}
-            className={`flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors ${filterStatus === 'active' ? 'bg-green-500/20 text-green-400' : 'text-gray-400 hover:text-green-400'}`}
+            onClick={() => setShowSettings(!showSettings)}
+            className={`flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors ${showSettings ? 'bg-indigo-500/20 text-indigo-400' : 'text-gray-400 hover:text-indigo-400'}`}
           >
-            <CheckCircle size={14} />
-            <span>Aktiva ({activeCount})</span>
+            <Settings size={14} />
+            <span>Inställningar</span>
           </button>
         </div>
+        
+        {/* Settings panel */}
+        {showSettings && (
+          <div className="px-4 py-3 border-b border-white/5 bg-indigo-500/5">
+            <div className="flex items-center gap-3 mb-3">
+              <Settings size={16} className="text-indigo-400" />
+              <span className="text-sm font-medium text-white">Objektgränser</span>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Nya användare (max objekt)</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={appSettings.defaultObjectLimit}
+                  onChange={(e) => setAppSettings(prev => ({ ...prev, defaultObjectLimit: parseInt(e.target.value) || 5 }))}
+                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Godkända användare (max objekt)</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={appSettings.approvedObjectLimit}
+                  onChange={(e) => setAppSettings(prev => ({ ...prev, approvedObjectLimit: parseInt(e.target.value) || 100 }))}
+                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end mt-3">
+              <button
+                onClick={saveSettings}
+                disabled={savingSettings}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-500/20 text-indigo-400 rounded-lg hover:bg-indigo-500/30 disabled:opacity-50 text-sm"
+              >
+                <Save size={14} />
+                {savingSettings ? 'Sparar...' : 'Spara'}
+              </button>
+            </div>
+          </div>
+        )}
         
         {/* Search and sort */}
         <div className="px-4 py-3 border-b border-white/5 flex gap-3">
@@ -296,19 +413,31 @@ function UsersAdminModal({ currentUserId, onClose }) {
                   user.blocked 
                     ? 'bg-red-500/5 border-red-500/20' 
                     : user.isAdmin 
-                      ? 'bg-amber-500/5 border-amber-500/20'
-                      : 'bg-white/5 border-white/10'
+                      ? 'bg-purple-500/5 border-purple-500/20'
+                      : !user.approved
+                        ? 'bg-amber-500/5 border-amber-500/20'
+                        : 'bg-white/5 border-white/10'
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-medium text-white truncate">
                         {user.displayName || user.email?.split('@')[0] || 'Okänd'}
                       </span>
                       {user.isAdmin && (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-500/20 text-amber-400">
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-500/20 text-purple-400">
                           ADMIN
+                        </span>
+                      )}
+                      {!user.isAdmin && !user.blocked && !user.approved && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-500/20 text-amber-400">
+                          VÄNTAR
+                        </span>
+                      )}
+                      {!user.isAdmin && !user.blocked && user.approved && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-500/20 text-green-400">
+                          GODKÄND
                         </span>
                       )}
                       {user.blocked && (
@@ -346,13 +475,28 @@ function UsersAdminModal({ currentUserId, onClose }) {
                   
                   {user.id !== currentUserId && (
                     <div className="flex gap-2">
+                      {/* Approve button - only show for non-admins */}
+                      {!user.isAdmin && (
+                        <button
+                          onClick={() => toggleApproved(user.id, user.approved)}
+                          disabled={updating === user.id}
+                          className={`p-2 rounded-lg transition-all ${
+                            user.approved 
+                              ? 'bg-green-500/20 text-green-400 hover:bg-gray-500/20 hover:text-gray-400' 
+                              : 'bg-white/5 text-gray-400 hover:bg-green-500/20 hover:text-green-400'
+                          } disabled:opacity-50`}
+                          title={user.approved ? 'Ta bort godkännande' : 'Godkänn användare'}
+                        >
+                          <UserCheck size={16} />
+                        </button>
+                      )}
                       <button
                         onClick={() => toggleAdmin(user.id, user.isAdmin)}
                         disabled={updating === user.id}
                         className={`p-2 rounded-lg transition-all ${
                           user.isAdmin 
-                            ? 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30' 
-                            : 'bg-white/5 text-gray-400 hover:bg-amber-500/20 hover:text-amber-400'
+                            ? 'bg-purple-500/20 text-purple-400 hover:bg-purple-500/30' 
+                            : 'bg-white/5 text-gray-400 hover:bg-purple-500/20 hover:text-purple-400'
                         } disabled:opacity-50`}
                         title={user.isAdmin ? 'Ta bort admin' : 'Gör till admin'}
                       >

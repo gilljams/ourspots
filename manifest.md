@@ -1,8 +1,8 @@
 ========================
-OurSpots – Manifest / Blueprint (Updated Feb 1, 2026)
+OurSpots – Manifest / Blueprint (Updated Feb 2, 2026)
 ========================
 
-🚀 STATUS: v2.6 - Ranked Poll & Improvements
+🚀 STATUS: v2.7 - User Approval & Object Limits
 
 1. VISION
 - Mobilfokuserad app med premium dark theme
@@ -63,6 +63,12 @@ OurSpots – Manifest / Blueprint (Updated Feb 1, 2026)
 - Avsluta omröstning med sorterad resultatvy ✅ NY v2.6
 - Tiebreaker: vid lika poäng vinner flest guld > silver > brons ✅ NY v2.6
 - Enter-navigering i poll-editor (som tabeller) ✅ NY v2.6
+- Användargodkännande-system med objektgränser ✅ NY v2.7
+- Nya användare begränsas till 5 objekt (konfigurerbart) ✅ NY v2.7
+- Admin kan godkänna användare för utökad gräns (100 objekt) ✅ NY v2.7
+- Inställningspanel i användarhantering för admin ✅ NY v2.7
+- "Väntar"-filter för att se ogodkända användare ✅ NY v2.7
+- Delade objekt räknas inte mot användarens gräns ✅ NY v2.7
 
 2. KATEGORI-SYSTEM
 - Dynamiska kategorier lagrade i Firebase ✅
@@ -140,10 +146,18 @@ User: ✅ IMPLEMENTERAT
 - isAdmin: boolean
 - blocked?: boolean ✅ NY
 - blockedAt?: Timestamp ✅ NY
+- approved?: boolean (godkänd för utökad objektgräns) ✅ NY v2.7
+- approvedAt?: Timestamp ✅ NY v2.7
 - favorites: string[] (array av objekt-ID:n)
 - sharedContacts?: string[] (senast delade med, för snabb delning) ✅ NY v2.4
 - createdAt: Timestamp
 - updatedAt?: Timestamp
+
+Settings: ✅ NY v2.7
+- settings/app document med globala inställningar
+- defaultObjectLimit: number (standard: 5, för nya användare)
+- approvedObjectLimit: number (standard: 100, för godkända användare)
+- Admin kan konfigurera via Inställningar-panel i användarhantering
 
 Layer:
 - id: string

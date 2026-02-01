@@ -137,6 +137,13 @@ function App() {
   const [headerHeight, setHeaderHeight] = useState(64);
   const seedingRef = useRef(false);
   const wakeLockRef = useRef(null);
+  
+  // User approval and limits
+  const [userApproved, setUserApproved] = useState(false);
+  const [appSettings, setAppSettings] = useState({
+    defaultObjectLimit: 5,
+    approvedObjectLimit: 100
+  });
 
   // Wrapper to use imported distance function with userLocation state
   const getObjectDistance = (obj) => getObjectDistanceUtil(obj, userLocation);
@@ -245,6 +252,15 @@ function App() {
       if (u) {
         // Check if user is admin
         try {
+          // Fetch app settings
+          const settingsDoc = await getDoc(doc(db, 'settings', 'app'));
+          if (settingsDoc.exists()) {
+            const settingsData = settingsDoc.data();
+            setAppSettings({
+              defaultObjectLimit: settingsData.defaultObjectLimit ?? 5,
+              approvedObjectLimit: settingsData.approvedObjectLimit ?? 100
+            });
+          }
 
           const userDoc = await getDoc(doc(db, 'users', u.uid));
           if (userDoc.exists()) {
@@ -261,8 +277,10 @@ function App() {
             const userFavorites = userData?.favorites || [];
             const userDisplayName = userData?.displayName || '';
             const userSharedContacts = userData?.sharedContacts || [];
+            const userApprovedFlag = userData?.approved === true || adminFlag; // Admins are always approved
 
             setIsAdmin(adminFlag);
+            setUserApproved(userApprovedFlag);
             setFavorites(userFavorites);
             setDisplayName(userDisplayName);
             setSharedContacts(userSharedContacts);
@@ -272,12 +290,14 @@ function App() {
             await setDoc(doc(db, 'users', u.uid), {
               email: u.email,
               isAdmin: false,
+              approved: false,
               favorites: [],
               displayName: '',
               sharedContacts: [],
               createdAt: Timestamp.now()
             });
             setIsAdmin(false);
+            setUserApproved(false);
             setFavorites([]);
             setDisplayName('');
             setSharedContacts([]);
@@ -285,10 +305,12 @@ function App() {
         } catch (err) {
           console.error('Error fetching user doc:', err);
           setIsAdmin(false);
+          setUserApproved(false);
           setFavorites([]);
         }
       } else {
         setIsAdmin(false);
+        setUserApproved(false);
         setFavorites([]);
         setDisplayName('');
         setSharedContacts([]);
@@ -742,6 +764,22 @@ function App() {
       alert('Du måste vara inloggad!');
       return;
     }
+    
+    // Check object limit for new objects (not edits)
+    if (!editId) {
+      const ownedObjectsCount = objects.filter(o => o.ownerId === user.uid).length;
+      const limit = userApproved ? appSettings.approvedObjectLimit : appSettings.defaultObjectLimit;
+      
+      if (ownedObjectsCount >= limit) {
+        if (!userApproved) {
+          alert(`Du har nått gränsen på ${limit} objekt. Kontakta en administratör för att få ditt konto godkänt och utökat.`);
+        } else {
+          alert(`Du har nått din gräns på ${limit} objekt.`);
+        }
+        return;
+      }
+    }
+    
     setSaving(true);
     try {
       let savedObjectId = editId;

@@ -46,6 +46,13 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
     
+    match /settings/{settingId} {
+      // Anyone can read settings
+      allow read: if request.auth != null;
+      // Only admin can write settings
+      allow write: if isAdmin();
+    }
+    
     match /objects/{objectId} {
       // Read access: Owner, in sharedWithEmails array, or Admin
       allow read: if request.auth != null && (
