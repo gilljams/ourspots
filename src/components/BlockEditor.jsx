@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, ArrowUp, ArrowDown, FileText, CheckSquare, ClipboardList, Link2, Plus, ChevronDown, Table2, Trash2, GripVertical, Calendar, Phone, Mail, Globe, Timer, Check, Maximize2, RotateCcw, Vote } from 'lucide-react';
+import { X, ArrowUp, ArrowDown, FileText, CheckSquare, ClipboardList, Link2, Plus, ChevronDown, Table2, Trash2, GripVertical, Calendar, Phone, Mail, Globe, Timer, Check, Maximize2, RotateCcw, BarChart3, Type } from 'lucide-react';
 import { getIconComponent, LINK_ICONS } from '../utils/iconHelpers';
 import { TABLE_TEMPLATES } from './blocks';
 
@@ -371,7 +371,8 @@ function ContactBlockEditor({ block, onUpdate, onRemove, onMove, index, total, s
 function LinksBlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }) {
   const [title, setTitle] = useState(block.title || '');
   const [links, setLinks] = useState(block.links || []);
-  const [showIconPicker, setShowIconPicker] = useState(null); // index of link being edited
+  const [showIconPicker, setShowIconPicker] = useState(null);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // Use refs to always have latest values
   const titleRef = React.useRef(title);
@@ -434,12 +435,27 @@ function LinksBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
   };
 
   return (
-    <div className="rounded-xl border border-white/10 p-3 bg-white/5">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-sm font-medium text-gray-300 flex items-center gap-2">
-          <Link2 size={16} className="text-purple-400" /> Länkar
-        </span>
-        <div className="flex gap-1">
+    <div className="rounded-xl border border-white/10 bg-white/5 overflow-hidden">
+      {/* Collapsible header */}
+      <div className="flex items-center gap-2 p-3">
+        <button
+          type="button"
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex items-center gap-2 flex-1 min-w-0"
+        >
+          <ChevronDown 
+            size={16} 
+            className={`text-gray-500 transition-transform flex-shrink-0 ${isExpanded ? '' : '-rotate-90'}`} 
+          />
+          <Link2 size={16} className="text-purple-400 flex-shrink-0" />
+          <span className="text-sm font-medium text-gray-300 truncate">
+            {title || 'Länkar'}
+          </span>
+          {links.length > 0 && (
+            <span className="text-xs text-gray-500 flex-shrink-0">({links.length})</span>
+          )}
+        </button>
+        <div className="flex gap-1 flex-shrink-0">
           <button type="button" onClick={() => onMove(block.id, -1)} disabled={index === 0} className="w-7 h-7 rounded bg-white/5 text-gray-400 hover:bg-white/10 flex items-center justify-center disabled:opacity-30">
             <ArrowUp size={14} />
           </button>
@@ -452,115 +468,119 @@ function LinksBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
         </div>
       </div>
 
-      {/* Optional title for the links block */}
-      <input
-        type="text"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        onBlur={() => syncToParent(title, links)}
-        onFocus={handleInputFocus}
-        placeholder="Rubrik (valfritt)"
-        disabled={saving}
-        className="w-full px-3 py-2 mb-3 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-purple-500"
-      />
+      {/* Expandable content */}
+      {isExpanded && (
+        <div className="px-3 pb-3 space-y-3">
+          {/* Optional title for the links block */}
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onBlur={() => syncToParent(title, links)}
+            onFocus={handleInputFocus}
+            placeholder="Rubrik (valfritt)"
+            disabled={saving}
+            className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-purple-500"
+          />
 
-      {/* Links list */}
-      <div className="space-y-2">
-        {links.map((link, linkIndex) => {
-          const IconComponent = getIconComponent(link.icon || 'Link');
-          return (
-            <div key={linkIndex} className="flex gap-2 items-start">
-              {/* Icon picker button */}
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); setShowIconPicker(showIconPicker === linkIndex ? null : linkIndex); }}
-                  className="w-10 h-10 rounded-lg bg-purple-500/20 border border-white/10 flex items-center justify-center hover:bg-purple-500/30 transition-colors"
-                  title="Välj ikon"
-                >
-                  <IconComponent size={18} className="text-purple-400" />
-                </button>
-                
-                {/* Icon dropdown */}
-                {showIconPicker === linkIndex && (
-                  <>
-                    {/* Backdrop to close on outside click */}
-                    <div 
-                      className="fixed inset-0 z-[100]" 
-                      onClick={(e) => { e.stopPropagation(); setShowIconPicker(null); }}
-                    />
-                    <div 
-                      className="absolute top-12 left-0 z-[101] bg-gray-800 border border-white/10 rounded-xl p-2 shadow-xl grid grid-cols-4 gap-1 w-48"
-                      onClick={(e) => e.stopPropagation()}
+          {/* Links list */}
+          <div className="space-y-2">
+            {links.map((link, linkIndex) => {
+              const IconComponent = getIconComponent(link.icon || 'Link');
+              return (
+                <div key={linkIndex} className="flex gap-2 items-start">
+                  {/* Icon picker button */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setShowIconPicker(showIconPicker === linkIndex ? null : linkIndex); }}
+                      className="w-10 h-10 rounded-lg bg-purple-500/20 border border-white/10 flex items-center justify-center hover:bg-purple-500/30 transition-colors"
+                      title="Välj ikon"
                     >
-                      {LINK_ICONS.map(({ name, label }) => {
-                        const Icon = getIconComponent(name);
-                        return (
-                          <button
-                            key={name}
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); selectIcon(linkIndex, name); }}
-                            className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
-                              link.icon === name ? 'bg-purple-500/30 text-purple-300' : 'hover:bg-white/10 text-gray-400'
-                            }`}
-                            title={label}
-                          >
-                            <Icon size={18} />
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </>
-                )}
-              </div>
+                      <IconComponent size={18} className="text-purple-400" />
+                    </button>
+                    
+                    {/* Icon dropdown */}
+                    {showIconPicker === linkIndex && (
+                      <>
+                        <div 
+                          className="fixed inset-0 z-[100]" 
+                          onClick={(e) => { e.stopPropagation(); setShowIconPicker(null); }}
+                        />
+                        <div 
+                          className="absolute top-12 left-0 z-[101] bg-gray-800 border border-white/10 rounded-xl p-2 shadow-xl grid grid-cols-4 gap-1 w-48"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {LINK_ICONS.map(({ name, label }) => {
+                            const Icon = getIconComponent(name);
+                            return (
+                              <button
+                                key={name}
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); selectIcon(linkIndex, name); }}
+                                className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
+                                  link.icon === name ? 'bg-purple-500/30 text-purple-300' : 'hover:bg-white/10 text-gray-400'
+                                }`}
+                                title={label}
+                              >
+                                <Icon size={18} />
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </>
+                    )}
+                  </div>
 
-              {/* Title and URL inputs */}
-              <div className="flex-1 space-y-1">
-                <input
-                  type="text"
-                  value={link.title}
-                  onChange={(e) => updateLink(linkIndex, 'title', e.target.value)}
-                  onBlur={() => syncLink(linkIndex)}
-                  onFocus={handleInputFocus}
-                  placeholder="Länktext (t.ex. Boka bord)"
-                  disabled={saving}
-                  className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-purple-500"
-                />
-                <input
-                  type="url"
-                  value={link.url}
-                  onChange={(e) => updateLink(linkIndex, 'url', e.target.value)}
-                  onBlur={() => syncLink(linkIndex)}
-                  onFocus={handleInputFocus}
-                  placeholder="https://..."
-                  disabled={saving}
-                  className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-purple-500"
-                />
-              </div>
+                  {/* Title and URL inputs */}
+                  <div className="flex-1 space-y-1">
+                    <input
+                      type="text"
+                      value={link.title}
+                      onChange={(e) => updateLink(linkIndex, 'title', e.target.value)}
+                      onBlur={() => syncLink(linkIndex)}
+                      onFocus={handleInputFocus}
+                      placeholder="Länktext (t.ex. Boka bord)"
+                      disabled={saving}
+                      className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                    />
+                    <input
+                      type="url"
+                      value={link.url}
+                      onChange={(e) => updateLink(linkIndex, 'url', e.target.value)}
+                      onBlur={() => syncLink(linkIndex)}
+                      onFocus={handleInputFocus}
+                      placeholder="https://..."
+                      disabled={saving}
+                      className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                    />
+                  </div>
 
-              {/* Remove link button */}
-              <button
-                type="button"
-                onClick={() => removeLink(linkIndex)}
-                disabled={saving}
-                className="w-10 h-10 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center flex-shrink-0"
-              >
-                <X size={16} />
-              </button>
-            </div>
-          );
-        })}
-      </div>
+                  {/* Remove link button */}
+                  <button
+                    type="button"
+                    onClick={() => removeLink(linkIndex)}
+                    disabled={saving}
+                    className="w-10 h-10 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center flex-shrink-0"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
 
-      {/* Add link button */}
-      <button
-        type="button"
-        onClick={addLink}
-        disabled={saving}
-        className="w-full mt-3 px-3 py-2 rounded-lg border border-dashed border-white/20 text-gray-400 hover:border-purple-400 hover:text-purple-400 text-sm flex items-center justify-center gap-2 transition-colors"
-      >
-        <Plus size={16} /> Lägg till länk
-      </button>
+          {/* Add link button */}
+          <button
+            type="button"
+            onClick={addLink}
+            disabled={saving}
+            className="w-full px-3 py-2 rounded-lg border border-dashed border-white/20 text-gray-400 hover:border-purple-400 hover:text-purple-400 text-sm flex items-center justify-center gap-2 transition-colors"
+          >
+            <Plus size={16} /> Lägg till länk
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -570,16 +590,39 @@ function TableBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
   const [title, setTitle] = useState(block.title || '');
   const [template, setTemplate] = useState(block.template || 'tasks');
   const [rows, setRows] = useState(block.rows || []);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [defaultCollapsed, setDefaultCollapsed] = useState(block.defaultCollapsed ?? false);
+  
+  // Ref to store input elements for focusing
+  const inputRefs = React.useRef({});
+  // Track which input should be focused after render
+  const [focusTarget, setFocusTarget] = React.useState(null);
   
   const currentTemplate = TABLE_TEMPLATES[template];
   const columns = currentTemplate?.columns || [];
+  // Filter out columns that should be hidden in editor (like checkbox for list type)
+  const editorColumns = columns.filter(col => !col.hideInEditor);
+  
+  // Focus the target input after state updates
+  React.useEffect(() => {
+    if (focusTarget) {
+      const { rowIndex, colId } = focusTarget;
+      const key = `${rowIndex}-${colId}`;
+      const input = inputRefs.current[key];
+      if (input) {
+        input.focus();
+      }
+      setFocusTarget(null);
+    }
+  }, [focusTarget, rows]);
 
-  const syncToParent = (newTitle, newTemplate, newRows) => {
+  const syncToParent = (newTitle, newTemplate, newRows, newDefaultCollapsed = defaultCollapsed) => {
     onUpdate(block.id, { 
       title: newTitle, 
       template: newTemplate, 
       rows: newRows,
-      columns: TABLE_TEMPLATES[newTemplate]?.columns || []
+      columns: TABLE_TEMPLATES[newTemplate]?.columns || [],
+      defaultCollapsed: newDefaultCollapsed
     });
   };
 
@@ -595,14 +638,59 @@ function TableBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
     syncToParent(title, newTemplate, []);
   };
 
-  const addRow = () => {
+  const addRow = (isHeader = false, focusAfter = false) => {
     const newRow = { id: Math.random().toString(36).substr(2, 9) };
-    columns.forEach(col => {
-      newRow[col.id] = col.type === 'checkbox' ? false : '';
-    });
+    if (isHeader) {
+      newRow.isHeader = true;
+      newRow.item = '';
+    } else {
+      columns.forEach(col => {
+        newRow[col.id] = col.type === 'checkbox' ? false : '';
+      });
+    }
     const newRows = [...rows, newRow];
     setRows(newRows);
     syncToParent(title, template, newRows);
+    
+    // Focus the first editable column of the new row
+    if (focusAfter && editorColumns.length > 0) {
+      const firstEditableCol = editorColumns.find(col => col.type !== 'checkbox');
+      if (firstEditableCol) {
+        setFocusTarget({ rowIndex: newRows.length - 1, colId: firstEditableCol.id });
+      }
+    }
+  };
+
+  // Handle Enter key in input fields
+  const handleKeyDown = (e, rowIndex, colId) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      
+      // Find current column index
+      const currentColIndex = editorColumns.findIndex(col => col.id === colId);
+      const isLastColumn = currentColIndex === editorColumns.length - 1;
+      const isSingleColumn = editorColumns.filter(col => col.type !== 'checkbox').length === 1;
+      
+      if (isSingleColumn || isLastColumn) {
+        // Single column (like 'list') or last column: add new row and focus it
+        addRow(false, true);
+      } else {
+        // Multi-column: move to next column
+        const nextCol = editorColumns[currentColIndex + 1];
+        if (nextCol && nextCol.type !== 'checkbox') {
+          setFocusTarget({ rowIndex, colId: nextCol.id });
+        } else {
+          // If next is checkbox, try the one after
+          const afterNext = editorColumns[currentColIndex + 2];
+          if (afterNext) {
+            setFocusTarget({ rowIndex, colId: afterNext.id });
+          } else {
+            // No more columns, add new row
+            addRow(false, true);
+          }
+        }
+      }
+    }
   };
 
   const updateCell = (rowIndex, colId, value) => {
@@ -625,6 +713,15 @@ function TableBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
     syncToParent(title, template, newRows);
   };
 
+  const moveRow = (rowIndex, direction) => {
+    const newIndex = rowIndex + direction;
+    if (newIndex < 0 || newIndex >= rows.length) return;
+    const newRows = [...rows];
+    [newRows[rowIndex], newRows[newIndex]] = [newRows[newIndex], newRows[rowIndex]];
+    setRows(newRows);
+    syncToParent(title, template, newRows);
+  };
+
   const toggleCheckbox = (rowIndex, colId) => {
     const newRows = rows.map((row, i) => 
       i === rowIndex ? { ...row, [colId]: !row[colId] } : row
@@ -633,13 +730,62 @@ function TableBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
     syncToParent(title, template, newRows);
   };
 
+  // Handle paste to add multiple rows at once
+  const handlePaste = (e) => {
+    const pastedText = e.clipboardData.getData('text');
+    if (!pastedText || !pastedText.includes('\n')) return;
+    
+    e.preventDefault();
+    const lines = pastedText.split('\n').filter(line => line.trim());
+    if (lines.length === 0) return;
+
+    const newRows = lines.map(line => {
+      const newRow = { id: Math.random().toString(36).substr(2, 9) };
+      columns.forEach(col => {
+        if (col.type === 'checkbox') {
+          newRow[col.id] = false;
+        } else if (col.type === 'text' && (col.id === 'item' || col.id === 'task' || col.id === 'dish' || col.id === 'name')) {
+          newRow[col.id] = line.trim();
+        } else {
+          newRow[col.id] = '';
+        }
+      });
+      return newRow;
+    });
+
+    const allRows = [...rows, ...newRows];
+    setRows(allRows);
+    syncToParent(title, template, allRows);
+  };
+
+  const Icon = getIconComponent(currentTemplate?.icon || 'Table2');
+  const rowCount = rows.filter(r => !r.isHeader).length;
+  const checkedCount = rows.filter(r => !r.isHeader && r.done).length;
+
   return (
-    <div className="rounded-xl border border-white/10 p-3 bg-white/5">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-medium text-gray-300 flex items-center gap-2">
-          <Table2 size={16} className="text-amber-400" /> Tabell
-        </span>
-        <div className="flex gap-1">
+    <div className="rounded-xl border border-white/10 bg-white/5 overflow-hidden">
+      {/* Collapsible header */}
+      <div className="flex items-center gap-2 p-3">
+        <button
+          type="button"
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex items-center gap-2 flex-1 min-w-0"
+        >
+          <ChevronDown 
+            size={16} 
+            className={`text-gray-500 transition-transform flex-shrink-0 ${isExpanded ? '' : '-rotate-90'}`} 
+          />
+          <Icon size={16} className="text-amber-400 flex-shrink-0" />
+          <span className="text-sm font-medium text-gray-300 truncate">
+            {title || currentTemplate?.name || 'Tabell'}
+          </span>
+          {rowCount > 0 && (
+            <span className="text-xs text-gray-500 flex-shrink-0">
+              ({columns.find(c => c.type === 'checkbox') ? `${checkedCount}/${rowCount}` : rowCount})
+            </span>
+          )}
+        </button>
+        <div className="flex gap-1 flex-shrink-0">
           <button type="button" onClick={() => onMove(block.id, -1)} disabled={index === 0} className="w-7 h-7 rounded bg-white/5 text-gray-400 hover:bg-white/10 flex items-center justify-center disabled:opacity-30">
             <ArrowUp size={14} />
           </button>
@@ -652,117 +798,225 @@ function TableBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
         </div>
       </div>
 
-      {/* Title input */}
-      <input
-        type="text"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        onBlur={() => syncToParent(title, template, rows)}
-        placeholder="Rubrik (valfritt)"
-        disabled={saving}
-        className="w-full px-3 py-2 mb-3 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-amber-500"
-      />
+      {/* Expandable content */}
+      {isExpanded && (
+        <div className="px-3 pb-3 space-y-3">
+          {/* Title input */}
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onBlur={() => syncToParent(title, template, rows)}
+            placeholder="Rubrik (valfritt)"
+            disabled={saving}
+            className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-amber-500"
+          />
 
-      {/* Template selector */}
-      <div className="mb-3">
-        <label className="block text-xs text-gray-500 mb-2">Välj tabelltyp</label>
-        <div className="grid grid-cols-3 gap-2">
-          {Object.values(TABLE_TEMPLATES).map(t => {
-            const Icon = getIconComponent(t.icon);
-            const isSelected = template === t.id;
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => handleTemplateChange(t.id)}
-                disabled={saving}
-                className={`p-2 rounded-lg border transition-colors text-center ${
-                  isSelected 
-                    ? 'border-amber-500 bg-amber-500/20 text-amber-300' 
-                    : 'border-white/10 bg-white/5 text-gray-400 hover:border-white/20'
-                }`}
-              >
-                <Icon size={16} className="mx-auto mb-1" />
-                <div className="text-[10px] truncate">{t.name}</div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Table rows editor */}
-      {columns.length > 0 && (
-        <div className="space-y-2">
-          {/* Header */}
-          <div className="flex gap-1 text-xs text-gray-500 px-1">
-            {columns.map(col => (
-              <div key={col.id} className={`${col.width} ${col.type === 'checkbox' ? 'text-center' : ''}`}>
-                {col.label}
+          {/* Template selector - hide when 'list' is selected */}
+          {template !== 'list' && (
+            <div>
+              <label className="block text-xs text-gray-500 mb-2">Välj tabelltyp</label>
+              <div className="grid grid-cols-4 gap-2">
+                {Object.values(TABLE_TEMPLATES).map(t => {
+                  const TIcon = getIconComponent(t.icon);
+                  const isSelected = template === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => handleTemplateChange(t.id)}
+                      disabled={saving}
+                      className={`p-2 rounded-lg border transition-colors text-center ${
+                        isSelected 
+                          ? 'border-amber-500 bg-amber-500/20 text-amber-300' 
+                          : 'border-white/10 bg-white/5 text-gray-400 hover:border-white/20'
+                      }`}
+                    >
+                      <TIcon size={16} className="mx-auto mb-1" />
+                      <div className="text-[10px] truncate">{t.name}</div>
+                    </button>
+                  );
+                })}
               </div>
-            ))}
-            <div className="w-8"></div>
+            </div>
+          )}
+
+          {/* Default collapsed toggle */}
+          <div className="flex items-center justify-between py-2 px-1">
+            <span className="text-xs text-gray-400">Ihopfälld som standard</span>
+            <button
+              type="button"
+              onClick={() => {
+                const newValue = !defaultCollapsed;
+                setDefaultCollapsed(newValue);
+                syncToParent(title, template, rows, newValue);
+              }}
+              disabled={saving}
+              className={`relative w-10 h-5 rounded-full transition-colors ${
+                defaultCollapsed ? 'bg-amber-500' : 'bg-gray-600'
+              }`}
+            >
+              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                defaultCollapsed ? 'translate-x-5' : 'translate-x-0.5'
+              }`} />
+            </button>
           </div>
 
-          {/* Rows */}
-          {rows.map((row, rowIndex) => (
-            <div key={row.id} className="flex gap-1 items-center">
-              {columns.map(col => (
-                <div key={col.id} className={col.width}>
-                    {col.type === 'checkbox' ? (
-                      <button
-                        type="button"
-                        onClick={() => toggleCheckbox(rowIndex, col.id)}
-                        className="w-full flex justify-center"
-                      >
-                        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
-                          row[col.id] ? 'bg-amber-500 border-amber-500' : 'border-gray-600 hover:border-amber-400'
-                        }`}>
-                          {row[col.id] && <span className="text-white text-xs">✓</span>}
-                        </div>
-                      </button>
-                    ) : col.type === 'number' ? (
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        value={row[col.id] || ''}
-                        onChange={(e) => updateCell(rowIndex, col.id, e.target.value)}
-                        onBlur={syncRowsOnBlur}
-                        disabled={saving}
-                        className="w-full px-2 py-1.5 rounded bg-white/5 border border-white/10 text-white text-base text-right focus:outline-none focus:border-amber-500"
-                      />
-                    ) : (
-                      <input
-                        type="text"
-                        value={row[col.id] || ''}
-                        onChange={(e) => updateCell(rowIndex, col.id, e.target.value)}
-                        onBlur={syncRowsOnBlur}
-                        disabled={saving}
-                        className="w-full px-2 py-1.5 rounded bg-white/5 border border-white/10 text-white text-base focus:outline-none focus:border-amber-500"
-                      />
-                    )}
+          {/* Table rows editor */}
+          {editorColumns.length > 0 && (
+            <div className="space-y-2">
+              {/* Header - only show if there are columns to show */}
+              {editorColumns.length > 0 && !currentTemplate?.hideHeader && (
+                <div className="flex gap-1 text-xs text-gray-500 px-1">
+                  {editorColumns.map(col => (
+                    <div key={col.id} className={`${col.width} ${col.type === 'checkbox' ? 'text-center' : ''}`}>
+                      {col.label}
+                    </div>
+                  ))}
+                  <div className="w-20"></div>
                 </div>
-              ))}
-              <button
-                type="button"
-                onClick={() => removeRow(rowIndex)}
-                disabled={saving}
-                className="w-8 h-8 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center"
-              >
-                <Trash2 size={14} />
-              </button>
-            </div>
-          ))}
+              )}
 
-          {/* Add row button */}
-          <button
-            type="button"
-            onClick={addRow}
-            disabled={saving}
-            className="w-full mt-2 px-3 py-2 rounded-lg border border-dashed border-white/20 text-gray-400 hover:border-amber-400 hover:text-amber-400 text-sm flex items-center justify-center gap-2 transition-colors"
-          >
-            <Plus size={16} /> Lägg till rad
-          </button>
+              {/* Rows */}
+              {rows.map((row, rowIndex) => (
+                row.isHeader ? (
+                  // Header row editor - full width, distinct styling
+                  <div key={row.id} className="flex gap-1 items-center bg-amber-500/10 rounded-lg p-1">
+                    <input
+                      type="text"
+                      value={row.item || ''}
+                      onChange={(e) => updateCell(rowIndex, 'item', e.target.value)}
+                      onBlur={syncRowsOnBlur}
+                      onPaste={handlePaste}
+                      placeholder="Rubrik..."
+                      disabled={saving}
+                      className="flex-1 px-2 py-1.5 rounded bg-white/5 border border-white/10 text-amber-300 text-sm font-medium focus:outline-none focus:border-amber-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => moveRow(rowIndex, -1)}
+                      disabled={saving || rowIndex === 0}
+                      className="w-6 h-6 rounded bg-white/5 text-gray-500 hover:bg-white/10 flex items-center justify-center disabled:opacity-30"
+                    >
+                      <ArrowUp size={12} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moveRow(rowIndex, 1)}
+                      disabled={saving || rowIndex === rows.length - 1}
+                      className="w-6 h-6 rounded bg-white/5 text-gray-500 hover:bg-white/10 flex items-center justify-center disabled:opacity-30"
+                    >
+                      <ArrowDown size={12} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeRow(rowIndex)}
+                      disabled={saving}
+                      className="w-6 h-6 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                ) : (
+                  // Regular row editor
+                  <div key={row.id} className="flex gap-1 items-center">
+                    {editorColumns.map(col => (
+                      <div key={col.id} className={col.width}>
+                          {col.type === 'checkbox' ? (
+                            <button
+                              type="button"
+                              onClick={() => toggleCheckbox(rowIndex, col.id)}
+                              className="w-full flex justify-center"
+                            >
+                              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+                                row[col.id] ? 'bg-amber-500 border-amber-500' : 'border-gray-600 hover:border-amber-400'
+                              }`}>
+                                {row[col.id] && <span className="text-white text-xs">✓</span>}
+                              </div>
+                            </button>
+                          ) : col.type === 'number' ? (
+                            <input
+                              ref={el => inputRefs.current[`${rowIndex}-${col.id}`] = el}
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              value={row[col.id] || ''}
+                              onChange={(e) => updateCell(rowIndex, col.id, e.target.value)}
+                              onBlur={syncRowsOnBlur}
+                              onKeyDown={(e) => handleKeyDown(e, rowIndex, col.id)}
+                              disabled={saving}
+                              className="w-full px-2 py-1.5 rounded bg-white/5 border border-white/10 text-white text-base text-right focus:outline-none focus:border-amber-500"
+                            />
+                          ) : (
+                            <input
+                              ref={el => inputRefs.current[`${rowIndex}-${col.id}`] = el}
+                              type="text"
+                              value={row[col.id] || ''}
+                              onChange={(e) => updateCell(rowIndex, col.id, e.target.value)}
+                              onBlur={syncRowsOnBlur}
+                              onPaste={handlePaste}
+                              onKeyDown={(e) => handleKeyDown(e, rowIndex, col.id)}
+                              disabled={saving}
+                              className="w-full px-2 py-1.5 rounded bg-white/5 border border-white/10 text-white text-base focus:outline-none focus:border-amber-500"
+                            />
+                          )}
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => moveRow(rowIndex, -1)}
+                      disabled={saving || rowIndex === 0}
+                      className="w-6 h-6 rounded bg-white/5 text-gray-500 hover:bg-white/10 flex items-center justify-center disabled:opacity-30"
+                    >
+                      <ArrowUp size={12} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moveRow(rowIndex, 1)}
+                      disabled={saving || rowIndex === rows.length - 1}
+                      className="w-6 h-6 rounded bg-white/5 text-gray-500 hover:bg-white/10 flex items-center justify-center disabled:opacity-30"
+                    >
+                      <ArrowDown size={12} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeRow(rowIndex)}
+                      disabled={saving}
+                      className="w-6 h-6 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                )
+              ))}
+
+              {/* Add row buttons */}
+              <div className="flex gap-2 mt-2">
+                <button
+                  type="button"
+                  onClick={() => addRow(false)}
+                  disabled={saving}
+                  className="flex-1 px-3 py-2 rounded-lg border border-dashed border-white/20 text-gray-400 hover:border-amber-400 hover:text-amber-400 text-sm flex items-center justify-center gap-2 transition-colors"
+                >
+                  <Plus size={16} /> Rad
+                </button>
+                <button
+                  type="button"
+                  onClick={() => addRow(true)}
+                  disabled={saving}
+                  className="flex-1 px-3 py-2 rounded-lg border border-dashed border-white/20 text-gray-400 hover:border-amber-400 hover:text-amber-400 text-sm flex items-center justify-center gap-2 transition-colors"
+                  title="Lägg till en rubrikrad för att gruppera punkter"
+                >
+                  <Plus size={16} /> Rubrik
+                </button>
+              </div>
+              
+              {/* Hint */}
+              <p className="text-xs text-gray-600 text-center">
+                Tips: Enter = ny rad • Ctrl+V = klistra in flera
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -833,6 +1087,7 @@ function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }
 
   const [title, setTitle] = useState(block.title);
   const [content, setContent] = useState(block.content);
+  const [defaultCollapsed, setDefaultCollapsed] = useState(block.defaultCollapsed ?? false);
   const [isFocused, setIsFocused] = useState(false);
   const [showFullscreenEditor, setShowFullscreenEditor] = useState(false);
   const textareaRef = React.useRef(null);
@@ -845,20 +1100,28 @@ function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }
   // Use refs to always have latest values for blur handlers
   const titleRef = React.useRef(title);
   const contentRef = React.useRef(content);
+  const defaultCollapsedRef = React.useRef(defaultCollapsed);
   titleRef.current = title;
   contentRef.current = content;
+  defaultCollapsedRef.current = defaultCollapsed;
   
-  const syncTitle = () => onUpdate(block.id, { title: titleRef.current });
+  const syncTitle = () => onUpdate(block.id, { title: titleRef.current, defaultCollapsed: defaultCollapsedRef.current });
   const syncContent = () => {
     setIsFocused(false);
-    onUpdate(block.id, { content: contentRef.current });
+    onUpdate(block.id, { content: contentRef.current, defaultCollapsed: defaultCollapsedRef.current });
+  };
+  
+  const handleDefaultCollapsedChange = (newValue) => {
+    setDefaultCollapsed(newValue);
+    defaultCollapsedRef.current = newValue;
+    onUpdate(block.id, { defaultCollapsed: newValue });
   };
   
   // Handle fullscreen editor save
   const handleFullscreenSave = (newContent) => {
     setContent(newContent);
     contentRef.current = newContent;
-    onUpdate(block.id, { content: newContent });
+    onUpdate(block.id, { content: newContent, defaultCollapsed: defaultCollapsedRef.current });
     setShowFullscreenEditor(false);
   };
   
@@ -922,8 +1185,6 @@ function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }
       <div className="flex items-center justify-between mb-2">
         <span className="text-sm font-medium text-gray-300 flex items-center gap-2">
           {block.type === 'text' && <><FileText size={16} className="text-blue-400" /> Anteckning</>}
-          {block.type === 'checklist' && <><CheckSquare size={16} className="text-green-400" /> Checklista</>}
-          {block.type === 'todo' && <><ClipboardList size={16} className="text-amber-400" /> Att göra</>}
         </span>
         <div className="flex gap-1">
           <button type="button" onClick={() => onMove(block.id, -1)} disabled={index === 0} className="w-7 h-7 rounded bg-white/5 text-gray-400 hover:bg-white/10 flex items-center justify-center disabled:opacity-30">
@@ -1045,6 +1306,24 @@ function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }
         )}
       </div>
       
+      {/* Default collapsed toggle - only for text blocks */}
+      {block.type === 'text' && (
+        <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/10">
+          <span className="text-sm text-gray-400">Ihopfälld som standard</span>
+          <button
+            type="button"
+            onClick={() => handleDefaultCollapsedChange(!defaultCollapsed)}
+            className={`relative w-10 h-6 rounded-full transition-colors ${
+              defaultCollapsed ? 'bg-blue-500' : 'bg-gray-600'
+            }`}
+          >
+            <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+              defaultCollapsed ? 'translate-x-5' : 'translate-x-0.5'
+            }`} />
+          </button>
+        </div>
+      )}
+      
       {/* Fullscreen editor modal */}
       {showFullscreenEditor && (
         <FullscreenTextEditor
@@ -1065,6 +1344,7 @@ function DateTagBlockEditor({ block, onUpdate, onRemove, onMove, index, total, s
   const [newYear, setNewYear] = useState(new Date().getFullYear().toString());
   const [newRangeStart, setNewRangeStart] = useState('');
   const [newRangeEnd, setNewRangeEnd] = useState('');
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // Use ref to always have latest tags for sync
   const tagsRef = React.useRef(tags);
@@ -1118,12 +1398,27 @@ function DateTagBlockEditor({ block, onUpdate, onRemove, onMove, index, total, s
   };
 
   return (
-    <div className="rounded-xl border border-white/10 p-3 bg-white/5">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-medium text-gray-300 flex items-center gap-2">
-          <Calendar size={16} className="text-cyan-400" /> Datum
-        </span>
-        <div className="flex gap-1">
+    <div className="rounded-xl border border-white/10 bg-white/5 overflow-hidden">
+      {/* Collapsible header */}
+      <div className="flex items-center gap-2 p-3">
+        <button
+          type="button"
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex items-center gap-2 flex-1 min-w-0"
+        >
+          <ChevronDown 
+            size={16} 
+            className={`text-gray-500 transition-transform flex-shrink-0 ${isExpanded ? '' : '-rotate-90'}`} 
+          />
+          <Calendar size={16} className="text-cyan-400 flex-shrink-0" />
+          <span className="text-sm font-medium text-gray-300 truncate">
+            Datum
+          </span>
+          {tags.length > 0 && (
+            <span className="text-xs text-gray-500 flex-shrink-0">({tags.length} st)</span>
+          )}
+        </button>
+        <div className="flex gap-1 flex-shrink-0">
           <button type="button" onClick={() => onMove(block.id, -1)} disabled={index === 0} className="w-7 h-7 rounded bg-white/5 text-gray-400 hover:bg-white/10 flex items-center justify-center disabled:opacity-30">
             <ArrowUp size={14} />
           </button>
@@ -1136,102 +1431,107 @@ function DateTagBlockEditor({ block, onUpdate, onRemove, onMove, index, total, s
         </div>
       </div>
 
-      {/* Existing tags */}
-      {tags.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-3">
-          {tags.map((tag, i) => (
-            <div 
-              key={i}
-              className={`inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1 rounded-full text-sm ${
-                tag.type === 'year' 
-                  ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' 
-                  : 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
-              }`}
+      {/* Expandable content */}
+      {isExpanded && (
+        <div className="px-3 pb-3 space-y-3">
+          {/* Existing tags */}
+          {tags.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {tags.map((tag, i) => (
+                <div 
+                  key={i}
+                  className={`inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1 rounded-full text-sm ${
+                    tag.type === 'year' 
+                      ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' 
+                      : 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                  }`}
+                >
+                  <span>{formatTag(tag)}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeTag(i)}
+                    className="w-5 h-5 rounded-full hover:bg-white/20 flex items-center justify-center"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add button / menu */}
+          {!showAddMenu ? (
+            <button
+              type="button"
+              onClick={() => setShowAddMenu(true)}
+              disabled={saving}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-dashed border-white/20 text-gray-400 hover:bg-white/10 hover:text-gray-300 text-sm w-full justify-center"
             >
-              <span>{formatTag(tag)}</span>
-              <button
-                type="button"
-                onClick={() => removeTag(i)}
-                className="w-5 h-5 rounded-full hover:bg-white/20 flex items-center justify-center"
-              >
-                <X size={12} />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
+              <Plus size={14} />
+              Lägg till datum
+            </button>
+          ) : (
+            <div className="space-y-3 p-3 bg-white/5 rounded-lg border border-white/10">
+              {/* Year option */}
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">År (t.ex. besöksår)</label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    value={newYear}
+                    onChange={(e) => setNewYear(e.target.value)}
+                    placeholder="2025"
+                    min="1900"
+                    max="2100"
+                    className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={addYearTag}
+                    className="px-4 py-2 rounded-lg bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 text-sm"
+                  >
+                    Lägg till
+                  </button>
+                </div>
+              </div>
+              
+              {/* Date range option */}
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Datumperiod (t.ex. event)</label>
+                <div className="flex gap-2 flex-wrap">
+                  <input
+                    type="date"
+                    value={newRangeStart}
+                    onChange={(e) => setNewRangeStart(e.target.value)}
+                    className="flex-1 min-w-[140px] px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base focus:outline-none focus:border-purple-500"
+                  />
+                  <span className="text-gray-500 self-center">→</span>
+                  <input
+                    type="date"
+                    value={newRangeEnd}
+                    onChange={(e) => setNewRangeEnd(e.target.value)}
+                    className="flex-1 min-w-[140px] px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base focus:outline-none focus:border-purple-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={addRangeTag}
+                    disabled={!newRangeStart || !newRangeEnd}
+                    className="px-4 py-2 rounded-lg bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 text-sm disabled:opacity-50"
+                  >
+                    Lägg till
+                  </button>
+                </div>
+              </div>
 
-      {/* Add button / menu */}
-      {!showAddMenu ? (
-        <button
-          type="button"
-          onClick={() => setShowAddMenu(true)}
-          disabled={saving}
-          className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-dashed border-white/20 text-gray-400 hover:bg-white/10 hover:text-gray-300 text-sm w-full justify-center"
-        >
-          <Plus size={14} />
-          Lägg till datum
-        </button>
-      ) : (
-        <div className="space-y-3 p-3 bg-white/5 rounded-lg border border-white/10">
-          {/* Year option */}
-          <div>
-            <label className="text-xs text-gray-400 mb-1 block">År (t.ex. besöksår)</label>
-            <div className="flex gap-2">
-              <input
-                type="number"
-                value={newYear}
-                onChange={(e) => setNewYear(e.target.value)}
-                placeholder="2025"
-                min="1900"
-                max="2100"
-                className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500"
-              />
               <button
                 type="button"
-                onClick={addYearTag}
-                className="px-4 py-2 rounded-lg bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 text-sm"
+                onClick={() => setShowAddMenu(false)}
+                className="text-sm text-gray-500 hover:text-gray-400"
               >
-                Lägg till
+                Avbryt
               </button>
             </div>
-          </div>
-          
-          {/* Date range option */}
-          <div>
-            <label className="text-xs text-gray-400 mb-1 block">Datumperiod (t.ex. event)</label>
-            <div className="flex gap-2 flex-wrap">
-              <input
-                type="date"
-                value={newRangeStart}
-                onChange={(e) => setNewRangeStart(e.target.value)}
-                className="flex-1 min-w-[140px] px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base focus:outline-none focus:border-purple-500"
-              />
-              <span className="text-gray-500 self-center">→</span>
-              <input
-                type="date"
-                value={newRangeEnd}
-                onChange={(e) => setNewRangeEnd(e.target.value)}
-                className="flex-1 min-w-[140px] px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base focus:outline-none focus:border-purple-500"
-              />
-              <button
-                type="button"
-                onClick={addRangeTag}
-                disabled={!newRangeStart || !newRangeEnd}
-                className="px-4 py-2 rounded-lg bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 text-sm disabled:opacity-50"
-              >
-                Lägg till
-              </button>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setShowAddMenu(false)}
-            className="text-sm text-gray-500 hover:text-gray-400"
-          >
-            Avbryt
-          </button>
+          )}
         </div>
       )}
     </div>
@@ -1243,6 +1543,7 @@ function TimerBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
   const [timers, setTimers] = useState(block.timers || []);
   const [newLabel, setNewLabel] = useState('');
   const [newDuration, setNewDuration] = useState('');
+  const [isExpanded, setIsExpanded] = useState(false);
   const containerRef = React.useRef(null);
 
   // Sync timers state when block changes (e.g., after move)
@@ -1274,12 +1575,27 @@ function TimerBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
   };
 
   return (
-    <div className="rounded-xl border border-white/10 p-3 bg-white/5">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-medium text-gray-300 flex items-center gap-2">
-          <Timer size={16} className="text-orange-400" /> Timers
-        </span>
-        <div className="flex gap-1">
+    <div className="rounded-xl border border-white/10 bg-white/5 overflow-hidden">
+      {/* Collapsible header */}
+      <div className="flex items-center gap-2 p-3">
+        <button
+          type="button"
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex items-center gap-2 flex-1 min-w-0"
+        >
+          <ChevronDown 
+            size={16} 
+            className={`text-gray-500 transition-transform flex-shrink-0 ${isExpanded ? '' : '-rotate-90'}`} 
+          />
+          <Timer size={16} className="text-orange-400 flex-shrink-0" />
+          <span className="text-sm font-medium text-gray-300 truncate">
+            Timers
+          </span>
+          {timers.length > 0 && (
+            <span className="text-xs text-gray-500 flex-shrink-0">({timers.length} st)</span>
+          )}
+        </button>
+        <div className="flex gap-1 flex-shrink-0">
           <button type="button" onClick={() => onMove(block.id, -1)} disabled={index === 0} className="w-7 h-7 rounded bg-white/5 text-gray-400 hover:bg-white/10 flex items-center justify-center disabled:opacity-30">
             <ArrowUp size={14} />
           </button>
@@ -1292,57 +1608,62 @@ function TimerBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
         </div>
       </div>
 
-      {/* Existing timers */}
-      {timers.length > 0 && (
-        <div className="space-y-2 mb-3">
-          {timers.map((timer, i) => (
-            <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-white/5">
-              <Timer size={14} className="text-orange-400 flex-shrink-0" />
-              <span className="flex-1 text-sm text-white truncate">{timer.label}</span>
-              <span className="text-sm text-gray-400">{timer.duration % 1 === 0 ? timer.duration : timer.duration.toFixed(1)} min</span>
-              <button
-                type="button"
-                onClick={() => removeTimer(i)}
-                className="w-6 h-6 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center"
-              >
-                <X size={12} />
-              </button>
+      {/* Expandable content */}
+      {isExpanded && (
+        <div className="px-3 pb-3 space-y-3">
+          {/* Existing timers */}
+          {timers.length > 0 && (
+            <div className="space-y-2">
+              {timers.map((timer, i) => (
+                <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-white/5">
+                  <Timer size={14} className="text-orange-400 flex-shrink-0" />
+                  <span className="flex-1 text-sm text-white truncate">{timer.label}</span>
+                  <span className="text-sm text-gray-400">{timer.duration % 1 === 0 ? timer.duration : timer.duration.toFixed(1)} min</span>
+                  <button
+                    type="button"
+                    onClick={() => removeTimer(i)}
+                    className="w-6 h-6 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
+
+          {/* Add new timer */}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newLabel}
+              onChange={(e) => setNewLabel(e.target.value)}
+              placeholder="Namn"
+              disabled={saving}
+              autoComplete="off"
+              autoCorrect="off"
+              className="w-0 flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-orange-500"
+            />
+            <input
+              type="text"
+              inputMode="decimal"
+              value={newDuration}
+              onChange={(e) => setNewDuration(e.target.value)}
+              placeholder="Min"
+              disabled={saving}
+              autoComplete="off"
+              className="w-16 flex-shrink-0 px-2 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-orange-500 text-center"
+            />
+            <button
+              type="button"
+              onClick={addTimer}
+              disabled={saving || !newLabel.trim() || !newDuration}
+              className="w-10 h-10 flex-shrink-0 rounded-lg bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 disabled:opacity-50 transition-colors flex items-center justify-center"
+            >
+              <Plus size={18} />
+            </button>
+          </div>
         </div>
       )}
-
-      {/* Add new timer */}
-      <div className="flex gap-2">
-        <input
-          type="text"
-          value={newLabel}
-          onChange={(e) => setNewLabel(e.target.value)}
-          placeholder="Namn"
-          disabled={saving}
-          autoComplete="off"
-          autoCorrect="off"
-          className="w-0 flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-orange-500"
-        />
-        <input
-          type="text"
-          inputMode="decimal"
-          value={newDuration}
-          onChange={(e) => setNewDuration(e.target.value)}
-          placeholder="Min"
-          disabled={saving}
-          autoComplete="off"
-          className="w-16 flex-shrink-0 px-2 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-orange-500 text-center"
-        />
-        <button
-          type="button"
-          onClick={addTimer}
-          disabled={saving || !newLabel.trim() || !newDuration}
-          className="w-10 h-10 flex-shrink-0 rounded-lg bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 disabled:opacity-50 transition-colors flex items-center justify-center"
-        >
-          <Plus size={18} />
-        </button>
-      </div>
     </div>
   );
 }
@@ -1352,6 +1673,7 @@ function PollBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
   const [title, setTitle] = useState(block.title || '');
   const [options, setOptions] = useState(block.options || []);
   const [newOption, setNewOption] = useState('');
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // Use refs to always have latest values
   const titleRef = React.useRef(title);
@@ -1404,12 +1726,27 @@ function PollBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
   };
 
   return (
-    <div className="rounded-xl border border-white/10 p-3 bg-white/5">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-sm font-medium text-gray-300 flex items-center gap-2">
-          <Vote size={16} className="text-indigo-400" /> Omröstning
-        </span>
-        <div className="flex gap-1">
+    <div className="rounded-xl border border-white/10 bg-white/5 overflow-hidden">
+      {/* Collapsible header */}
+      <div className="flex items-center gap-2 p-3">
+        <button
+          type="button"
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex items-center gap-2 flex-1 min-w-0"
+        >
+          <ChevronDown 
+            size={16} 
+            className={`text-gray-500 transition-transform flex-shrink-0 ${isExpanded ? '' : '-rotate-90'}`} 
+          />
+          <BarChart3 size={16} className="text-indigo-400 flex-shrink-0" />
+          <span className="text-sm font-medium text-gray-300 truncate">
+            {title || 'Omröstning'}
+          </span>
+          {options.length > 0 && (
+            <span className="text-xs text-gray-500 flex-shrink-0">({options.length} alt)</span>
+          )}
+        </button>
+        <div className="flex gap-1 flex-shrink-0">
           <button type="button" onClick={() => onMove(block.id, -1)} disabled={index === 0} className="w-7 h-7 rounded bg-white/5 text-gray-400 hover:bg-white/10 flex items-center justify-center disabled:opacity-30">
             <ArrowUp size={14} />
           </button>
@@ -1422,79 +1759,85 @@ function PollBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
         </div>
       </div>
 
-      {/* Poll title */}
-      <input
-        type="text"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        onBlur={() => syncToParent(title, options)}
-        placeholder="Fråga (t.ex. 'När passar helgen?')"
-        disabled={saving}
-        className="w-full px-3 py-2 mb-3 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-indigo-500"
-      />
+      {/* Expandable content */}
+      {isExpanded && (
+        <div className="px-3 pb-3 space-y-3">
+          {/* Poll title */}
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onBlur={() => syncToParent(title, options)}
+            placeholder="Fråga (t.ex. 'När passar helgen?')"
+            disabled={saving}
+            className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+          />
 
-      {/* Options list */}
-      {options.length > 0 && (
-        <div className="space-y-2 mb-3">
-          {options.map((option, i) => (
-            <div key={option.id} className="flex items-center gap-2">
-              <span className="text-gray-500 text-sm w-5">{i + 1}.</span>
-              <input
-                type="text"
-                value={option.label}
-                onChange={(e) => updateOption(option.id, e.target.value)}
-                onBlur={syncOption}
-                disabled={saving}
-                className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base focus:outline-none focus:border-indigo-500"
-              />
+          {/* Options list */}
+          {options.length > 0 && (
+            <div className="space-y-2">
+              {options.map((option, i) => (
+                <div key={option.id} className="flex items-center gap-2">
+                  <span className="text-gray-500 text-sm w-5">{i + 1}.</span>
+                  <input
+                    type="text"
+                    value={option.label}
+                    onChange={(e) => updateOption(option.id, e.target.value)}
+                    onBlur={syncOption}
+                    disabled={saving}
+                    className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base focus:outline-none focus:border-indigo-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeOption(option.id)}
+                    className="w-8 h-8 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add new option */}
+          <div className="flex items-center gap-2">
+            <span className="text-gray-500 text-sm w-5">{options.length + 1}.</span>
+            <input
+              type="text"
+              value={newOption}
+              onChange={(e) => setNewOption(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addOption())}
+              placeholder="Nytt alternativ (t.ex. '1-3 maj')"
+              disabled={saving}
+              className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+            />
+            <button
+              type="button"
+              onClick={addOption}
+              disabled={saving || !newOption.trim()}
+              className="w-8 h-8 flex-shrink-0 rounded-lg bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30 disabled:opacity-50 transition-colors flex items-center justify-center"
+            >
+              <Plus size={18} />
+            </button>
+          </div>
+
+          {/* Instructions + Reset button */}
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-gray-500">
+              Deltagare med tillgång kan rösta direkt.
+            </p>
+            {voteCount > 0 && (
               <button
                 type="button"
-                onClick={() => removeOption(option.id)}
-                className="w-8 h-8 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center"
+                onClick={resetVotes}
+                className="text-xs text-red-400 hover:text-red-300 hover:underline"
               >
-                <X size={14} />
+                Nollställ ({voteCount})
               </button>
-            </div>
-          ))}
+            )}
+          </div>
         </div>
       )}
-
-      {/* Add new option */}
-      <div className="flex gap-2">
-        <input
-          type="text"
-          value={newOption}
-          onChange={(e) => setNewOption(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addOption())}
-          placeholder="Nytt alternativ (t.ex. '14-16 mars')"
-          disabled={saving}
-          className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-indigo-500"
-        />
-        <button
-          type="button"
-          onClick={addOption}
-          disabled={saving || !newOption.trim()}
-          className="w-10 h-10 flex-shrink-0 rounded-lg bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30 disabled:opacity-50 transition-colors flex items-center justify-center"
-        >
-          <Plus size={18} />
-        </button>
-      </div>
-
-      {/* Instructions + Reset button */}
-      <div className="flex items-center justify-between mt-3">
-        <p className="text-xs text-gray-500">
-          Deltagare med tillgång till objektet kan rösta direkt i vyn.
-        </p>
-        {voteCount > 0 && (
-          <button
-            type="button"
-            onClick={resetVotes}
-            className="text-xs text-red-400 hover:text-red-300 hover:underline"
-          >
-            Nollställ röster ({voteCount})
-          </button>
-        )}
-      </div>
     </div>
   );
 }

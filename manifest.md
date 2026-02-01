@@ -2,7 +2,7 @@
 OurSpots – Manifest / Blueprint (Updated Feb 1, 2026)
 ========================
 
-🚀 STATUS: v2.4 - Poll Block, Display Names & Sharing UX
+🚀 STATUS: v2.5 - Block Consolidation & Table Improvements
 
 1. VISION
 - Mobilfokuserad app med premium dark theme
@@ -53,6 +53,11 @@ OurSpots – Manifest / Blueprint (Updated Feb 1, 2026)
 - Display name / nickname i profilinställningar ✅ NY v2.4
 - Senaste kontakter för snabbare delning ✅ NY v2.4
 - iOS Safari viewport fix (ghost clicks) ✅ NY v2.4
+- Konsoliderat checklistor och todos till tabellblock ✅ NY v2.5
+- "Ihopfälld som standard" toggle för text-block ✅ NY v2.5
+- Längre texter i tabellblock (full text-wrapping) ✅ NY v2.5
+- Enter-tangent för snabb inmatning i tabeller ✅ NY v2.5
+- Collapsible burger-meny med sektioner (Admin/Inställningar/Snabbfånga) ✅ NY v2.5
 
 2. KATEGORI-SYSTEM
 - Dynamiska kategorier lagrade i Firebase ✅
@@ -101,12 +106,12 @@ Shares-system: ✅ IMPLEMENTERAT
 Block:
 - type: "image", url, cropMode (auto/face/center)
 - type: "location", lat, lng
-- type: "text", content (stöder markdown: **bold**, *italic*, [länkar](url), > citat, # rubriker) ✅ NY
+- type: "text", content, defaultCollapsed (stöder markdown: **bold**, *italic*, [länkar](url), > citat, # rubriker) ✅ UPPDATERAD v2.5
 - type: "text" fullscreen editor på mobil med iOS-optimerad tangentbordshantering ✅ NY v2.3
-- type: "checklist", items[]
-- type: "todo", items[]
+- ~~type: "checklist", items[]~~ (BORTTAGEN v2.5 - migrerat till table)
+- ~~type: "todo", items[]~~ (BORTTAGEN v2.5 - migrerat till table)
 - type: "links", title, items[{title, url, icon}] ✅
-- type: "table", title, template, columns[], rows[] ✅
+- type: "table", title, template, columns[], rows[], defaultCollapsed ✅ UPPDATERAD v2.5
 - type: "datetag", tags[{type: "year"|"range", year?, startDate?, endDate?}] ✅
 - type: "contact", phone, email, website ✅ NY
 - type: "timer", timers[{label, duration}] (med iOS-ljud och compact view) ✅ NY
@@ -164,7 +169,7 @@ Default block sets per typ/kategori (för enkelhet):
 - Fördefinierade typ-ikoner används överallt
 
 5. FILTER / INTERAKTIVITET
-- Sökning på namn och innehåll (text/todo/checklist) ✅
+- Sökning på namn och innehåll (text/tabeller) ✅ UPPDATERAD v2.5
 - Filter på: kategori/typ, avstånd från användare (km-slider) ✅
 - Lager + kategori styr vy
 - Real-time uppdatering av lista och karta
@@ -501,6 +506,39 @@ Mål: Enkelt sätt att dela och spåra utgifter inom en grupp (t.ex. resa, hush�
 - ✅ Fixar "ghost clicks" efter iOS zoom på inputfält
 - ✅ focusout-listener som återställer viewport
 - ✅ 100ms delay för att låta Safari stabilisera sig
+
+### Block Consolidation (Implementerat v2.5) ✅ NY
+- ✅ Checklist och Todo block migrerade till Table block
+- ✅ Checklist → Table med template "list"
+- ✅ Todo → Table med template "tasks"
+- ✅ Migrationsfunktion i Admin-menyn (nu borttagen)
+- ✅ Gammla ChecklistBlock och TodoBlock komponenter borttagna
+- ✅ ~130 rader kod borttagen, bundle ~4KB mindre
+
+### Table Block Improvements (Implementerat v2.5) ✅ NY
+- ✅ "Ihopfälld som standard" toggle för alla tabelltyper
+- ✅ Full text-wrapping för långa texter (perfekt för recept)
+- ✅ Checkbox justerad till toppen vid flerradig text
+- ✅ Enter-tangent lägger till ny rad (lista-typ)
+- ✅ Enter navigerar genom kolumner → ny rad (flerkolomn-typer)
+- ✅ Tips-text uppdaterad: "Enter = ny rad • Ctrl+V = klistra in flera"
+
+### Text Block Improvements (Implementerat v2.5) ✅ NY
+- ✅ "Ihopfälld som standard" toggle i editorn
+- ✅ defaultCollapsed sparas på block-data
+- ✅ ObjectDetail respekterar defaultCollapsed vid öppning
+- ✅ Ikon uppdaterad till blå (text-blue-400)
+
+### Collapsible Menu (Implementerat v2.5) ✅ NY
+- ✅ Burger-meny med tre sektioner: ADMIN, INSTÄLLNINGAR, SNABBFÅNGA
+- ✅ Varje sektion har ChevronDown och collapse/expand
+- ✅ localStorage-persistens för varje sektions state
+- ✅ Admin-sektionen endast synlig för administratörer
+
+### CreateObjectModal UX (Förbättrad v2.5) ✅ NY
+- ✅ "Använd samma plats" checkbox flyttad före Grundinställningar
+- ✅ Grundinställningar-sektion är collapsible
+- ✅ "Att göra"-knappen borttagen (ersatt av Tabell med tasks-template)
 
 ### iOS Touch-optimering (Implementerat v2.1) ✅ NY
 - ✅ Global touch-manipulation CSS förhindrar dubbelklick-zoom

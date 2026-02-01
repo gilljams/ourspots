@@ -326,143 +326,6 @@ export const TextBlock = ({ data }) => (
   </div>
 );
 
-export const ChecklistBlock = ({ data, objectId, blockIndex, onUpdate }) => {
-  const handleToggle = async (itemIndex) => {
-    if (!onUpdate) return;
-    const newItems = data.items.map((item, i) => 
-      i === itemIndex ? { ...item, checked: !item.checked } : item
-    );
-    await onUpdate(objectId, blockIndex, { ...data, items: newItems });
-  };
-
-  const handleReset = async () => {
-    if (!onUpdate) return;
-    if (!confirm('Vill du nollställa alla markeringar?')) return;
-    const newItems = data.items.map(item => ({ ...item, checked: false }));
-    await onUpdate(objectId, blockIndex, { ...data, items: newItems });
-  };
-
-  const checkedCount = data.items.filter(item => item.checked).length;
-  const totalCount = data.items.length;
-
-  return (
-    <div className="bg-white/[0.03] rounded-xl overflow-hidden">
-      {/* Header with progress */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
-        <div className="flex items-center gap-3">
-          <div className="h-1.5 w-20 bg-gray-800 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-gradient-to-r from-blue-500 to-blue-400 transition-all duration-300"
-              style={{ width: `${totalCount > 0 ? (checkedCount / totalCount) * 100 : 0}%` }}
-            />
-          </div>
-          <span className="text-xs text-gray-500">{checkedCount}/{totalCount}</span>
-        </div>
-        {checkedCount > 0 && onUpdate && (
-          <button
-            onClick={handleReset}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-gray-500 hover:text-blue-400 active:text-blue-300 transition-all touch-manipulation"
-            title="Nollställ alla markeringar"
-          >
-            <RotateCcw size={12} />
-            <span>Nollställ</span>
-          </button>
-        )}
-      </div>
-      {/* Items */}
-      <div className="divide-y divide-white/5">
-        {data.items.map((item, i) => (
-          <div 
-            key={i}
-            onClick={() => handleToggle(i)}
-            className="flex items-center gap-3 px-4 py-3.5 cursor-pointer hover:bg-white/[0.02] active:bg-white/[0.05] transition-colors group touch-manipulation"
-          >
-            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all flex-shrink-0 ${
-              item.checked ? 'bg-blue-500 border-blue-500' : 'border-gray-600 group-hover:border-blue-400'
-            }`}>
-              {item.checked && <Check size={14} className="text-white" />}
-            </div>
-            <span className={`text-sm transition-all ${
-              item.checked ? 'text-gray-500 line-through' : 'text-gray-200'
-            }`}>
-              {item.text}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-export const TodoBlock = ({ data, objectId, blockIndex, onUpdate }) => {
-  const handleToggle = async (itemIndex) => {
-    if (!onUpdate) return;
-    const newItems = data.items.map((item, i) => 
-      i === itemIndex ? { ...item, done: !item.done } : item
-    );
-    await onUpdate(objectId, blockIndex, { ...data, items: newItems });
-  };
-
-  const handleReset = async () => {
-    if (!onUpdate) return;
-    if (!confirm('Vill du nollställa alla markeringar?')) return;
-    const newItems = data.items.map(item => ({ ...item, done: false }));
-    await onUpdate(objectId, blockIndex, { ...data, items: newItems });
-  };
-
-  const totalItems = data.items.length;
-  const doneItems = data.items.filter(item => item.done).length;
-  const progress = totalItems > 0 ? (doneItems / totalItems) * 100 : 0;
-
-  return (
-    <div className="bg-white/[0.03] rounded-xl overflow-hidden">
-      {/* Header with progress */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
-        <div className="flex items-center gap-3">
-          <div className="h-1.5 w-20 bg-gray-800 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-gradient-to-r from-green-500 to-emerald-400 transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-          <span className="text-xs text-gray-500">{doneItems}/{totalItems}</span>
-        </div>
-        {doneItems > 0 && onUpdate && (
-          <button
-            onClick={handleReset}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-gray-500 hover:text-green-400 active:text-green-300 transition-all touch-manipulation"
-            title="Nollställ alla markeringar"
-          >
-            <RotateCcw size={12} />
-            <span>Nollställ</span>
-          </button>
-        )}
-      </div>
-      {/* Items */}
-      <div className="divide-y divide-white/5">
-        {data.items.map((item, i) => (
-          <div 
-            key={i}
-            onClick={() => handleToggle(i)}
-            className="flex items-center gap-3 px-4 py-3.5 cursor-pointer hover:bg-white/[0.02] active:bg-white/[0.05] transition-colors group touch-manipulation"
-          >
-            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0 ${
-              item.done ? 'bg-green-500 border-green-500' : 'border-gray-600 group-hover:border-green-400'
-            }`}>
-              {item.done && <Check size={14} className="text-white" />}
-            </div>
-            <span className={`text-sm transition-all ${
-              item.done ? 'text-gray-500 line-through' : 'text-gray-200'
-            }`}>
-              {item.text}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
 // Contact block - compact display of phone, email, website
 export const ContactBlock = ({ data }) => {
   const { phone, email, website } = data || {};
@@ -565,28 +428,29 @@ export const LinksBlock = ({ data }) => {
 
 // Table templates definition
 export const TABLE_TEMPLATES = {
+  list: {
+    id: 'list',
+    name: 'Lista',
+    icon: 'CheckSquare',
+    showSum: false,
+    hideHeader: true,
+    useCollapse: true,
+    columns: [
+      { id: 'done', label: '✓', type: 'checkbox', width: 'w-8', hideInEditor: true },
+      { id: 'item', label: 'Punkt', type: 'text', width: 'flex-1' }
+    ]
+  },
   wishlist: {
     id: 'wishlist',
     name: 'Önskelista',
     icon: 'Gift',
     showSum: false,
+    useCollapse: true,
     columns: [
+      { id: 'done', label: '✓', type: 'checkbox', width: 'w-8' },
       { id: 'who', label: 'Vem', type: 'text', width: 'w-20' },
       { id: 'item', label: 'Vad', type: 'text', width: 'flex-1' },
-      { id: 'from', label: 'Från', type: 'text', width: 'w-20' },
-      { id: 'done', label: '✓', type: 'checkbox', width: 'w-10' }
-    ]
-  },
-  potluck: {
-    id: 'potluck',
-    name: 'Knytkalas',
-    icon: 'UtensilsCrossed',
-    showSum: false,
-    columns: [
-      { id: 'dish', label: 'Rätt', type: 'text', width: 'flex-1' },
-      { id: 'who', label: 'Vem', type: 'text', width: 'w-24' },
-      { id: 'portions', label: 'Port.', type: 'number', width: 'w-16' },
-      { id: 'done', label: '✓', type: 'checkbox', width: 'w-10' }
+      { id: 'from', label: 'Från', type: 'text', width: 'w-20' }
     ]
   },
   tasks: {
@@ -594,10 +458,11 @@ export const TABLE_TEMPLATES = {
     name: 'Uppgifter',
     icon: 'ClipboardList',
     showSum: false,
+    useCollapse: true,
     columns: [
+      { id: 'done', label: '✓', type: 'checkbox', width: 'w-8' },
       { id: 'task', label: 'Uppgift', type: 'text', width: 'flex-1' },
-      { id: 'who', label: 'Ansvarig', type: 'text', width: 'w-24' },
-      { id: 'done', label: '✓', type: 'checkbox', width: 'w-10' }
+      { id: 'who', label: 'Ansvarig', type: 'text', width: 'w-24' }
     ]
   },
   shopping: {
@@ -605,10 +470,11 @@ export const TABLE_TEMPLATES = {
     name: 'Inköpslista',
     icon: 'ShoppingCart',
     showSum: false,
+    useCollapse: true,
     columns: [
+      { id: 'done', label: '✓', type: 'checkbox', width: 'w-8' },
       { id: 'item', label: 'Vara', type: 'text', width: 'flex-1' },
-      { id: 'qty', label: 'Antal', type: 'number', width: 'w-16' },
-      { id: 'done', label: '✓', type: 'checkbox', width: 'w-10' }
+      { id: 'qty', label: 'Antal', type: 'number', width: 'w-16' }
     ]
   },
   guests: {
@@ -616,10 +482,11 @@ export const TABLE_TEMPLATES = {
     name: 'Gästlista',
     icon: 'Users',
     showSum: false,
+    useCollapse: true,
     columns: [
+      { id: 'confirmed', label: '✓', type: 'checkbox', width: 'w-8' },
       { id: 'name', label: 'Namn', type: 'text', width: 'flex-1' },
-      { id: 'note', label: 'Anteckning', type: 'text', width: 'w-32' },
-      { id: 'confirmed', label: '✓', type: 'checkbox', width: 'w-10' }
+      { id: 'note', label: 'Anteckning', type: 'text', width: 'w-32' }
     ]
   },
   contacts: {
@@ -627,6 +494,7 @@ export const TABLE_TEMPLATES = {
     name: 'Kontakter',
     icon: 'UserCircle',
     showSum: false,
+    useCollapse: true,
     columns: [
       { id: 'name', label: 'Namn', type: 'text', width: 'w-32' },
       { id: 'phone', label: 'Telefon', type: 'text', width: 'flex-1' }
@@ -635,9 +503,16 @@ export const TABLE_TEMPLATES = {
 };
 
 export const TableBlock = ({ data, objectId, blockIndex, onUpdate }) => {
+  const [isCollapsed, setIsCollapsed] = useState(data.defaultCollapsed ?? false);
   const template = TABLE_TEMPLATES[data.template] || TABLE_TEMPLATES.tasks;
   const columns = data.columns || template.columns;
   const rows = data.rows || [];
+  const title = data.title || '';
+
+  // Sync collapsed state when defaultCollapsed changes (e.g., after editing)
+  React.useEffect(() => {
+    setIsCollapsed(data.defaultCollapsed ?? false);
+  }, [data.defaultCollapsed]);
 
   const handleCheckboxToggle = async (rowIndex, colId) => {
     if (!onUpdate) return;
@@ -660,10 +535,173 @@ export const TableBlock = ({ data, objectId, blockIndex, onUpdate }) => {
   const hasNumberColumns = Object.keys(sums).length > 0;
   const hasSums = Object.values(sums).some(s => s > 0);
 
-  // Count completed checkboxes
+  // Count completed checkboxes (excluding header rows)
   const checkboxCol = columns.find(c => c.type === 'checkbox');
-  const checkedCount = checkboxCol ? rows.filter(r => r[checkboxCol.id]).length : 0;
-  const totalCount = rows.length;
+  const regularRows = rows.filter(r => !r.isHeader);
+  const checkedCount = checkboxCol ? regularRows.filter(r => r[checkboxCol.id]).length : 0;
+  const totalCount = regularRows.length;
+  
+  // Get non-checkbox columns for display
+  const displayColumns = columns.filter(c => c.type !== 'checkbox');
+  // Get the main text column (first text column)
+  const mainTextCol = displayColumns.find(c => c.type === 'text');
+
+  // For templates with collapse (all modern table types)
+  if (template.useCollapse) {
+    const Icon = getIconComponent(template.icon);
+    
+    // Determine icon color based on template
+    const iconColorClass = {
+      list: 'text-blue-400',
+      wishlist: 'text-pink-400',
+      tasks: 'text-amber-400',
+      shopping: 'text-green-400',
+      guests: 'text-purple-400',
+      contacts: 'text-cyan-400'
+    }[template.id] || 'text-blue-400';
+    
+    const progressColorClass = {
+      list: 'from-blue-500 to-blue-400',
+      wishlist: 'from-pink-500 to-pink-400',
+      tasks: 'from-amber-500 to-amber-400',
+      shopping: 'from-green-500 to-green-400',
+      guests: 'from-purple-500 to-purple-400',
+      contacts: 'from-cyan-500 to-cyan-400'
+    }[template.id] || 'from-blue-500 to-blue-400';
+    
+    const checkboxColorClass = {
+      list: 'bg-blue-500 border-blue-500',
+      wishlist: 'bg-pink-500 border-pink-500',
+      tasks: 'bg-amber-500 border-amber-500',
+      shopping: 'bg-green-500 border-green-500',
+      guests: 'bg-purple-500 border-purple-500',
+      contacts: 'bg-cyan-500 border-cyan-500'
+    }[template.id] || 'bg-blue-500 border-blue-500';
+    
+    const checkboxHoverClass = {
+      list: 'hover:border-blue-400',
+      wishlist: 'hover:border-pink-400',
+      tasks: 'hover:border-amber-400',
+      shopping: 'hover:border-green-400',
+      guests: 'hover:border-purple-400',
+      contacts: 'hover:border-cyan-400'
+    }[template.id] || 'hover:border-blue-400';
+    
+    const headerColorClass = {
+      list: 'text-blue-400',
+      wishlist: 'text-pink-400',
+      tasks: 'text-amber-400',
+      shopping: 'text-green-400',
+      guests: 'text-purple-400',
+      contacts: 'text-cyan-400'
+    }[template.id] || 'text-blue-400';
+
+    return (
+      <div className="space-y-2">
+        {/* Collapsible header - matches other block headers */}
+        <button
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className="w-full flex items-center gap-2.5 py-2 group touch-manipulation"
+        >
+          <div className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
+            <ChevronDown 
+              size={14} 
+              className={`text-gray-400 group-hover:text-white transition-all ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} 
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Icon size={14} className={iconColorClass} />
+            <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">
+              {title || template.name}
+            </span>
+          </div>
+          {checkboxCol && totalCount > 0 && (
+            <div className="flex items-center gap-2 ml-auto">
+              <div className="h-1.5 w-14 bg-gray-800 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full bg-gradient-to-r ${progressColorClass} transition-all duration-300`}
+                  style={{ width: `${(checkedCount / totalCount) * 100}%` }}
+                />
+              </div>
+              <span className="text-xs text-gray-500">{checkedCount}/{totalCount}</span>
+            </div>
+          )}
+        </button>
+        
+        {/* Collapsible content */}
+        {!isCollapsed && (
+          <div className="bg-white/[0.03] rounded-xl overflow-hidden">
+            {regularRows.length === 0 && rows.filter(r => r.isHeader).length === 0 ? (
+              <div className="px-3 py-3 text-center text-sm text-gray-500">
+                Inga rader ännu
+              </div>
+            ) : (
+              <div className="py-1">
+                {rows.map((row, rowIndex) => (
+                  row.isHeader ? (
+                    // Header row - only shows text, no checkbox
+                    <div 
+                      key={row.id || rowIndex} 
+                      className="px-3 py-1.5 mt-2 first:mt-0"
+                    >
+                      <span className={`text-xs font-semibold ${headerColorClass} uppercase tracking-wider`}>
+                        {row.item || row.task || row.name || row.label || 'Rubrik'}
+                      </span>
+                    </div>
+                  ) : (
+                    // Regular row
+                    <div 
+                      key={row.id || rowIndex} 
+                      className="flex items-start gap-3 px-3 py-2 hover:bg-white/[0.03] transition-colors"
+                    >
+                      {/* Checkbox first (if exists) */}
+                      {checkboxCol && (
+                        <button
+                          onClick={() => handleCheckboxToggle(rowIndex, checkboxCol.id)}
+                          className="flex-shrink-0 touch-manipulation mt-0.5"
+                        >
+                          <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+                            row[checkboxCol.id] ? checkboxColorClass : `border-gray-600 ${checkboxHoverClass}`
+                          }`}>
+                            {row[checkboxCol.id] && <Check size={12} className="text-white" />}
+                          </div>
+                        </button>
+                      )}
+                      
+                      {/* Display columns */}
+                      {displayColumns.map((col, colIndex) => (
+                        <span 
+                          key={col.id}
+                          className={`text-sm ${col.width === 'flex-1' ? 'flex-1' : 'flex-shrink-0'} ${
+                            col.type === 'number' ? 'text-right tabular-nums w-12' : ''
+                          } ${
+                            checkboxCol && row[checkboxCol.id] ? 'text-gray-500 line-through' : 
+                            (colIndex === 0 ? 'text-gray-200' : 'text-gray-400')
+                          }`}
+                        >
+                          {col.id === 'phone' && row[col.id] ? (
+                            <a 
+                              href={`tel:${row[col.id].replace(/\s/g, '')}`}
+                              className="text-blue-400 hover:text-blue-300 underline"
+                              onClick={e => e.stopPropagation()}
+                            >
+                              {row[col.id]}
+                            </a>
+                          ) : (
+                            row[col.id] || '–'
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                  )
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white/[0.03] rounded-xl overflow-hidden">
@@ -684,6 +722,7 @@ export const TableBlock = ({ data, objectId, blockIndex, onUpdate }) => {
       <div className="overflow-x-auto">
         <table className="w-full min-w-[300px]">
           {/* Header */}
+          {!template.hideHeader && (
           <thead>
             <tr className="border-b border-white/10">
               {columns.map(col => (
@@ -696,6 +735,7 @@ export const TableBlock = ({ data, objectId, blockIndex, onUpdate }) => {
               ))}
             </tr>
           </thead>
+          )}
 
           {/* Body */}
           <tbody className="divide-y divide-white/5">
@@ -1222,10 +1262,12 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
             key={option.id} 
             className={`flex items-center gap-3 p-2 rounded-lg ${isBest ? 'bg-white/10' : 'bg-white/5'}`}
           >
-            {/* Best indicator - show trophy for winners, dimmed if tied */}
-            {isBest && (
-              <Trophy size={14} className={`flex-shrink-0 ${isTied ? 'text-amber-400/60' : 'text-amber-400'}`} />
-            )}
+            {/* Best indicator - always reserve space for consistent alignment */}
+            <div className="w-3.5 flex-shrink-0 flex items-center justify-center">
+              {isBest && (
+                <Trophy size={14} className={isTied ? 'text-amber-400/60' : 'text-amber-400'} />
+              )}
+            </div>
             
             {/* Option label and results */}
             <div className="flex-1 min-w-0">
@@ -1295,8 +1337,6 @@ export const blockComponents = {
   location: LocationBlock,
   image: ImageBlock,
   text: TextBlock,
-  checklist: ChecklistBlock,
-  todo: TodoBlock,
   contact: ContactBlock,
   links: LinksBlock,
   table: TableBlock,

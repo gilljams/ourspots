@@ -4,7 +4,7 @@ import {
   Bike, Dumbbell, Waves, TreePine, Shell, Sprout, RotateCcw,
   Link, ExternalLink, Globe, FileText, ShoppingCart, CreditCard, Phone, Mail, Instagram, Youtube, Facebook,
   Gift, ClipboardList, Users, UserCircle,
-  Wrench, BookOpen, Trophy
+  Wrench, BookOpen, Trophy, CheckSquare
 } from 'lucide-react';
 
 // Helper to get icon component from string name
@@ -14,7 +14,7 @@ export const iconMap = {
   Bike, Dumbbell, Waves, TreePine, Shell, Sprout, RotateCcw,
   Link, ExternalLink, Globe, FileText, ShoppingCart, CreditCard, Phone, Mail, Instagram, Youtube, Facebook,
   Gift, ClipboardList, Users, UserCircle,
-  Wrench, BookOpen, Trophy
+  Wrench, BookOpen, Trophy, CheckSquare
 };
 
 export const getIconComponent = (iconName) => {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, Plus, Upload, Loader, Navigation, ChevronDown, ChevronUp,
-  Map as MapIcon, FileText, CheckSquare, ClipboardList, Link2, Table2, Image as ImageIcon, Calendar, Phone, Timer, Vote 
+  Map as MapIcon, FileText, CheckSquare, ClipboardList, Link2, Table2, Image as ImageIcon, Calendar, Phone, Timer, BarChart3, Folder, MapPin 
 } from 'lucide-react';
 import { 
   CLOUDINARY_CLOUD_NAME, 
@@ -48,14 +48,15 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
   const [customBlocks, setCustomBlocks] = useState(() => {
     if (!sourceObject) return [];
     return sourceObject.blocks
-      .filter(b => ['text', 'checklist', 'todo', 'links', 'table', 'datetag', 'contact', 'timer', 'poll'].includes(b.type))
+      .filter(b => ['text', 'links', 'table', 'datetag', 'contact', 'timer', 'poll'].includes(b.type))
       .map(b => {
         if (b.type === 'links') {
           return {
             id: Math.random().toString(36).substr(2, 9),
             type: 'links',
             title: b.data.title || '',
-            links: b.data.items || []
+            links: b.data.items || [],
+            defaultCollapsed: b.data.defaultCollapsed || false
           };
         }
         if (b.type === 'table') {
@@ -65,14 +66,16 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             title: b.data.title || '',
             template: b.data.template || 'tasks',
             rows: b.data.rows || [],
-            columns: b.data.columns || []
+            columns: b.data.columns || [],
+            defaultCollapsed: b.data.defaultCollapsed || false
           };
         }
         if (b.type === 'datetag') {
           return {
             id: Math.random().toString(36).substr(2, 9),
             type: 'datetag',
-            tags: b.data.tags || []
+            tags: b.data.tags || [],
+            defaultCollapsed: b.data.defaultCollapsed || false
           };
         }
         if (b.type === 'contact') {
@@ -88,7 +91,8 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
           return {
             id: Math.random().toString(36).substr(2, 9),
             type: 'timer',
-            timers: b.data.timers || []
+            timers: b.data.timers || [],
+            defaultCollapsed: b.data.defaultCollapsed || false
           };
         }
         if (b.type === 'poll') {
@@ -97,14 +101,17 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             type: 'poll',
             title: b.data.title || '',
             options: b.data.options || [],
-            votes: isDuplicate ? {} : (b.data.votes || {}) // Clear votes when duplicating
+            votes: isDuplicate ? {} : (b.data.votes || {}), // Clear votes when duplicating
+            defaultCollapsed: b.data.defaultCollapsed || false
           };
         }
+        // Text blocks
         return {
           id: Math.random().toString(36).substr(2, 9),
           type: b.type,
           title: b.data.title || '',
-          content: b.type === 'text' ? b.data.content : b.data.items.map(i => i.text).join('\n')
+          content: b.data.content || '',
+          defaultCollapsed: b.data.defaultCollapsed || false
         };
       });
   });
@@ -118,6 +125,15 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
   const [originalImageFile, setOriginalImageFile] = useState(null);
   const [extractingGPS, setExtractingGPS] = useState(false);
   const [showMoreBlocks, setShowMoreBlocks] = useState(false);
+  // Basic settings section - collapsed in edit mode if fields have values
+  const [showBasicSettings, setShowBasicSettings] = useState(() => {
+    if (!isEdit) return true; // Always expanded for new objects
+    // For edit: collapse if we have some basic settings already filled
+    const hasParent = !!sourceObject?.parentId;
+    const hasLocation = !!primaryLocation;
+    const hasImage = !!sourceObject?.blocks?.find(b => b.type === 'image')?.data?.url;
+    return !(hasParent || hasLocation || hasImage); // Collapse if any is set
+  });
 
   // Refs
   const fileInputRef = useRef(null);
@@ -360,7 +376,8 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                 title: l.title?.trim() || '',
                 url: l.url.trim(),
                 icon: l.icon || 'Link'
-              }))
+              })),
+              defaultCollapsed: block.defaultCollapsed || false
             } 
           });
         }
@@ -372,7 +389,8 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
               title: (block.title || '').trim(), 
               template: block.template || 'tasks',
               columns: block.columns || [],
-              rows: block.rows
+              rows: block.rows,
+              defaultCollapsed: block.defaultCollapsed || false
             } 
           });
         }
@@ -381,7 +399,8 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
           blocks.push({ 
             type: 'datetag', 
             data: { 
-              tags: block.tags
+              tags: block.tags,
+              defaultCollapsed: block.defaultCollapsed || false
             } 
           });
         }
@@ -403,7 +422,8 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
           blocks.push({ 
             type: 'timer', 
             data: { 
-              timers: block.timers
+              timers: block.timers,
+              defaultCollapsed: block.defaultCollapsed || false
             } 
           });
         }
@@ -415,19 +435,14 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             data: { 
               title: (block.title || 'Omröstning').trim(),
               options: block.options,
-              votes: block.votes || {}
+              votes: block.votes || {},
+              defaultCollapsed: block.defaultCollapsed || false
             } 
           });
         }
       } else if (block.content && block.content.trim()) {
         if (block.type === 'text') {
-          blocks.push({ type: 'text', data: { title: (block.title || 'Anteckning').trim(), content: block.content.trim() } });
-        } else if (block.type === 'checklist') {
-          const items = block.content.split('\n').filter(l => l.trim()).map(text => ({ text: text.trim(), checked: false }));
-          if (items.length > 0) blocks.push({ type: 'checklist', data: { title: (block.title || 'Checklista').trim(), items } });
-        } else if (block.type === 'todo') {
-          const items = block.content.split('\n').filter(l => l.trim()).map(text => ({ text: text.trim(), done: false }));
-          if (items.length > 0) blocks.push({ type: 'todo', data: { title: (block.title || 'Att göra').trim(), items } });
+          blocks.push({ type: 'text', data: { title: (block.title || 'Anteckning').trim(), content: block.content.trim(), defaultCollapsed: block.defaultCollapsed || false } });
         }
       }
     });
@@ -435,13 +450,13 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
     onSave({ type: selectedType, layerId: 'default', blocks, parentId: parentId || null }, isEdit ? editObject.id : null);
   };
 
-  const addCustomBlock = (type) => {
+  const addCustomBlock = (type, template = null) => {
     const newBlock = { id: Math.random().toString(36).substr(2, 9), type, title: '', content: '' };
     if (type === 'links') {
       newBlock.links = [{ title: '', url: '', icon: 'Link' }];
     }
     if (type === 'table') {
-      newBlock.template = 'tasks';
+      newBlock.template = template || 'tasks';
       newBlock.rows = [];
       newBlock.columns = [];
     }
@@ -531,7 +546,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             {/* Category selector */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-3">Välj kategori</label>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-5 gap-2">
                 {categories.map(cat => {
                   const Icon = getIconComponent(cat.icon);
                   const isSelected = selectedType === cat.id;
@@ -564,32 +579,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
               />
             </div>
 
-            {/* Parent selector */}
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Lägg under objekt (valfritt)</label>
-              <select 
-                value={parentId} 
-                onChange={(e) => { setParentId(e.target.value); setFormTouched(true); }} 
-                disabled={saving}
-                className="w-full px-4 py-3 rounded-xl bg-gray-800 border border-white/10 text-white focus:outline-none focus:border-blue-500"
-              >
-                <option value="">- Inget parent-objekt -</option>
-                {categories.map(category => {
-                  const objectsInCategory = availableParents.filter(obj => obj.type === category.id);
-                  if (objectsInCategory.length === 0) return null;
-                  return (
-                    <optgroup key={category.id} label={category.label}>
-                      {objectsInCategory.map(obj => {
-                        const objTitle = obj.blocks.find(b => b.type === 'title')?.data?.text || 'Namnlöst';
-                        return <option key={obj.id} value={obj.id}>{objTitle}</option>;
-                      })}
-                    </optgroup>
-                  );
-                })}
-              </select>
-            </div>
-
-            {/* Inherit location checkbox */}
+            {/* Inherit location checkbox - shown when parent has location */}
             {!hideLocation && parentId && parentHasLocation && (
               <div className="flex items-center gap-2 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
                 <input 
@@ -606,117 +596,171 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
               </div>
             )}
 
-            {/* Location */}
-            {!hideLocation && !inheritLocation && (
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Plats</label>
-                <div className="space-y-3">
-                  <input 
-                    type="text" 
-                    value={address} 
-                    onChange={(e) => { setAddress(e.target.value); setFormTouched(true); }} 
-                    placeholder="Skriv plats/beskrivning" 
-                    disabled={saving} 
-                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                  />
-                  <div className="flex gap-3">
-                    <button
-                      type="button"
-                      onClick={handleGPSCapture}
-                      disabled={saving || capturingGPS}
-                      className="flex-1 px-3 py-3.5 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 active:bg-white/20 flex items-center justify-center gap-2 touch-manipulation"
-                    >
-                      <Navigation size={18} className={capturingGPS ? 'animate-pulse' : ''} />
-                      <span className="text-sm font-medium">
-                        {capturingGPS ? (gpsAccuracy ? `±${gpsAccuracy}m` : '...') : 'Min plats'}
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowMapPicker(true)}
+            {/* Basic settings section - collapsible */}
+            <div className="rounded-xl border border-white/10 overflow-hidden">
+              {/* Header */}
+              <button
+                type="button"
+                onClick={() => setShowBasicSettings(!showBasicSettings)}
+                className="w-full flex items-center gap-2 p-3 bg-white/5 hover:bg-white/10 transition-colors"
+              >
+                <ChevronDown 
+                  size={16} 
+                  className={`text-gray-500 transition-transform ${showBasicSettings ? '' : '-rotate-90'}`} 
+                />
+                <span className="text-sm font-medium text-gray-300">Grundinställningar</span>
+                {!showBasicSettings && (
+                  <span className="text-xs text-gray-500 ml-auto flex items-center gap-3">
+                    {parentId && <Folder size={14} className="text-blue-400" />}
+                    {(lat !== null || address) && <MapPin size={14} className="text-green-400" />}
+                    {imageUrl && <ImageIcon size={14} className="text-purple-400" />}
+                  </span>
+                )}
+              </button>
+
+              {/* Content */}
+              {showBasicSettings && (
+                <div className="p-3 pt-0 space-y-4">
+                  {/* Parent selector */}
+                  <div className="pt-3">
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Lägg under objekt (valfritt)</label>
+                    <select 
+                      value={parentId} 
+                      onChange={(e) => { setParentId(e.target.value); setFormTouched(true); }} 
                       disabled={saving}
-                      className="flex-1 px-3 py-3.5 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 active:bg-white/20 flex items-center justify-center gap-2 touch-manipulation"
+                      className="w-full px-4 py-3 rounded-xl bg-gray-800 border border-white/10 text-white focus:outline-none focus:border-blue-500 appearance-none"
+                      style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
                     >
-                      <MapIcon size={18} />
-                      <span className="text-sm font-medium">På karta</span>
-                    </button>
-                    {originalImageFile && (
-                      <button
-                        type="button"
-                        onClick={handleExtractGPSFromImage}
-                        disabled={saving || extractingGPS}
-                        className="flex-1 px-3 py-3.5 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 active:bg-white/20 flex items-center justify-center gap-2 touch-manipulation"
-                      >
-                        <ImageIcon size={18} className={extractingGPS ? 'animate-pulse' : ''} />
-                        <span className="text-sm font-medium">{extractingGPS ? '...' : 'Från bild'}</span>
-                      </button>
-                    )}
+                      <option value="">- Inget parent-objekt -</option>
+                      {categories.map(category => {
+                        const objectsInCategory = availableParents.filter(obj => obj.type === category.id);
+                        if (objectsInCategory.length === 0) return null;
+                        return (
+                          <optgroup key={category.id} label={category.label}>
+                            {objectsInCategory.map(obj => {
+                              const objTitle = obj.blocks.find(b => b.type === 'title')?.data?.text || 'Namnlöst';
+                              return <option key={obj.id} value={obj.id}>{objTitle}</option>;
+                            })}
+                          </optgroup>
+                        );
+                      })}
+                    </select>
                   </div>
-                  {lat !== null && lng !== null && (
-                    <div className="flex items-center justify-between text-xs text-gray-500 bg-white/5 p-2 rounded-lg">
-                      <span>📍 {lat.toFixed(5)}, {lng.toFixed(5)}</span>
-                      <button
-                        type="button"
-                        onClick={() => { setLat(null); setLng(null); setFormTouched(true); }}
-                        className="text-red-400 hover:text-red-300"
-                      >
-                        Rensa
-                      </button>
+
+                  {/* Location */}
+                  {!hideLocation && !inheritLocation && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Plats</label>
+                      <div className="space-y-3">
+                        <input 
+                          type="text" 
+                          value={address} 
+                          onChange={(e) => { setAddress(e.target.value); setFormTouched(true); }} 
+                          placeholder="Skriv plats/beskrivning" 
+                          disabled={saving} 
+                          className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                        />
+                        <div className="flex gap-3">
+                          <button
+                            type="button"
+                            onClick={handleGPSCapture}
+                            disabled={saving || capturingGPS}
+                            className="flex-1 px-3 py-3.5 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 active:bg-white/20 flex items-center justify-center gap-2 touch-manipulation"
+                          >
+                            <Navigation size={18} className={capturingGPS ? 'animate-pulse' : ''} />
+                            <span className="text-sm font-medium">
+                              {capturingGPS ? (gpsAccuracy ? `±${gpsAccuracy}m` : '...') : 'Min plats'}
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setShowMapPicker(true)}
+                            disabled={saving}
+                            className="flex-1 px-3 py-3.5 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 active:bg-white/20 flex items-center justify-center gap-2 touch-manipulation"
+                          >
+                            <MapIcon size={18} />
+                            <span className="text-sm font-medium">På karta</span>
+                          </button>
+                          {originalImageFile && (
+                            <button
+                              type="button"
+                              onClick={handleExtractGPSFromImage}
+                              disabled={saving || extractingGPS}
+                              className="flex-1 px-3 py-3.5 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 active:bg-white/20 flex items-center justify-center gap-2 touch-manipulation"
+                            >
+                              <ImageIcon size={18} className={extractingGPS ? 'animate-pulse' : ''} />
+                              <span className="text-sm font-medium">{extractingGPS ? '...' : 'Från bild'}</span>
+                            </button>
+                          )}
+                        </div>
+                        {lat !== null && lng !== null && (
+                          <div className="flex items-center justify-between text-xs text-gray-500 bg-white/5 p-2 rounded-lg">
+                            <span className="flex items-center gap-1"><MapPin size={12} /> {lat.toFixed(5)}, {lng.toFixed(5)}</span>
+                            <button
+                              type="button"
+                              onClick={() => { setLat(null); setLng(null); setFormTouched(true); }}
+                              className="text-red-400 hover:text-red-300"
+                            >
+                              Rensa
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
-                </div>
-              </div>
-            )}
 
-            {/* Image */}
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Bild</label>
-              <div className="space-y-3">
-                {imageUrl && (
-                  <div className="relative w-full h-40 rounded-xl overflow-hidden border border-white/10">
-                    <img src={imageUrl} alt="Preview" className="w-full h-full object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => { setImageUrl(''); setImageFocalPoint(null); setOriginalImageFile(null); setFormTouched(true); }}
-                      className="absolute top-2 right-2 bg-red-500/80 hover:bg-red-600 text-white p-2 rounded-lg"
-                    >
-                      <X size={16} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowFocalPointPicker(true)}
-                      className="absolute bottom-2 right-2 bg-black/60 hover:bg-black/80 text-white px-3 py-1.5 rounded-lg text-xs"
-                    >
-                      {imageFocalPoint ? 'Ändra fokus' : 'Justera'}
-                    </button>
+                  {/* Image */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Bild</label>
+                    <div className="space-y-3">
+                      {imageUrl && (
+                        <div className="relative w-full h-40 rounded-xl overflow-hidden border border-white/10">
+                          <img src={imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => { setImageUrl(''); setImageFocalPoint(null); setOriginalImageFile(null); setFormTouched(true); }}
+                            className="absolute top-2 right-2 bg-red-500/80 hover:bg-red-600 text-white p-2 rounded-lg"
+                          >
+                            <X size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setShowFocalPointPicker(true)}
+                            className="absolute bottom-2 right-2 bg-black/60 hover:bg-black/80 text-white px-3 py-1.5 rounded-lg text-xs"
+                          >
+                            {imageFocalPoint ? 'Ändra fokus' : 'Justera'}
+                          </button>
+                        </div>
+                      )}
+                      <div className="flex gap-2">
+                        <label className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 cursor-pointer flex items-center justify-center gap-2">
+                          <Upload size={18} />
+                          <span className="text-sm">{uploadingImage ? 'Laddar...' : 'Ladda upp'}</span>
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageFile}
+                            disabled={uploadingImage || saving}
+                            className="hidden"
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const url = prompt('Klistra in bild-URL:');
+                            if (url?.trim()) { setImageUrl(url.trim()); setFormTouched(true); }
+                          }}
+                          disabled={uploadingImage || saving}
+                          className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm"
+                        >
+                          URL
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                )}
-                <div className="flex gap-2">
-                  <label className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 cursor-pointer flex items-center justify-center gap-2">
-                    <Upload size={18} />
-                    <span className="text-sm">{uploadingImage ? 'Laddar...' : 'Ladda upp'}</span>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageFile}
-                      disabled={uploadingImage || saving}
-                      className="hidden"
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const url = prompt('Klistra in bild-URL:');
-                      if (url?.trim()) { setImageUrl(url.trim()); setFormTouched(true); }
-                    }}
-                    disabled={uploadingImage || saving}
-                    className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm"
-                  >
-                    URL
-                  </button>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Custom blocks */}
@@ -777,7 +821,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                 <button type="button" onClick={() => addCustomBlock('text')} disabled={saving} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
                   <FileText size={16} className="text-blue-400" /> Text
                 </button>
-                <button type="button" onClick={() => addCustomBlock('checklist')} disabled={saving} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
+                <button type="button" onClick={() => addCustomBlock('table', 'list')} disabled={saving} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
                   <CheckSquare size={16} className="text-green-400" /> Lista
                 </button>
                 <button type="button" onClick={() => addCustomBlock('links')} disabled={saving} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
@@ -810,9 +854,6 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
               {/* Secondary blocks - expandable */}
               {showMoreBlocks && (
                 <div className="flex gap-2 flex-wrap mt-2 pt-2 border-t border-white/5">
-                  <button type="button" onClick={() => addCustomBlock('todo')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
-                    <ClipboardList size={16} className="text-amber-400" /> Att göra
-                  </button>
                   <button type="button" onClick={() => addCustomBlock('contact')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
                     <Phone size={16} className="text-green-400" /> Kontakt
                   </button>
@@ -826,7 +867,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                     <Timer size={16} className="text-orange-400" /> Timers
                   </button>
                   <button type="button" onClick={() => addCustomBlock('poll')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
-                    <Vote size={16} className="text-indigo-400" /> Omröstning
+                    <BarChart3 size={16} className="text-indigo-400" /> Omröstning
                   </button>
                 </div>
               )}

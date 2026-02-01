@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Plus, Edit2, Trash2, Settings, ChevronDown, 
-  Share2, Users, UserMinus, Home, Link2, Table2, List, LayoutGrid, FileText, Copy, Vote
+  Share2, Users, UserMinus, Home, Link2, Table2, List, LayoutGrid, FileText, Copy, BarChart3
 } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -19,7 +19,29 @@ const Folder = ({ size = 24, ...props }) => (
 
 function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockUpdate, currentUser, userDisplayName, allObjects, onNavigate, categories, isAdmin, onShowOnMap, onShare, onLeaveShare }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [expandedBlocks, setExpandedBlocks] = useState(new Set([0])); // First block expanded by default
+  const [expandedBlocks, setExpandedBlocks] = useState(() => {
+    // Initialize expanded blocks based on defaultCollapsed setting
+    const blocks = object?.blocks || [];
+    const collapsibleTypes = ['text', 'poll'];
+    const expandedSet = new Set();
+    
+    blocks.forEach((block, index) => {
+      if (block.type === 'title') return; // Skip title
+      // For collapsible blocks, check defaultCollapsed
+      if (collapsibleTypes.includes(block.type)) {
+        if (!block.data?.defaultCollapsed) {
+          expandedSet.add(index);
+        }
+      } else if (block.type === 'links' && (block.data?.items?.length || 0) > 1) {
+        // Links are collapsible only if they have more than 1 link
+        if (!block.data?.defaultCollapsed) {
+          expandedSet.add(index);
+        }
+      }
+    });
+    
+    return expandedSet;
+  });
   const [showManageSection, setShowManageSection] = useState(false);
   const [childViewMode, setChildViewMode] = useState(() => {
     return localStorage.getItem('ourspots-child-view-mode') || 'grid';
@@ -274,11 +296,14 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                 const shouldShowLabel = customTitle || showBlockLabel;
                 // Links are collapsible only if they have more than 1 link
                 const linksItemCount = block.type === 'links' ? (block.data?.items?.length || 0) : 0;
-                // Tables are always collapsible
+                // Tables with useCollapse handle their own collapse (all modern table types)
                 const tableRowCount = block.type === 'table' ? (block.data?.rows?.length || 0) : 0;
+                const tableTemplate = block.type === 'table' ? (block.data?.template || 'tasks') : null;
+                // All table templates now use collapse internally
+                const tableHandlesOwnCollapse = block.type === 'table';
                 // Polls show option count
                 const pollOptionCount = block.type === 'poll' ? (block.data?.options?.length || 0) : 0;
-                const isCollapsible = ['text', 'checklist', 'todo', 'table', 'poll'].includes(block.type) || (block.type === 'links' && linksItemCount > 1);
+                const isCollapsible = ['text', 'poll'].includes(block.type) || (block.type === 'links' && linksItemCount > 1);
                 
                 // For location blocks, show delete if there are multiple AND user can edit
                 const locationBlocks = blocksToRender.filter(b => b.type === 'location' && !b.inherited);
@@ -313,23 +338,11 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                         </div>
                         <div className="flex items-center gap-2">
                           {block.type === 'text' && (
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-400">
                               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                               <polyline points="14 2 14 8 20 8"></polyline>
                               <line x1="16" y1="13" x2="8" y2="13"></line>
                               <line x1="16" y1="17" x2="8" y2="17"></line>
-                            </svg>
-                          )}
-                          {block.type === 'checklist' && (
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-400">
-                              <path d="M9 11l3 3L22 4"></path>
-                              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
-                            </svg>
-                          )}
-                          {block.type === 'todo' && (
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-400">
-                              <circle cx="12" cy="12" r="10"></circle>
-                              <polyline points="12 6 12 12 16 14"></polyline>
                             </svg>
                           )}
                           {block.type === 'links' && (
@@ -339,14 +352,12 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                             <Table2 size={14} className="text-amber-400" />
                           )}
                           {block.type === 'poll' && (
-                            <Vote size={14} className="text-indigo-400" />
+                            <BarChart3 size={14} className="text-indigo-400" />
                           )}
                           <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">
                             {customTitle ? customTitle : (
                               <>
                                 {block.type === 'text' && (showBlockLabel ? `Anteckning ${blockNumber}` : 'Anteckning')}
-                                {block.type === 'checklist' && (showBlockLabel ? `Checklista ${blockNumber}` : 'Checklista')}
-                                {block.type === 'todo' && (showBlockLabel ? `Att göra ${blockNumber}` : 'Att göra')}
                                 {block.type === 'links' && (showBlockLabel ? `Länkar ${blockNumber}` : `Länkar (${linksItemCount})`)}
                                 {block.type === 'table' && (showBlockLabel ? `Tabell ${blockNumber}` : `Tabell (${tableRowCount})`)}
                                 {block.type === 'poll' && (showBlockLabel ? `Omröstning ${blockNumber}` : `Omröstning (${pollOptionCount})`)}
