@@ -1,8 +1,8 @@
 ========================
-OurSpots – Manifest / Blueprint (Updated Feb 2, 2026)
+OurSpots – Manifest / Blueprint (Updated Feb 1, 2026)
 ========================
 
-🚀 STATUS: v2.7 - User Approval & Object Limits
+🚀 STATUS: v2.8 - Audio, Poll Suggestions & Countdown
 
 1. VISION
 - Mobilfokuserad app med premium dark theme
@@ -69,6 +69,17 @@ OurSpots – Manifest / Blueprint (Updated Feb 2, 2026)
 - Inställningspanel i användarhantering för admin ✅ NY v2.7
 - "Väntar"-filter för att se ogodkända användare ✅ NY v2.7
 - Delade objekt räknas inte mot användarens gräns ✅ NY v2.7
+- Audio-block för ljudfiler (admin-only, via GitHub Pages /media/) ✅ NY v2.8
+- Diskret ljudspelning vid platsblock (play-knapp med puls-animation) ✅ NY v2.8
+- Full ljudspelare för icke-diskret läge ✅ NY v2.8
+- Poll-förslag: viewers kan lägga till egna alternativ ✅ NY v2.8
+- Ta bort egna förslag i polls (säker radering) ✅ NY v2.8
+- "Föreslå"-knapp i poll-footer (kompakt UI) ✅ NY v2.8
+- Datumnedräkning på kort (badge) och i datumblock ✅ NY v2.8
+- Smart datumformattering (samma dag visas utan intervall) ✅ NY v2.8
+- Grid/list toggle visas vid 1+ barn (tidigare 2+) ✅ NY v2.8
+- "Lägg till barn"-knapptext (tydligare) ✅ NY v2.8
+- Dold extern-länk-ikon för enstaka länkar ✅ NY v2.8
 
 2. KATEGORI-SYSTEM
 - Dynamiska kategorier lagrade i Firebase ✅
@@ -126,7 +137,8 @@ Block:
 - type: "datetag", tags[{type: "year"|"range", year?, startDate?, endDate?}] ✅
 - type: "contact", phone, email, website ✅ NY
 - type: "timer", timers[{label, duration}] (med iOS-ljud och compact view) ✅ NY
-- type: "poll", title, pollType ("date"|"ranked"), options[{id, label, url?}], votes{emailKey: {displayName, votes: {optionId: "yes"|"no"|"maybe" | 1|2|3}}}, closed? ✅ UPPDATERAD v2.6
+- type: "poll", title, pollType ("date"|"ranked"), options[{id, label, url?, addedBy?}], votes{emailKey: {displayName, votes: {optionId: "yes"|"no"|"maybe" | 1|2|3}}}, closed?, allowSuggestions? ✅ UPPDATERAD v2.8
+- type: "audio", title, url, discrete? (diskret = play vid plats, annars full spelare) ✅ NY v2.8
 - Modulära block kan adderas senare
 
 Category: ✅ IMPLEMENTERAT

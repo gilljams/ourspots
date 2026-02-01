@@ -419,6 +419,50 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                               console.error('Error closing poll:', err);
                             }
                           } : undefined}
+                          onAddOption={block.type === 'poll' && block.data?.allowSuggestions ? async (label, addedBy) => {
+                            try {
+                              const updatedBlocks = [...object.blocks];
+                              const currentOptions = updatedBlocks[actualBlockIndex].data.options || [];
+                              const newOption = {
+                                id: Date.now().toString(),
+                                label,
+                                addedBy
+                              };
+                              updatedBlocks[actualBlockIndex] = {
+                                ...updatedBlocks[actualBlockIndex],
+                                data: { 
+                                  ...updatedBlocks[actualBlockIndex].data, 
+                                  options: [...currentOptions, newOption] 
+                                }
+                              };
+                              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
+                            } catch (err) {
+                              console.error('Error adding option:', err);
+                            }
+                          } : undefined}
+                          onRemoveOption={block.type === 'poll' && block.data?.allowSuggestions ? async (optionId) => {
+                            try {
+                              const updatedBlocks = [...object.blocks];
+                              const currentOptions = updatedBlocks[actualBlockIndex].data.options || [];
+                              // Only allow removing if user added this option - use same format as PollBlock
+                              const userKey = currentUser?.email ? currentUser.email.replace(/\./g, '_DOT_') : null;
+                              const optionToRemove = currentOptions.find(o => o.id === optionId);
+                              if (!optionToRemove || optionToRemove.addedBy !== userKey) {
+                                console.error('Cannot remove option: not owner');
+                                return;
+                              }
+                              updatedBlocks[actualBlockIndex] = {
+                                ...updatedBlocks[actualBlockIndex],
+                                data: { 
+                                  ...updatedBlocks[actualBlockIndex].data, 
+                                  options: currentOptions.filter(o => o.id !== optionId)
+                                }
+                              };
+                              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
+                            } catch (err) {
+                              console.error('Error removing option:', err);
+                            }
+                          } : undefined}
                         />
                       </div>
                     )}

@@ -1673,6 +1673,7 @@ function PollBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
   const [title, setTitle] = useState(block.title || '');
   const [pollType, setPollType] = useState(block.pollType || 'date');
   const [options, setOptions] = useState(block.options || []);
+  const [allowSuggestions, setAllowSuggestions] = useState(block.allowSuggestions || false);
   const [newOption, setNewOption] = useState('');
   const [newOptionUrl, setNewOptionUrl] = useState('');
   const [isExpanded, setIsExpanded] = useState(false);
@@ -1685,11 +1686,16 @@ function PollBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
   optionsRef.current = options;
   pollTypeRef.current = pollType;
 
-  const syncToParent = (newTitle, newOptions, newVotes = block.votes || {}, newPollType = pollType, newClosed = block.closed || false) => {
+  const syncToParent = (newTitle, newOptions, newVotes = block.votes || {}, newPollType = pollType, newClosed = block.closed || false, newAllowSuggestions = allowSuggestions) => {
     titleRef.current = newTitle;
     optionsRef.current = newOptions;
     pollTypeRef.current = newPollType;
-    onUpdate(block.id, { title: newTitle, options: newOptions, votes: newVotes, pollType: newPollType, closed: newClosed });
+    onUpdate(block.id, { title: newTitle, options: newOptions, votes: newVotes, pollType: newPollType, closed: newClosed, allowSuggestions: newAllowSuggestions });
+  };
+
+  const handleAllowSuggestionsChange = (value) => {
+    setAllowSuggestions(value);
+    syncToParent(title, options, block.votes || {}, pollType, block.closed || false, value);
   };
 
   const resetVotes = () => {
@@ -1984,6 +1990,25 @@ function PollBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
                 Nollställ ({voteCount})
               </button>
             )}
+          </div>
+
+          {/* Allow suggestions toggle */}
+          <div className="flex items-center justify-between pt-3 border-t border-white/5">
+            <div>
+              <span className="text-sm text-white">Tillåt förslag</span>
+              <p className="text-xs text-gray-500">Viewers kan lägga till alternativ</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleAllowSuggestionsChange(!allowSuggestions)}
+              className={`w-12 h-6 rounded-full transition-colors relative ${
+                allowSuggestions ? 'bg-indigo-500' : 'bg-white/20'
+              }`}
+            >
+              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${
+                allowSuggestions ? 'left-7' : 'left-1'
+              }`} />
+            </button>
           </div>
         </div>
       )}

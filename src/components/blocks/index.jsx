@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapPin, Map as MapIcon, X, Check, RotateCcw, ExternalLink, Calendar, Maximize2, Timer, Play, Pause, RotateCw, Vote, HelpCircle, Trophy, ChevronDown, Lock, Link } from 'lucide-react';
+import { MapPin, Map as MapIcon, X, Check, RotateCcw, ExternalLink, Calendar, Maximize2, Timer, Play, Pause, RotateCw, Vote, HelpCircle, Trophy, ChevronDown, Lock, Link, Plus } from 'lucide-react';
 import { getTransformedImageUrl, getFocalPointStyles } from '../../utils/imageUtils';
 import { getIconComponent } from '../../utils/iconHelpers';
 
@@ -891,6 +891,13 @@ export const DateTagBlock = ({ data }) => {
       const formatDate = (d) => d.toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' });
       const startYear = start.getFullYear();
       const endYear = end.getFullYear();
+      
+      // Check if same day
+      const sameDay = start.toDateString() === end.toDateString();
+      if (sameDay) {
+        return `${formatDate(start)} ${startYear}`;
+      }
+      
       if (startYear === endYear) {
         return `${formatDate(start)} – ${formatDate(end)} ${startYear}`;
       }
@@ -898,24 +905,55 @@ export const DateTagBlock = ({ data }) => {
     }
     return '';
   };
+  
+  // Calculate countdown for range dates
+  const getCountdown = (tag) => {
+    if (tag.type !== 'range' || !tag.start) return null;
+    
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const start = new Date(tag.start);
+    start.setHours(0, 0, 0, 0);
+    
+    const diffTime = start - now;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) return null; // Past
+    if (diffDays === 0) return { text: 'Idag!', highlight: true };
+    if (diffDays === 1) return { text: 'Imorgon', highlight: true };
+    if (diffDays <= 7) return { text: `om ${diffDays} dagar`, highlight: false };
+    const weeks = Math.ceil(diffDays / 7);
+    if (diffDays <= 60) return { text: `om ${weeks} ${weeks === 1 ? 'vecka' : 'veckor'}`, highlight: false };
+    return null;
+  };
 
   if (tags.length === 0) return null;
 
   return (
     <div className="flex flex-wrap gap-2">
-      {tags.map((tag, i) => (
-        <div 
-          key={i}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium ${
-            tag.type === 'year' 
-              ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' 
-              : 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
-          }`}
-        >
-          <Calendar size={14} />
-          <span>{formatTag(tag)}</span>
-        </div>
-      ))}
+      {tags.map((tag, i) => {
+        const countdown = getCountdown(tag);
+        return (
+          <div 
+            key={i}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium ${
+              tag.type === 'year' 
+                ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' 
+                : countdown?.highlight
+                  ? 'bg-amber-500/20 text-amber-200 border border-amber-500/30'
+                  : 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+            }`}
+          >
+            <Calendar size={14} />
+            <span>{formatTag(tag)}</span>
+            {countdown && (
+              <span className={`text-xs ${countdown.highlight ? 'text-amber-300' : 'text-purple-400'}`}>
+                · {countdown.text}
+              </span>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 };
@@ -1172,13 +1210,16 @@ export const TimerBlock = ({ data }) => {
 };
 
 // Poll block - allows viewers to vote
-export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayName = '', onClosePoll, canEdit = false }) => {
+export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayName = '', onClosePoll, canEdit = false, onAddOption, onRemoveOption }) => {
   const [showDetails, setShowDetails] = useState(false);
+  const [newSuggestion, setNewSuggestion] = useState('');
+  const [showSuggestionInput, setShowSuggestionInput] = useState(false);
   const options = data.options || [];
   const votes = data.votes || {};
   const title = data.title || 'Omröstning';
   const pollType = data.pollType || 'date'; // 'date' or 'ranked'
   const isClosed = data.closed || false;
+  const allowSuggestions = data.allowSuggestions || false;
   
   // Get current user's email key
   const getUserEmailKey = (email) => {
@@ -1516,6 +1557,21 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
                         <RankButton optionId={option.id} rank={3} />
                       </div>
                     )}
+                    
+                    {/* Remove button space - always reserve space for alignment */}
+                    {!isClosed && allowSuggestions && onRemoveOption && (
+                      <div className="w-6 flex-shrink-0 flex justify-center">
+                        {option.addedBy === currentUserKey && (
+                          <button
+                            onClick={() => onRemoveOption(option.id)}
+                            className="p-1 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                            title="Ta bort ditt förslag"
+                          >
+                            <X size={14} />
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -1585,9 +1641,10 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
             </div>
           )}
           
-          {/* Footer with toggle, close button and summary */}
-          <div className="flex items-center justify-between pt-1">
+          {/* Footer with toggle, add suggestion, close button - all on one row */}
+          <div className="flex items-center justify-between pt-2 flex-wrap gap-2">
             <div className="flex items-center gap-3">
+              {/* Show names toggle */}
               {participants.length > 0 || (pollType === 'ranked' && Object.keys(votes).length > 0) ? (
                 <button
                   onClick={() => setShowDetails(!showDetails)}
@@ -1598,6 +1655,64 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
                 </button>
               ) : (
                 <span className="text-xs text-gray-500">Ingen har röstat än</span>
+              )}
+              
+              {/* Add suggestion - inline in footer */}
+              {allowSuggestions && !isClosed && currentUserKey && onAddOption && (
+                showSuggestionInput ? (
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="text"
+                      value={newSuggestion}
+                      onChange={(e) => setNewSuggestion(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && newSuggestion.trim()) {
+                          onAddOption(newSuggestion.trim(), currentUserKey);
+                          setNewSuggestion('');
+                          setShowSuggestionInput(false);
+                        } else if (e.key === 'Escape') {
+                          setNewSuggestion('');
+                          setShowSuggestionInput(false);
+                        }
+                      }}
+                      placeholder="Förslag..."
+                      className="w-24 px-2 py-0.5 text-xs bg-white/10 border border-white/20 rounded focus:outline-none focus:border-blue-500 text-white placeholder-gray-500"
+                      autoFocus
+                    />
+                    <button
+                      onClick={() => {
+                        if (newSuggestion.trim()) {
+                          onAddOption(newSuggestion.trim(), currentUserKey);
+                          setNewSuggestion('');
+                          setShowSuggestionInput(false);
+                        }
+                      }}
+                      disabled={!newSuggestion.trim()}
+                      className="p-0.5 text-green-400 hover:bg-green-500/20 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Lägg till"
+                    >
+                      <Check size={14} />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setNewSuggestion('');
+                        setShowSuggestionInput(false);
+                      }}
+                      className="p-0.5 text-gray-400 hover:bg-white/10 rounded"
+                      title="Avbryt"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setShowSuggestionInput(true)}
+                    className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                  >
+                    <Plus size={12} />
+                    Föreslå
+                  </button>
+                )
               )}
             </div>
             

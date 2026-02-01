@@ -104,6 +104,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             options: b.data.options || [],
             votes: isDuplicate ? {} : (b.data.votes || {}), // Clear votes when duplicating
             closed: isDuplicate ? false : (b.data.closed || false), // Reset closed when duplicating
+            allowSuggestions: b.data.allowSuggestions || false,
             defaultCollapsed: b.data.defaultCollapsed || false
           };
         }
@@ -449,6 +450,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
               options: block.options,
               votes: block.votes || {},
               closed: block.closed || false,
+              allowSuggestions: block.allowSuggestions || false,
               defaultCollapsed: block.defaultCollapsed || false
             } 
           });

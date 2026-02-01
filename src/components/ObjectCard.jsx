@@ -1,7 +1,59 @@
 import React from 'react';
-import { Star, Share2, Users, Folder, MapPin, Map as MapIcon, Navigation, Home, CornerDownRight, ChevronRight } from 'lucide-react';
+import { Star, Share2, Users, Folder, MapPin, Map as MapIcon, Navigation, Home, CornerDownRight, ChevronRight, Clock } from 'lucide-react';
 import { getTransformedImageUrl, getFocalPointStyles } from '../utils/imageUtils';
 import { getIconComponent, PREDEFINED_ICONS } from '../utils/iconHelpers';
+
+// Helper function to calculate countdown text
+const getCountdownText = (targetDate) => {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const target = new Date(targetDate);
+  target.setHours(0, 0, 0, 0);
+  
+  const diffTime = target - now;
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays < 0) return null; // Past date
+  if (diffDays === 0) return { text: 'Idag!', highlight: true };
+  if (diffDays === 1) return { text: 'Imorgon', highlight: true };
+  if (diffDays <= 7) return { text: `om ${diffDays} dagar`, highlight: false };
+  if (diffDays <= 14) return { text: `om ${Math.ceil(diffDays / 7)} veckor`, highlight: false };
+  if (diffDays <= 60) return { text: `om ${Math.ceil(diffDays / 7)} veckor`, highlight: false };
+  return null; // Too far in the future
+};
+
+// Get nearest future date from dateTag blocks
+const getNearestFutureDate = (blocks) => {
+  const dateTagBlocks = blocks.filter(b => b.type === 'dateTag');
+  if (dateTagBlocks.length === 0) return null;
+  
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  
+  let nearestDate = null;
+  let nearestDiff = Infinity;
+  
+  for (const block of dateTagBlocks) {
+    const tags = block.data?.tags || [];
+    for (const tag of tags) {
+      let dateToCheck = null;
+      if (tag.type === 'range' && tag.start) {
+        dateToCheck = new Date(tag.start);
+      }
+      // Skip year-only tags
+      if (dateToCheck) {
+        dateToCheck.setHours(0, 0, 0, 0);
+        const diff = dateToCheck - now;
+        if (diff >= 0 && diff < nearestDiff) {
+          nearestDiff = diff;
+          nearestDate = dateToCheck;
+        }
+      }
+    }
+  }
+  
+  return nearestDate;
+};
 
 function ObjectCard({ object, onClick, currentUser, childCount, distance, categories, isFavorite, onToggleFavorite, onNavigate, onShare, isOrphanChild, parentChain, showAsChild }) {
   // Find category to get icon
@@ -11,6 +63,10 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
   const imageBlock = object.blocks.find(b => b.type === 'image');
   const locationBlock = object.blocks.find(b => b.type === 'location');
   const textBlock = object.blocks.find(b => b.type === 'text');
+  
+  // Get countdown for nearest future date
+  const nearestDate = getNearestFutureDate(object.blocks || []);
+  const countdown = nearestDate ? getCountdownText(nearestDate) : null;
   const isOwner = currentUser && object.ownerId === currentUser.uid;
   const isSharedWithMe = object.isSharedWithMe;
   const myShareRole = isSharedWithMe ? object.shares?.[currentUser?.email?.toLowerCase()]?.role : null;
@@ -108,6 +164,17 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               style={getFocalPointStyles(imageBlock.data.focalPoint)}
             />
+            {/* Countdown badge at bottom left */}
+            {countdown && (
+              <div className={`absolute bottom-2 left-2 z-10 backdrop-blur-sm text-xs px-2 py-1 rounded-full flex items-center gap-1 ${
+                countdown.highlight 
+                  ? 'bg-amber-500/30 text-amber-200 border border-amber-500/40' 
+                  : 'bg-gray-900/70 text-gray-300 border border-white/10'
+              }`}>
+                <Clock size={11} />
+                {countdown.text}
+              </div>
+            )}
           </div>
         </>
       ) : null}
