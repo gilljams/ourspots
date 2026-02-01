@@ -1468,7 +1468,6 @@ function App() {
 
       {showUsersAdmin && (
         <UsersAdminModal
-          objects={objects}
           currentUserId={user?.uid}
           onClose={() => setShowUsersAdmin(false)}
         />

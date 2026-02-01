@@ -21,21 +21,22 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [expandedBlocks, setExpandedBlocks] = useState(() => {
     // Initialize expanded blocks based on defaultCollapsed setting
+    // We need to use the FILTERED index (excluding title) since that's what rendering uses
     const blocks = object?.blocks || [];
+    const filteredBlocks = blocks.filter(b => b.type !== 'title');
     const collapsibleTypes = ['text', 'poll'];
     const expandedSet = new Set();
     
-    blocks.forEach((block, index) => {
-      if (block.type === 'title') return; // Skip title
+    filteredBlocks.forEach((block, filteredIndex) => {
       // For collapsible blocks, check defaultCollapsed
       if (collapsibleTypes.includes(block.type)) {
         if (!block.data?.defaultCollapsed) {
-          expandedSet.add(index);
+          expandedSet.add(filteredIndex);
         }
       } else if (block.type === 'links' && (block.data?.items?.length || 0) > 1) {
         // Links are collapsible only if they have more than 1 link
         if (!block.data?.defaultCollapsed) {
-          expandedSet.add(index);
+          expandedSet.add(filteredIndex);
         }
       }
     });
@@ -386,6 +387,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                           currentUser={currentUser}
                           userDisplayName={userDisplayName}
                           shares={object.shares || {}}
+                          canEdit={canEdit}
                           onVote={block.type === 'poll' ? async (newVotes) => {
                             try {
                               const updatedBlocks = [...object.blocks];
@@ -396,6 +398,18 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                               await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
                             } catch (err) {
                               console.error('Error saving vote:', err);
+                            }
+                          } : undefined}
+                          onClosePoll={block.type === 'poll' && canEdit ? async () => {
+                            try {
+                              const updatedBlocks = [...object.blocks];
+                              updatedBlocks[actualBlockIndex] = {
+                                ...updatedBlocks[actualBlockIndex],
+                                data: { ...updatedBlocks[actualBlockIndex].data, closed: true }
+                              };
+                              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
+                            } catch (err) {
+                              console.error('Error closing poll:', err);
                             }
                           } : undefined}
                         />

@@ -100,8 +100,10 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             id: Math.random().toString(36).substr(2, 9),
             type: 'poll',
             title: b.data.title || '',
+            pollType: b.data.pollType || 'date',
             options: b.data.options || [],
             votes: isDuplicate ? {} : (b.data.votes || {}), // Clear votes when duplicating
+            closed: isDuplicate ? false : (b.data.closed || false), // Reset closed when duplicating
             defaultCollapsed: b.data.defaultCollapsed || false
           };
         }
@@ -434,8 +436,10 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             type: 'poll', 
             data: { 
               title: (block.title || 'Omröstning').trim(),
+              pollType: block.pollType || 'date',
               options: block.options,
               votes: block.votes || {},
+              closed: block.closed || false,
               defaultCollapsed: block.defaultCollapsed || false
             } 
           });
@@ -472,8 +476,10 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
       newBlock.timers = [];
     }
     if (type === 'poll') {
+      newBlock.pollType = 'date';
       newBlock.options = [];
       newBlock.votes = {};
+      newBlock.closed = false;
     }
     setCustomBlocks(prev => [...prev, newBlock]);
     setFormTouched(true);

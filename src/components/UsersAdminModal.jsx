@@ -3,8 +3,9 @@ import { Users, Shield, ShieldOff, Ban, CheckCircle, Search, X, ChevronDown, Mai
 import { collection, onSnapshot, doc, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 
-function UsersAdminModal({ objects, currentUserId, onClose }) {
+function UsersAdminModal({ currentUserId, onClose }) {
   const [users, setUsers] = useState([]);
+  const [allObjects, setAllObjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all'); // all, admin, blocked, active
@@ -15,11 +16,23 @@ function UsersAdminModal({ objects, currentUserId, onClose }) {
   useEffect(() => {
     const usersRef = collection(db, 'users');
     const unsub = onSnapshot(usersRef, (snap) => {
-      const allUsers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      setUsers(allUsers);
-      setLoading(false);
+      const fetchedUsers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setUsers(fetchedUsers);
     }, (error) => {
       console.error('Error loading users:', error);
+    });
+    return () => unsub();
+  }, []);
+  
+  // Fetch ALL objects (admin needs to see all for stats)
+  useEffect(() => {
+    const objectsRef = collection(db, 'objects');
+    const unsub = onSnapshot(objectsRef, (snap) => {
+      const fetchedObjects = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setAllObjects(fetchedObjects);
+      setLoading(false);
+    }, (error) => {
+      console.error('Error loading objects:', error);
       setLoading(false);
     });
     return () => unsub();
@@ -27,9 +40,9 @@ function UsersAdminModal({ objects, currentUserId, onClose }) {
   
   // Calculate stats for each user
   const usersWithStats = users.map(user => {
-    const userObjects = objects.filter(o => o.ownerId === user.id);
+    const userObjects = allObjects.filter(o => o.ownerId === user.id);
     const sharedToOthers = userObjects.filter(o => o.sharedWithEmails?.length > 0).length;
-    const sharedWithUser = objects.filter(o => 
+    const sharedWithUser = allObjects.filter(o => 
       o.ownerId !== user.id && 
       o.sharedWithEmails?.includes(user.email?.toLowerCase())
     ).length;

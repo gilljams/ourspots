@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapPin, Map as MapIcon, X, Check, RotateCcw, ExternalLink, Calendar, Maximize2, Timer, Play, Pause, RotateCw, Vote, HelpCircle, Trophy, ChevronDown } from 'lucide-react';
+import { MapPin, Map as MapIcon, X, Check, RotateCcw, ExternalLink, Calendar, Maximize2, Timer, Play, Pause, RotateCw, Vote, HelpCircle, Trophy, ChevronDown, Lock, Link } from 'lucide-react';
 import { getTransformedImageUrl, getFocalPointStyles } from '../../utils/imageUtils';
 import { getIconComponent } from '../../utils/iconHelpers';
 
@@ -1108,11 +1108,13 @@ export const TimerBlock = ({ data }) => {
 };
 
 // Poll block - allows viewers to vote
-export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayName = '' }) => {
+export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayName = '', onClosePoll, canEdit = false }) => {
   const [showDetails, setShowDetails] = useState(false);
   const options = data.options || [];
   const votes = data.votes || {};
   const title = data.title || 'Omröstning';
+  const pollType = data.pollType || 'date'; // 'date' or 'ranked'
+  const isClosed = data.closed || false;
   
   // Get current user's email key
   const getUserEmailKey = (email) => {
@@ -1151,10 +1153,9 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
     return participants;
   };
   
-  const participants = getParticipants();
-  
   // Calculate results for each option
   const getOptionResults = (optionId) => {
+    const participants = getParticipants();
     let yes = 0, no = 0, maybe = 0;
     const voterDetails = { yes: [], no: [], maybe: [] };
     
@@ -1194,7 +1195,7 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
   };
   
   const handleVote = (optionId, voteType) => {
-    if (!currentUserKey || !onVote) return;
+    if (!currentUserKey || !onVote || isClosed) return;
     
     // Toggle: if same vote, remove it
     const currentVote = currentUserVotes[optionId];
@@ -1219,24 +1220,150 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
     onVote(newVotes);
   };
   
+  // Handle ranked voting (1st, 2nd, 3rd place)
+  const handleRankVote = (optionId, rank) => {
+    if (!currentUserKey || !onVote || isClosed) return;
+    
+    const newUserVotes = { ...currentUserVotes };
+    
+    // Check if this option already has this rank
+    if (newUserVotes[optionId] === rank) {
+      // Toggle off
+      delete newUserVotes[optionId];
+    } else {
+      // Remove this rank from any other option first
+      Object.keys(newUserVotes).forEach(key => {
+        if (newUserVotes[key] === rank) {
+          delete newUserVotes[key];
+        }
+      });
+      // Assign rank to this option
+      newUserVotes[optionId] = rank;
+    }
+    
+    const effectiveDisplayName = userDisplayName || currentUser?.email?.split('@')[0] || '';
+    const newVotes = {
+      ...votes,
+      [currentUserKey]: {
+        displayName: effectiveDisplayName,
+        votes: newUserVotes
+      }
+    };
+    onVote(newVotes);
+  };
+  
+  // Calculate ranked scores (1st=3p, 2nd=2p, 3rd=1p)
+  const getRankedScores = () => {
+    const scores = {};
+    options.forEach(opt => {
+      scores[opt.id] = { first: 0, second: 0, third: 0, total: 0, voters: { first: [], second: [], third: [] } };
+    });
+    
+    Object.entries(votes).forEach(([emailKey, userData]) => {
+      const userVotes = userData.votes || (typeof userData === 'object' && !userData.displayName ? userData : {});
+      const displayName = userData.displayName || emailKey.replace(/_DOT_/g, '.').split('@')[0];
+      
+      Object.entries(userVotes).forEach(([optionId, rank]) => {
+        if (scores[optionId]) {
+          if (rank === 1) {
+            scores[optionId].first++;
+            scores[optionId].total += 3;
+            scores[optionId].voters.first.push(displayName);
+          } else if (rank === 2) {
+            scores[optionId].second++;
+            scores[optionId].total += 2;
+            scores[optionId].voters.second.push(displayName);
+          } else if (rank === 3) {
+            scores[optionId].third++;
+            scores[optionId].total += 1;
+            scores[optionId].voters.third.push(displayName);
+          }
+        }
+      });
+    });
+    
+    return scores;
+  };
+  
   const bestOptions = getBestOptions();
   const bestOptionIds = new Set(bestOptions.map(b => b.option.id));
+  const rankedScores = pollType === 'ranked' ? getRankedScores() : null;
   
-  // Compact vote button component
+  // Sort options by score if closed (for ranked polls)
+  // Tiebreaker: total points > gold count > silver count > bronze count
+  const compareRankedOptions = (a, b) => {
+    const scoreA = rankedScores[a.id] || { total: 0, first: 0, second: 0, third: 0 };
+    const scoreB = rankedScores[b.id] || { total: 0, first: 0, second: 0, third: 0 };
+    // First by total points
+    if (scoreB.total !== scoreA.total) return scoreB.total - scoreA.total;
+    // Then by gold medals
+    if (scoreB.first !== scoreA.first) return scoreB.first - scoreA.first;
+    // Then by silver medals
+    if (scoreB.second !== scoreA.second) return scoreB.second - scoreA.second;
+    // Then by bronze medals
+    return scoreB.third - scoreA.third;
+  };
+  
+  const sortedOptions = pollType === 'ranked' && isClosed && rankedScores
+    ? [...options].sort(compareRankedOptions)
+    : options;
+  
+  // Get winner(s) for ranked poll (considering tiebreaker)
+  const getWinners = () => {
+    if (!rankedScores || options.length === 0) return new Set();
+    const sorted = [...options].sort(compareRankedOptions);
+    const topScore = rankedScores[sorted[0]?.id];
+    if (!topScore || topScore.total === 0) return new Set();
+    // Find all with same score AND same medal counts
+    return new Set(sorted.filter(opt => {
+      const s = rankedScores[opt.id];
+      return s && s.total === topScore.total && s.first === topScore.first && 
+             s.second === topScore.second && s.third === topScore.third;
+    }).map(opt => opt.id));
+  };
+  const rankedWinners = pollType === 'ranked' ? getWinners() : new Set();
+  
+  // Compact vote button component (for date poll)
   const VoteButton = ({ optionId, voteType, icon, activeClass }) => {
     const isActive = currentUserVotes[optionId] === voteType;
+    const isDisabled = !currentUserKey || !onVote || isClosed;
     return (
       <button
         onClick={() => handleVote(optionId, voteType)}
-        disabled={!currentUserKey || !onVote}
+        disabled={isDisabled}
         className={`w-8 h-8 rounded-md flex items-center justify-center transition-all ${
           isActive 
             ? activeClass
-            : `bg-white/5 text-gray-500 hover:bg-white/10 ${!currentUserKey ? 'opacity-50 cursor-not-allowed' : ''}`
+            : `bg-white/5 text-gray-500 hover:bg-white/10 ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`
         }`}
         title={voteType === 'yes' ? 'Kan' : voteType === 'no' ? 'Kan inte' : 'Kanske'}
       >
         {icon}
+      </button>
+    );
+  };
+  
+  // Rank button component (for ranked poll)
+  const RankButton = ({ optionId, rank }) => {
+    const isActive = currentUserVotes[optionId] === rank;
+    const isDisabled = !currentUserKey || !onVote || isClosed;
+    const colors = {
+      1: { active: 'bg-amber-500/30 text-amber-400 ring-1 ring-amber-500/50', label: '🥇' },
+      2: { active: 'bg-gray-400/30 text-gray-300 ring-1 ring-gray-400/50', label: '🥈' },
+      3: { active: 'bg-orange-700/30 text-orange-400 ring-1 ring-orange-600/50', label: '🥉' }
+    };
+    return (
+      <button
+        onClick={() => handleRankVote(optionId, rank)}
+        disabled={isDisabled}
+        className={`w-8 h-8 rounded-md flex items-center justify-center transition-all text-sm ${
+          isActive 
+            ? colors[rank].active
+            : `bg-white/5 text-gray-500 hover:bg-white/10 ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`
+        }`}
+        title={rank === 1 ? '1:a (3p)' : rank === 2 ? '2:a (2p)' : '3:a (1p)'}
+      >
+        {colors[rank].label}
       </button>
     );
   };
@@ -1249,85 +1376,186 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
     );
   }
   
+  const participants = getParticipants();
+  
   return (
     <div className="space-y-2">
-      {/* Options with voting */}
-      {options.map((option) => {
-        const results = getOptionResults(option.id);
-        const isBest = bestOptionIds.has(option.id) && participants.length > 0 && results.yes > 0;
-        const isTied = bestOptions.length > 1 && isBest;
-        
-        return (
-          <div 
-            key={option.id} 
-            className={`flex items-center gap-3 p-2 rounded-lg ${isBest ? 'bg-white/10' : 'bg-white/5'}`}
-          >
-            {/* Best indicator - always reserve space for consistent alignment */}
-            <div className="w-3.5 flex-shrink-0 flex items-center justify-center">
-              {isBest && (
-                <Trophy size={14} className={isTied ? 'text-amber-400/60' : 'text-amber-400'} />
+      {/* Closed badge if poll is closed */}
+      {isClosed && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs px-2 py-0.5 rounded bg-gray-600/50 text-gray-400 flex items-center gap-1">
+            <Lock size={10} />
+            Avslutad
+          </span>
+        </div>
+      )}
+          {/* Options with voting */}
+          {pollType === 'ranked' ? (
+            // Ranked poll view
+            <div className="space-y-2">
+              {sortedOptions.map((option, idx) => {
+                const score = rankedScores?.[option.id] || { first: 0, second: 0, third: 0, total: 0, voters: { first: [], second: [], third: [] } };
+                const isWinner = isClosed && rankedWinners.has(option.id) && score.total > 0;
+                
+                return (
+                  <div 
+                    key={option.id} 
+                    className={`flex items-center gap-3 p-2 rounded-lg ${isWinner ? 'bg-amber-500/10 ring-1 ring-amber-500/30' : 'bg-white/5'}`}
+                  >
+                    {/* Winner/position indicator */}
+                    <div className="w-5 flex-shrink-0 flex items-center justify-center">
+                      {isWinner ? (
+                        <Trophy size={14} className="text-amber-400" />
+                      ) : isClosed ? (
+                        <span className="text-xs text-gray-500">{idx + 1}.</span>
+                      ) : null}
+                    </div>
+                    
+                    {/* Option label with optional URL */}
+                    <div className="flex-1 min-w-0">
+                      {option.url ? (
+                        <a 
+                          href={option.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className={`text-sm truncate flex items-center gap-1.5 hover:underline ${isWinner ? 'text-amber-100 font-medium' : 'text-blue-400'}`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Link size={12} className="flex-shrink-0" />
+                          <span className="truncate">{option.label}</span>
+                        </a>
+                      ) : (
+                        <span className={`text-sm truncate block ${isWinner ? 'text-white font-medium' : 'text-gray-300'}`}>
+                          {option.label}
+                        </span>
+                      )}
+                      {/* Score display */}
+                      {(score.total > 0 || isClosed) && (
+                        <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
+                          <span className="font-medium">{score.total}p</span>
+                          {showDetails && score.total > 0 && (
+                            <span className="truncate">
+                              {score.first > 0 && `🥇${score.voters.first.join(', ')}`}
+                              {score.second > 0 && ` 🥈${score.voters.second.join(', ')}`}
+                              {score.third > 0 && ` 🥉${score.voters.third.join(', ')}`}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Rank buttons (only if not closed) */}
+                    {!isClosed && (
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <RankButton optionId={option.id} rank={1} />
+                        <RankButton optionId={option.id} rank={2} />
+                        <RankButton optionId={option.id} rank={3} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            // Date poll view (original)
+            <div className="space-y-2">
+              {sortedOptions.map((option) => {
+                const results = getOptionResults(option.id);
+                const isBest = bestOptionIds.has(option.id) && participants.length > 0 && results.yes > 0;
+                const isTied = bestOptions.length > 1 && isBest;
+                
+                return (
+                  <div 
+                    key={option.id} 
+                    className={`flex items-center gap-3 p-2 rounded-lg ${isBest ? 'bg-white/10' : 'bg-white/5'}`}
+                  >
+                    {/* Best indicator - always reserve space for consistent alignment */}
+                    <div className="w-3.5 flex-shrink-0 flex items-center justify-center">
+                      {isBest && (
+                        <Trophy size={14} className={isTied ? 'text-amber-400/60' : 'text-amber-400'} />
+                      )}
+                    </div>
+                    
+                    {/* Option label and results */}
+                    <div className="flex-1 min-w-0">
+                      <span className={`text-sm truncate block ${isBest ? 'text-white font-medium' : 'text-gray-300'}`}>
+                        {option.label}
+                      </span>
+                      {/* Compact results */}
+                      {participants.length > 0 && (
+                        <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
+                          <span>{results.yes}/{participants.length}</span>
+                          {showDetails && results.yes > 0 && (
+                            <span className="truncate">({results.voterDetails.yes.join(', ')})</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Vote buttons (only if not closed) */}
+                    {!isClosed && (
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <VoteButton 
+                          optionId={option.id} 
+                          voteType="yes" 
+                          icon={<Check size={14} />} 
+                          activeClass="bg-green-500/20 text-green-400"
+                        />
+                        <VoteButton 
+                          optionId={option.id} 
+                          voteType="maybe" 
+                          icon={<HelpCircle size={14} />} 
+                          activeClass="bg-amber-500/20 text-amber-400"
+                        />
+                        <VoteButton 
+                          optionId={option.id} 
+                          voteType="no" 
+                          icon={<X size={14} />} 
+                          activeClass="bg-red-500/20 text-red-400"
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          
+          {/* Footer with toggle, close button and summary */}
+          <div className="flex items-center justify-between pt-1">
+            <div className="flex items-center gap-3">
+              {participants.length > 0 || (pollType === 'ranked' && Object.keys(votes).length > 0) ? (
+                <button
+                  onClick={() => setShowDetails(!showDetails)}
+                  className="text-xs text-gray-500 hover:text-gray-400 flex items-center gap-1"
+                >
+                  <ChevronDown size={12} className={`transition-transform ${showDetails ? 'rotate-180' : ''}`} />
+                  {showDetails ? 'Kompakt' : 'Visa namn'}
+                </button>
+              ) : (
+                <span className="text-xs text-gray-500">Ingen har röstat än</span>
               )}
             </div>
             
-            {/* Option label and results */}
-            <div className="flex-1 min-w-0">
-              <span className={`text-sm truncate block ${isBest ? 'text-white font-medium' : 'text-gray-300'}`}>
-                {option.label}
-              </span>
-              {/* Compact results */}
-              {participants.length > 0 && (
-                <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
-                  <span>{results.yes}/{participants.length}</span>
-                  {showDetails && results.yes > 0 && (
-                    <span className="truncate">({results.voterDetails.yes.join(', ')})</span>
-                  )}
-                </div>
+            <div className="flex items-center gap-2">
+              {!currentUserKey && !isClosed && (
+                <span className="text-xs text-gray-500 italic">Logga in för att rösta</span>
               )}
-            </div>
-            
-            {/* Vote buttons */}
-            <div className="flex items-center gap-1 flex-shrink-0">
-              <VoteButton 
-                optionId={option.id} 
-                voteType="yes" 
-                icon={<Check size={14} />} 
-                activeClass="bg-green-500/20 text-green-400"
-              />
-              <VoteButton 
-                optionId={option.id} 
-                voteType="maybe" 
-                icon={<HelpCircle size={14} />} 
-                activeClass="bg-amber-500/20 text-amber-400"
-              />
-              <VoteButton 
-                optionId={option.id} 
-                voteType="no" 
-                icon={<X size={14} />} 
-                activeClass="bg-red-500/20 text-red-400"
-              />
+              {canEdit && !isClosed && onClosePoll && (
+                <button
+                  onClick={() => {
+                    if (window.confirm('Vill du avsluta omröstningen? Ingen kan rösta efteråt.')) {
+                      onClosePoll();
+                    }
+                  }}
+                  className="text-xs text-amber-500 hover:text-amber-400 flex items-center gap-1"
+                >
+                  <Lock size={10} />
+                  Avsluta
+                </button>
+              )}
             </div>
           </div>
-        );
-      })}
-      
-      {/* Footer with toggle and summary */}
-      <div className="flex items-center justify-between pt-1">
-        {participants.length > 0 ? (
-          <button
-            onClick={() => setShowDetails(!showDetails)}
-            className="text-xs text-gray-500 hover:text-gray-400 flex items-center gap-1"
-          >
-            <ChevronDown size={12} className={`transition-transform ${showDetails ? 'rotate-180' : ''}`} />
-            {showDetails ? 'Kompakt' : 'Visa namn'}
-          </button>
-        ) : (
-          <span className="text-xs text-gray-500">Ingen har röstat än</span>
-        )}
-        
-        {!currentUserKey && (
-          <span className="text-xs text-gray-500 italic">Logga in för att rösta</span>
-        )}
-      </div>
     </div>
   );
 };

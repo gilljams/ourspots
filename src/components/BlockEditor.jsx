@@ -1671,26 +1671,42 @@ function TimerBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
 // Poll block editor component - for admin to create poll options
 function PollBlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }) {
   const [title, setTitle] = useState(block.title || '');
+  const [pollType, setPollType] = useState(block.pollType || 'date');
   const [options, setOptions] = useState(block.options || []);
   const [newOption, setNewOption] = useState('');
+  const [newOptionUrl, setNewOptionUrl] = useState('');
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Use refs to always have latest values
   const titleRef = React.useRef(title);
   const optionsRef = React.useRef(options);
+  const pollTypeRef = React.useRef(pollType);
   titleRef.current = title;
   optionsRef.current = options;
+  pollTypeRef.current = pollType;
 
-  const syncToParent = (newTitle, newOptions, newVotes = block.votes || {}) => {
+  const syncToParent = (newTitle, newOptions, newVotes = block.votes || {}, newPollType = pollType, newClosed = block.closed || false) => {
     titleRef.current = newTitle;
     optionsRef.current = newOptions;
-    onUpdate(block.id, { title: newTitle, options: newOptions, votes: newVotes });
+    pollTypeRef.current = newPollType;
+    onUpdate(block.id, { title: newTitle, options: newOptions, votes: newVotes, pollType: newPollType, closed: newClosed });
   };
 
   const resetVotes = () => {
     if (window.confirm('Vill du nollställa alla röster? Detta kan inte ångras.')) {
-      syncToParent(title, options, {});
+      syncToParent(title, options, {}, pollType, false);
     }
+  };
+
+  const handlePollTypeChange = (newType) => {
+    if (voteCount > 0) {
+      if (!window.confirm('Att byta typ nollställer alla röster. Fortsätta?')) {
+        return;
+      }
+    }
+    setPollType(newType);
+    // Reset votes when changing type as vote formats differ
+    syncToParent(title, options, {}, newType, false);
   };
 
   const voteCount = Object.keys(block.votes || {}).length;
@@ -1699,17 +1715,84 @@ function PollBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
     if (!newOption.trim()) return;
     const newOpt = {
       id: Math.random().toString(36).substr(2, 9),
-      label: newOption.trim()
+      label: newOption.trim(),
+      ...(pollType === 'ranked' && newOptionUrl.trim() ? { url: newOptionUrl.trim() } : {})
     };
     const newOptions = [...options, newOpt];
     setOptions(newOptions);
     setNewOption('');
+    setNewOptionUrl('');
     syncToParent(title, newOptions);
+    
+    // Focus back on new option input after adding
+    setTimeout(() => {
+      const input = document.querySelector('[data-poll-new-option]');
+      if (input) input.focus();
+    }, 10);
+  };
+  
+  // Handle Enter key navigation like in table blocks
+  const handleOptionKeyDown = (e, optionId, field) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    
+    const optionIndex = options.findIndex(opt => opt.id === optionId);
+    const isLastOption = optionIndex === options.length - 1;
+    
+    if (pollType === 'ranked') {
+      // For ranked polls: label -> url -> next label (or add new)
+      if (field === 'label') {
+        // Go to URL field for this option
+        const urlInput = document.querySelector(`[data-poll-url="${optionId}"]`);
+        if (urlInput) urlInput.focus();
+      } else if (field === 'url') {
+        // Go to next option's label, or focus new option input
+        if (isLastOption) {
+          const newInput = document.querySelector('[data-poll-new-option]');
+          if (newInput) newInput.focus();
+        } else {
+          const nextLabel = document.querySelector(`[data-poll-label="${options[optionIndex + 1].id}"]`);
+          if (nextLabel) nextLabel.focus();
+        }
+      }
+    } else {
+      // For date polls: label -> next label (or add new)
+      if (isLastOption) {
+        const newInput = document.querySelector('[data-poll-new-option]');
+        if (newInput) newInput.focus();
+      } else {
+        const nextLabel = document.querySelector(`[data-poll-label="${options[optionIndex + 1].id}"]`);
+        if (nextLabel) nextLabel.focus();
+      }
+    }
+  };
+  
+  const handleNewOptionKeyDown = (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    
+    if (pollType === 'ranked' && newOption.trim()) {
+      // Go to URL field first
+      const urlInput = document.querySelector('[data-poll-new-url]');
+      if (urlInput) urlInput.focus();
+    } else if (newOption.trim()) {
+      // Add option and stay on new option input
+      addOption();
+    }
+  };
+  
+  const handleNewUrlKeyDown = (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    
+    if (newOption.trim()) {
+      addOption();
+    }
   };
 
-  const updateOption = (optionId, label) => {
+  const updateOption = (optionId, updates) => {
     const newOptions = options.map(opt => 
-      opt.id === optionId ? { ...opt, label } : opt
+      opt.id === optionId ? { ...opt, ...updates } : opt
     );
     setOptions(newOptions);
     optionsRef.current = newOptions;
@@ -1762,13 +1845,39 @@ function PollBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
       {/* Expandable content */}
       {isExpanded && (
         <div className="px-3 pb-3 space-y-3">
+          {/* Poll type selector */}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => handlePollTypeChange('date')}
+              className={`flex-1 px-3 py-2 rounded-lg text-sm transition-colors ${
+                pollType === 'date' 
+                  ? 'bg-indigo-500/20 text-indigo-400 ring-1 ring-indigo-500/50' 
+                  : 'bg-white/5 text-gray-400 hover:bg-white/10'
+              }`}
+            >
+              📅 Datum/tid
+            </button>
+            <button
+              type="button"
+              onClick={() => handlePollTypeChange('ranked')}
+              className={`flex-1 px-3 py-2 rounded-lg text-sm transition-colors ${
+                pollType === 'ranked' 
+                  ? 'bg-indigo-500/20 text-indigo-400 ring-1 ring-indigo-500/50' 
+                  : 'bg-white/5 text-gray-400 hover:bg-white/10'
+              }`}
+            >
+              🏆 Rankning
+            </button>
+          </div>
+          
           {/* Poll title */}
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             onBlur={() => syncToParent(title, options)}
-            placeholder="Fråga (t.ex. 'När passar helgen?')"
+            placeholder={pollType === 'ranked' ? "Fråga (t.ex. 'Bästa pizzerian?')" : "Fråga (t.ex. 'När passar helgen?')"}
             disabled={saving}
             className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-indigo-500"
           />
@@ -1777,54 +1886,94 @@ function PollBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
           {options.length > 0 && (
             <div className="space-y-2">
               {options.map((option, i) => (
-                <div key={option.id} className="flex items-center gap-2">
-                  <span className="text-gray-500 text-sm w-5">{i + 1}.</span>
-                  <input
-                    type="text"
-                    value={option.label}
-                    onChange={(e) => updateOption(option.id, e.target.value)}
-                    onBlur={syncOption}
-                    disabled={saving}
-                    className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base focus:outline-none focus:border-indigo-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeOption(option.id)}
-                    className="w-8 h-8 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center"
-                  >
-                    <X size={14} />
-                  </button>
+                <div key={option.id} className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-500 text-sm w-5">{i + 1}.</span>
+                    <input
+                      type="text"
+                      data-poll-label={option.id}
+                      value={option.label}
+                      onChange={(e) => updateOption(option.id, { label: e.target.value })}
+                      onBlur={syncOption}
+                      onKeyDown={(e) => handleOptionKeyDown(e, option.id, 'label')}
+                      disabled={saving}
+                      className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base focus:outline-none focus:border-indigo-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeOption(option.id)}
+                      className="w-8 h-8 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                  {/* URL field for ranked polls */}
+                  {pollType === 'ranked' && (
+                    <div className="flex items-center gap-2 ml-7">
+                      <input
+                        type="url"
+                        data-poll-url={option.id}
+                        value={option.url || ''}
+                        onChange={(e) => updateOption(option.id, { url: e.target.value })}
+                        onBlur={syncOption}
+                        onKeyDown={(e) => handleOptionKeyDown(e, option.id, 'url')}
+                        placeholder="Länk (valfritt)"
+                        disabled={saving}
+                        className="flex-1 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-blue-400 text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
           )}
 
           {/* Add new option */}
-          <div className="flex items-center gap-2">
-            <span className="text-gray-500 text-sm w-5">{options.length + 1}.</span>
-            <input
-              type="text"
-              value={newOption}
-              onChange={(e) => setNewOption(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addOption())}
-              placeholder="Nytt alternativ (t.ex. '1-3 maj')"
-              disabled={saving}
-              className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-indigo-500"
-            />
-            <button
-              type="button"
-              onClick={addOption}
-              disabled={saving || !newOption.trim()}
-              className="w-8 h-8 flex-shrink-0 rounded-lg bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30 disabled:opacity-50 transition-colors flex items-center justify-center"
-            >
-              <Plus size={18} />
-            </button>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="text-gray-500 text-sm w-5">{options.length + 1}.</span>
+              <input
+                type="text"
+                data-poll-new-option
+                value={newOption}
+                onChange={(e) => setNewOption(e.target.value)}
+                onKeyDown={handleNewOptionKeyDown}
+                placeholder={pollType === 'ranked' ? "Nytt alternativ (t.ex. 'Pizzeria X')" : "Nytt alternativ (t.ex. '1-3 maj')"}
+                disabled={saving}
+                className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+              />
+              <button
+                type="button"
+                onClick={addOption}
+                disabled={saving || !newOption.trim()}
+                className="w-8 h-8 flex-shrink-0 rounded-lg bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30 disabled:opacity-50 transition-colors flex items-center justify-center"
+              >
+                <Plus size={18} />
+              </button>
+            </div>
+            {/* URL field for new option in ranked polls */}
+            {pollType === 'ranked' && (
+              <div className="flex items-center gap-2 ml-7">
+                <input
+                  type="url"
+                  data-poll-new-url
+                  value={newOptionUrl}
+                  onChange={(e) => setNewOptionUrl(e.target.value)}
+                  onKeyDown={handleNewUrlKeyDown}
+                  placeholder="Länk (valfritt)"
+                  disabled={saving}
+                  className="flex-1 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-blue-400 text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+            )}
           </div>
 
           {/* Instructions + Reset button */}
           <div className="flex items-center justify-between">
             <p className="text-xs text-gray-500">
-              Deltagare med tillgång kan rösta direkt.
+              {pollType === 'ranked' 
+                ? 'Deltagare röstar 🥇🥈🥉 (3p, 2p, 1p)' 
+                : 'Deltagare kan rösta Ja/Nej/Kanske'}
             </p>
             {voteCount > 0 && (
               <button

@@ -2,7 +2,7 @@
 OurSpots – Manifest / Blueprint (Updated Feb 1, 2026)
 ========================
 
-🚀 STATUS: v2.5 - Block Consolidation & Table Improvements
+🚀 STATUS: v2.6 - Ranked Poll & Improvements
 
 1. VISION
 - Mobilfokuserad app med premium dark theme
@@ -58,6 +58,11 @@ OurSpots – Manifest / Blueprint (Updated Feb 1, 2026)
 - Längre texter i tabellblock (full text-wrapping) ✅ NY v2.5
 - Enter-tangent för snabb inmatning i tabeller ✅ NY v2.5
 - Collapsible burger-meny med sektioner (Admin/Inställningar/Snabbfånga) ✅ NY v2.5
+- Ranked poll: 🥇🥈🥉 röstning med poängsystem (3p/2p/1p) ✅ NY v2.6
+- Poll med klickbara länkar (t.ex. restaurang-URLar) ✅ NY v2.6
+- Avsluta omröstning med sorterad resultatvy ✅ NY v2.6
+- Tiebreaker: vid lika poäng vinner flest guld > silver > brons ✅ NY v2.6
+- Enter-navigering i poll-editor (som tabeller) ✅ NY v2.6
 
 2. KATEGORI-SYSTEM
 - Dynamiska kategorier lagrade i Firebase ✅
@@ -115,7 +120,7 @@ Block:
 - type: "datetag", tags[{type: "year"|"range", year?, startDate?, endDate?}] ✅
 - type: "contact", phone, email, website ✅ NY
 - type: "timer", timers[{label, duration}] (med iOS-ljud och compact view) ✅ NY
-- type: "poll", title, options[{id, label}], votes{emailKey: {displayName, votes: {optionId: "yes"|"no"|"maybe"}}} ✅ NY v2.4
+- type: "poll", title, pollType ("date"|"ranked"), options[{id, label, url?}], votes{emailKey: {displayName, votes: {optionId: "yes"|"no"|"maybe" | 1|2|3}}}, closed? ✅ UPPDATERAD v2.6
 - Modulära block kan adderas senare
 
 Category: ✅ IMPLEMENTERAT

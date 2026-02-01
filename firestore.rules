@@ -33,8 +33,12 @@ service cloud.firestore {
     }
     
     match /users/{userId} {
+      // Users can read/write their own document
       allow read, write: if request.auth != null && request.auth.uid == userId;
-      allow read: if request.auth != null; // Allow reading other users for sharing
+      // Allow reading other users for sharing features
+      allow read: if request.auth != null;
+      // Admin can update any user (for blocking, admin toggle, etc.)
+      allow update: if isAdmin();
     }
     
     match /categories/{categoryId} {
