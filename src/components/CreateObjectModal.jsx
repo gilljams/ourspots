@@ -112,7 +112,8 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             id: Math.random().toString(36).substr(2, 9),
             type: 'audio',
             title: b.data.title || '',
-            url: b.data.url || ''
+            url: b.data.url || '',
+            discrete: b.data.discrete !== false // Default true
           };
         }
         // Text blocks
@@ -459,7 +460,8 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             type: 'audio', 
             data: { 
               title: (block.title || 'Ljud').trim(),
-              url: block.url.trim()
+              url: block.url.trim(),
+              discrete: block.discrete !== false // Default true
             } 
           });
         }
@@ -503,6 +505,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
     if (type === 'audio') {
       newBlock.title = '';
       newBlock.url = '';
+      newBlock.discrete = true; // Default to discrete mode
     }
     setCustomBlocks(prev => [...prev, newBlock]);
     setFormTouched(true);

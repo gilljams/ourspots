@@ -78,3 +78,13 @@ input, textarea, select {
   z-index: 1000 !important;
   pointer-events: none !important;
 }
+
+/* Subtle glow pulse for audio play button */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(168, 85, 247, 0.15);
+  }
+}

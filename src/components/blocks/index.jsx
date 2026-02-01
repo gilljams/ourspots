@@ -88,11 +88,12 @@ export const LocationBlock = ({ data, inherited, onDelete, canDelete, positionNu
           {audioUrl && !audioError && (
             <button
               onClick={toggleAudio}
-              className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${
+              className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all flex-shrink-0 ${
                 isPlaying 
-                  ? 'bg-purple-500/30 text-purple-300 animate-pulse' 
+                  ? 'bg-purple-500/30 text-purple-300 ring-2 ring-purple-500/50 ring-offset-1 ring-offset-transparent' 
                   : 'bg-white/5 hover:bg-purple-500/20 text-gray-400 hover:text-purple-400'
               }`}
+              style={isPlaying ? { animation: 'pulse-glow 1s ease-in-out infinite' } : {}}
               title={isPlaying ? 'Pausa' : 'Spela'}
             >
               {isPlaying ? (
@@ -478,7 +479,9 @@ export const LinksBlock = ({ data }) => {
               }`}>
                 {item.title || item.url}
               </span>
-              <ExternalLink size={14} className="text-gray-500 group-hover:text-purple-400 transition-colors flex-shrink-0" />
+              {!isSingleLink && (
+                <ExternalLink size={14} className="text-gray-500 group-hover:text-purple-400 transition-colors flex-shrink-0" />
+              )}
             </a>
           );
         })

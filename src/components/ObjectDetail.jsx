@@ -175,6 +175,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
   // Get first audio block URL (for location block play button)
   const audioBlock = object.blocks.find(b => b.type === 'audio');
   const audioUrl = audioBlock?.data?.url || null;
+  const audioIsDiscrete = audioBlock?.data?.discrete !== false; // Default true
   
   const handleDelete = async () => {
     await onDelete(object.id);
@@ -277,7 +278,8 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
             <div className="space-y-5">
               {(() => {
                 const sorted = blocksToRender
-                  .filter(block => blockComponents[block.type] && block.type !== 'title');
+                  .filter(block => blockComponents[block.type] && block.type !== 'title')
+                  .filter(block => !(block.type === 'audio' && block.data?.discrete !== false)); // Hide discrete audio blocks
                 return sorted.map((block, index) => {
                 // Use the original index in object.blocks (tracked as objectBlockIndex)
                 const actualBlockIndex = block.objectBlockIndex;
@@ -387,7 +389,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                           onDelete={handleDeleteBlock}
                           positionNumber={locationBlocks.length > 1 ? locationIndex : null}
                           onShowOnMap={onShowOnMap}
-                          audioUrl={block.type === 'location' && !block.inherited ? audioUrl : undefined}
+                          audioUrl={block.type === 'location' && !block.inherited && audioIsDiscrete ? audioUrl : undefined}
                           // Poll-specific props
                           currentUser={currentUser}
                           userDisplayName={userDisplayName}
@@ -432,7 +434,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                     <Folder size={16} className="text-gray-400" />
                     <h3 className="text-sm font-medium text-gray-400">{childObjects.length} objekt</h3>
                   </div>
-                  {childObjects.length > 2 && (
+                  {childObjects.length > 0 && (
                     <button
                       onClick={toggleChildViewMode}
                       className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
@@ -527,7 +529,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                             className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:text-white transition-all"
                           >
                             <Plus size={16} />
-                            <span className="text-sm">Lägg till objekt</span>
+                            <span className="text-sm">Lägg till barn</span>
                           </button>
                         )}
                         {onDuplicate && (

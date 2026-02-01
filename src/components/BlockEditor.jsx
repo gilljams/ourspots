@@ -1995,12 +1995,14 @@ function PollBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
 function AudioBlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }) {
   const [title, setTitle] = useState(block.title || '');
   const [url, setUrl] = useState(block.url || '');
+  const [discrete, setDiscrete] = useState(block.discrete !== false); // Default to true (discrete)
 
   // Sync with block changes
   useEffect(() => {
     setTitle(block.title || '');
     setUrl(block.url || '');
-  }, [block.id, block.title, block.url]);
+    setDiscrete(block.discrete !== false);
+  }, [block.id, block.title, block.url, block.discrete]);
 
   const handleTitleChange = (value) => {
     setTitle(value);
@@ -2010,6 +2012,11 @@ function AudioBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
   const handleUrlChange = (value) => {
     setUrl(value);
     onUpdate(block.id, { url: value });
+  };
+
+  const handleDiscreteChange = (value) => {
+    setDiscrete(value);
+    onUpdate(block.id, { discrete: value });
   };
 
   return (
@@ -2065,6 +2072,25 @@ function AudioBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
           <p className="text-xs text-gray-500 mt-1">
             Lägg filer i public/media/ för /ourspots/media/filnamn.mp3
           </p>
+        </div>
+        
+        {/* Discrete toggle */}
+        <div className="flex items-center justify-between pt-2 border-t border-white/5">
+          <div>
+            <span className="text-sm text-white">Diskret läge</span>
+            <p className="text-xs text-gray-500">Visa endast play-knapp vid plats</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => handleDiscreteChange(!discrete)}
+            className={`w-12 h-6 rounded-full transition-colors relative ${
+              discrete ? 'bg-purple-500' : 'bg-white/20'
+            }`}
+          >
+            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${
+              discrete ? 'left-7' : 'left-1'
+            }`} />
+          </button>
         </div>
       </div>
     </div>
