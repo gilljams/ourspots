@@ -1213,6 +1213,7 @@ export const TimerBlock = ({ data }) => {
 export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayName = '', onClosePoll, canEdit = false, onAddOption, onRemoveOption }) => {
   const [showDetails, setShowDetails] = useState(false);
   const [newSuggestion, setNewSuggestion] = useState('');
+  const [newSuggestionUrl, setNewSuggestionUrl] = useState('');
   const [showSuggestionInput, setShowSuggestionInput] = useState(false);
   const options = data.options || [];
   const votes = data.votes || {};
@@ -1228,6 +1229,11 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
   };
   
   const currentUserKey = currentUser?.email ? getUserEmailKey(currentUser.email) : null;
+  
+  // Check if user has pending share (not accepted yet)
+  // Note: 'inherited' status is auto-accepted, so only 'pending' should show the message
+  const isPendingShare = currentUserKey && shares[currentUserKey]?.status === 'pending';
+  
   // votes[emailKey] can be { displayName: string, votes: { optionId: voteType } } or legacy { optionId: voteType }
   const currentUserData = currentUserKey ? (votes[currentUserKey] || {}) : {};
   // Support both new format (votes nested) and legacy format (votes at root)
@@ -1660,18 +1666,20 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
               {/* Add suggestion - inline in footer */}
               {allowSuggestions && !isClosed && currentUserKey && onAddOption && (
                 showSuggestionInput ? (
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 flex-wrap">
                     <input
                       type="text"
                       value={newSuggestion}
                       onChange={(e) => setNewSuggestion(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && newSuggestion.trim()) {
-                          onAddOption(newSuggestion.trim(), currentUserKey);
+                          onAddOption(newSuggestion.trim(), currentUserKey, pollType === 'ranked' ? newSuggestionUrl.trim() : null);
                           setNewSuggestion('');
+                          setNewSuggestionUrl('');
                           setShowSuggestionInput(false);
                         } else if (e.key === 'Escape') {
                           setNewSuggestion('');
+                          setNewSuggestionUrl('');
                           setShowSuggestionInput(false);
                         }
                       }}
@@ -1679,11 +1687,21 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
                       className="w-24 px-2 py-0.5 text-xs bg-white/10 border border-white/20 rounded focus:outline-none focus:border-blue-500 text-white placeholder-gray-500"
                       autoFocus
                     />
+                    {pollType === 'ranked' && (
+                      <input
+                        type="url"
+                        value={newSuggestionUrl}
+                        onChange={(e) => setNewSuggestionUrl(e.target.value)}
+                        placeholder="URL (valfritt)"
+                        className="w-28 px-2 py-0.5 text-xs bg-white/10 border border-white/20 rounded focus:outline-none focus:border-blue-500 text-white placeholder-gray-500"
+                      />
+                    )}
                     <button
                       onClick={() => {
                         if (newSuggestion.trim()) {
-                          onAddOption(newSuggestion.trim(), currentUserKey);
+                          onAddOption(newSuggestion.trim(), currentUserKey, pollType === 'ranked' ? newSuggestionUrl.trim() : null);
                           setNewSuggestion('');
+                          setNewSuggestionUrl('');
                           setShowSuggestionInput(false);
                         }
                       }}
@@ -1696,6 +1714,7 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
                     <button
                       onClick={() => {
                         setNewSuggestion('');
+                        setNewSuggestionUrl('');
                         setShowSuggestionInput(false);
                       }}
                       className="p-0.5 text-gray-400 hover:bg-white/10 rounded"
@@ -1719,6 +1738,9 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
             <div className="flex items-center gap-2">
               {!currentUserKey && !isClosed && (
                 <span className="text-xs text-gray-500 italic">Logga in för att rösta</span>
+              )}
+              {currentUserKey && isPendingShare && !isClosed && (
+                <span className="text-xs text-amber-500 italic">Acceptera delningen för att rösta</span>
               )}
               {canEdit && !isClosed && onClosePoll && (
                 <button

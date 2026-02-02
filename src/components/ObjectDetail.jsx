@@ -419,14 +419,15 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                               console.error('Error closing poll:', err);
                             }
                           } : undefined}
-                          onAddOption={block.type === 'poll' && block.data?.allowSuggestions ? async (label, addedBy) => {
+                          onAddOption={block.type === 'poll' && block.data?.allowSuggestions ? async (label, addedBy, url) => {
                             try {
                               const updatedBlocks = [...object.blocks];
                               const currentOptions = updatedBlocks[actualBlockIndex].data.options || [];
                               const newOption = {
                                 id: Date.now().toString(),
                                 label,
-                                addedBy
+                                addedBy,
+                                ...(url && { url }) // Only add url if provided
                               };
                               updatedBlocks[actualBlockIndex] = {
                                 ...updatedBlocks[actualBlockIndex],

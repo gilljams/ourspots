@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { List, ChevronDown, RefreshCw } from 'lucide-react';
-import { collection, onSnapshot, doc, updateDoc, deleteField } from 'firebase/firestore';
+import { collection, onSnapshot, doc, updateDoc, deleteField, arrayUnion } from 'firebase/firestore';
 import { db } from '../firebase';
 
 function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onViewObject }) {
@@ -102,14 +102,11 @@ function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onView
   };
 
   // Migration function to update parentPath AND ancestorIds for all objects
+  // Also fixes inherited shares by adding them to acceptedShareEmails
   const migrateParentPaths = async () => {
     if (migrating) return;
     
     const objectsWithParent = objects.filter(o => o.parentId);
-    if (objectsWithParent.length === 0) {
-      setMigrationResult({ success: true, message: 'Inga objekt med föräldrar att uppdatera.' });
-      return;
-    }
     
     setMigrating(true);
     setMigrationResult(null);
@@ -117,7 +114,9 @@ function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onView
     try {
       let updated = 0;
       let skipped = 0;
+      let inheritedFixed = 0;
       
+      // First: Fix parentPath and ancestorIds
       for (const obj of objectsWithParent) {
         // Build parent path (names) AND ancestor IDs
         const path = [];
@@ -149,9 +148,37 @@ function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onView
         }
       }
       
+      // Second: Fix inherited shares - add to acceptedShareEmails
+      for (const obj of objects) {
+        if (!obj.shares) continue;
+        
+        const inheritedEmails = [];
+        Object.entries(obj.shares).forEach(([emailKey, share]) => {
+          if (share.status === 'inherited' && share.email) {
+            // Check if not already in acceptedShareEmails
+            if (!obj.acceptedShareEmails?.includes(share.email.toLowerCase())) {
+              inheritedEmails.push(share.email.toLowerCase());
+            }
+          }
+        });
+        
+        if (inheritedEmails.length > 0) {
+          await updateDoc(doc(db, 'objects', obj.id), {
+            acceptedShareEmails: arrayUnion(...inheritedEmails)
+          });
+          inheritedFixed++;
+        }
+      }
+      
+      const messages = [];
+      if (updated > 0) messages.push(`${updated} objekt uppdaterade med parentPath + ancestorIds`);
+      if (skipped > 0) messages.push(`${skipped} kunde inte bygga path för`);
+      if (inheritedFixed > 0) messages.push(`${inheritedFixed} objekt med ärvda delningar fixade`);
+      if (messages.length === 0) messages.push('Inget att uppdatera');
+      
       setMigrationResult({ 
         success: true, 
-        message: `Klart! ${updated} objekt uppdaterade med parentPath + ancestorIds${skipped > 0 ? `, ${skipped} kunde inte bygga path för` : ''}.` 
+        message: `Klart! ${messages.join(', ')}.` 
       });
     } catch (error) {
       console.error('Migration error:', error);

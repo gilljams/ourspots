@@ -176,7 +176,9 @@ function ShareModal({ object, onClose, currentUserEmail, allObjects = [], shared
         await Promise.all(allDescendants.map(descendant => {
           const descUpdateData = {
             [`shares.${emailKey}`]: descendantShareData,
-            sharedWithEmails: arrayUnion(trimmedEmail)
+            sharedWithEmails: arrayUnion(trimmedEmail),
+            // Inherited shares are auto-accepted (no separate accept needed)
+            acceptedShareEmails: arrayUnion(trimmedEmail)
           };
           if (role === 'editor') {
             descUpdateData.editorEmails = arrayUnion(trimmedEmail);

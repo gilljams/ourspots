@@ -1,8 +1,8 @@
 ========================
-OurSpots – Manifest / Blueprint (Updated Feb 1, 2026)
+OurSpots – Manifest / Blueprint (Updated Feb 2, 2026)
 ========================
 
-🚀 STATUS: v2.8 - Audio, Poll Suggestions & Countdown
+🚀 STATUS: v2.8.1 - Inherited Shares Fix & Poll URL Suggestions
 
 1. VISION
 - Mobilfokuserad app med premium dark theme
@@ -78,6 +78,13 @@ OurSpots – Manifest / Blueprint (Updated Feb 1, 2026)
 - Datumnedräkning på kort (badge) och i datumblock ✅ NY v2.8
 - Smart datumformattering (samma dag visas utan intervall) ✅ NY v2.8
 - Grid/list toggle visas vid 1+ barn (tidigare 2+) ✅ NY v2.8
+- "Lägg till barn"-knapptext (tydligare) ✅ NY v2.8
+- Dold extern-länk-ikon för enstaka länkar ✅ NY v2.8
+- Inherited shares auto-accepted (kan rösta direkt) ✅ NY v2.8.1
+- "Acceptera delningen för att rösta" meddelande för pending shares ✅ NY v2.8.1
+- Synka hierarki fixar även ärvda delningar (acceptedShareEmails) ✅ NY v2.8.1
+- Nya barn under delade objekt får korrekt acceptedShareEmails ✅ NY v2.8.1
+- URL-fält för ranked poll förslag (valfritt) ✅ NY v2.8.1
 - "Lägg till barn"-knapptext (tydligare) ✅ NY v2.8
 - Dold extern-länk-ikon för enstaka länkar ✅ NY v2.8
 

@@ -812,6 +812,8 @@ function App() {
       // Check if parent has shares with includeChildren - inherit them for new children
       let inheritedShares = {};
       let inheritedSharedWithEmails = [];
+      let inheritedAcceptedShareEmails = []; // For inherited shares - auto-accepted
+      let inheritedEditorEmails = [];
       if (!editId && objectData.parentId) {
         const parent = objects.find(o => o.id === objectData.parentId);
         if (parent?.shares) {
@@ -825,7 +827,12 @@ function App() {
                 inheritedFrom: objectData.parentId
               };
               if (shareData.email) {
-                inheritedSharedWithEmails.push(shareData.email);
+                const emailLower = shareData.email.toLowerCase();
+                inheritedSharedWithEmails.push(emailLower);
+                inheritedAcceptedShareEmails.push(emailLower); // Inherited = auto-accepted
+                if (shareData.role === 'editor') {
+                  inheritedEditorEmails.push(emailLower);
+                }
               }
             }
           });
@@ -888,6 +895,10 @@ function App() {
         if (Object.keys(inheritedShares).length > 0) {
           newObjectData.shares = inheritedShares;
           newObjectData.sharedWithEmails = inheritedSharedWithEmails;
+          newObjectData.acceptedShareEmails = inheritedAcceptedShareEmails;
+          if (inheritedEditorEmails.length > 0) {
+            newObjectData.editorEmails = inheritedEditorEmails;
+          }
         }
         
         const addOperation = addDoc(collection(db, 'objects'), newObjectData);
