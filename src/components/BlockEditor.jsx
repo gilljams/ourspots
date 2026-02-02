@@ -2123,7 +2123,7 @@ function AudioBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
 }
 
 // Split Block Editor - expense sharing configuration
-function SplitBlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving, shares = {} }) {
+function SplitBlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving, shares = {}, currentUser, currentUserDisplayName }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [title, setTitle] = useState(block.title || 'Splitt');
   const [model, setModel] = useState(block.model || 'individual');
@@ -2169,13 +2169,21 @@ function SplitBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
     syncToParent({ defaultCollapsed: value });
   };
 
-  // Get available users from shares (accepted or inherited)
-  const availableUsers = Object.entries(shares)
+  // Get available users from shares (accepted or inherited) + owner
+  const sharedUsers = Object.entries(shares)
     .filter(([_, share]) => share.status === 'accepted' || share.status === 'inherited')
     .map(([key, share]) => ({
       email: share.email?.toLowerCase(),
       name: share.displayName || share.email?.split('@')[0]
     }));
+  
+  // Add current user (owner) to the list
+  const ownerEmail = currentUser?.email?.toLowerCase();
+  const ownerName = currentUserDisplayName || ownerEmail?.split('@')[0] || 'Jag';
+  
+  const availableUsers = ownerEmail 
+    ? [{ email: ownerEmail, name: ownerName, isOwner: true }, ...sharedUsers]
+    : sharedUsers;
 
   const addParticipant = (email, name) => {
     if (participants.some(p => p.email?.toLowerCase() === email)) return;

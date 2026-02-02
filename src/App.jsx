@@ -641,15 +641,11 @@ function App() {
 
   const handleLogin = async () => {
     try {
-      // Use redirect on mobile (better UX), popup on desktop
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      if (isMobile) {
-        await signInWithRedirect(auth, googleProvider);
-      } else {
-        await signInWithPopup(auth, googleProvider);
-      }
+      // Use popup for now (redirect had issues)
+      await signInWithPopup(auth, googleProvider);
     } catch (err) {
       if (err.code !== 'auth/popup-closed-by-user') {
+        console.error('Login error:', err);
         alert('Kunde inte logga in. Försök igen!');
       }
     }
@@ -1485,6 +1481,8 @@ function App() {
           categories={categories}
           preciseGPS={preciseGPS}
           isAdmin={isAdmin}
+          currentUser={user}
+          currentUserDisplayName={displayName}
         />
       )}
 

@@ -14,7 +14,7 @@ import MapPicker from './MapPicker';
 import FocalPointPicker from './FocalPointPicker';
 import BlockEditor, { DateTagBlockEditor, TimerBlockEditor, PollBlockEditor, AudioBlockEditor, SplitBlockEditor } from './BlockEditor';
 
-function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, saving, availableParents, defaultParentId, userLocation, categories, preciseGPS, isAdmin }) {
+function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, saving, availableParents, defaultParentId, userLocation, categories, preciseGPS, isAdmin, currentUser, currentUserDisplayName }) {
   // ========== STATE ==========
   const isEdit = !!editObject;
   const isDuplicate = !!duplicateFromObject;
@@ -889,6 +889,8 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   total={customBlocks.length}
                   saving={saving}
                   shares={sourceObject?.shares || {}}
+                  currentUser={currentUser}
+                  currentUserDisplayName={currentUserDisplayName}
                 />
               ) : (
                 <BlockEditor
