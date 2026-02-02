@@ -46,7 +46,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { db, auth, googleProvider } from './firebase';
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, Timestamp, getDoc, setDoc, deleteField, query, where, arrayUnion, arrayRemove } from 'firebase/firestore';
-import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
+import { signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from 'firebase/auth';
 
 // Fix Leaflet default marker icon issue with bundlers
 delete L.Icon.Default.prototype._getIconUrl;
@@ -247,6 +247,13 @@ function App() {
 
   // Auth listener + check admin status
   useEffect(() => {
+    // Handle redirect result (for mobile login)
+    getRedirectResult(auth).catch((err) => {
+      if (err.code !== 'auth/popup-closed-by-user') {
+        console.error('Redirect login error:', err);
+      }
+    });
+
     const unsubAuth = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {
@@ -634,9 +641,17 @@ function App() {
 
   const handleLogin = async () => {
     try {
-      await signInWithPopup(auth, googleProvider);
+      // Use redirect on mobile (better UX), popup on desktop
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      if (isMobile) {
+        await signInWithRedirect(auth, googleProvider);
+      } else {
+        await signInWithPopup(auth, googleProvider);
+      }
     } catch (err) {
-      alert('Kunde inte logga in. Försök igen!');
+      if (err.code !== 'auth/popup-closed-by-user') {
+        alert('Kunde inte logga in. Försök igen!');
+      }
     }
   };
 
