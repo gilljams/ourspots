@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, ArrowUp, ArrowDown, FileText, CheckSquare, ClipboardList, Link2, Plus, ChevronDown, Table2, Trash2, GripVertical, Calendar, Phone, Mail, Globe, Timer, Check, Maximize2, RotateCcw, BarChart3, Type } from 'lucide-react';
+import { X, ArrowUp, ArrowDown, FileText, CheckSquare, ClipboardList, Link2, Plus, ChevronDown, Table2, Trash2, GripVertical, Calendar, Phone, Mail, Globe, Timer, Check, Maximize2, RotateCcw, BarChart3, Type, Music, Wallet, Users } from 'lucide-react';
 import { getIconComponent, LINK_ICONS } from '../utils/iconHelpers';
 import { TABLE_TEMPLATES } from './blocks';
 
@@ -2049,7 +2049,7 @@ function AudioBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
       {/* Header */}
       <div className="flex items-center justify-between p-3 bg-purple-500/10 border-b border-white/5">
         <div className="flex items-center gap-2">
-          <span className="text-purple-400">🎵</span>
+          <Music size={16} className="text-purple-400" />
           <span className="text-sm font-medium text-white">Ljud (admin)</span>
         </div>
         <div className="flex items-center gap-1">
@@ -2122,6 +2122,285 @@ function AudioBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
   );
 }
 
-export { DateTagBlockEditor, TimerBlockEditor, PollBlockEditor, AudioBlockEditor };
+// Split Block Editor - expense sharing configuration
+function SplitBlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving, shares = {} }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [title, setTitle] = useState(block.title || 'Splitt');
+  const [model, setModel] = useState(block.model || 'individual');
+  const [participants, setParticipants] = useState(block.participants || []);
+  const [defaultCollapsed, setDefaultCollapsed] = useState(block.defaultCollapsed ?? true);
+
+  // Sync with block changes
+  useEffect(() => {
+    setTitle(block.title || 'Splitt');
+    setModel(block.model || 'individual');
+    setParticipants(block.participants || []);
+    setDefaultCollapsed(block.defaultCollapsed ?? true);
+  }, [block.id, block.title, block.model, block.participants, block.defaultCollapsed]);
+
+  const syncToParent = (updates) => {
+    onUpdate(block.id, {
+      title,
+      model,
+      participants,
+      defaultCollapsed,
+      ...updates
+    });
+  };
+
+  const handleTitleChange = (value) => {
+    setTitle(value);
+    syncToParent({ title: value });
+  };
+
+  const handleModelChange = (value) => {
+    setModel(value);
+    // Reset participants when changing model
+    const updatedParticipants = participants.map(p => ({
+      ...p,
+      weight: value === 'individual' ? 1 : (p.adults || 1) + (p.children || 0) * 0.5
+    }));
+    setParticipants(updatedParticipants);
+    syncToParent({ model: value, participants: updatedParticipants });
+  };
+
+  const handleDefaultCollapsedChange = (value) => {
+    setDefaultCollapsed(value);
+    syncToParent({ defaultCollapsed: value });
+  };
+
+  // Get available users from shares (accepted or inherited)
+  const availableUsers = Object.entries(shares)
+    .filter(([_, share]) => share.status === 'accepted' || share.status === 'inherited')
+    .map(([key, share]) => ({
+      email: share.email?.toLowerCase(),
+      name: share.displayName || share.email?.split('@')[0]
+    }));
+
+  const addParticipant = (email, name) => {
+    if (participants.some(p => p.email?.toLowerCase() === email)) return;
+    
+    const newParticipant = {
+      email,
+      name,
+      weight: 1,
+      adults: 1,
+      children: 0
+    };
+    
+    if (model === 'family') {
+      newParticipant.weight = 1; // 1 adult default
+    }
+    
+    const updated = [...participants, newParticipant];
+    setParticipants(updated);
+    syncToParent({ participants: updated });
+  };
+
+  const removeParticipant = (email) => {
+    const updated = participants.filter(p => p.email?.toLowerCase() !== email);
+    setParticipants(updated);
+    syncToParent({ participants: updated });
+  };
+
+  const updateParticipantFamily = (email, adults, children) => {
+    const updated = participants.map(p => {
+      if (p.email?.toLowerCase() === email) {
+        return {
+          ...p,
+          adults,
+          children,
+          weight: adults + children * 0.5
+        };
+      }
+      return p;
+    });
+    setParticipants(updated);
+    syncToParent({ participants: updated });
+  };
+
+  const totalWeight = participants.reduce((sum, p) => sum + (p.weight || 1), 0);
+
+  return (
+    <div className="rounded-xl bg-white/5 border border-white/10 overflow-hidden">
+      {/* Header */}
+      <div 
+        className="flex items-center justify-between p-3 bg-green-500/10 border-b border-white/5 cursor-pointer"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <div className="flex items-center gap-2">
+          <Wallet size={16} className="text-green-400" />
+          <span className="text-sm font-medium text-white">{title || 'Splitt'}</span>
+          <span className="text-xs text-gray-500">({participants.length} deltagare)</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <ChevronDown size={16} className={`text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+          {onMove && index > 0 && (
+            <button type="button" onClick={(e) => { e.stopPropagation(); onMove(index, index - 1); }} className="p-1.5 rounded-lg hover:bg-white/10 text-gray-400">
+              <ArrowUp size={14} />
+            </button>
+          )}
+          {onMove && index < total - 1 && (
+            <button type="button" onClick={(e) => { e.stopPropagation(); onMove(index, index + 1); }} className="p-1.5 rounded-lg hover:bg-white/10 text-gray-400">
+              <ArrowDown size={14} />
+            </button>
+          )}
+          {onRemove && (
+            <button type="button" onClick={(e) => { e.stopPropagation(); onRemove(block.id); }} className="p-1.5 rounded-lg hover:bg-red-500/20 text-gray-400 hover:text-red-400">
+              <Trash2 size={14} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Expandable content */}
+      {isExpanded && (
+        <div className="p-3 space-y-4">
+          {/* Title */}
+          <div>
+            <label className="text-xs text-gray-400 mb-1 block">Titel</label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => handleTitleChange(e.target.value)}
+              className="w-full px-3 py-2 text-sm bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-green-500 text-white placeholder-gray-500"
+              placeholder="T.ex. Resekostnader"
+            />
+          </div>
+
+          {/* Model selection */}
+          <div>
+            <label className="text-xs text-gray-400 mb-2 block">Delningsmodell</label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => handleModelChange('individual')}
+                className={`flex-1 py-2 px-3 text-sm rounded-lg border transition-colors ${
+                  model === 'individual'
+                    ? 'bg-green-500/20 border-green-500/50 text-green-400'
+                    : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
+                }`}
+              >
+                Individ (lika)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleModelChange('family')}
+                className={`flex-1 py-2 px-3 text-sm rounded-lg border transition-colors ${
+                  model === 'family'
+                    ? 'bg-green-500/20 border-green-500/50 text-green-400'
+                    : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
+                }`}
+              >
+                Familj (vikt)
+              </button>
+            </div>
+          </div>
+
+          {/* Participants */}
+          <div>
+            <label className="text-xs text-gray-400 mb-2 block">
+              Deltagare {totalWeight > 0 && `(total vikt: ${totalWeight})`}
+            </label>
+            
+            {/* Current participants */}
+            <div className="space-y-2 mb-3">
+              {participants.map((p, idx) => (
+                <div key={idx} className="flex items-center gap-2 bg-white/5 rounded-lg p-2">
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm text-white truncate block">{p.name || p.email}</span>
+                    {model === 'family' && (
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="flex items-center gap-1">
+                          <label className="text-xs text-gray-500">Vuxna:</label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="10"
+                            value={p.adults || 1}
+                            onChange={(e) => updateParticipantFamily(p.email, parseInt(e.target.value) || 0, p.children || 0)}
+                            className="w-12 px-2 py-1 text-xs bg-white/10 border border-white/20 rounded text-white text-center"
+                          />
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <label className="text-xs text-gray-500">Barn:</label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="10"
+                            value={p.children || 0}
+                            onChange={(e) => updateParticipantFamily(p.email, p.adults || 1, parseInt(e.target.value) || 0)}
+                            className="w-12 px-2 py-1 text-xs bg-white/10 border border-white/20 rounded text-white text-center"
+                          />
+                        </div>
+                        <span className="text-xs text-gray-500">= {p.weight}</span>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeParticipant(p.email)}
+                    className="p-1 text-gray-500 hover:text-red-400"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Add participant dropdown */}
+            {availableUsers.length > 0 && (
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Lägg till från delade:</label>
+                <div className="flex flex-wrap gap-1">
+                  {availableUsers
+                    .filter(u => !participants.some(p => p.email === u.email))
+                    .map((user, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => addParticipant(user.email, user.name)}
+                        className="px-2 py-1 text-xs bg-white/10 hover:bg-green-500/20 text-gray-400 hover:text-green-400 rounded-lg flex items-center gap-1"
+                      >
+                        <Plus size={12} />
+                        {user.name}
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
+            
+            {availableUsers.length === 0 && participants.length === 0 && (
+              <div className="text-xs text-gray-500 italic">
+                Dela objektet med andra för att lägga till deltagare
+              </div>
+            )}
+          </div>
+
+          {/* Default collapsed toggle */}
+          <div className="flex items-center justify-between pt-3 border-t border-white/5">
+            <div>
+              <span className="text-sm text-white">Ihopfälld som standard</span>
+              <p className="text-xs text-gray-500">I visningsläge</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleDefaultCollapsedChange(!defaultCollapsed)}
+              className={`w-12 h-6 rounded-full transition-colors relative ${
+                defaultCollapsed ? 'bg-green-500' : 'bg-white/20'
+              }`}
+            >
+              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${
+                defaultCollapsed ? 'left-7' : 'left-1'
+              }`} />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export { DateTagBlockEditor, TimerBlockEditor, PollBlockEditor, AudioBlockEditor, SplitBlockEditor };
 
 export default BlockEditor;

@@ -464,6 +464,63 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                               console.error('Error removing option:', err);
                             }
                           } : undefined}
+                          // Split-specific props
+                          onAddExpense={block.type === 'split' ? async (expense) => {
+                            try {
+                              const updatedBlocks = [...object.blocks];
+                              const currentExpenses = updatedBlocks[actualBlockIndex].data.expenses || [];
+                              const newExpense = {
+                                id: Date.now().toString(),
+                                ...expense,
+                                addedAt: new Date().toISOString()
+                              };
+                              updatedBlocks[actualBlockIndex] = {
+                                ...updatedBlocks[actualBlockIndex],
+                                data: { 
+                                  ...updatedBlocks[actualBlockIndex].data, 
+                                  expenses: [...currentExpenses, newExpense] 
+                                }
+                              };
+                              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
+                            } catch (err) {
+                              console.error('Error adding expense:', err);
+                            }
+                          } : undefined}
+                          onRemoveExpense={block.type === 'split' ? async (expenseId) => {
+                            try {
+                              const updatedBlocks = [...object.blocks];
+                              const currentExpenses = updatedBlocks[actualBlockIndex].data.expenses || [];
+                              // Only allow removing if user added this expense
+                              const userKey = currentUser?.email ? currentUser.email.toLowerCase() : null;
+                              const expenseToRemove = currentExpenses.find(e => e.id === expenseId);
+                              if (!expenseToRemove || expenseToRemove.addedBy !== userKey) {
+                                console.error('Cannot remove expense: not owner');
+                                return;
+                              }
+                              updatedBlocks[actualBlockIndex] = {
+                                ...updatedBlocks[actualBlockIndex],
+                                data: { 
+                                  ...updatedBlocks[actualBlockIndex].data, 
+                                  expenses: currentExpenses.filter(e => e.id !== expenseId)
+                                }
+                              };
+                              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
+                            } catch (err) {
+                              console.error('Error removing expense:', err);
+                            }
+                          } : undefined}
+                          onCloseSplit={block.type === 'split' && canEdit ? async () => {
+                            try {
+                              const updatedBlocks = [...object.blocks];
+                              updatedBlocks[actualBlockIndex] = {
+                                ...updatedBlocks[actualBlockIndex],
+                                data: { ...updatedBlocks[actualBlockIndex].data, closed: true }
+                              };
+                              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
+                            } catch (err) {
+                              console.error('Error closing split:', err);
+                            }
+                          } : undefined}
                         />
                       </div>
                     )}

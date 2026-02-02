@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, Plus, Upload, Loader, Navigation, ChevronDown, ChevronUp,
-  Map as MapIcon, FileText, CheckSquare, ClipboardList, Link2, Table2, Image as ImageIcon, Calendar, Phone, Timer, BarChart3, Folder, MapPin, Music 
+  Map as MapIcon, FileText, CheckSquare, ClipboardList, Link2, Table2, Image as ImageIcon, Calendar, Phone, Timer, BarChart3, Folder, MapPin, Music, Wallet 
 } from 'lucide-react';
 import { 
   CLOUDINARY_CLOUD_NAME, 
@@ -12,7 +12,7 @@ import {
 import { getIconComponent } from '../utils/iconHelpers';
 import MapPicker from './MapPicker';
 import FocalPointPicker from './FocalPointPicker';
-import BlockEditor, { DateTagBlockEditor, TimerBlockEditor, PollBlockEditor, AudioBlockEditor } from './BlockEditor';
+import BlockEditor, { DateTagBlockEditor, TimerBlockEditor, PollBlockEditor, AudioBlockEditor, SplitBlockEditor } from './BlockEditor';
 
 function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, saving, availableParents, defaultParentId, userLocation, categories, preciseGPS, isAdmin }) {
   // ========== STATE ==========
@@ -48,7 +48,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
   const [customBlocks, setCustomBlocks] = useState(() => {
     if (!sourceObject) return [];
     return sourceObject.blocks
-      .filter(b => ['text', 'links', 'table', 'datetag', 'contact', 'timer', 'poll', 'audio'].includes(b.type))
+      .filter(b => ['text', 'links', 'table', 'datetag', 'contact', 'timer', 'poll', 'audio', 'split'].includes(b.type))
       .map(b => {
         if (b.type === 'links') {
           return {
@@ -115,6 +115,18 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             title: b.data.title || '',
             url: b.data.url || '',
             discrete: b.data.discrete !== false // Default true
+          };
+        }
+        if (b.type === 'split') {
+          return {
+            id: Math.random().toString(36).substr(2, 9),
+            type: 'split',
+            title: b.data.title || '',
+            model: b.data.model || 'individual',
+            participants: b.data.participants || [],
+            expenses: isDuplicate ? [] : (b.data.expenses || []), // Clear expenses when duplicating
+            closed: isDuplicate ? false : (b.data.closed || false),
+            defaultCollapsed: b.data.defaultCollapsed ?? true
           };
         }
         // Text blocks
@@ -467,6 +479,21 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             } 
           });
         }
+      } else if (block.type === 'split') {
+        // Save split block if it has participants
+        if (block.participants && block.participants.length > 0) {
+          blocks.push({ 
+            type: 'split', 
+            data: { 
+              title: (block.title || 'Splitt').trim(),
+              model: block.model || 'individual',
+              participants: block.participants,
+              expenses: block.expenses || [],
+              closed: block.closed || false,
+              defaultCollapsed: block.defaultCollapsed ?? true
+            } 
+          });
+        }
       } else if (block.content && block.content.trim()) {
         if (block.type === 'text') {
           blocks.push({ type: 'text', data: { title: (block.title || 'Anteckning').trim(), content: block.content.trim(), defaultCollapsed: block.defaultCollapsed || false } });
@@ -508,6 +535,14 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
       newBlock.title = '';
       newBlock.url = '';
       newBlock.discrete = true; // Default to discrete mode
+    }
+    if (type === 'split') {
+      newBlock.title = 'Splitt';
+      newBlock.model = 'individual';
+      newBlock.participants = [];
+      newBlock.expenses = [];
+      newBlock.closed = false;
+      newBlock.defaultCollapsed = true;
     }
     setCustomBlocks(prev => [...prev, newBlock]);
     setFormTouched(true);
@@ -843,6 +878,18 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   total={customBlocks.length}
                   saving={saving}
                 />
+              ) : block.type === 'split' ? (
+                <SplitBlockEditor
+                  key={block.id}
+                  block={block}
+                  onUpdate={updateCustomBlock}
+                  onRemove={removeCustomBlock}
+                  onMove={moveCustomBlock}
+                  index={index}
+                  total={customBlocks.length}
+                  saving={saving}
+                  shares={sourceObject?.shares || {}}
+                />
               ) : (
                 <BlockEditor
                   key={block.id}
@@ -913,6 +960,9 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   </button>
                   <button type="button" onClick={() => addCustomBlock('poll')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
                     <BarChart3 size={16} className="text-indigo-400" /> Omröstning
+                  </button>
+                  <button type="button" onClick={() => addCustomBlock('split')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
+                    <Wallet size={16} className="text-green-400" /> Splitt
                   </button>
                   {isAdmin && (
                     <button type="button" onClick={() => addCustomBlock('audio')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-300 hover:bg-purple-500/20 text-sm">

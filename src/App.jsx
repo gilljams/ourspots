@@ -1369,7 +1369,7 @@ function App() {
             )}
           </div>
         ) : (
-          <MapView objects={filteredObjects.filter(obj => {
+          <MapView objects={displayObjects.filter(obj => {
             const cat = categories.find(c => c.id === obj.type);
             return !cat?.hideLocation;
           })} onSelectObject={setSelectedObject} currentUser={user} userLocation={userLocation} categories={categories} mapCenter={mapCenter} showFilters={showFilters} />

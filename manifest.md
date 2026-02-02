@@ -2,7 +2,7 @@
 OurSpots – Manifest / Blueprint (Updated Feb 2, 2026)
 ========================
 
-🚀 STATUS: v2.8.1 - Inherited Shares Fix & Poll URL Suggestions
+🚀 STATUS: v2.9 - Split Block (Expense Sharing)
 
 1. VISION
 - Mobilfokuserad app med premium dark theme
@@ -85,8 +85,17 @@ OurSpots – Manifest / Blueprint (Updated Feb 2, 2026)
 - Synka hierarki fixar även ärvda delningar (acceptedShareEmails) ✅ NY v2.8.1
 - Nya barn under delade objekt får korrekt acceptedShareEmails ✅ NY v2.8.1
 - URL-fält för ranked poll förslag (valfritt) ✅ NY v2.8.1
-- "Lägg till barn"-knapptext (tydligare) ✅ NY v2.8
-- Dold extern-länk-ikon för enstaka länkar ✅ NY v2.8
+- Karta synkad med listfilter (displayObjects) ✅ NY v2.8.1
+- SVG Music-ikon i AudioBlockEditor ✅ NY v2.8.1
+- Splitt-block för utgiftsdelning (resor, projekt) ✅ NY v2.9
+  - Individ-modell (lika delning) ✅
+  - Familj-modell (viktad: vuxna×1, barn×0.5) ✅
+  - Deltagare väljs från delade användare ✅
+  - Varje deltagare ser sina egna utgifter ✅
+  - Avsluta split visar swisha-förslag (minimerar transaktioner) ✅
+  - Grön Wallet-ikon och färgschema ✅
+  - Ihopfälld som standard (defaultCollapsed) ✅
+  - Ta bort egna utgifter innan avslut ✅
 
 2. KATEGORI-SYSTEM
 - Dynamiska kategorier lagrade i Firebase ✅
@@ -146,6 +155,7 @@ Block:
 - type: "timer", timers[{label, duration}] (med iOS-ljud och compact view) ✅ NY
 - type: "poll", title, pollType ("date"|"ranked"), options[{id, label, url?, addedBy?}], votes{emailKey: {displayName, votes: {optionId: "yes"|"no"|"maybe" | 1|2|3}}}, closed?, allowSuggestions? ✅ UPPDATERAD v2.8
 - type: "audio", title, url, discrete? (diskret = play vid plats, annars full spelare) ✅ NY v2.8
+- type: "split", title, model ("individual"|"family"), participants[{email, name, weight, adults?, children?}], expenses[{id, amount, description?, paidBy, addedBy, addedAt}], closed?, defaultCollapsed? ✅ NY v2.9
 - Modulära block kan adderas senare
 
 Category: ✅ IMPLEMENTERAT
