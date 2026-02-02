@@ -1911,43 +1911,30 @@ export const AudioBlock = ({ data }) => {
 };
 
 // Split Block - expense sharing for trips etc.
-export const SplitBlock = ({ data, currentUser, shares = {}, canEdit = false, onAddExpense, onRemoveExpense, onCloseSplit }) => {
+export const SplitBlock = ({ data, currentUser, shares = {}, canEdit = false, onUpdateAmount, onCloseSplit }) => {
   const [isCollapsed, setIsCollapsed] = useState(data.defaultCollapsed ?? true);
-  const [showAddExpense, setShowAddExpense] = useState(false);
-  const [newAmount, setNewAmount] = useState('');
-  const [newDescription, setNewDescription] = useState('');
-  const [showDetails, setShowDetails] = useState(false);
+  const [editingAmount, setEditingAmount] = useState(null);
+  const [tempAmount, setTempAmount] = useState('');
   
   const title = data.title || 'Splitt';
   const model = data.model || 'individual'; // 'individual' or 'family'
   const participants = data.participants || [];
-  const expenses = data.expenses || [];
   const isClosed = data.closed || false;
   const currency = data.currency || 'kr';
   
-  // Get current user's email key
-  const getUserEmailKey = (email) => {
-    if (!email) return null;
-    return email.replace(/\./g, '_DOT_');
-  };
-  
-  const currentUserKey = currentUser?.email ? getUserEmailKey(currentUser.email) : null;
   const currentUserEmail = currentUser?.email?.toLowerCase();
   
   // Check if current user is a participant
   const isParticipant = participants.some(p => p.email?.toLowerCase() === currentUserEmail);
   
-  // Calculate totals
-  const totalExpenses = expenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+  // Calculate totals - each participant has their own "paid" amount
+  const totalPaid = participants.reduce((sum, p) => sum + (parseFloat(p.paid) || 0), 0);
   const totalWeight = participants.reduce((sum, p) => sum + (p.weight || 1), 0);
   
   // Calculate per-participant data
   const getParticipantData = (participant) => {
-    const email = participant.email?.toLowerCase();
-    const paid = expenses
-      .filter(e => e.paidBy?.toLowerCase() === email)
-      .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
-    const share = totalWeight > 0 ? (totalExpenses * (participant.weight || 1)) / totalWeight : 0;
+    const paid = parseFloat(participant.paid) || 0;
+    const share = totalWeight > 0 ? (totalPaid * (participant.weight || 1)) / totalWeight : 0;
     const balance = paid - share;
     return { paid, share, balance };
   };
@@ -1993,31 +1980,12 @@ export const SplitBlock = ({ data, currentUser, shares = {}, canEdit = false, on
     return settlements;
   };
   
-  // Get expenses visible to current user
-  const getVisibleExpenses = () => {
-    if (isClosed || canEdit) {
-      // When closed or editor, show all expenses grouped by payer
-      return expenses;
+  const handleSaveAmount = (participantEmail) => {
+    if (onUpdateAmount) {
+      onUpdateAmount(participantEmail, parseFloat(tempAmount) || 0);
     }
-    // When open, only show own expenses
-    return expenses.filter(e => e.addedBy?.toLowerCase() === currentUserEmail);
-  };
-  
-  const handleAddExpense = () => {
-    if (!newAmount || !onAddExpense) return;
-    
-    onAddExpense({
-      id: Date.now().toString(),
-      amount: parseFloat(newAmount),
-      description: newDescription.trim() || null,
-      paidBy: currentUserEmail,
-      addedBy: currentUserEmail,
-      addedAt: new Date().toISOString()
-    });
-    
-    setNewAmount('');
-    setNewDescription('');
-    setShowAddExpense(false);
+    setEditingAmount(null);
+    setTempAmount('');
   };
   
   const formatAmount = (amount) => {
@@ -2026,206 +1994,134 @@ export const SplitBlock = ({ data, currentUser, shares = {}, canEdit = false, on
   
   if (participants.length === 0) {
     return (
-      <div className="bg-white/5 rounded-xl border border-white/10 p-4">
+      <div className="bg-white/[0.03] rounded-xl p-4">
         <div className="flex items-center gap-2 text-gray-400">
-          <Wallet size={18} />
-          <span className="text-sm">Splitt – inga deltagare tillagda än</span>
+          <Wallet size={18} className="text-green-400" />
+          <span className="text-sm">{title} – inga deltagare tillagda än</span>
         </div>
       </div>
     );
   }
   
   return (
-    <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
-      {/* Header - always visible */}
-      <button
-        onClick={() => setIsCollapsed(!isCollapsed)}
-        className="w-full flex items-center justify-between p-3 hover:bg-white/5 transition-colors"
-      >
-        <div className="flex items-center gap-2">
-          <Wallet size={18} className="text-green-400" />
-          <span className="text-sm font-medium text-white">{title}</span>
-          {isClosed && (
-            <span className="text-xs px-2 py-0.5 rounded bg-gray-600/50 text-gray-400 flex items-center gap-1">
-              <Lock size={10} />
-              Avslutad
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-400">{formatAmount(totalExpenses)} {currency}</span>
-          <ChevronDown size={16} className={`text-gray-400 transition-transform ${isCollapsed ? '' : 'rotate-180'}`} />
-        </div>
-      </button>
-      
-      {/* Expandable content */}
-      {!isCollapsed && (
-        <div className="border-t border-white/10 p-3 space-y-3">
-          {/* Participant summary */}
-          <div className="space-y-2">
-            {participants.map((participant, idx) => {
-              const { paid, share, balance } = getParticipantData(participant);
-              const isCurrentUser = participant.email?.toLowerCase() === currentUserEmail;
-              
-              return (
-                <div 
-                  key={idx}
-                  className={`flex items-center justify-between p-2 rounded-lg ${isCurrentUser ? 'bg-green-500/10 border border-green-500/20' : 'bg-white/5'}`}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className={`text-sm ${isCurrentUser ? 'text-green-300 font-medium' : 'text-gray-300'}`}>
-                      {participant.name || participant.email?.split('@')[0]}
-                    </span>
-                    {model === 'family' && (
-                      <span className="text-xs text-gray-500">
-                        ({participant.adults || 0}v + {participant.children || 0}b = {participant.weight})
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-right">
-                    <div className={`text-sm font-medium ${balance > 0.5 ? 'text-green-400' : balance < -0.5 ? 'text-red-400' : 'text-gray-400'}`}>
-                      {balance > 0.5 ? '+' : ''}{formatAmount(balance)} {currency}
-                    </div>
-                    {showDetails && (
-                      <div className="text-xs text-gray-500">
-                        Betalat: {formatAmount(paid)} · Andel: {formatAmount(share)}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+    <div className="bg-white/[0.03] rounded-xl p-4 space-y-3">
+      {/* Participant list */}
+      <div className="space-y-2">
+        {participants.map((participant, idx) => {
+          const { paid, share, balance } = getParticipantData(participant);
+          const isCurrentUser = participant.email?.toLowerCase() === currentUserEmail;
+          const canEditAmount = isCurrentUser && !isClosed && onUpdateAmount;
+          const isEditing = editingAmount === participant.email;
           
-          {/* Settlement suggestions (when closed) */}
-          {isClosed && (
-            <div className="pt-2 border-t border-white/10">
-              <div className="text-xs text-gray-400 mb-2">Swisha:</div>
-              {getSettlements().length > 0 ? (
-                <div className="space-y-1">
-                  {getSettlements().map((s, idx) => (
-                    <div key={idx} className="text-sm text-gray-300 bg-white/5 rounded-lg px-3 py-2">
-                      <span className="text-red-400">{s.from}</span>
-                      {' → '}
-                      <span className="font-medium text-white">{formatAmount(s.amount)} {currency}</span>
-                      {' → '}
-                      <span className="text-green-400">{s.to}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-sm text-gray-500">Alla är kvitt! 🎉</div>
-              )}
-            </div>
-          )}
-          
-          {/* Add expense (only for participants when not closed) */}
-          {!isClosed && isParticipant && onAddExpense && (
-            <div className="pt-2 border-t border-white/10">
-              {showAddExpense ? (
-                <div className="space-y-2">
-                  <div className="flex gap-2">
+          return (
+            <div 
+              key={idx}
+              className={`flex items-center justify-between p-2 rounded-lg ${isCurrentUser ? 'bg-green-500/10 border border-green-500/20' : 'bg-white/5'}`}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <span className={`text-sm truncate ${isCurrentUser ? 'text-green-300 font-medium' : 'text-gray-300'}`}>
+                  {participant.name || participant.email?.split('@')[0]}
+                </span>
+                {model === 'family' && (
+                  <span className="text-xs text-gray-500 whitespace-nowrap">
+                    (×{participant.weight})
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                {/* Amount paid */}
+                {isEditing ? (
+                  <div className="flex items-center gap-1">
                     <input
                       type="number"
-                      value={newAmount}
-                      onChange={(e) => setNewAmount(e.target.value)}
-                      placeholder="Belopp"
-                      className="flex-1 px-3 py-2 text-sm bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-green-500 text-white placeholder-gray-500"
+                      value={tempAmount}
+                      onChange={(e) => setTempAmount(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSaveAmount(participant.email);
+                        if (e.key === 'Escape') { setEditingAmount(null); setTempAmount(''); }
+                      }}
+                      className="w-20 px-2 py-1 text-sm bg-white/10 border border-green-500/50 rounded focus:outline-none text-white text-right"
                       autoFocus
                     />
-                    <input
-                      type="text"
-                      value={newDescription}
-                      onChange={(e) => setNewDescription(e.target.value)}
-                      placeholder="Beskrivning (valfritt)"
-                      className="flex-1 px-3 py-2 text-sm bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-green-500 text-white placeholder-gray-500"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && newAmount) handleAddExpense();
-                        if (e.key === 'Escape') setShowAddExpense(false);
-                      }}
-                    />
-                  </div>
-                  <div className="flex gap-2">
                     <button
-                      onClick={handleAddExpense}
-                      disabled={!newAmount}
-                      className="flex-1 py-2 text-sm bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={() => handleSaveAmount(participant.email)}
+                      className="p-1 text-green-400 hover:text-green-300"
                     >
-                      Lägg till
-                    </button>
-                    <button
-                      onClick={() => setShowAddExpense(false)}
-                      className="px-4 py-2 text-sm bg-white/10 text-gray-400 rounded-lg hover:bg-white/20"
-                    >
-                      Avbryt
+                      <Check size={14} />
                     </button>
                   </div>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setShowAddExpense(true)}
-                  className="w-full py-2 text-sm text-green-400 hover:bg-green-500/10 rounded-lg flex items-center justify-center gap-1"
-                >
-                  <Plus size={14} />
-                  Lägg till utgift
-                </button>
-              )}
-            </div>
-          )}
-          
-          {/* My expenses (visible to current user) */}
-          {!isClosed && isParticipant && getVisibleExpenses().length > 0 && (
-            <div className="pt-2 border-t border-white/10">
-              <div className="text-xs text-gray-400 mb-2">Mina utgifter:</div>
-              <div className="space-y-1">
-                {getVisibleExpenses().map((expense) => (
-                  <div key={expense.id} className="flex items-center justify-between text-sm bg-white/5 rounded px-2 py-1 group">
-                    <span className="text-gray-400">{expense.description || 'Utgift'}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-white">{formatAmount(expense.amount)} {currency}</span>
-                      {onRemoveExpense && expense.addedBy?.toLowerCase() === currentUserEmail && (
-                        <button
-                          onClick={() => {
-                            if (window.confirm('Ta bort denna utgift?')) {
-                              onRemoveExpense(expense.id);
-                            }
-                          }}
-                          className="p-1 text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <X size={12} />
-                        </button>
-                      )}
-                    </div>
+                ) : (
+                  <button
+                    onClick={() => {
+                      if (canEditAmount) {
+                        setEditingAmount(participant.email);
+                        setTempAmount(paid > 0 ? paid.toString() : '');
+                      }
+                    }}
+                    disabled={!canEditAmount}
+                    className={`text-sm ${canEditAmount ? 'hover:bg-white/10 px-2 py-1 rounded cursor-pointer' : ''} ${paid > 0 ? 'text-white' : 'text-gray-500'}`}
+                    title={canEditAmount ? 'Klicka för att ändra' : undefined}
+                  >
+                    {paid > 0 ? `${formatAmount(paid)} ${currency}` : (canEditAmount ? 'Ange belopp' : '–')}
+                  </button>
+                )}
+                
+                {/* Balance */}
+                {totalPaid > 0 && !isEditing && (
+                  <div className={`text-sm font-medium min-w-[70px] text-right ${balance > 0.5 ? 'text-green-400' : balance < -0.5 ? 'text-red-400' : 'text-gray-500'}`}>
+                    {balance > 0.5 ? '+' : ''}{formatAmount(balance)}
                   </div>
-                ))}
+                )}
               </div>
             </div>
+          );
+        })}
+      </div>
+      
+      {/* Total */}
+      {totalPaid > 0 && (
+        <div className="flex items-center justify-between text-sm pt-2 border-t border-white/10">
+          <span className="text-gray-400">Totalt</span>
+          <span className="text-white font-medium">{formatAmount(totalPaid)} {currency}</span>
+        </div>
+      )}
+      
+      {/* Settlement suggestions (when closed or has amounts) */}
+      {isClosed && totalPaid > 0 && (
+        <div className="pt-2 border-t border-white/10">
+          <div className="text-xs text-gray-400 mb-2">Swisha:</div>
+          {getSettlements().length > 0 ? (
+            <div className="space-y-1">
+              {getSettlements().map((s, idx) => (
+                <div key={idx} className="text-sm text-gray-300 bg-white/5 rounded-lg px-3 py-2">
+                  <span className="text-red-400">{s.from}</span>
+                  {' → '}
+                  <span className="font-medium text-white">{formatAmount(s.amount)} {currency}</span>
+                  {' → '}
+                  <span className="text-green-400">{s.to}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-sm text-gray-500">Alla är kvitt! 🎉</div>
           )}
-          
-          {/* Footer with controls */}
-          <div className="flex items-center justify-between pt-2 border-t border-white/10">
-            <button
-              onClick={() => setShowDetails(!showDetails)}
-              className="text-xs text-gray-500 hover:text-gray-400 flex items-center gap-1"
-            >
-              <ChevronDown size={12} className={`transition-transform ${showDetails ? 'rotate-180' : ''}`} />
-              {showDetails ? 'Kompakt' : 'Visa detaljer'}
-            </button>
-            
-            {canEdit && !isClosed && onCloseSplit && (
-              <button
-                onClick={() => {
-                  if (window.confirm('Vill du avsluta splitten? Inga fler utgifter kan läggas till efteråt.')) {
-                    onCloseSplit();
-                  }
-                }}
-                className="text-xs text-amber-500 hover:text-amber-400 flex items-center gap-1"
-              >
-                <Lock size={10} />
-                Avsluta & summera
-              </button>
-            )}
-          </div>
+        </div>
+      )}
+      
+      {/* Close button for editor */}
+      {canEdit && !isClosed && onCloseSplit && totalPaid > 0 && (
+        <div className="pt-2 border-t border-white/10">
+          <button
+            onClick={() => {
+              if (window.confirm('Vill du avsluta splitten? Inga ändringar kan göras efteråt.')) {
+                onCloseSplit();
+              }
+            }}
+            className="w-full py-2 text-sm text-amber-500 hover:bg-amber-500/10 rounded-lg flex items-center justify-center gap-1"
+          >
+            <Lock size={12} />
+            Avsluta & visa swish
+          </button>
         </div>
       )}
     </div>

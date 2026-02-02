@@ -123,8 +123,9 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             type: 'split',
             title: b.data.title || '',
             model: b.data.model || 'individual',
-            participants: b.data.participants || [],
-            expenses: isDuplicate ? [] : (b.data.expenses || []), // Clear expenses when duplicating
+            participants: isDuplicate 
+              ? (b.data.participants || []).map(p => ({ ...p, paid: 0 })) // Reset paid amounts when duplicating
+              : (b.data.participants || []),
             closed: isDuplicate ? false : (b.data.closed || false),
             defaultCollapsed: b.data.defaultCollapsed ?? true
           };
@@ -487,8 +488,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             data: { 
               title: (block.title || 'Splitt').trim(),
               model: block.model || 'individual',
-              participants: block.participants,
-              expenses: block.expenses || [],
+              participants: block.participants.map(p => ({ ...p, paid: p.paid || 0 })),
               closed: block.closed || false,
               defaultCollapsed: block.defaultCollapsed ?? true
             } 
@@ -540,7 +540,6 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
       newBlock.title = 'Splitt';
       newBlock.model = 'individual';
       newBlock.participants = [];
-      newBlock.expenses = [];
       newBlock.closed = false;
       newBlock.defaultCollapsed = true;
     }

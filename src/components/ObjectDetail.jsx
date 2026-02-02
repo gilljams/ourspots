@@ -465,48 +465,31 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                             }
                           } : undefined}
                           // Split-specific props
-                          onAddExpense={block.type === 'split' ? async (expense) => {
+                          onUpdateAmount={block.type === 'split' ? async (participantEmail, amount) => {
                             try {
                               const updatedBlocks = [...object.blocks];
-                              const currentExpenses = updatedBlocks[actualBlockIndex].data.expenses || [];
-                              const newExpense = {
-                                id: Date.now().toString(),
-                                ...expense,
-                                addedAt: new Date().toISOString()
-                              };
-                              updatedBlocks[actualBlockIndex] = {
-                                ...updatedBlocks[actualBlockIndex],
-                                data: { 
-                                  ...updatedBlocks[actualBlockIndex].data, 
-                                  expenses: [...currentExpenses, newExpense] 
-                                }
-                              };
-                              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
-                            } catch (err) {
-                              console.error('Error adding expense:', err);
-                            }
-                          } : undefined}
-                          onRemoveExpense={block.type === 'split' ? async (expenseId) => {
-                            try {
-                              const updatedBlocks = [...object.blocks];
-                              const currentExpenses = updatedBlocks[actualBlockIndex].data.expenses || [];
-                              // Only allow removing if user added this expense
-                              const userKey = currentUser?.email ? currentUser.email.toLowerCase() : null;
-                              const expenseToRemove = currentExpenses.find(e => e.id === expenseId);
-                              if (!expenseToRemove || expenseToRemove.addedBy !== userKey) {
-                                console.error('Cannot remove expense: not owner');
+                              const currentParticipants = updatedBlocks[actualBlockIndex].data.participants || [];
+                              // Only allow updating own amount
+                              const userEmail = currentUser?.email?.toLowerCase();
+                              if (participantEmail.toLowerCase() !== userEmail) {
+                                console.error('Cannot update amount: not own participant');
                                 return;
                               }
+                              const updatedParticipants = currentParticipants.map(p => 
+                                p.email?.toLowerCase() === participantEmail.toLowerCase()
+                                  ? { ...p, paid: amount }
+                                  : p
+                              );
                               updatedBlocks[actualBlockIndex] = {
                                 ...updatedBlocks[actualBlockIndex],
                                 data: { 
                                   ...updatedBlocks[actualBlockIndex].data, 
-                                  expenses: currentExpenses.filter(e => e.id !== expenseId)
+                                  participants: updatedParticipants 
                                 }
                               };
                               await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
                             } catch (err) {
-                              console.error('Error removing expense:', err);
+                              console.error('Error updating amount:', err);
                             }
                           } : undefined}
                           onCloseSplit={block.type === 'split' && canEdit ? async () => {
