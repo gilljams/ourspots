@@ -2,7 +2,7 @@
 OurSpots – Manifest / Blueprint (Updated Feb 2, 2026)
 ========================
 
-🚀 STATUS: v2.9 - Split Block (Expense Sharing)
+🚀 STATUS: v2.9.1 - Simplified Split Block + Firebase Hosting
 
 1. VISION
 - Mobilfokuserad app med premium dark theme
@@ -88,14 +88,20 @@ OurSpots – Manifest / Blueprint (Updated Feb 2, 2026)
 - Karta synkad med listfilter (displayObjects) ✅ NY v2.8.1
 - SVG Music-ikon i AudioBlockEditor ✅ NY v2.8.1
 - Splitt-block för utgiftsdelning (resor, projekt) ✅ NY v2.9
-  - Individ-modell (lika delning) ✅
-  - Familj-modell (viktad: vuxna×1, barn×0.5) ✅
-  - Deltagare väljs från delade användare ✅
-  - Varje deltagare ser sina egna utgifter ✅
+  - Förenklad modell: ett belopp per deltagare (ej separata utgifter) ✅ UPPDATERAD v2.9.1
+  - Individ-modell: klickbara badges för att välja deltagare ✅ UPPDATERAD v2.9.1
+  - Familj-modell: viktad delning (vuxna×1, barn×0.5) med Enter-navigering ✅
+  - Ägare kan delta i splitt (inte bara delade användare) ✅ NY v2.9.1
+  - Collapsible header i visningsläge (som andra block) ✅ NY v2.9.1
+  - Kompakt inmatningsfält med "Jag har lagt ut:" label ✅ NY v2.9.1
+  - "Du får tillbaka X kr" / "Du är skyldig X kr" statustext ✅ NY v2.9.1
+  - Öppna igen / Nollställ belopp knappar i redigering ✅ NY v2.9.1
   - Avsluta split visar swisha-förslag (minimerar transaktioner) ✅
   - Grön Wallet-ikon och färgschema ✅
   - Ihopfälld som standard (defaultCollapsed) ✅
-  - Ta bort egna utgifter innan avslut ✅
+- Firebase Hosting deployment (alternativ till GitHub Pages) ✅ NY v2.9.1
+- GitHub Actions workflow för automatisk deploy ✅ NY v2.9.1
+- API-nyckel säkerhetsrestriktioner (website + API) ✅ NY v2.9.1
 
 2. KATEGORI-SYSTEM
 - Dynamiska kategorier lagrade i Firebase ✅

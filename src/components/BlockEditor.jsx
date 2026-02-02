@@ -2129,6 +2129,7 @@ function SplitBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
   const [model, setModel] = useState(block.model || 'individual');
   const [participants, setParticipants] = useState(block.participants || []);
   const [defaultCollapsed, setDefaultCollapsed] = useState(block.defaultCollapsed ?? true);
+  const [closed, setClosed] = useState(block.closed || false);
 
   // Sync with block changes
   useEffect(() => {
@@ -2136,7 +2137,8 @@ function SplitBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
     setModel(block.model || 'individual');
     setParticipants(block.participants || []);
     setDefaultCollapsed(block.defaultCollapsed ?? true);
-  }, [block.id, block.title, block.model, block.participants, block.defaultCollapsed]);
+    setClosed(block.closed || false);
+  }, [block.id, block.title, block.model, block.participants, block.defaultCollapsed, block.closed]);
 
   const syncToParent = (updates) => {
     onUpdate(block.id, {
@@ -2144,6 +2146,7 @@ function SplitBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
       model,
       participants,
       defaultCollapsed,
+      closed,
       ...updates
     });
   };
@@ -2167,6 +2170,40 @@ function SplitBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
   const handleDefaultCollapsedChange = (value) => {
     setDefaultCollapsed(value);
     syncToParent({ defaultCollapsed: value });
+  };
+
+  const handleReopenSplit = () => {
+    setClosed(false);
+    syncToParent({ closed: false });
+  };
+
+  const handleResetAmounts = () => {
+    if (window.confirm('Vill du nollställa alla belopp? Detta kan inte ångras.')) {
+      const resetParticipants = participants.map(p => ({ ...p, paid: 0 }));
+      setParticipants(resetParticipants);
+      setClosed(false);
+      syncToParent({ participants: resetParticipants, closed: false });
+    }
+  };
+
+  // Toggle participant (for individual mode badges)
+  const toggleParticipant = (email, name) => {
+    const exists = participants.some(p => p.email?.toLowerCase() === email);
+    if (exists) {
+      const updated = participants.filter(p => p.email?.toLowerCase() !== email);
+      setParticipants(updated);
+      syncToParent({ participants: updated });
+    } else {
+      const newParticipant = {
+        email,
+        name,
+        weight: 1,
+        paid: 0
+      };
+      const updated = [...participants, newParticipant];
+      setParticipants(updated);
+      syncToParent({ participants: updated });
+    }
   };
 
   // Get available users from shares (accepted or inherited) + owner
@@ -2230,34 +2267,36 @@ function SplitBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
   const totalWeight = participants.reduce((sum, p) => sum + (p.weight || 1), 0);
 
   return (
-    <div className="rounded-xl bg-white/5 border border-white/10 overflow-hidden">
-      {/* Header */}
-      <div 
-        className="flex items-center justify-between p-3 bg-green-500/10 border-b border-white/5 cursor-pointer"
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
-        <div className="flex items-center gap-2">
-          <Wallet size={16} className="text-green-400" />
-          <span className="text-sm font-medium text-white">{title || 'Splitt'}</span>
-          <span className="text-xs text-gray-500">({participants.length} deltagare)</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <ChevronDown size={16} className={`text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-          {onMove && index > 0 && (
-            <button type="button" onClick={(e) => { e.stopPropagation(); onMove(index, index - 1); }} className="p-1.5 rounded-lg hover:bg-white/10 text-gray-400">
-              <ArrowUp size={14} />
-            </button>
+    <div className="rounded-xl border border-white/10 bg-white/5 overflow-hidden">
+      {/* Collapsible header */}
+      <div className="flex items-center gap-2 p-3">
+        <button
+          type="button"
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex items-center gap-2 flex-1 min-w-0"
+        >
+          <ChevronDown 
+            size={16} 
+            className={`text-gray-500 transition-transform flex-shrink-0 ${isExpanded ? '' : '-rotate-90'}`} 
+          />
+          <Wallet size={16} className="text-green-400 flex-shrink-0" />
+          <span className="text-sm font-medium text-gray-300 truncate">
+            {title || 'Splitt'}
+          </span>
+          {participants.length > 0 && (
+            <span className="text-xs text-gray-500 flex-shrink-0">({participants.length} deltagare)</span>
           )}
-          {onMove && index < total - 1 && (
-            <button type="button" onClick={(e) => { e.stopPropagation(); onMove(index, index + 1); }} className="p-1.5 rounded-lg hover:bg-white/10 text-gray-400">
-              <ArrowDown size={14} />
-            </button>
-          )}
-          {onRemove && (
-            <button type="button" onClick={(e) => { e.stopPropagation(); onRemove(block.id); }} className="p-1.5 rounded-lg hover:bg-red-500/20 text-gray-400 hover:text-red-400">
-              <Trash2 size={14} />
-            </button>
-          )}
+        </button>
+        <div className="flex gap-1 flex-shrink-0">
+          <button type="button" onClick={() => onMove(block.id, -1)} disabled={index === 0} className="w-7 h-7 rounded bg-white/5 text-gray-400 hover:bg-white/10 flex items-center justify-center disabled:opacity-30">
+            <ArrowUp size={14} />
+          </button>
+          <button type="button" onClick={() => onMove(block.id, 1)} disabled={index === total - 1} className="w-7 h-7 rounded bg-white/5 text-gray-400 hover:bg-white/10 flex items-center justify-center disabled:opacity-30">
+            <ArrowDown size={14} />
+          </button>
+          <button type="button" onClick={() => onRemove(block.id)} className="w-7 h-7 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center">
+            <X size={14} />
+          </button>
         </div>
       </div>
 
@@ -2308,74 +2347,119 @@ function SplitBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
           {/* Participants */}
           <div>
             <label className="text-xs text-gray-400 mb-2 block">
-              Deltagare {totalWeight > 0 && `(total vikt: ${totalWeight})`}
+              Deltagare {model === 'family' && totalWeight > 0 && `(total vikt: ${totalWeight})`}
             </label>
             
-            {/* Current participants */}
-            <div className="space-y-2 mb-3">
-              {participants.map((p, idx) => (
-                <div key={idx} className="flex items-center gap-2 bg-white/5 rounded-lg p-2">
-                  <div className="flex-1 min-w-0">
-                    <span className="text-sm text-white truncate block">{p.name || p.email}</span>
-                    {model === 'family' && (
-                      <div className="flex items-center gap-2 mt-1">
-                        <div className="flex items-center gap-1">
-                          <label className="text-xs text-gray-500">Vuxna:</label>
-                          <input
-                            type="number"
-                            min="0"
-                            max="10"
-                            value={p.adults || 1}
-                            onChange={(e) => updateParticipantFamily(p.email, parseInt(e.target.value) || 0, p.children || 0)}
-                            className="w-12 px-2 py-1 text-xs bg-white/10 border border-white/20 rounded text-white text-center"
-                          />
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <label className="text-xs text-gray-500">Barn:</label>
-                          <input
-                            type="number"
-                            min="0"
-                            max="10"
-                            value={p.children || 0}
-                            onChange={(e) => updateParticipantFamily(p.email, p.adults || 1, parseInt(e.target.value) || 0)}
-                            className="w-12 px-2 py-1 text-xs bg-white/10 border border-white/20 rounded text-white text-center"
-                          />
-                        </div>
-                        <span className="text-xs text-gray-500">= {p.weight}</span>
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => removeParticipant(p.email)}
-                    className="p-1 text-gray-500 hover:text-red-400"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            {/* Add participant dropdown */}
-            {availableUsers.length > 0 && (
-              <div>
-                <label className="text-xs text-gray-500 mb-1 block">Lägg till från delade:</label>
-                <div className="flex flex-wrap gap-1">
-                  {availableUsers
-                    .filter(u => !participants.some(p => p.email === u.email))
-                    .map((user, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => addParticipant(user.email, user.name)}
-                        className="px-2 py-1 text-xs bg-white/10 hover:bg-green-500/20 text-gray-400 hover:text-green-400 rounded-lg flex items-center gap-1"
-                      >
-                        <Plus size={12} />
-                        {user.name}
-                      </button>
-                    ))}
-                </div>
+            {/* Individual mode: Toggle badges */}
+            {model === 'individual' && availableUsers.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {availableUsers.map((user, idx) => {
+                  const isSelected = participants.some(p => p.email?.toLowerCase() === user.email);
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => toggleParticipant(user.email, user.name)}
+                      className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
+                        isSelected
+                          ? 'bg-green-500/20 border-green-500/50 text-green-400'
+                          : 'bg-white/5 border-white/10 text-gray-500 hover:text-gray-300 hover:bg-white/10'
+                      }`}
+                    >
+                      {user.name}{user.isOwner ? ' (jag)' : ''}
+                    </button>
+                  );
+                })}
               </div>
+            )}
+            
+            {/* Family mode: Detailed list with weights */}
+            {model === 'family' && (
+              <>
+                <div className="space-y-2 mb-3">
+                  {participants.map((p, idx) => (
+                    <div key={idx} className="flex items-center gap-2 bg-white/5 rounded-lg p-2">
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm text-white truncate block">{p.name || p.email}</span>
+                        <div className="flex items-center gap-2 mt-1">
+                          <div className="flex items-center gap-1">
+                            <label className="text-xs text-gray-500">Vuxna:</label>
+                            <input
+                              type="number"
+                              min="0"
+                              max="10"
+                              data-family-input={`adults-${idx}`}
+                              value={p.adults ?? ''}
+                              onChange={(e) => updateParticipantFamily(p.email, e.target.value === '' ? 0 : parseInt(e.target.value), p.children || 0)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  const nextInput = document.querySelector(`[data-family-input="children-${idx}"]`);
+                                  nextInput?.focus();
+                                  nextInput?.select();
+                                }
+                              }}
+                              className="w-12 px-2 py-1 text-xs bg-white/10 border border-white/20 rounded text-white text-center"
+                            />
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <label className="text-xs text-gray-500">Barn:</label>
+                            <input
+                              type="number"
+                              min="0"
+                              max="10"
+                              data-family-input={`children-${idx}`}
+                              value={p.children ?? ''}
+                              onChange={(e) => updateParticipantFamily(p.email, p.adults || 0, e.target.value === '' ? 0 : parseInt(e.target.value))}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  const nextIdx = idx + 1;
+                                  const nextInput = document.querySelector(`[data-family-input="adults-${nextIdx}"]`);
+                                  if (nextInput) {
+                                    nextInput.focus();
+                                    nextInput.select();
+                                  } else {
+                                    e.target.blur();
+                                  }
+                                }
+                              }}
+                              className="w-12 px-2 py-1 text-xs bg-white/10 border border-white/20 rounded text-white text-center"
+                            />
+                          </div>
+                          <span className="text-xs text-gray-500">= {p.weight || 0}</span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeParticipant(p.email)}
+                        className="p-1 text-gray-500 hover:text-red-400"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Add participant for family mode */}
+                {availableUsers.filter(u => !participants.some(p => p.email === u.email)).length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {availableUsers
+                      .filter(u => !participants.some(p => p.email === u.email))
+                      .map((user, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => addParticipant(user.email, user.name)}
+                          className="px-2 py-1 text-xs bg-white/10 hover:bg-green-500/20 text-gray-400 hover:text-green-400 rounded-lg flex items-center gap-1"
+                        >
+                          <Plus size={12} />
+                          {user.name}
+                        </button>
+                      ))}
+                  </div>
+                )}
+              </>
             )}
             
             {availableUsers.length === 0 && participants.length === 0 && (
@@ -2384,6 +2468,30 @@ function SplitBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
               </div>
             )}
           </div>
+
+          {/* Reopen / Reset buttons */}
+          {(closed || participants.some(p => (parseFloat(p.paid) || 0) > 0)) && (
+            <div className="flex gap-2 pt-3 border-t border-white/5">
+              {closed && (
+                <button
+                  type="button"
+                  onClick={handleReopenSplit}
+                  className="flex-1 py-2 text-sm text-amber-500 hover:bg-amber-500/10 rounded-lg flex items-center justify-center gap-1"
+                >
+                  <RotateCcw size={12} />
+                  Öppna igen
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleResetAmounts}
+                className="flex-1 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-lg flex items-center justify-center gap-1"
+              >
+                <Trash2 size={12} />
+                Nollställ belopp
+              </button>
+            </div>
+          )}
 
           {/* Default collapsed toggle */}
           <div className="flex items-center justify-between pt-3 border-t border-white/5">

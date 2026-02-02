@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: '/ourspots/',
+  base: '/',
   build: {
     chunkSizeWarningLimit: 1000, // Höj gränsen till 1000kB för att undvika varningar
     rollupOptions: {

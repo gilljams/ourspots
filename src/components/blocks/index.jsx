@@ -1913,8 +1913,8 @@ export const AudioBlock = ({ data }) => {
 // Split Block - expense sharing for trips etc.
 export const SplitBlock = ({ data, currentUser, shares = {}, canEdit = false, onUpdateAmount, onCloseSplit }) => {
   const [isCollapsed, setIsCollapsed] = useState(data.defaultCollapsed ?? true);
-  const [editingAmount, setEditingAmount] = useState(null);
-  const [tempAmount, setTempAmount] = useState('');
+  const [myAmount, setMyAmount] = useState('');
+  const [hasEdited, setHasEdited] = useState(false);
   
   const title = data.title || 'Splitt';
   const model = data.model || 'individual'; // 'individual' or 'family'
@@ -1924,12 +1924,26 @@ export const SplitBlock = ({ data, currentUser, shares = {}, canEdit = false, on
   
   const currentUserEmail = currentUser?.email?.toLowerCase();
   
-  // Check if current user is a participant
-  const isParticipant = participants.some(p => p.email?.toLowerCase() === currentUserEmail);
+  // Find current user's participant data
+  const myParticipant = participants.find(p => p.email?.toLowerCase() === currentUserEmail);
+  const otherParticipants = participants.filter(p => p.email?.toLowerCase() !== currentUserEmail);
   
   // Calculate totals - each participant has their own "paid" amount
   const totalPaid = participants.reduce((sum, p) => sum + (parseFloat(p.paid) || 0), 0);
   const totalWeight = participants.reduce((sum, p) => sum + (p.weight || 1), 0);
+  
+  // Sync collapsed state when defaultCollapsed changes
+  React.useEffect(() => {
+    setIsCollapsed(data.defaultCollapsed ?? true);
+  }, [data.defaultCollapsed]);
+  
+  // Sync myAmount with saved value (but only if user hasn't edited)
+  React.useEffect(() => {
+    if (!hasEdited && myParticipant) {
+      const savedPaid = parseFloat(myParticipant.paid) || 0;
+      setMyAmount(savedPaid > 0 ? savedPaid.toString() : '');
+    }
+  }, [myParticipant?.paid, hasEdited]);
   
   // Calculate per-participant data
   const getParticipantData = (participant) => {
@@ -1980,17 +1994,21 @@ export const SplitBlock = ({ data, currentUser, shares = {}, canEdit = false, on
     return settlements;
   };
   
-  const handleSaveAmount = (participantEmail) => {
-    if (onUpdateAmount) {
-      onUpdateAmount(participantEmail, parseFloat(tempAmount) || 0);
+  const handleSaveMyAmount = () => {
+    if (onUpdateAmount && myParticipant) {
+      onUpdateAmount(myParticipant.email, parseFloat(myAmount) || 0);
+      setHasEdited(false);
     }
-    setEditingAmount(null);
-    setTempAmount('');
   };
   
   const formatAmount = (amount) => {
     return Math.round(amount).toLocaleString('sv-SE');
   };
+  
+  // Check if my amount has changed from saved
+  const myPaid = myParticipant ? (parseFloat(myParticipant.paid) || 0) : 0;
+  const myAmountNum = parseFloat(myAmount) || 0;
+  const hasUnsavedChanges = myParticipant && myAmountNum !== myPaid;
   
   if (participants.length === 0) {
     return (
@@ -2003,80 +2021,137 @@ export const SplitBlock = ({ data, currentUser, shares = {}, canEdit = false, on
     );
   }
   
+  // Count how many have paid
+  const paidCount = participants.filter(p => (parseFloat(p.paid) || 0) > 0).length;
+  
   return (
-    <div className="bg-white/[0.03] rounded-xl p-4 space-y-3">
-      {/* Participant list */}
-      <div className="space-y-2">
-        {participants.map((participant, idx) => {
-          const { paid, share, balance } = getParticipantData(participant);
-          const isCurrentUser = participant.email?.toLowerCase() === currentUserEmail;
-          const canEditAmount = isCurrentUser && !isClosed && onUpdateAmount;
-          const isEditing = editingAmount === participant.email;
-          
-          return (
-            <div 
-              key={idx}
-              className={`flex items-center justify-between p-2 rounded-lg ${isCurrentUser ? 'bg-green-500/10 border border-green-500/20' : 'bg-white/5'}`}
-            >
-              <div className="flex items-center gap-2 min-w-0">
-                <span className={`text-sm truncate ${isCurrentUser ? 'text-green-300 font-medium' : 'text-gray-300'}`}>
-                  {participant.name || participant.email?.split('@')[0]}
-                </span>
-                {model === 'family' && (
-                  <span className="text-xs text-gray-500 whitespace-nowrap">
-                    (×{participant.weight})
-                  </span>
-                )}
+    <div className="space-y-2">
+      {/* Collapsible header */}
+      <button
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        className="w-full flex items-center gap-2.5 py-2 group touch-manipulation"
+      >
+        <div className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
+          <ChevronDown 
+            size={14} 
+            className={`text-gray-400 group-hover:text-white transition-all ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} 
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <Wallet size={14} className="text-green-400" />
+          <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">
+            {title}
+          </span>
+          {isClosed && (
+            <span className="text-xs px-1.5 py-0.5 rounded bg-gray-600/50 text-gray-400 flex items-center gap-1">
+              <Lock size={10} />
+              Avslutad
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2 ml-auto">
+          {totalPaid > 0 && (
+            <span className="text-xs text-gray-400">{formatAmount(totalPaid)} {currency}</span>
+          )}
+          <span className="text-xs text-gray-500">{paidCount}/{participants.length}</span>
+        </div>
+      </button>
+      
+      {/* Collapsible content */}
+      {!isCollapsed && (
+        <div className="bg-white/[0.03] rounded-xl p-4 space-y-3">
+          {/* My input section - only if I'm a participant and not closed */}
+          {myParticipant && !isClosed && onUpdateAmount && (
+            <div className="space-y-1.5">
+              <div className="text-xs text-gray-400">Jag har lagt ut:</div>
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    value={myAmount}
+                    onChange={(e) => { setMyAmount(e.target.value); setHasEdited(true); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleSaveMyAmount(); }}
+                    placeholder="0"
+                    className="w-full px-2 py-1.5 pr-8 text-sm bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-green-500 text-white placeholder-gray-600 text-right"
+                  />
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">{currency}</span>
+                </div>
+                <button
+                  onClick={handleSaveMyAmount}
+                  disabled={!hasUnsavedChanges}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    hasUnsavedChanges 
+                      ? 'bg-green-500 text-white hover:bg-green-600' 
+                      : 'bg-white/5 text-gray-500 cursor-not-allowed'
+                  }`}
+                >
+                  Spara
+                </button>
               </div>
+              {/* My balance */}
+              {totalPaid > 0 && (() => {
+                const { balance } = getParticipantData(myParticipant);
+                return (
+                  <div className={`text-xs ${balance > 0.5 ? 'text-green-400' : balance < -0.5 ? 'text-red-400' : 'text-gray-500'}`}>
+                    {balance > 0.5 ? `Du får tillbaka ${formatAmount(balance)} ${currency}` : 
+                     balance < -0.5 ? `Du är skyldig ${formatAmount(Math.abs(balance))} ${currency}` : 
+                     'Du är kvitt'}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+          
+          {/* My amount display - if I'm a participant but can't edit (closed) */}
+          {myParticipant && (isClosed || !onUpdateAmount) && (
+            <div className="flex items-center justify-between p-2 rounded-lg bg-green-500/10 border border-green-500/20">
+              <span className="text-sm text-green-300 font-medium">
+                {myParticipant.name || 'Jag'}
+              </span>
               <div className="flex items-center gap-3">
-                {/* Amount paid */}
-                {isEditing ? (
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="number"
-                      value={tempAmount}
-                      onChange={(e) => setTempAmount(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleSaveAmount(participant.email);
-                        if (e.key === 'Escape') { setEditingAmount(null); setTempAmount(''); }
-                      }}
-                      className="w-20 px-2 py-1 text-sm bg-white/10 border border-green-500/50 rounded focus:outline-none text-white text-right"
-                      autoFocus
-                    />
-                    <button
-                      onClick={() => handleSaveAmount(participant.email)}
-                      className="p-1 text-green-400 hover:text-green-300"
-                    >
-                      <Check size={14} />
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => {
-                      if (canEditAmount) {
-                        setEditingAmount(participant.email);
-                        setTempAmount(paid > 0 ? paid.toString() : '');
-                      }
-                    }}
-                    disabled={!canEditAmount}
-                    className={`text-sm ${canEditAmount ? 'hover:bg-white/10 px-2 py-1 rounded cursor-pointer' : ''} ${paid > 0 ? 'text-white' : 'text-gray-500'}`}
-                    title={canEditAmount ? 'Klicka för att ändra' : undefined}
-                  >
-                    {paid > 0 ? `${formatAmount(paid)} ${currency}` : (canEditAmount ? 'Ange belopp' : '–')}
-                  </button>
-                )}
-                
-                {/* Balance */}
-                {totalPaid > 0 && !isEditing && (
-                  <div className={`text-sm font-medium min-w-[70px] text-right ${balance > 0.5 ? 'text-green-400' : balance < -0.5 ? 'text-red-400' : 'text-gray-500'}`}>
-                    {balance > 0.5 ? '+' : ''}{formatAmount(balance)}
-                  </div>
-                )}
+                <span className="text-sm text-white">{formatAmount(myPaid)} {currency}</span>
+                {totalPaid > 0 && (() => {
+                  const { balance } = getParticipantData(myParticipant);
+                  return (
+                    <span className={`text-sm font-medium ${balance > 0.5 ? 'text-green-400' : balance < -0.5 ? 'text-red-400' : 'text-gray-500'}`}>
+                      {balance > 0.5 ? '+' : ''}{formatAmount(balance)}
+                    </span>
+                  );
+                })()}
               </div>
             </div>
-          );
-        })}
-      </div>
+          )}
+          
+          {/* Other participants - compact list */}
+          {otherParticipants.length > 0 && (
+            <div className="space-y-1">
+              {otherParticipants.map((participant, idx) => {
+                const { paid, balance } = getParticipantData(participant);
+                return (
+                  <div 
+                    key={idx}
+                    className="flex items-center justify-between py-1.5 px-2 text-sm"
+                  >
+                    <span className="text-gray-400 truncate">
+                      {participant.name || participant.email?.split('@')[0]}
+                      {model === 'family' && <span className="text-gray-600 ml-1">×{participant.weight}</span>}
+                    </span>
+                    <div className="flex items-center gap-3">
+                      <span className={paid > 0 ? 'text-gray-300' : 'text-gray-600'}>
+                        {paid > 0 ? `${formatAmount(paid)} ${currency}` : '–'}
+                      </span>
+                      {totalPaid > 0 && (
+                        <span className={`min-w-[60px] text-right ${balance > 0.5 ? 'text-green-400' : balance < -0.5 ? 'text-red-400' : 'text-gray-600'}`}>
+                          {balance > 0.5 ? '+' : ''}{formatAmount(balance)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
       
       {/* Total */}
       {totalPaid > 0 && (
@@ -2122,6 +2197,8 @@ export const SplitBlock = ({ data, currentUser, shares = {}, canEdit = false, on
             <Lock size={12} />
             Avsluta & visa swish
           </button>
+        </div>
+      )}
         </div>
       )}
     </div>
