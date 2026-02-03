@@ -2,9 +2,9 @@
 
 En mobilfokuserad app för att hantera fastigheter, smultronställen, kaféer, resor och andra platser med delningsfunktioner.
 
-🌐 **Live:** [https://ourspots-b536b.firebaseapp.com](https://ourspots-b536b.firebaseapp.com)
+🌐 **Live:** [https://ourspots.se](https://ourspots.se)
 
-> 📦 Backup: [https://gilljams.github.io/ourspots/](https://gilljams.github.io/ourspots/) (GitHub Pages)
+> 📦 Backup: [https://ourspots-b536b.web.app](https://ourspots-b536b.web.app) (Firebase)
 
 ## 🎯 Vision
 
