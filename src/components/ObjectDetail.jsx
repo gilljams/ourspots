@@ -17,32 +17,33 @@ const Folder = ({ size = 24, ...props }) => (
   </svg>
 );
 
+// Helper function to calculate initial expanded blocks based on defaultCollapsed settings
+const getInitialExpandedBlocks = (object) => {
+  const blocks = object?.blocks || [];
+  const filteredBlocks = blocks.filter(b => b.type !== 'title');
+  const collapsibleTypes = ['text', 'poll'];
+  const expandedSet = new Set();
+  
+  filteredBlocks.forEach((block, filteredIndex) => {
+    // For collapsible blocks, check defaultCollapsed
+    if (collapsibleTypes.includes(block.type)) {
+      if (!block.data?.defaultCollapsed) {
+        expandedSet.add(filteredIndex);
+      }
+    } else if (block.type === 'links' && (block.data?.items?.length || 0) > 1) {
+      // Links are collapsible only if they have more than 1 link
+      if (!block.data?.defaultCollapsed) {
+        expandedSet.add(filteredIndex);
+      }
+    }
+  });
+  
+  return expandedSet;
+};
+
 function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockUpdate, currentUser, userDisplayName, allObjects, onNavigate, categories, isAdmin, onShowOnMap, onShare, onLeaveShare }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [expandedBlocks, setExpandedBlocks] = useState(() => {
-    // Initialize expanded blocks based on defaultCollapsed setting
-    // We need to use the FILTERED index (excluding title) since that's what rendering uses
-    const blocks = object?.blocks || [];
-    const filteredBlocks = blocks.filter(b => b.type !== 'title');
-    const collapsibleTypes = ['text', 'poll'];
-    const expandedSet = new Set();
-    
-    filteredBlocks.forEach((block, filteredIndex) => {
-      // For collapsible blocks, check defaultCollapsed
-      if (collapsibleTypes.includes(block.type)) {
-        if (!block.data?.defaultCollapsed) {
-          expandedSet.add(filteredIndex);
-        }
-      } else if (block.type === 'links' && (block.data?.items?.length || 0) > 1) {
-        // Links are collapsible only if they have more than 1 link
-        if (!block.data?.defaultCollapsed) {
-          expandedSet.add(filteredIndex);
-        }
-      }
-    });
-    
-    return expandedSet;
-  });
+  const [expandedBlocks, setExpandedBlocks] = useState(() => getInitialExpandedBlocks(object));
   const [showManageSection, setShowManageSection] = useState(false);
   const [childViewMode, setChildViewMode] = useState(() => {
     return localStorage.getItem('ourspots-child-view-mode') || 'grid';
@@ -61,6 +62,11 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
   const [isSwipeActive, setIsSwipeActive] = useState(false);
   const modalRef = useRef(null);
   const manageSectionRef = useRef(null);
+  
+  // Reset expandedBlocks when object changes (e.g., navigating to a different object)
+  useEffect(() => {
+    setExpandedBlocks(getInitialExpandedBlocks(object));
+  }, [object?.id]);
   
   // Scroll manage section into view when opened
   useEffect(() => {
