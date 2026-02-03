@@ -1674,6 +1674,7 @@ function PollBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
   const [pollType, setPollType] = useState(block.pollType || 'date');
   const [options, setOptions] = useState(block.options || []);
   const [allowSuggestions, setAllowSuggestions] = useState(block.allowSuggestions || false);
+  const [defaultCollapsed, setDefaultCollapsed] = useState(block.defaultCollapsed ?? false);
   const [newOption, setNewOption] = useState('');
   const [newOptionUrl, setNewOptionUrl] = useState('');
   const [isExpanded, setIsExpanded] = useState(false);
@@ -1686,11 +1687,16 @@ function PollBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
   optionsRef.current = options;
   pollTypeRef.current = pollType;
 
-  const syncToParent = (newTitle, newOptions, newVotes = block.votes || {}, newPollType = pollType, newClosed = block.closed || false, newAllowSuggestions = allowSuggestions) => {
+  const syncToParent = (newTitle, newOptions, newVotes = block.votes || {}, newPollType = pollType, newClosed = block.closed || false, newAllowSuggestions = allowSuggestions, newDefaultCollapsed = defaultCollapsed) => {
     titleRef.current = newTitle;
     optionsRef.current = newOptions;
     pollTypeRef.current = newPollType;
-    onUpdate(block.id, { title: newTitle, options: newOptions, votes: newVotes, pollType: newPollType, closed: newClosed, allowSuggestions: newAllowSuggestions });
+    onUpdate(block.id, { title: newTitle, options: newOptions, votes: newVotes, pollType: newPollType, closed: newClosed, allowSuggestions: newAllowSuggestions, defaultCollapsed: newDefaultCollapsed });
+  };
+
+  const handleDefaultCollapsedChange = (value) => {
+    setDefaultCollapsed(value);
+    syncToParent(title, options, block.votes || {}, pollType, block.closed || false, allowSuggestions, value);
   };
 
   const handleAllowSuggestionsChange = (value) => {
@@ -2007,6 +2013,25 @@ function PollBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
             >
               <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${
                 allowSuggestions ? 'left-7' : 'left-1'
+              }`} />
+            </button>
+          </div>
+
+          {/* Default collapsed toggle */}
+          <div className="flex items-center justify-between pt-3 border-t border-white/5">
+            <div>
+              <span className="text-sm text-white">Ihopfälld som standard</span>
+              <p className="text-xs text-gray-500">I visningsläge</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleDefaultCollapsedChange(!defaultCollapsed)}
+              className={`w-12 h-6 rounded-full transition-colors relative ${
+                defaultCollapsed ? 'bg-indigo-500' : 'bg-white/20'
+              }`}
+            >
+              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${
+                defaultCollapsed ? 'left-7' : 'left-1'
               }`} />
             </button>
           </div>
