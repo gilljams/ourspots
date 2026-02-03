@@ -4,7 +4,7 @@ import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBe5bAF1CtXWftWA8biN7Tcd0Ms4cGWGvI",
-  authDomain: "ourspots-b536b.firebaseapp.com",
+  authDomain: "ourspots.se",
   projectId: "ourspots-b536b",
   storageBucket: "ourspots-b536b.firebasestorage.app",
   messagingSenderId: "1047808506108",
