@@ -1771,7 +1771,9 @@ export const AudioBlock = ({ data }) => {
   const audioRef = useRef(null);
 
   const title = data.title || 'Ljudfil';
-  const url = data.url || '';
+  // Normalize URL: remove /ourspots prefix if present (for Firebase vs GitHub Pages compatibility)
+  const rawUrl = data.url || '';
+  const url = rawUrl.startsWith('/ourspots/') ? rawUrl.replace('/ourspots/', '/') : rawUrl;
 
   useEffect(() => {
     const audio = audioRef.current;

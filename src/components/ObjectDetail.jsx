@@ -173,8 +173,12 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
   });
 
   // Get first audio block URL (for location block play button)
+  // Normalize URL: remove /ourspots prefix if present (for Firebase vs GitHub Pages compatibility)
   const audioBlock = object.blocks.find(b => b.type === 'audio');
-  const audioUrl = audioBlock?.data?.url || null;
+  const rawAudioUrl = audioBlock?.data?.url || null;
+  const audioUrl = rawAudioUrl?.startsWith('/ourspots/') 
+    ? rawAudioUrl.replace('/ourspots/', '/') 
+    : rawAudioUrl;
   const audioIsDiscrete = audioBlock?.data?.discrete !== false; // Default true
   
   const handleDelete = async () => {
