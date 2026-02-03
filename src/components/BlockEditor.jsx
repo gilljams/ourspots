@@ -2122,6 +2122,62 @@ function AudioBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
   );
 }
 
+// Separate component for weighted participant row (needed for hooks)
+function WeightedParticipantRow({ participant, idx, onUpdateWeight, onRemove }) {
+  const [localWeight, setLocalWeight] = useState(String(participant.weight ?? 1));
+  
+  // Sync when external value changes
+  useEffect(() => {
+    setLocalWeight(String(participant.weight ?? 1));
+  }, [participant.weight]);
+  
+  return (
+    <div className="flex items-center gap-2 bg-white/5 rounded-lg p-2">
+      <div className="flex-1 min-w-0">
+        <span className="text-sm text-white truncate block">{participant.name || participant.email}</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <label className="text-xs text-gray-500">Vikt:</label>
+        <input
+          type="text"
+          inputMode="decimal"
+          data-weight-input={idx}
+          value={localWeight}
+          onChange={(e) => setLocalWeight(e.target.value)}
+          onBlur={(e) => {
+            const val = e.target.value.replace(',', '.');
+            const num = parseFloat(val) || 1;
+            const clamped = Math.max(0.5, Math.min(10, num));
+            setLocalWeight(String(clamped));
+            onUpdateWeight(clamped);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              e.target.blur();
+              const nextInput = document.querySelector(`[data-weight-input="${idx + 1}"]`);
+              if (nextInput) {
+                setTimeout(() => {
+                  nextInput.focus();
+                  nextInput.select();
+                }, 10);
+              }
+            }
+          }}
+          className="w-14 px-2 py-1 text-xs bg-white/10 border border-white/20 rounded text-white text-center"
+        />
+      </div>
+      <button
+        type="button"
+        onClick={onRemove}
+        className="p-1 text-gray-500 hover:text-red-400"
+      >
+        <X size={14} />
+      </button>
+    </div>
+  );
+}
+
 // Split Block Editor - expense sharing configuration
 function SplitBlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving, shares = {}, currentUser, currentUserDisplayName }) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -2158,10 +2214,10 @@ function SplitBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
 
   const handleModelChange = (value) => {
     setModel(value);
-    // Reset participants when changing model
+    // Reset weights when changing model
     const updatedParticipants = participants.map(p => ({
       ...p,
-      weight: value === 'individual' ? 1 : (p.adults || 1) + (p.children || 0) * 0.5
+      weight: value === 'individual' ? 1 : (p.weight || 1)
     }));
     setParticipants(updatedParticipants);
     syncToParent({ model: value, participants: updatedParticipants });
@@ -2229,13 +2285,8 @@ function SplitBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
       email,
       name,
       weight: 1,
-      adults: 1,
-      children: 0
+      paid: 0
     };
-    
-    if (model === 'family') {
-      newParticipant.weight = 1; // 1 adult default
-    }
     
     const updated = [...participants, newParticipant];
     setParticipants(updated);
@@ -2248,14 +2299,12 @@ function SplitBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
     syncToParent({ participants: updated });
   };
 
-  const updateParticipantFamily = (email, adults, children) => {
+  const updateParticipantWeight = (email, weight) => {
     const updated = participants.map(p => {
       if (p.email?.toLowerCase() === email) {
         return {
           ...p,
-          adults,
-          children,
-          weight: adults + children * 0.5
+          weight: weight || 1
         };
       }
       return p;
@@ -2328,7 +2377,7 @@ function SplitBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
                     : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
                 }`}
               >
-                Individ (lika)
+                Lika
               </button>
               <button
                 type="button"
@@ -2339,7 +2388,7 @@ function SplitBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
                     : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
                 }`}
               >
-                Familj (vikt)
+                Viktad
               </button>
             </div>
           </div>
@@ -2373,75 +2422,27 @@ function SplitBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
               </div>
             )}
             
-            {/* Family mode: Detailed list with weights */}
+            {/* Weighted mode: List with single weight field */}
             {model === 'family' && (
               <>
                 <div className="space-y-2 mb-3">
                   {participants.map((p, idx) => (
-                    <div key={idx} className="flex items-center gap-2 bg-white/5 rounded-lg p-2">
-                      <div className="flex-1 min-w-0">
-                        <span className="text-sm text-white truncate block">{p.name || p.email}</span>
-                        <div className="flex items-center gap-2 mt-1">
-                          <div className="flex items-center gap-1">
-                            <label className="text-xs text-gray-500">Vuxna:</label>
-                            <input
-                              type="number"
-                              min="0"
-                              max="10"
-                              data-family-input={`adults-${idx}`}
-                              value={p.adults ?? ''}
-                              onChange={(e) => updateParticipantFamily(p.email, e.target.value === '' ? 0 : parseInt(e.target.value), p.children || 0)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.preventDefault();
-                                  const nextInput = document.querySelector(`[data-family-input="children-${idx}"]`);
-                                  nextInput?.focus();
-                                  nextInput?.select();
-                                }
-                              }}
-                              className="w-12 px-2 py-1 text-xs bg-white/10 border border-white/20 rounded text-white text-center"
-                            />
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <label className="text-xs text-gray-500">Barn:</label>
-                            <input
-                              type="number"
-                              min="0"
-                              max="10"
-                              data-family-input={`children-${idx}`}
-                              value={p.children ?? ''}
-                              onChange={(e) => updateParticipantFamily(p.email, p.adults || 0, e.target.value === '' ? 0 : parseInt(e.target.value))}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.preventDefault();
-                                  const nextIdx = idx + 1;
-                                  const nextInput = document.querySelector(`[data-family-input="adults-${nextIdx}"]`);
-                                  if (nextInput) {
-                                    nextInput.focus();
-                                    nextInput.select();
-                                  } else {
-                                    e.target.blur();
-                                  }
-                                }
-                              }}
-                              className="w-12 px-2 py-1 text-xs bg-white/10 border border-white/20 rounded text-white text-center"
-                            />
-                          </div>
-                          <span className="text-xs text-gray-500">= {p.weight || 0}</span>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeParticipant(p.email)}
-                        className="p-1 text-gray-500 hover:text-red-400"
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
+                    <WeightedParticipantRow
+                      key={p.email || idx}
+                      participant={p}
+                      idx={idx}
+                      onUpdateWeight={(weight) => updateParticipantWeight(p.email, weight)}
+                      onRemove={() => removeParticipant(p.email)}
+                    />
                   ))}
                 </div>
+                
+                {/* Help text */}
+                <div className="text-xs text-gray-500 mb-2">
+                  T.ex. 3 för hela resan, 2 för de som kom dag 2 av 3
+                </div>
 
-                {/* Add participant for family mode */}
+                {/* Add participant for weighted mode */}
                 {availableUsers.filter(u => !participants.some(p => p.email === u.email)).length > 0 && (
                   <div className="flex flex-wrap gap-1">
                     {availableUsers

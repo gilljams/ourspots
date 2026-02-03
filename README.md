@@ -2,7 +2,9 @@
 
 En mobilfokuserad app för att hantera fastigheter, smultronställen, kaféer, resor och andra platser med delningsfunktioner.
 
-🌐 **Live Demo:** [https://gilljams.github.io/ourspots/](https://gilljams.github.io/ourspots/)
+🌐 **Live:** [https://ourspots-b536b.web.app](https://ourspots-b536b.web.app)
+
+> 📦 Backup: [https://gilljams.github.io/ourspots/](https://gilljams.github.io/ourspots/) (GitHub Pages)
 
 ## 🎯 Vision
 
@@ -201,9 +203,9 @@ OurSpots är en platsbaserad app med premium dark theme som låter användare:
 - **Screen Management:** Wake Lock API (håll skärmen påslagen)
 - **State Management:** React useState + functional setState för race condition-säkerhet
 - **Optimeringar:** Tree-shaking, lazy loading, optimistic updates
-- **Hosting:** GitHub Pages
+- **Hosting:** Firebase Hosting (primär) + GitHub Pages (backup)
 - **Version Control:** Git + GitHub
-- **CI/CD:** npm scripts för deployment
+- **CI/CD:** GitHub Actions för GitHub Pages, manuell deploy till Firebase
 
 ## 🚀 Kom igång
 
@@ -247,11 +249,34 @@ npm run build
 
 Byggda filer hamnar i `dist/`-mappen.
 
-### Deploya till GitHub Pages
+### 🚀 Deploya till Firebase Hosting (Primär)
+
+Firebase Hosting är den primära deployment-metoden. Kräver Firebase CLI.
+
+```bash
+# Första gången: Installera Firebase CLI och logga in
+npm install -g firebase-tools
+firebase login
+
+# Bygg och deploya
+npm run build
+npx firebase deploy --only hosting
+```
+
+**URL:** https://ourspots-b536b.web.app
+
+**Egen domän:** Firebase Console → Hosting → "Add custom domain" → DNS-verifiering → Automatisk SSL
+
+### 📦 Deploya till GitHub Pages (Backup)
+
+GitHub Pages triggas automatiskt via GitHub Actions vid push till main.
+Kan även köras manuellt:
 
 ```bash
 npm run deploy
 ```
+
+**URL:** https://gilljams.github.io/ourspots/
 
 ## 📁 Projektstruktur
 

@@ -1125,6 +1125,7 @@ function App() {
                             const updateData = {
                               [`shares.${emailKey}.status`]: 'accepted',
                               [`shares.${emailKey}.respondedAt`]: Timestamp.now(),
+                              [`shares.${emailKey}.displayName`]: displayName || user.email.split('@')[0],
                               acceptedShareEmails: arrayUnion(userEmail)
                             };
                             // Add to editorEmails if editor role (for Firestore security rules)
