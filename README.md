@@ -1,6 +1,6 @@
 # OurSpots
 
-En mobilfokuserad app för att hantera fastigheter, smultronställen, kaféer, resor och andra platser med delningsfunktioner.
+En mobilfokuserad app för att hantera Boenden, resor, restaurangtips, aktiviteter och liknande platser med delningsfunktioner. Det finns även en platsoberoende kategori där man exempelvis kan ha sin receptsamling eller annat man kan komma på.
 
 🌐 **Live:** [https://ourspots.se](https://ourspots.se)
 
@@ -8,15 +8,14 @@ En mobilfokuserad app för att hantera fastigheter, smultronställen, kaféer, r
 
 ## 🎯 Vision
 
-OurSpots är en platsbaserad app med premium dark theme som låter användare:
-- Skapa och organisera objekt (fastigheter, kaféer, naturplatser, etc.)
+OurSpots är en platsbaserad app (primärt för mobil) med dark theme som låter användare:
+- Skapa och organisera objekt (fastigheter, resor, aktiviteter, etc.)
 - Bygga objekt med modulära block (bilder, platser, text, checklistor)
 - Dela objekt med andra (viewer/editor-roller)
-- Organisera i lager och kategorier
+- Organisera i lager (parent/child) och kategorier
 - Se objekt på karta med avstånd och navigation
-- Publik vy för externa användare
 
-## 🏗️ Nuvarande Status (v1.4 - Navigation & UX-förbättringar)
+## 🏗️ Nuvarande Status (v1.5 - Custom Domain & Infrastructure)
 
 ### ✅ Implementerat
 
@@ -31,9 +30,6 @@ OurSpots är en platsbaserad app med premium dark theme som låter användare:
 - **GitHub Pages** - Live deployment med optimerad bundle
 
 #### Block & Innehåll
-- **Checklist block** - Kryssrutor med state-synk i modal och nollställningsfunktion
-- **Todo block** - Uppgiftslista med progress-bar och nollställningsfunktion
-- **Reset-knappar** - Nollställ alla markeringar i Todo/Checklist för återkommande uppgifter
 - **Dynamiska block med titlar** - Flera text/checklist/todo med egna titlar
 - **Expand/Collapse-block** - Kollapsade som standard (första öppen), thumbnail-bild, kompakt plats
 - **Drag & drop blockordning** - Dra för att sortera; upp/ner-pilar för mobil
@@ -142,13 +138,9 @@ OurSpots är en platsbaserad app med premium dark theme som låter användare:
 - **Optimistic updates** - Omedelbar UI-feedback för checklist/todo
 
 ### 🚧 Kommande Features (Prioriterad backlog)
-1. **PWA** - Installera som app, offline-support, service worker
-2. **Fler blocktyper** - Betyg, öppettider, kontaktinfo, länkar
-3. **Delningsfunktion** - Dela objekt med viewer/editor-roller
-4. **Lager/samlingar** - Gruppera objekt för resor och projekt
-5. **Publik vy** - Sharable links för externa användare
-6. **Avancerad admin** - Användarhantering, statistik, backup/restore
-7. **Import/Export** - Backup och migrering av data
+1. **Fler blocktyper** - leaderboard etc
+2. **Avancerad admin** - Användarhantering, statistik, backup/restore
+3. **Import/Export** - Backup och migrering av data
 
 ## 🎨 Admin-funktioner
 
@@ -267,7 +259,7 @@ npx firebase deploy --only hosting
 
 **Egen domän:** Firebase Console → Hosting → "Add custom domain" → DNS-verifiering → Automatisk SSL
 
-### 📦 Deploya till GitHub Pages (Backup)
+### 📦 Deploya till GitHub Pages (Backup - används inte längre)
 
 GitHub Pages triggas automatiskt via GitHub Actions vid push till main.
 Kan även köras manuellt:
@@ -427,17 +419,6 @@ ourspots/
 }
 ```
 
-### Layer (Planerat - Ej implementerat)
-```javascript
-{
-  id: string,                    // Layer-ID
-  name: string,                  // Namn (ex: "Sommarresa 2026")
-  type: "default" | "trip" | "project" | "public",
-  color?: string,                // Accentfärg
-  icon?: string                  // Ikon
-}
-```
-
 ## 🎨 Design System
 
 ### Färger
@@ -446,18 +427,6 @@ ourspots/
 - **Accent:** Blue-500
 - **Text:** White (titlar), Gray-300/400 (body)
 - **Borders:** White/10
-
-### Ikoner (Fördefinierade)
-- 🏡 Fastighet
-- 🏠 Hus
-- 🚗 Garage
-- 🌳 Trädgård
-- 🍓 Smultronställe
-- 🍄 Svamp
-- ☕ Kafé/Restaurang
-- ✈️ Resa
-- 🏞️ Natur
-- ⭐ Favorit
 
 ## 🔧 Utveckling
 
@@ -570,6 +539,18 @@ Detta är en varning från Firebase Auth + GitHub Pages. Kan ignoreras - påverk
 
 ## 📝 Changelog
 
+### v1.5 - Custom Domain & Infrastructure (2026-02-03)
+- 🌐 **Custom domain** - Appen nu live på ourspots.se
+- 🔧 **Cloudflare DNS** - Professionell DNS-hantering med AI-bot blockering
+- 📄 **Infrastructure docs** - Komplett dokumentation i INFRASTRUCTURE.md
+- 🔐 **OAuth & API config** - Korrekt konfigurerad Google-inloggning på alla domäner
+
+### v1.4 - Navigation & UX-förbättringar (2026-01-28)
+- 🧭 **Förbättrad navigation** - Klickbar location på kort för snabb åtkomst
+- 🗺️ **Navigation-meny** - Google Maps & Waze-integration
+- 📍 **Visa på karta** - Centrerar direkt på vald position
+- 🎨 **UX-polish** - Subtila hover-effekter och förbättrad responsivitet
+
 ### v1.3 - Admin-verktyg & Stabilitet (2026-01-26)
 - ✨ **Admin: "Alla objekt"-vy** - Skalbar objekthantering med användarfilter och sök
 - 🔍 **Problemdetektion** - Upptäck cirkulära parent-referenser och ogiltiga kategorier
@@ -670,28 +651,19 @@ Detta är en varning från Firebase Auth + GitHub Pages. Kan ignoreras - påverk
 
 ### Kort sikt (Q1 2026)
 - [x] Quick Capture (Svampknapp) för offline GPS-plockning ✅ v1.2
-- [ ] PWA-implementation (manifest.json, service worker)
-- [ ] Installera som app
-- [ ] Offline-support för hela appen
 - [ ] Ratings-block (1-5 stjärnor)
-- [ ] Öppettider-block
-- [ ] Kontaktinfo-block
-- [ ] Länk-block
+- [x] Kontaktinfo-block
+- [x] Länk-block
 
 ### Medellång sikt (Q2 2026)
-- [ ] Lager/samlingar för resor och projekt
-- [ ] Delning mellan användare (viewer/editor-roller)
-- [ ] Publik vy med sharable links
-- [ ] Avancerad användarhantering
+- [x] Lager/samlingar för resor och projekt
+- [x] Delning mellan användare (viewer/editor-roller)
+- [ ] roller / bundles av behörigheter
 - [ ] Export/import av data (JSON backup)
 - [ ] Statistik och rapporter
 
 ### Lång sikt (Q3-Q4 2026)
 - [ ] Mobil app (React Native eller PWA+)
-- [ ] Push-notiser
-- [ ] AI-genererade beskrivningar
-- [ ] Teamfunktioner och samarbete
-- [ ] AR-funktioner för platser
 - [ ] Integration med externa tjänster
 
 ## 🤝 Bidra
@@ -704,7 +676,7 @@ Privat projekt - ingen licens ännu.
 
 ## 📞 Kontakt
 
-Projektägare: Joakim (Product Manager/Owner/Architect)
+Projektägare: Joakim
 
 ## 🙏 Acknowledgments
 
@@ -716,6 +688,6 @@ Projektägare: Joakim (Product Manager/Owner/Architect)
 
 ---
 
-**Senast uppdaterad:** 2026-01-26  
-**Version:** 1.3 (Admin-verktyg & Stabilitet)  
-**Status:** ✅ Live på GitHub Pages med full funktionalitet
+**Senast uppdaterad:** 2026-02-03  
+**Version:** 1.5 (Custom Domain & Infrastructure)  
+**Status:** ✅ Live på [ourspots.se](https://ourspots.se)
