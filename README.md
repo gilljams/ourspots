@@ -2,7 +2,7 @@
 
 En mobilfokuserad app för att hantera fastigheter, smultronställen, kaféer, resor och andra platser med delningsfunktioner.
 
-🌐 **Live:** [https://ourspots-b536b.web.app](https://ourspots-b536b.web.app)
+🌐 **Live:** [https://ourspots-b536b.firebaseapp.com](https://ourspots-b536b.firebaseapp.com)
 
 > 📦 Backup: [https://gilljams.github.io/ourspots/](https://gilljams.github.io/ourspots/) (GitHub Pages)
 
@@ -263,7 +263,7 @@ npm run build
 npx firebase deploy --only hosting
 ```
 
-**URL:** https://ourspots-b536b.web.app
+**URL:** https://ourspots-b536b.firebaseapp.com
 
 **Egen domän:** Firebase Console → Hosting → "Add custom domain" → DNS-verifiering → Automatisk SSL
 
