@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, ArrowUp, ArrowDown, FileText, CheckSquare, ClipboardList, Link2, Plus, ChevronDown, Table2, Trash2, GripVertical, Calendar, Phone, Mail, Globe, Timer, Check, Maximize2, RotateCcw, BarChart3, Type, Music, Wallet, Users } from 'lucide-react';
+import { X, ArrowUp, ArrowDown, FileText, CheckSquare, ClipboardList, Link2, Plus, ChevronDown, Table2, Trash2, GripVertical, Calendar, Phone, Mail, Globe, Timer, Check, Maximize2, RotateCcw, BarChart3, Type, Music, Wallet, Users, Trophy } from 'lucide-react';
 import { getIconComponent, LINK_ICONS } from '../utils/iconHelpers';
 import { TABLE_TEMPLATES } from './blocks';
 
@@ -373,12 +373,15 @@ function LinksBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
   const [links, setLinks] = useState(block.links || []);
   const [showIconPicker, setShowIconPicker] = useState(null);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [defaultCollapsed, setDefaultCollapsed] = useState(block.defaultCollapsed ?? true);
 
   // Use refs to always have latest values
   const titleRef = React.useRef(title);
   const linksRef = React.useRef(links);
+  const defaultCollapsedRef = React.useRef(defaultCollapsed);
   titleRef.current = title;
   linksRef.current = links;
+  defaultCollapsedRef.current = defaultCollapsed;
 
   // Prevent iOS scroll-to-top on input focus
   const handleInputFocus = (e) => {
@@ -395,10 +398,17 @@ function LinksBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
     }
   };
 
-  const syncToParent = (newTitle, newLinks) => {
+  const syncToParent = (newTitle, newLinks, newDefaultCollapsed = defaultCollapsedRef.current) => {
     titleRef.current = newTitle;
     linksRef.current = newLinks;
-    onUpdate(block.id, { title: newTitle, links: newLinks });
+    defaultCollapsedRef.current = newDefaultCollapsed;
+    onUpdate(block.id, { title: newTitle, links: newLinks, defaultCollapsed: newDefaultCollapsed });
+  };
+  
+  const handleDefaultCollapsedChange = (newValue) => {
+    setDefaultCollapsed(newValue);
+    defaultCollapsedRef.current = newValue;
+    onUpdate(block.id, { defaultCollapsed: newValue });
   };
 
   const addLink = () => {
@@ -579,6 +589,24 @@ function LinksBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
           >
             <Plus size={16} /> Lägg till länk
           </button>
+          
+          {/* Default collapsed toggle - only show if more than 1 link */}
+          {links.length > 1 && (
+            <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/10">
+              <span className="text-sm text-gray-400">Ihopfälld som standard</span>
+              <button
+                type="button"
+                onClick={() => handleDefaultCollapsedChange(!defaultCollapsed)}
+                className={`relative w-10 h-6 rounded-full transition-colors ${
+                  defaultCollapsed ? 'bg-purple-500' : 'bg-gray-600'
+                }`}
+              >
+                <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                  defaultCollapsed ? 'translate-x-5' : 'translate-x-0.5'
+                }`} />
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -2543,6 +2571,227 @@ function SplitBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
   );
 }
 
-export { DateTagBlockEditor, TimerBlockEditor, PollBlockEditor, AudioBlockEditor, SplitBlockEditor };
+// Leaderboard Block Editor - competition/ranking configuration
+function LeaderboardBlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving, shares = {}, currentUser, currentUserDisplayName }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [title, setTitle] = useState(block.title || 'Leaderboard');
+  const [participants, setParticipants] = useState(block.participants || []);
+  const [roundCount, setRoundCount] = useState(block.roundCount || 0);
+  const [defaultCollapsed, setDefaultCollapsed] = useState(block.defaultCollapsed ?? true);
+  const [status, setStatus] = useState(block.status || 'active');
+
+  // Sync with block changes
+  useEffect(() => {
+    setTitle(block.title || 'Leaderboard');
+    setParticipants(block.participants || []);
+    setRoundCount(block.roundCount || 0);
+    setDefaultCollapsed(block.defaultCollapsed ?? true);
+    setStatus(block.status || 'active');
+  }, [block.id, block.title, block.participants, block.roundCount, block.defaultCollapsed, block.status]);
+
+  const syncToParent = (updates) => {
+    onUpdate(block.id, {
+      title,
+      participants,
+      roundCount,
+      scores: block.scores || {},
+      defaultCollapsed,
+      status,
+      sortOrder: block.sortOrder || 'desc',
+      ...updates
+    });
+  };
+
+  const handleTitleChange = (value) => {
+    setTitle(value);
+    syncToParent({ title: value });
+  };
+
+  const handleDefaultCollapsedChange = (value) => {
+    setDefaultCollapsed(value);
+    syncToParent({ defaultCollapsed: value });
+  };
+
+  const handleReopenLeaderboard = () => {
+    setStatus('active');
+    syncToParent({ status: 'active' });
+  };
+
+  const handleResetScores = () => {
+    if (window.confirm('Vill du nollställa alla poäng? Detta kan inte ångras.')) {
+      setStatus('active');
+      setRoundCount(0);
+      syncToParent({ scores: {}, roundCount: 0, status: 'active' });
+    }
+  };
+
+  // Toggle participant
+  const toggleParticipant = (email, name) => {
+    const exists = participants.some(p => p.email?.toLowerCase() === email);
+    if (exists) {
+      const updated = participants.filter(p => p.email?.toLowerCase() !== email);
+      setParticipants(updated);
+      syncToParent({ participants: updated });
+    } else {
+      const newParticipant = { email, name };
+      const updated = [...participants, newParticipant];
+      setParticipants(updated);
+      syncToParent({ participants: updated });
+    }
+  };
+
+  // Get available users from shares (accepted or inherited) + owner
+  const sharedUsers = Object.entries(shares)
+    .filter(([_, share]) => share.status === 'accepted' || share.status === 'inherited')
+    .map(([key, share]) => ({
+      email: share.email?.toLowerCase(),
+      name: share.displayName || share.email?.split('@')[0]
+    }));
+  
+  // Add current user (owner) to the list
+  const ownerEmail = currentUser?.email?.toLowerCase();
+  const ownerName = currentUserDisplayName || ownerEmail?.split('@')[0] || 'Jag';
+  
+  const availableUsers = ownerEmail 
+    ? [{ email: ownerEmail, name: ownerName, isOwner: true }, ...sharedUsers]
+    : sharedUsers;
+
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/5 overflow-hidden">
+      {/* Collapsible header */}
+      <div className="flex items-center gap-2 p-3">
+        <button
+          type="button"
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex items-center gap-2 flex-1 min-w-0"
+        >
+          <ChevronDown 
+            size={16} 
+            className={`text-gray-500 transition-transform flex-shrink-0 ${isExpanded ? '' : '-rotate-90'}`} 
+          />
+          <Trophy size={16} className="text-blue-400 flex-shrink-0" />
+          <span className="text-sm font-medium text-gray-300 truncate">
+            {title || 'Leaderboard'}
+          </span>
+          {participants.length > 0 && (
+            <span className="text-xs text-gray-500 flex-shrink-0">({participants.length} deltagare)</span>
+          )}
+        </button>
+        <div className="flex gap-1 flex-shrink-0">
+          <button type="button" onClick={() => onMove(block.id, -1)} disabled={index === 0} className="w-7 h-7 rounded bg-white/5 text-gray-400 hover:bg-white/10 flex items-center justify-center disabled:opacity-30">
+            <ArrowUp size={14} />
+          </button>
+          <button type="button" onClick={() => onMove(block.id, 1)} disabled={index === total - 1} className="w-7 h-7 rounded bg-white/5 text-gray-400 hover:bg-white/10 flex items-center justify-center disabled:opacity-30">
+            <ArrowDown size={14} />
+          </button>
+          <button type="button" onClick={() => onRemove(block.id)} className="w-7 h-7 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center">
+            <X size={14} />
+          </button>
+        </div>
+      </div>
+
+      {/* Expandable content */}
+      {isExpanded && (
+        <div className="p-3 space-y-4">
+          {/* Title */}
+          <div>
+            <label className="text-xs text-gray-400 mb-1 block">Titel</label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => handleTitleChange(e.target.value)}
+              className="w-full px-3 py-2 text-sm bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-blue-500 text-white placeholder-gray-500"
+              placeholder="T.ex. Golfhelg 2026"
+            />
+          </div>
+
+          {/* Participants */}
+          <div>
+            <label className="text-xs text-gray-400 mb-2 block">
+              Deltagare
+            </label>
+            
+            {availableUsers.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {availableUsers.map((user, idx) => {
+                  const isSelected = participants.some(p => p.email?.toLowerCase() === user.email);
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => toggleParticipant(user.email, user.name)}
+                      className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
+                        isSelected
+                          ? 'bg-blue-500/20 border-blue-500/50 text-blue-400'
+                          : 'bg-white/5 border-white/10 text-gray-500 hover:text-gray-300 hover:bg-white/10'
+                      }`}
+                    >
+                      {user.name}{user.isOwner ? ' (jag)' : ''}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-xs text-gray-500 italic">
+                Dela objektet med andra för att lägga till deltagare
+              </div>
+            )}
+          </div>
+
+          {/* Round count info */}
+          {roundCount > 0 && (
+            <div className="text-xs text-gray-500">
+              {roundCount} {roundCount === 1 ? 'runda' : 'rundor'} registrerade
+            </div>
+          )}
+
+          {/* Default collapsed toggle */}
+          <div className="flex items-center justify-between pt-2 border-t border-white/5">
+            <span className="text-xs text-gray-400">Visa ihopfälld</span>
+            <button
+              type="button"
+              onClick={() => handleDefaultCollapsedChange(!defaultCollapsed)}
+              className={`w-12 h-6 rounded-full transition-colors relative ${
+                defaultCollapsed ? 'bg-blue-500' : 'bg-white/20'
+              }`}
+            >
+              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${
+                defaultCollapsed ? 'left-7' : 'left-1'
+              }`} />
+            </button>
+          </div>
+
+          {/* Reopen / Reset buttons */}
+          {(status === 'finished' || roundCount > 0) && (
+            <div className="flex gap-2 pt-3 border-t border-white/5">
+              {status === 'finished' && (
+                <button
+                  type="button"
+                  onClick={handleReopenLeaderboard}
+                  className="flex-1 py-2 text-sm text-blue-500 hover:bg-blue-500/10 rounded-lg flex items-center justify-center gap-1"
+                >
+                  <RotateCcw size={12} />
+                  Återöppna
+                </button>
+              )}
+              {roundCount > 0 && (
+                <button
+                  type="button"
+                  onClick={handleResetScores}
+                  className="flex-1 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-lg flex items-center justify-center gap-1"
+                >
+                  <Trash2 size={12} />
+                  Nollställ
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export { DateTagBlockEditor, TimerBlockEditor, PollBlockEditor, AudioBlockEditor, SplitBlockEditor, LeaderboardBlockEditor };
 
 export default BlockEditor;

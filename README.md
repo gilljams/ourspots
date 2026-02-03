@@ -36,6 +36,29 @@ OurSpots är en platsbaserad app (primärt för mobil) med dark theme som låter
 - **Optimistic updates** - Omedelbar UI-feedback för checklist/todo
 - **Race condition-säkerhet** - Functional setState för robusta uppdateringar
 
+#### Collapsible Block Pattern
+Alla expanderbara block följer samma mönster:
+- **Egen collapse-header inuti blocket** - Konsekvent UX med ChevronDown-ikon
+- **"Ihopfälld som standard"** - Valbart i BlockEditor för varje blocktyp
+- **Smart scroll vid expand** - `onExpand` callback scrollar så att header förblir synlig
+- **Blocktyper med collapse:**
+  - **TextBlock** - Anteckning med Markdown-stöd (blå tema)
+  - **LinksBlock** - Länkar med ikoner (lila tema, collapse vid >1 länk)
+  - **TableBlock** - Listor, uppgifter, gästlistor etc (orange tema)
+  - **PollBlock** - Omröstningar med flerval (grön tema)
+  - **SplitBlock** - Ekonomisk splitt mellan deltagare (grön tema)
+  - **LeaderboardBlock** - Tävlingsresultat med rundor och ranking (blå/guld tema)
+
+#### LeaderboardBlock (Nytt!)
+- **Tävlingshantering** - Spåra resultat för golfturnéer, spelkvällar, etc.
+- **Rund-baserad poäng** - Lägg till rundor och registrera poäng per deltagare
+- **Ranking med FLIP-animation** - Smidig animering när positioner ändras
+- **Avatars med initialer** - Färgkodade avatars baserat på namn/email
+- **Play-funktion** - Stega igenom rundorna automatiskt eller manuellt
+- **Top 3 + din position** - Preview visar topp 3, plus din egen position om utanför
+- **Status-hantering** - Avsluta/öppna igen tävlingen
+- **Radera rundor** - Ta bort enskilda rundor med bekräftelse
+
 #### Bildhantering
 - **Smart bilduppladdning** - Cloudinary med AI-beskärning, automatisk komprimering och GPS-extrahering
 - **Cloudinary smart cropping** - AI-baserad beskärning (Auto, Ansikten, Centrum)
@@ -138,9 +161,8 @@ OurSpots är en platsbaserad app (primärt för mobil) med dark theme som låter
 - **Optimistic updates** - Omedelbar UI-feedback för checklist/todo
 
 ### 🚧 Kommande Features (Prioriterad backlog)
-1. **Fler blocktyper** - leaderboard etc
-2. **Avancerad admin** - Användarhantering, statistik, backup/restore
-3. **Import/Export** - Backup och migrering av data
+1. **Avancerad admin** - Användarhantering, statistik, backup/restore
+2. **Import/Export** - Backup och migrering av data
 
 ## 🎨 Admin-funktioner
 

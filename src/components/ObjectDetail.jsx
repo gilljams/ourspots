@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Plus, Edit2, Trash2, Settings, ChevronDown, 
-  Share2, Users, UserMinus, Home, Link2, Table2, List, LayoutGrid, FileText, Copy, BarChart3
+  Share2, Users, UserMinus, Home, List, LayoutGrid, FileText, Copy, BarChart3
 } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -9,6 +9,7 @@ import { getIconComponent, PREDEFINED_ICONS, emailToKey } from '../utils/iconHel
 import { getTransformedImageUrl, getFocalPointStyles } from '../utils/imageUtils';
 import { blockComponents } from './blocks';
 import DeleteConfirmModal from './DeleteConfirmModal';
+import LeaderboardModal from './LeaderboardModal';
 
 // Folder icon - we'll define it locally since it's only used here
 const Folder = ({ size = 24, ...props }) => (
@@ -17,37 +18,13 @@ const Folder = ({ size = 24, ...props }) => (
   </svg>
 );
 
-// Helper function to calculate initial expanded blocks based on defaultCollapsed settings
-const getInitialExpandedBlocks = (object) => {
-  const blocks = object?.blocks || [];
-  const filteredBlocks = blocks.filter(b => b.type !== 'title');
-  const collapsibleTypes = ['text', 'poll'];
-  const expandedSet = new Set();
-  
-  filteredBlocks.forEach((block, filteredIndex) => {
-    // For collapsible blocks, check defaultCollapsed
-    if (collapsibleTypes.includes(block.type)) {
-      if (!block.data?.defaultCollapsed) {
-        expandedSet.add(filteredIndex);
-      }
-    } else if (block.type === 'links' && (block.data?.items?.length || 0) > 1) {
-      // Links are collapsible only if they have more than 1 link
-      if (!block.data?.defaultCollapsed) {
-        expandedSet.add(filteredIndex);
-      }
-    }
-  });
-  
-  return expandedSet;
-};
-
 function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockUpdate, currentUser, userDisplayName, allObjects, onNavigate, categories, isAdmin, onShowOnMap, onShare, onLeaveShare }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [expandedBlocks, setExpandedBlocks] = useState(() => getInitialExpandedBlocks(object));
   const [showManageSection, setShowManageSection] = useState(false);
   const [childViewMode, setChildViewMode] = useState(() => {
     return localStorage.getItem('ourspots-child-view-mode') || 'grid';
   });
+  const [leaderboardModalData, setLeaderboardModalData] = useState(null); // { blockIndex, data }
   
   const toggleChildViewMode = () => {
     const newMode = childViewMode === 'grid' ? 'list' : 'grid';
@@ -62,11 +39,6 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
   const [isSwipeActive, setIsSwipeActive] = useState(false);
   const modalRef = useRef(null);
   const manageSectionRef = useRef(null);
-  
-  // Reset expandedBlocks when object changes (e.g., navigating to a different object)
-  useEffect(() => {
-    setExpandedBlocks(getInitialExpandedBlocks(object));
-  }, [object?.id]);
   
   // Scroll manage section into view when opened
   useEffect(() => {
@@ -294,33 +266,6 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                 // Use the original index in object.blocks (tracked as objectBlockIndex)
                 const actualBlockIndex = block.objectBlockIndex;
                 const BlockComponent = blockComponents[block.type];
-                const isExpanded = expandedBlocks.has(index);
-                const toggleExpanded = () => {
-                  const newSet = new Set(expandedBlocks);
-                  if (newSet.has(index)) {
-                    newSet.delete(index);
-                  } else {
-                    newSet.add(index);
-                  }
-                  setExpandedBlocks(newSet);
-                };
-                
-                // Count blocks of same type for labeling
-                const sameTypeBlocks = blocksToRender.filter(b => b.type === block.type);
-                const blockNumber = sameTypeBlocks.indexOf(block) + 1;
-                const showBlockLabel = sameTypeBlocks.length > 1;
-                const customTitle = block.data?.title;
-                const shouldShowLabel = customTitle || showBlockLabel;
-                // Links are collapsible only if they have more than 1 link
-                const linksItemCount = block.type === 'links' ? (block.data?.items?.length || 0) : 0;
-                // Tables with useCollapse handle their own collapse (all modern table types)
-                const tableRowCount = block.type === 'table' ? (block.data?.rows?.length || 0) : 0;
-                const tableTemplate = block.type === 'table' ? (block.data?.template || 'tasks') : null;
-                // All table templates now use collapse internally
-                const tableHandlesOwnCollapse = block.type === 'table';
-                // Polls show option count
-                const pollOptionCount = block.type === 'poll' ? (block.data?.options?.length || 0) : 0;
-                const isCollapsible = ['text', 'poll'].includes(block.type) || (block.type === 'links' && linksItemCount > 1);
                 
                 // For location blocks, show delete if there are multiple AND user can edit
                 const locationBlocks = blocksToRender.filter(b => b.type === 'location' && !b.inherited);
@@ -341,60 +286,14 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                 };
                 
                 return BlockComponent ? (
-                  <div key={actualBlockIndex} className="space-y-2">
-                    {isCollapsible && (
-                      <button
-                        onClick={toggleExpanded}
-                        className="w-full flex items-center gap-2.5 py-2 group touch-manipulation"
-                      >
-                        <div className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
-                          <ChevronDown 
-                            size={14} 
-                            className={`text-gray-400 group-hover:text-white transition-all ${isExpanded ? 'rotate-0' : '-rotate-90'}`}
-                          />
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {block.type === 'text' && (
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-400">
-                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                              <polyline points="14 2 14 8 20 8"></polyline>
-                              <line x1="16" y1="13" x2="8" y2="13"></line>
-                              <line x1="16" y1="17" x2="8" y2="17"></line>
-                            </svg>
-                          )}
-                          {block.type === 'links' && (
-                            <Link2 size={14} className="text-purple-400" />
-                          )}
-                          {block.type === 'table' && (
-                            <Table2 size={14} className="text-amber-400" />
-                          )}
-                          {block.type === 'poll' && (
-                            <BarChart3 size={14} className="text-indigo-400" />
-                          )}
-                          <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">
-                            {customTitle ? customTitle : (
-                              <>
-                                {block.type === 'text' && (showBlockLabel ? `Anteckning ${blockNumber}` : 'Anteckning')}
-                                {block.type === 'links' && (showBlockLabel ? `Länkar ${blockNumber}` : `Länkar (${linksItemCount})`)}
-                                {block.type === 'table' && (showBlockLabel ? `Tabell ${blockNumber}` : `Tabell (${tableRowCount})`)}
-                                {block.type === 'poll' && (showBlockLabel ? `Omröstning ${blockNumber}` : `Omröstning (${pollOptionCount})`)}
-                              </>
-                            )}
-                          </span>
-                        </div>
-                      </button>
-                    )}
-                    {(!isCollapsible || isExpanded) && (
-                      <div>
-                        <BlockComponent 
+                  <div key={actualBlockIndex}>
+                    <BlockComponent 
                           key={actualBlockIndex} 
                           data={block.data} 
                           objectId={object.id} 
                           blockIndex={actualBlockIndex} 
                           onUpdate={onBlockUpdate} 
                           inherited={block.inherited}
-                          isExpanded={isExpanded}
-                          onToggle={toggleExpanded}
                           canDelete={canDeleteLocation}
                           onDelete={handleDeleteBlock}
                           positionNumber={locationBlocks.length > 1 ? locationIndex : null}
@@ -514,9 +413,41 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                               console.error('Error closing split:', err);
                             }
                           } : undefined}
+                          // Leaderboard-specific props
+                          onOpenModal={block.type === 'leaderboard' ? () => {
+                            setLeaderboardModalData({ blockIndex: actualBlockIndex, data: block.data });
+                          } : undefined}
+                          // Scroll into view when expanding collapsible blocks
+                          onExpand={(element) => {
+                            if (element) {
+                              setTimeout(() => {
+                                // Find the scrollable container
+                                const scrollContainer = element.closest('.overflow-y-auto');
+                                if (!scrollContainer) return;
+                                
+                                const elementRect = element.getBoundingClientRect();
+                                const containerRect = scrollContainer.getBoundingClientRect();
+                                
+                                // Only scroll if element top is above container or bottom is below
+                                if (elementRect.top < containerRect.top) {
+                                  // Element header is above view - scroll to show header at top
+                                  element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                } else if (elementRect.bottom > containerRect.bottom) {
+                                  // Element bottom is below view - scroll just enough to show it
+                                  // but keep the header visible at top of scroll area
+                                  const headerHeight = 44; // approximate height of collapse header
+                                  const maxScroll = elementRect.top - containerRect.top - headerHeight;
+                                  const neededScroll = elementRect.bottom - containerRect.bottom + 20;
+                                  const scrollAmount = Math.min(neededScroll, maxScroll);
+                                  
+                                  if (scrollAmount > 0) {
+                                    scrollContainer.scrollBy({ top: scrollAmount, behavior: 'smooth' });
+                                  }
+                                }
+                              }, 100);
+                            }
+                          }}
                         />
-                      </div>
-                    )}
                   </div>
                 ) : null;
               });
@@ -672,6 +603,119 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
         </div>
       </div>
       {showDeleteConfirm && <DeleteConfirmModal object={object} onConfirm={handleDelete} onCancel={() => setShowDeleteConfirm(false)} />}
+      {leaderboardModalData && (
+        <LeaderboardModal
+          data={leaderboardModalData.data}
+          currentUser={currentUser}
+          shares={object.shares || {}}
+          canEdit={canEdit}
+          onClose={() => setLeaderboardModalData(null)}
+          onUpdateScores={async (newScores) => {
+            try {
+              const updatedBlocks = [...object.blocks];
+              updatedBlocks[leaderboardModalData.blockIndex] = {
+                ...updatedBlocks[leaderboardModalData.blockIndex],
+                data: { 
+                  ...updatedBlocks[leaderboardModalData.blockIndex].data, 
+                  scores: newScores 
+                }
+              };
+              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
+              // Update local state to reflect change
+              setLeaderboardModalData(prev => ({
+                ...prev,
+                data: { ...prev.data, scores: newScores }
+              }));
+            } catch (err) {
+              console.error('Error updating scores:', err);
+            }
+          }}
+          onAddRound={async () => {
+            try {
+              const updatedBlocks = [...object.blocks];
+              const currentRoundCount = updatedBlocks[leaderboardModalData.blockIndex].data.roundCount || 0;
+              updatedBlocks[leaderboardModalData.blockIndex] = {
+                ...updatedBlocks[leaderboardModalData.blockIndex],
+                data: { 
+                  ...updatedBlocks[leaderboardModalData.blockIndex].data, 
+                  roundCount: currentRoundCount + 1 
+                }
+              };
+              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
+              // Update local state
+              setLeaderboardModalData(prev => ({
+                ...prev,
+                data: { ...prev.data, roundCount: currentRoundCount + 1 }
+              }));
+            } catch (err) {
+              console.error('Error adding round:', err);
+            }
+          }}
+          onDeleteRound={async (roundIndex) => {
+            try {
+              const updatedBlocks = [...object.blocks];
+              const blockData = updatedBlocks[leaderboardModalData.blockIndex].data;
+              const currentRoundCount = blockData.roundCount || 0;
+              
+              if (currentRoundCount <= 0) return;
+              
+              // Remove scores for this round and shift subsequent rounds
+              const newScores = { ...blockData.scores };
+              Object.keys(newScores).forEach(email => {
+                const participantScores = { ...newScores[email] };
+                // Shift scores after deleted round
+                for (let i = roundIndex; i < currentRoundCount - 1; i++) {
+                  participantScores[i] = participantScores[i + 1] || 0;
+                }
+                delete participantScores[currentRoundCount - 1];
+                newScores[email] = participantScores;
+              });
+              
+              updatedBlocks[leaderboardModalData.blockIndex] = {
+                ...updatedBlocks[leaderboardModalData.blockIndex],
+                data: { 
+                  ...blockData, 
+                  roundCount: currentRoundCount - 1,
+                  scores: newScores
+                }
+              };
+              
+              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
+              // Update local state
+              setLeaderboardModalData(prev => ({
+                ...prev,
+                data: { 
+                  ...prev.data, 
+                  roundCount: currentRoundCount - 1,
+                  scores: newScores
+                }
+              }));
+            } catch (err) {
+              console.error('Error deleting round:', err);
+            }
+          }}
+          onToggleStatus={async (newStatus) => {
+            try {
+              const updatedBlocks = [...object.blocks];
+              updatedBlocks[leaderboardModalData.blockIndex] = {
+                ...updatedBlocks[leaderboardModalData.blockIndex],
+                data: { 
+                  ...updatedBlocks[leaderboardModalData.blockIndex].data, 
+                  status: newStatus 
+                }
+              };
+              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
+              // Update local state
+              setLeaderboardModalData(prev => ({
+                ...prev,
+                data: { ...prev.data, status: newStatus }
+              }));
+            } catch (err) {
+              console.error('Error toggling status:', err);
+            }
+          }}
+        />
+      )}
     </>
   );
 }
