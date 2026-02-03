@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Users, Shield, ShieldOff, Ban, CheckCircle, Search, X, ChevronDown, Mail, Package, Share2, Calendar, UserCheck, Settings, Save } from 'lucide-react';
+import { Users, Shield, ShieldOff, Ban, CheckCircle, Search, X, ChevronDown, Mail, Package, Share2, Calendar, UserCheck, Settings, Save, RefreshCw } from 'lucide-react';
 import { collection, onSnapshot, doc, updateDoc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 
@@ -17,6 +17,8 @@ function UsersAdminModal({ currentUserId, onClose }) {
     approvedObjectLimit: 100
   });
   const [savingSettings, setSavingSettings] = useState(false);
+  const [syncingNames, setSyncingNames] = useState(false);
+  const [syncNamesResult, setSyncNamesResult] = useState(null);
   
   // Fetch app settings
   useEffect(() => {
@@ -194,6 +196,161 @@ function UsersAdminModal({ currentUserId, onClose }) {
       alert('Kunde inte uppdatera godkännande-status');
     }
     setUpdating(null);
+  };
+
+  // Sync display names from users collection to all objects
+  // Updates: shares.displayName, leaderboard/split participants, poll votes
+  const syncDisplayNames = async () => {
+    if (syncingNames) return;
+    
+    setSyncingNames(true);
+    setSyncNamesResult(null);
+    
+    try {
+      // Build a map of email -> displayName from users collection
+      const nameMap = new Map();
+      users.forEach(user => {
+        if (user.email && user.displayName) {
+          nameMap.set(user.email.toLowerCase(), user.displayName);
+        }
+      });
+      
+      if (nameMap.size === 0) {
+        setSyncNamesResult({ 
+          success: true, 
+          message: 'Inga användare har angett visningsnamn.' 
+        });
+        setSyncingNames(false);
+        return;
+      }
+      
+      let objectsUpdated = 0;
+      let sharesUpdated = 0;
+      let participantsUpdated = 0;
+      let pollVotesUpdated = 0;
+      
+      for (const obj of allObjects) {
+        let needsUpdate = false;
+        const updates = {};
+        
+        // 1. Update shares displayName
+        if (obj.shares) {
+          const updatedShares = { ...obj.shares };
+          let sharesModified = false;
+          
+          Object.entries(updatedShares).forEach(([key, share]) => {
+            const email = share.email?.toLowerCase();
+            const newName = nameMap.get(email);
+            
+            if (newName && newName !== share.displayName) {
+              updatedShares[key] = { ...share, displayName: newName };
+              sharesModified = true;
+              sharesUpdated++;
+            }
+          });
+          
+          if (sharesModified) {
+            updates.shares = updatedShares;
+            needsUpdate = true;
+          }
+        }
+        
+        // 2. Update blocks (leaderboard, split, poll)
+        if (obj.blocks) {
+          let blocksModified = false;
+          const updatedBlocks = obj.blocks.map(block => {
+            // Leaderboard and Split blocks - update participants
+            if (block.type === 'leaderboard' || block.type === 'split') {
+              const participants = block.data?.participants || [];
+              if (participants.length === 0) return block;
+              
+              let modified = false;
+              const updatedParticipants = participants.map(p => {
+                const email = p.email?.toLowerCase();
+                const newName = nameMap.get(email);
+                
+                if (newName && newName !== p.name) {
+                  modified = true;
+                  participantsUpdated++;
+                  return { ...p, name: newName };
+                }
+                return p;
+              });
+              
+              if (modified) {
+                blocksModified = true;
+                return {
+                  ...block,
+                  data: { ...block.data, participants: updatedParticipants }
+                };
+              }
+            }
+            
+            // Poll blocks - update vote displayNames
+            if (block.type === 'poll' && block.data?.votes) {
+              const votes = block.data.votes;
+              let modified = false;
+              const updatedVotes = { ...votes };
+              
+              Object.entries(votes).forEach(([emailKey, voteData]) => {
+                // Convert emailKey back to email (replace _DOT_ with .)
+                const email = emailKey.replace(/_DOT_/g, '.').toLowerCase();
+                const newName = nameMap.get(email);
+                
+                if (newName && voteData.displayName !== newName) {
+                  updatedVotes[emailKey] = { ...voteData, displayName: newName };
+                  modified = true;
+                  pollVotesUpdated++;
+                }
+              });
+              
+              if (modified) {
+                blocksModified = true;
+                return {
+                  ...block,
+                  data: { ...block.data, votes: updatedVotes }
+                };
+              }
+            }
+            
+            return block;
+          });
+          
+          if (blocksModified) {
+            updates.blocks = updatedBlocks;
+            needsUpdate = true;
+          }
+        }
+        
+        // Save if anything changed
+        if (needsUpdate) {
+          await updateDoc(doc(db, 'objects', obj.id), updates);
+          objectsUpdated++;
+        }
+      }
+      
+      const messages = [];
+      if (sharesUpdated > 0) messages.push(`${sharesUpdated} delningar`);
+      if (participantsUpdated > 0) messages.push(`${participantsUpdated} deltagare`);
+      if (pollVotesUpdated > 0) messages.push(`${pollVotesUpdated} röster`);
+      
+      if (messages.length > 0) {
+        setSyncNamesResult({ 
+          success: true, 
+          message: `Klart! Uppdaterade ${messages.join(', ')} i ${objectsUpdated} objekt.` 
+        });
+      } else {
+        setSyncNamesResult({ 
+          success: true, 
+          message: 'Inga namn behövde uppdateras.' 
+        });
+      }
+    } catch (error) {
+      console.error('Sync names error:', error);
+      setSyncNamesResult({ success: false, message: `Fel: ${error.message}` });
+    } finally {
+      setSyncingNames(false);
+    }
   };
   
   // Swipe to close
@@ -379,6 +536,26 @@ function UsersAdminModal({ currentUserId, onClose }) {
             </div>
           </div>
         )}
+        
+        {/* Sync display names button */}
+        <div className="px-4 py-3 border-b border-white/5">
+          <button
+            onClick={syncDisplayNames}
+            disabled={syncingNames}
+            className="w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 border border-purple-500/30 flex items-center justify-center gap-2"
+          >
+            <RefreshCw size={14} className={syncingNames ? 'animate-spin' : ''} />
+            {syncingNames ? 'Synkar...' : 'Synka visningsnamn överallt'}
+          </button>
+          <p className="text-xs text-gray-500 mt-1.5 text-center">
+            Uppdaterar namn i delningar, leaderboards, polls m.m.
+          </p>
+          {syncNamesResult && (
+            <p className={`text-xs mt-2 text-center ${syncNamesResult.success ? 'text-green-400' : 'text-red-400'}`}>
+              {syncNamesResult.message}
+            </p>
+          )}
+        </div>
         
         {/* Search and sort */}
         <div className="px-4 py-3 border-b border-white/5 flex gap-3">

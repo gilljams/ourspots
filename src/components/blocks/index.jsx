@@ -2391,6 +2391,8 @@ export const LeaderboardBlock = ({ data, currentUser, shares = {}, canEdit = fal
   const scores = data.scores || {};
   const status = data.status || 'active';
   const sortOrder = data.sortOrder || 'desc'; // 'desc' = higher is better
+  const mode = data.mode || 'single'; // 'single' or 'team'
+  const isTeamMode = mode === 'team';
   
   const currentUserEmail = currentUser?.email?.toLowerCase();
   
@@ -2500,8 +2502,15 @@ export const LeaderboardBlock = ({ data, currentUser, shares = {}, canEdit = fal
                     }`}
                   >
                     <RankIcon rank={rank} />
-                    <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
-                      <User size={12} className="text-gray-400" />
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
+                      isTeamMode && participant.team === 1 ? 'bg-cyan-500' :
+                      isTeamMode && participant.team === 2 ? 'bg-orange-500' :
+                      isCurrentUser ? 'bg-blue-500' : 'bg-white/10'
+                    }`}>
+                      <User size={12} className={`${
+                        isTeamMode && participant.team ? 'text-white' :
+                        isCurrentUser ? 'text-white' : 'text-gray-400'
+                      }`} />
                     </div>
                     <span className={`text-sm flex-1 truncate ${isCurrentUser ? 'text-blue-300 font-medium' : 'text-gray-300'}`}>
                       {participant.name || participant.email?.split('@')[0]}
@@ -2520,7 +2529,11 @@ export const LeaderboardBlock = ({ data, currentUser, shares = {}, canEdit = fal
                   <div className="text-xs text-gray-600 text-center py-0.5">···</div>
                   <div className="flex items-center gap-3 py-1.5 px-2 rounded-lg bg-blue-500/10 ring-1 ring-blue-500/30">
                     <span className="text-xs text-gray-500 w-3.5 text-center">{currentUserRank}</span>
-                    <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
+                      isTeamMode && currentUserData.team === 1 ? 'bg-cyan-500' :
+                      isTeamMode && currentUserData.team === 2 ? 'bg-orange-500' :
+                      'bg-blue-500'
+                    }`}>
                       <User size={12} className="text-white" />
                     </div>
                     <span className="text-sm flex-1 truncate text-blue-300 font-medium">

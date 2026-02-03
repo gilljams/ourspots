@@ -332,21 +332,23 @@ function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onView
                   </div>
                   
                   {/* Migration button */}
-                  <div className="pt-3 border-t border-white/5">
-                    <p className="text-xs text-gray-500 mb-2">Synkar hierarki-index (parentPath + ancestorIds)</p>
-                    <button
-                      onClick={migrateParentPaths}
-                      disabled={migrating}
-                      className="w-full px-3 py-2 rounded-lg text-sm font-medium transition-all bg-orange-500/20 text-orange-300 hover:bg-orange-500/30 border border-orange-500/30 flex items-center justify-center gap-2"
-                    >
-                      <RefreshCw size={14} className={migrating ? 'animate-spin' : ''} />
-                      {migrating ? 'Synkar...' : 'Synka hierarki'}
-                    </button>
-                    {migrationResult && (
-                      <p className={`text-xs mt-2 ${migrationResult.success ? 'text-green-400' : 'text-red-400'}`}>
-                        {migrationResult.message}
-                      </p>
-                    )}
+                  <div className="pt-3 border-t border-white/5 space-y-3">
+                    <div>
+                      <p className="text-xs text-gray-500 mb-2">Synkar hierarki-index (parentPath + ancestorIds)</p>
+                      <button
+                        onClick={migrateParentPaths}
+                        disabled={migrating}
+                        className="w-full px-3 py-2 rounded-lg text-sm font-medium transition-all bg-orange-500/20 text-orange-300 hover:bg-orange-500/30 border border-orange-500/30 flex items-center justify-center gap-2"
+                      >
+                        <RefreshCw size={14} className={migrating ? 'animate-spin' : ''} />
+                        {migrating ? 'Synkar...' : 'Synka hierarki'}
+                      </button>
+                      {migrationResult && (
+                        <p className={`text-xs mt-2 ${migrationResult.success ? 'text-green-400' : 'text-red-400'}`}>
+                          {migrationResult.message}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}

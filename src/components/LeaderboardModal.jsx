@@ -14,8 +14,15 @@ const TriangleDown = ({ className }) => (
   </svg>
 );
 
-// Avatar with initials and consistent color based on email
-const Avatar = ({ name, email, size = 'md', isCurrentUser = false }) => {
+// Avatar with initials and consistent color based on email or team
+const Avatar = ({ name, email, size = 'md', isCurrentUser = false, team = null }) => {
+  // Team colors override individual colors
+  const getTeamColor = (teamId) => {
+    if (teamId === 1) return 'bg-cyan-500';
+    if (teamId === 2) return 'bg-orange-500';
+    return null;
+  };
+  
   // Generate consistent color from email
   const getColorFromEmail = (email) => {
     const colors = [
@@ -42,7 +49,8 @@ const Avatar = ({ name, email, size = 'md', isCurrentUser = false }) => {
     md: 'w-8 h-8 text-xs'
   };
   
-  const colorClass = isCurrentUser ? 'bg-blue-500' : getColorFromEmail(email);
+  // Priority: team color > current user > email hash
+  const colorClass = team ? getTeamColor(team) : (isCurrentUser ? 'bg-blue-500' : getColorFromEmail(email));
   
   return (
     <div className={`${sizeClasses[size]} ${colorClass} rounded-full flex items-center justify-center flex-shrink-0 font-medium text-white`}>
@@ -74,6 +82,7 @@ export default function LeaderboardModal({
   const [focusedParticipant, setFocusedParticipant] = useState(null);
   const [rowOffsets, setRowOffsets] = useState({}); // For FLIP animation
   const [showDeleteRoundConfirm, setShowDeleteRoundConfirm] = useState(false);
+  const [viewMode, setViewMode] = useState('single'); // 'single' or 'team' - for team mode display toggle
   const playIntervalRef = useRef(null);
   const inputRefs = useRef({});
   const rowRefs = useRef({});
@@ -84,8 +93,14 @@ export default function LeaderboardModal({
   const scores = data.scores || {};
   const status = data.status || 'active';
   const sortOrder = data.sortOrder || 'desc';
+  const mode = data.mode || 'single'; // Competition mode: 'single' or 'team'
+  const teams = data.teams || [
+    { id: 1, name: 'Lag 1' },
+    { id: 2, name: 'Lag 2' }
+  ];
   
   const currentUserEmail = currentUser?.email?.toLowerCase();
+  const isTeamMode = mode === 'team';
   
   // Set focused participant to current user by default
   useEffect(() => {
@@ -127,9 +142,9 @@ export default function LeaderboardModal({
     return total;
   };
   
-  // Get ranking at a specific round
+  // Get ranking at a specific round (with shared ranks for ties)
   const getRankingAtRound = (roundIndex) => {
-    return participants
+    const sorted = participants
       .map(p => ({
         ...p,
         roundScore: scores[p.email]?.[roundIndex] || 0,
@@ -140,6 +155,30 @@ export default function LeaderboardModal({
         const scoreB = sortBy === 'round' ? b.roundScore : b.total;
         return sortOrder === 'desc' ? scoreB - scoreA : scoreA - scoreB;
       });
+    
+    // Add rank with ties (standard competition ranking: 1, 1, 3)
+    // Use for-loop to allow referencing previous items
+    const withRanks = [];
+    for (let i = 0; i < sorted.length; i++) {
+      const p = sorted[i];
+      const sortScore = sortBy === 'round' ? p.roundScore : p.total;
+      const prevSortScore = i > 0 
+        ? (sortBy === 'round' ? sorted[i - 1].roundScore : sorted[i - 1].total)
+        : null;
+      
+      // Same score as previous = same rank, otherwise position + 1
+      const rank = (i > 0 && sortScore === prevSortScore)
+        ? withRanks[i - 1].rank
+        : i + 1;
+      
+      withRanks.push({ ...p, rank, sortScore });
+    }
+    
+    // Second pass: mark ties (check if anyone else has same rank)
+    return withRanks.map(p => {
+      const isTied = withRanks.filter(other => other.rank === p.rank).length > 1;
+      return { ...p, isTied };
+    });
   };
   
   // Get rank change compared to previous round
@@ -156,6 +195,58 @@ export default function LeaderboardModal({
   };
   
   const rankedParticipants = getRankingAtRound(currentRound);
+  
+  // Team-related calculations
+  const getTeamTotalUpToRound = (teamId, upToRound) => {
+    const teamMembers = participants.filter(p => p.team === teamId);
+    return teamMembers.reduce((sum, p) => sum + getTotalUpToRound(p.email, upToRound), 0);
+  };
+  
+  const getTeamRoundScore = (teamId, roundIndex) => {
+    const teamMembers = participants.filter(p => p.team === teamId);
+    return teamMembers.reduce((sum, p) => sum + (scores[p.email]?.[roundIndex] || 0), 0);
+  };
+  
+  const getTeamRankingAtRound = (roundIndex) => {
+    const sorted = teams
+      .filter(team => participants.some(p => p.team === team.id)) // Only teams with members
+      .map(team => ({
+        ...team,
+        roundScore: getTeamRoundScore(team.id, roundIndex),
+        total: getTeamTotalUpToRound(team.id, roundIndex),
+        members: participants.filter(p => p.team === team.id)
+      }))
+      .sort((a, b) => {
+        const scoreA = sortBy === 'round' ? a.roundScore : a.total;
+        const scoreB = sortBy === 'round' ? b.roundScore : b.total;
+        return sortOrder === 'desc' ? scoreB - scoreA : scoreA - scoreB;
+      });
+    
+    // Add rank with ties (standard competition ranking: 1, 1, 3)
+    // Use for-loop to allow referencing previous items
+    const withRanks = [];
+    for (let i = 0; i < sorted.length; i++) {
+      const t = sorted[i];
+      const sortScore = sortBy === 'round' ? t.roundScore : t.total;
+      const prevSortScore = i > 0 
+        ? (sortBy === 'round' ? sorted[i - 1].roundScore : sorted[i - 1].total)
+        : null;
+      
+      const rank = (i > 0 && sortScore === prevSortScore)
+        ? withRanks[i - 1].rank
+        : i + 1;
+      
+      withRanks.push({ ...t, rank, sortScore });
+    }
+    
+    // Mark ties
+    return withRanks.map(t => {
+      const isTied = withRanks.filter(other => other.rank === t.rank).length > 1;
+      return { ...t, isTied };
+    });
+  };
+  
+  const rankedTeams = getTeamRankingAtRound(currentRound);
   
   // FLIP animation for row position changes
   const animateRowChange = (newRound) => {
@@ -294,11 +385,28 @@ export default function LeaderboardModal({
   };
 
   // Rank display component
-  const RankDisplay = ({ rank }) => {
-    if (rank === 1) return <Trophy size={16} className="text-amber-400" />;
-    if (rank === 2) return <Trophy size={16} className="text-gray-300" />;
-    if (rank === 3) return <Trophy size={16} className="text-orange-600" />;
-    return <span className="text-sm text-gray-500 w-4 text-center">{rank}</span>;
+  const RankDisplay = ({ rank, isTied }) => {
+    if (rank === 1) return (
+      <span className="relative">
+        <Trophy size={16} className="text-amber-400" />
+        {isTied && <span className="absolute -right-1.5 -top-1 text-[8px] text-amber-400 font-bold">=</span>}
+      </span>
+    );
+    if (rank === 2) return (
+      <span className="relative">
+        <Trophy size={16} className="text-gray-300" />
+        {isTied && <span className="absolute -right-1.5 -top-1 text-[8px] text-gray-300 font-bold">=</span>}
+      </span>
+    );
+    if (rank === 3) return (
+      <span className="relative">
+        <Trophy size={16} className="text-orange-600" />
+        {isTied && <span className="absolute -right-1.5 -top-1 text-[8px] text-orange-600 font-bold">=</span>}
+      </span>
+    );
+    return (
+      <span className="text-sm text-gray-500 w-4 text-center">{rank}</span>
+    );
   };
   
   // Rank change indicator
@@ -319,12 +427,41 @@ export default function LeaderboardModal({
           <Trophy size={20} className="text-amber-400" />
           {isEditing ? 'Redigera poäng' : title}
         </h2>
-        <button
-          onClick={onClose}
-          className="w-10 h-10 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
-        >
-          <X size={20} />
-        </button>
+        <div className="flex items-center gap-2">
+          {/* View toggle for team mode (only when not editing) */}
+          {isTeamMode && !isEditing && (
+            <div className="flex rounded-lg overflow-hidden border border-white/10">
+              <button
+                onClick={() => setViewMode('single')}
+                className={`px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                  viewMode === 'single'
+                    ? 'bg-blue-500/20 text-blue-400'
+                    : 'bg-white/5 text-gray-500 hover:text-gray-300'
+                }`}
+                title="Visa individer"
+              >
+                <User size={14} />
+              </button>
+              <button
+                onClick={() => setViewMode('team')}
+                className={`px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                  viewMode === 'team'
+                    ? 'bg-blue-500/20 text-blue-400'
+                    : 'bg-white/5 text-gray-500 hover:text-gray-300'
+                }`}
+                title="Visa lag"
+              >
+                <span className="text-xs">LAG</span>
+              </button>
+            </div>
+          )}
+          <button
+            onClick={onClose}
+            className="w-10 h-10 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+          >
+            <X size={20} />
+          </button>
+        </div>
       </div>
       
       {/* Round navigation / controls */}
@@ -472,6 +609,7 @@ export default function LeaderboardModal({
                     name={participant.name} 
                     email={participant.email} 
                     isCurrentUser={isCurrentUser}
+                    team={isTeamMode ? participant.team : null}
                   />
                   <span className={`flex-1 text-sm truncate ${isCurrentUser ? 'text-blue-300' : 'text-gray-300'}`}>
                     {participant.name || participant.email?.split('@')[0]}
@@ -493,80 +631,149 @@ export default function LeaderboardModal({
         ) : (
           /* View mode - Table */
           <div className="p-4">
-            {/* Table header */}
-            <div className="flex items-center gap-2 px-3 py-2 border-b border-white/10 text-xs text-gray-500 uppercase">
-              <span className="w-6 text-center">#</span>
-              <span className="w-6 text-center">+/-</span>
-              <span className="flex-1">Deltagare</span>
-              <button
-                onClick={() => setSortBy('round')}
-                className={`w-16 text-right hover:text-gray-300 ${sortBy === 'round' ? 'text-blue-400' : ''}`}
-              >
-                Runda {currentRound + 1}
-              </button>
-              <button
-                onClick={() => setSortBy('total')}
-                className={`w-16 text-right hover:text-gray-300 ${sortBy === 'total' ? 'text-blue-400' : ''}`}
-              >
-                Total
-              </button>
-            </div>
-            
-            {/* Table rows */}
-            <div className="space-y-1 mt-2">
-              {rankedParticipants.map((participant, index) => {
-                const rank = index + 1;
-                const rankChange = getRankChange(participant.email, currentRound);
-                const isCurrentUser = participant.email?.toLowerCase() === currentUserEmail;
-                const isFocused = participant.email === focusedParticipant;
-                const offset = rowOffsets[participant.email] || 0;
-                
-                return (
-                  <div 
-                    key={participant.email}
-                    ref={el => rowRefs.current[participant.email] = el}
-                    onClick={() => setFocusedParticipant(participant.email)}
-                    style={{
-                      transform: offset ? `translateY(${offset}px)` : 'translateY(0)',
-                      transition: offset ? 'none' : 'transform 400ms cubic-bezier(0.4, 0, 0.2, 1)'
-                    }}
-                    className={`flex items-center gap-2 px-3 py-2.5 rounded-xl cursor-pointer ${
-                      isCurrentUser 
-                        ? 'bg-blue-500/15 ring-1 ring-blue-500/40' 
-                        : isFocused 
-                          ? 'bg-white/10 ring-1 ring-white/20'
-                          : 'bg-white/[0.03] hover:bg-white/[0.06]'
-                    } ${isPlaying && isFocused ? 'ring-2 ring-blue-400/60 scale-[1.02]' : ''}`}
+            {/* Show team view or single view */}
+            {isTeamMode && viewMode === 'team' ? (
+              /* Team view */
+              <>
+                {/* Table header */}
+                <div className="flex items-center gap-2 px-3 py-2 border-b border-white/10 text-xs text-gray-500 uppercase">
+                  <span className="w-6 text-center">#</span>
+                  <span className="flex-1">Lag</span>
+                  <button
+                    onClick={() => setSortBy('round')}
+                    className={`w-16 text-right hover:text-gray-300 ${sortBy === 'round' ? 'text-blue-400' : ''}`}
                   >
-                    <div className="w-6 flex justify-center">
-                      <RankDisplay rank={rank} />
-                    </div>
-                    <div className="w-6 flex justify-center">
-                      <RankChangeIndicator change={rankChange} />
-                    </div>
-                    <Avatar 
-                      name={participant.name} 
-                      email={participant.email} 
-                      isCurrentUser={isCurrentUser}
-                    />
-                    <span className={`flex-1 text-sm truncate ${
-                      isCurrentUser ? 'text-blue-300 font-medium' : 'text-gray-300'
-                    }`}>
-                      {participant.name || participant.email?.split('@')[0]}
-                      {isCurrentUser && ' (du)'}
-                    </span>
-                    <span className="w-16 text-right text-sm tabular-nums text-gray-400">
-                      {participant.roundScore || '–'}
-                    </span>
-                    <span className={`w-16 text-right text-sm font-medium tabular-nums ${
-                      isCurrentUser ? 'text-blue-400' : 'text-gray-300'
-                    }`}>
-                      {participant.total}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
+                    Runda {currentRound + 1}
+                  </button>
+                  <button
+                    onClick={() => setSortBy('total')}
+                    className={`w-16 text-right hover:text-gray-300 ${sortBy === 'total' ? 'text-blue-400' : ''}`}
+                  >
+                    Total
+                  </button>
+                </div>
+                
+                {/* Team rows */}
+                <div className="space-y-1 mt-2">
+                  {rankedTeams.map((team, index) => {
+                    const rank = team.rank;
+                    const teamColor = team.id === 1 ? 'cyan' : 'orange';
+                    
+                    return (
+                      <div 
+                        key={team.id}
+                        className={`flex items-center gap-2 px-3 py-3 rounded-xl ${
+                          team.id === 1 
+                            ? 'bg-cyan-500/10 ring-1 ring-cyan-500/30' 
+                            : 'bg-orange-500/10 ring-1 ring-orange-500/30'
+                        }`}
+                      >
+                        <div className="w-6 flex justify-center">
+                          <RankDisplay rank={rank} isTied={team.isTied} />
+                        </div>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                          team.id === 1 ? 'bg-cyan-500 text-white' : 'bg-orange-500 text-white'
+                        }`}>
+                          {team.id}
+                        </div>
+                        <span className={`flex-1 text-sm font-medium ${
+                          team.id === 1 ? 'text-cyan-300' : 'text-orange-300'
+                        }`}>
+                          {team.name}
+                        </span>
+                        <span className="w-16 text-right text-sm tabular-nums text-gray-400">
+                          {team.roundScore || '–'}
+                        </span>
+                        <span className={`w-16 text-right text-sm font-bold tabular-nums ${
+                          team.id === 1 ? 'text-cyan-400' : 'text-orange-400'
+                        }`}>
+                          {team.total}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              /* Single/individual view */
+              <>
+                {/* Table header */}
+                <div className="flex items-center gap-2 px-3 py-2 border-b border-white/10 text-xs text-gray-500 uppercase">
+                  <span className="w-6 text-center">#</span>
+                  <span className="w-6 text-center">+/-</span>
+                  <span className="flex-1">Deltagare</span>
+                  <button
+                    onClick={() => setSortBy('round')}
+                    className={`w-16 text-right hover:text-gray-300 ${sortBy === 'round' ? 'text-blue-400' : ''}`}
+                  >
+                    Runda {currentRound + 1}
+                  </button>
+                  <button
+                    onClick={() => setSortBy('total')}
+                    className={`w-16 text-right hover:text-gray-300 ${sortBy === 'total' ? 'text-blue-400' : ''}`}
+                  >
+                    Total
+                  </button>
+                </div>
+                
+                {/* Table rows */}
+                <div className="space-y-1 mt-2">
+                  {rankedParticipants.map((participant, index) => {
+                    const rank = participant.rank;
+                    const rankChange = getRankChange(participant.email, currentRound);
+                    const isCurrentUser = participant.email?.toLowerCase() === currentUserEmail;
+                    const isFocused = participant.email === focusedParticipant;
+                    const offset = rowOffsets[participant.email] || 0;
+                    
+                    return (
+                      <div 
+                        key={participant.email}
+                        ref={el => rowRefs.current[participant.email] = el}
+                        onClick={() => setFocusedParticipant(participant.email)}
+                        style={{
+                          transform: offset ? `translateY(${offset}px)` : 'translateY(0)',
+                          transition: offset ? 'none' : 'transform 400ms cubic-bezier(0.4, 0, 0.2, 1)'
+                        }}
+                        className={`flex items-center gap-2 px-3 py-2.5 rounded-xl cursor-pointer ${
+                          isCurrentUser 
+                            ? 'bg-blue-500/15 ring-1 ring-blue-500/40' 
+                            : isFocused 
+                              ? 'bg-white/10 ring-1 ring-white/20'
+                              : 'bg-white/[0.03] hover:bg-white/[0.06]'
+                        } ${isPlaying && isFocused ? 'ring-2 ring-blue-400/60 scale-[1.02]' : ''}`}
+                      >
+                        <div className="w-6 flex justify-center">
+                          <RankDisplay rank={rank} isTied={participant.isTied} />
+                        </div>
+                        <div className="w-6 flex justify-center">
+                          <RankChangeIndicator change={rankChange} />
+                        </div>
+                        <Avatar 
+                          name={participant.name} 
+                          email={participant.email} 
+                          isCurrentUser={isCurrentUser}
+                          team={isTeamMode ? participant.team : null}
+                        />
+                        <span className={`flex-1 text-sm truncate ${
+                          isCurrentUser ? 'text-blue-300 font-medium' : 'text-gray-300'
+                        }`}>
+                          {participant.name || participant.email?.split('@')[0]}
+                          {isCurrentUser && ' (du)'}
+                        </span>
+                        <span className="w-16 text-right text-sm tabular-nums text-gray-400">
+                          {participant.roundScore || '–'}
+                        </span>
+                        <span className={`w-16 text-right text-sm font-medium tabular-nums ${
+                          isCurrentUser ? 'text-blue-400' : 'text-gray-300'
+                        }`}>
+                          {participant.total}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>

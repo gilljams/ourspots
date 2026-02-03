@@ -2579,6 +2579,12 @@ function LeaderboardBlockEditor({ block, onUpdate, onRemove, onMove, index, tota
   const [roundCount, setRoundCount] = useState(block.roundCount || 0);
   const [defaultCollapsed, setDefaultCollapsed] = useState(block.defaultCollapsed ?? true);
   const [status, setStatus] = useState(block.status || 'active');
+  const [mode, setMode] = useState(block.mode || 'single'); // 'single' or 'team'
+  const [teams, setTeams] = useState(block.teams || [
+    { id: 1, name: 'Lag 1' },
+    { id: 2, name: 'Lag 2' }
+  ]);
+  const [selectedTeam, setSelectedTeam] = useState(1); // Which team is selected for adding members
 
   // Sync with block changes
   useEffect(() => {
@@ -2587,7 +2593,12 @@ function LeaderboardBlockEditor({ block, onUpdate, onRemove, onMove, index, tota
     setRoundCount(block.roundCount || 0);
     setDefaultCollapsed(block.defaultCollapsed ?? true);
     setStatus(block.status || 'active');
-  }, [block.id, block.title, block.participants, block.roundCount, block.defaultCollapsed, block.status]);
+    setMode(block.mode || 'single');
+    setTeams(block.teams || [
+      { id: 1, name: 'Lag 1' },
+      { id: 2, name: 'Lag 2' }
+    ]);
+  }, [block.id, block.title, block.participants, block.roundCount, block.defaultCollapsed, block.status, block.mode, block.teams]);
 
   const syncToParent = (updates) => {
     onUpdate(block.id, {
@@ -2598,6 +2609,8 @@ function LeaderboardBlockEditor({ block, onUpdate, onRemove, onMove, index, tota
       defaultCollapsed,
       status,
       sortOrder: block.sortOrder || 'desc',
+      mode,
+      teams,
       ...updates
     });
   };
@@ -2610,6 +2623,18 @@ function LeaderboardBlockEditor({ block, onUpdate, onRemove, onMove, index, tota
   const handleDefaultCollapsedChange = (value) => {
     setDefaultCollapsed(value);
     syncToParent({ defaultCollapsed: value });
+  };
+
+  const handleModeChange = (newMode) => {
+    setMode(newMode);
+    // When switching to team mode, clear team assignments
+    if (newMode === 'team') {
+      const updatedParticipants = participants.map(p => ({ ...p, team: undefined }));
+      setParticipants(updatedParticipants);
+      syncToParent({ mode: newMode, participants: updatedParticipants });
+    } else {
+      syncToParent({ mode: newMode });
+    }
   };
 
   const handleReopenLeaderboard = () => {
@@ -2625,7 +2650,7 @@ function LeaderboardBlockEditor({ block, onUpdate, onRemove, onMove, index, tota
     }
   };
 
-  // Toggle participant
+  // Toggle participant (for single mode)
   const toggleParticipant = (email, name) => {
     const exists = participants.some(p => p.email?.toLowerCase() === email);
     if (exists) {
@@ -2638,6 +2663,43 @@ function LeaderboardBlockEditor({ block, onUpdate, onRemove, onMove, index, tota
       setParticipants(updated);
       syncToParent({ participants: updated });
     }
+  };
+
+  // Add participant to selected team (for team mode)
+  const addToTeam = (email, name) => {
+    const exists = participants.some(p => p.email?.toLowerCase() === email);
+    if (exists) {
+      // Update existing participant's team
+      const updated = participants.map(p => 
+        p.email?.toLowerCase() === email ? { ...p, team: selectedTeam } : p
+      );
+      setParticipants(updated);
+      syncToParent({ participants: updated });
+    } else {
+      // Add new participant with team
+      const newParticipant = { email, name, team: selectedTeam };
+      const updated = [...participants, newParticipant];
+      setParticipants(updated);
+      syncToParent({ participants: updated });
+    }
+  };
+
+  // Remove participant from team (make them available again)
+  const removeFromTeam = (email) => {
+    const updated = participants.filter(p => p.email?.toLowerCase() !== email);
+    setParticipants(updated);
+    syncToParent({ participants: updated });
+  };
+
+  // Get participants for a specific team
+  const getTeamMembers = (teamId) => {
+    return participants.filter(p => p.team === teamId);
+  };
+
+  // Get available users not in any team (for team mode)
+  const getAvailableForTeam = () => {
+    const assignedEmails = participants.filter(p => p.team).map(p => p.email?.toLowerCase());
+    return availableUsers.filter(u => !assignedEmails.includes(u.email));
   };
 
   // Get available users from shares (accepted or inherited) + owner
@@ -2705,38 +2767,164 @@ function LeaderboardBlockEditor({ block, onUpdate, onRemove, onMove, index, tota
             />
           </div>
 
-          {/* Participants */}
+          {/* Mode toggle: Singel / Lag */}
           <div>
-            <label className="text-xs text-gray-400 mb-2 block">
-              Deltagare
-            </label>
-            
-            {availableUsers.length > 0 ? (
-              <div className="flex flex-wrap gap-1.5">
-                {availableUsers.map((user, idx) => {
-                  const isSelected = participants.some(p => p.email?.toLowerCase() === user.email);
+            <label className="text-xs text-gray-400 mb-2 block">Tävlingstyp</label>
+            <div className="flex rounded-lg overflow-hidden border border-white/10">
+              <button
+                type="button"
+                onClick={() => handleModeChange('single')}
+                className={`flex-1 px-3 py-2 text-xs font-medium transition-colors ${
+                  mode === 'single'
+                    ? 'bg-blue-500/20 text-blue-400'
+                    : 'bg-white/5 text-gray-500 hover:text-gray-300'
+                }`}
+              >
+                Singel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleModeChange('team')}
+                className={`flex-1 px-3 py-2 text-xs font-medium transition-colors ${
+                  mode === 'team'
+                    ? 'bg-blue-500/20 text-blue-400'
+                    : 'bg-white/5 text-gray-500 hover:text-gray-300'
+                }`}
+              >
+                Lag
+              </button>
+            </div>
+          </div>
+
+          {/* Single mode: Participants */}
+          {mode === 'single' && (
+            <div>
+              <label className="text-xs text-gray-400 mb-2 block">
+                Deltagare
+              </label>
+              
+              {availableUsers.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {availableUsers.map((user, idx) => {
+                    const isSelected = participants.some(p => p.email?.toLowerCase() === user.email);
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => toggleParticipant(user.email, user.name)}
+                        className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
+                          isSelected
+                            ? 'bg-blue-500/20 border-blue-500/50 text-blue-400'
+                            : 'bg-white/5 border-white/10 text-gray-500 hover:text-gray-300 hover:bg-white/10'
+                        }`}
+                      >
+                        {user.name}{user.isOwner ? ' (jag)' : ''}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-xs text-gray-500 italic">
+                  Dela objektet med andra för att lägga till deltagare
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Team mode: Team assignment */}
+          {mode === 'team' && (
+            <div className="space-y-3">
+              {/* Team columns */}
+              <div className="grid grid-cols-2 gap-2">
+                {teams.map((team) => {
+                  const teamMembers = getTeamMembers(team.id);
+                  const isSelected = selectedTeam === team.id;
+                  const teamColor = team.id === 1 ? 'cyan' : 'orange';
+                  
                   return (
                     <button
-                      key={idx}
+                      key={team.id}
                       type="button"
-                      onClick={() => toggleParticipant(user.email, user.name)}
-                      className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
+                      onClick={() => setSelectedTeam(team.id)}
+                      className={`p-2 rounded-lg border transition-all text-left ${
                         isSelected
-                          ? 'bg-blue-500/20 border-blue-500/50 text-blue-400'
-                          : 'bg-white/5 border-white/10 text-gray-500 hover:text-gray-300 hover:bg-white/10'
+                          ? team.id === 1
+                            ? 'border-cyan-500/50 bg-cyan-500/10 ring-1 ring-cyan-500/30'
+                            : 'border-orange-500/50 bg-orange-500/10 ring-1 ring-orange-500/30'
+                          : 'border-white/10 bg-white/5 hover:bg-white/10'
                       }`}
                     >
-                      {user.name}{user.isOwner ? ' (jag)' : ''}
+                      <div className={`text-xs font-medium mb-2 ${
+                        team.id === 1 ? 'text-cyan-400' : 'text-orange-400'
+                      }`}>
+                        {team.name}
+                        {isSelected && <span className="ml-1">✓</span>}
+                      </div>
+                      <div className="space-y-1 min-h-[32px]">
+                        {teamMembers.length === 0 ? (
+                          <div className="text-xs text-gray-600 italic">
+                            {isSelected ? 'Välj deltagare nedan' : 'Inga deltagare'}
+                          </div>
+                        ) : (
+                          teamMembers.map((member, idx) => (
+                            <div 
+                              key={idx}
+                              className="flex items-center justify-between gap-1 text-xs text-gray-300 bg-white/5 rounded px-1.5 py-1"
+                            >
+                              <span className="truncate">{member.name}</span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  removeFromTeam(member.email);
+                                }}
+                                className="text-gray-500 hover:text-red-400 flex-shrink-0"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          ))
+                        )}
+                      </div>
                     </button>
                   );
                 })}
               </div>
-            ) : (
-              <div className="text-xs text-gray-500 italic">
-                Dela objektet med andra för att lägga till deltagare
+
+              {/* Available users to add to teams */}
+              <div>
+                <label className="text-xs text-gray-400 mb-1.5 block">
+                  Tillgängliga att lägga till i {teams.find(t => t.id === selectedTeam)?.name}
+                </label>
+                {getAvailableForTeam().length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {getAvailableForTeam().map((user, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => addToTeam(user.email, user.name)}
+                        className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
+                          selectedTeam === 1
+                            ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/20'
+                            : 'bg-orange-500/10 border-orange-500/30 text-orange-400 hover:bg-orange-500/20'
+                        }`}
+                      >
+                        + {user.name}{user.isOwner ? ' (jag)' : ''}
+                      </button>
+                    ))}
+                  </div>
+                ) : availableUsers.length === 0 ? (
+                  <div className="text-xs text-gray-500 italic">
+                    Dela objektet med andra för att lägga till deltagare
+                  </div>
+                ) : (
+                  <div className="text-xs text-gray-500 italic">
+                    Alla deltagare är tilldelade ett lag
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Round count info */}
           {roundCount > 0 && (

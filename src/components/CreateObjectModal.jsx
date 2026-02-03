@@ -135,6 +135,8 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             id: Math.random().toString(36).substr(2, 9),
             type: 'leaderboard',
             title: b.data.title || '',
+            mode: b.data.mode || 'single',
+            teams: b.data.teams || [{ id: 1, name: 'Lag 1' }, { id: 2, name: 'Lag 2' }],
             participants: isDuplicate ? [] : (b.data.participants || []), // Clear participants when duplicating
             roundCount: isDuplicate ? 0 : (b.data.roundCount || 0),
             scores: isDuplicate ? {} : (b.data.scores || {}), // Clear scores when duplicating
@@ -518,7 +520,12 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             scores: block.scores || {},
             status: block.status || 'active',
             sortOrder: block.sortOrder || 'desc',
-            defaultCollapsed: block.defaultCollapsed ?? true
+            defaultCollapsed: block.defaultCollapsed ?? true,
+            mode: block.mode || 'single',
+            teams: block.teams || [
+              { id: 1, name: 'Lag 1' },
+              { id: 2, name: 'Lag 2' }
+            ]
           } 
         });
       } else if (block.content && block.content.trim()) {
@@ -589,6 +596,14 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
   };
 
   const removeCustomBlock = (id) => {
+    // Find the block to get its type/title for the confirmation message
+    const block = customBlocks.find(b => b.id === id);
+    const blockName = block?.title || block?.type || 'blocket';
+    
+    if (!window.confirm(`Vill du ta bort ${blockName}?`)) {
+      return;
+    }
+    
     setCustomBlocks(prev => prev.filter(b => b.id !== id));
     setFormTouched(true);
   };
