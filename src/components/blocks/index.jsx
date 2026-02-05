@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapPin, Map as MapIcon, X, Check, RotateCcw, ExternalLink, Calendar, Maximize2, Timer, Play, Pause, RotateCw, Vote, HelpCircle, Trophy, ChevronDown, Lock, Link, Plus, Wallet, ChevronRight, User, TriangleIcon } from 'lucide-react';
+import { MapPin, Map as MapIcon, X, Check, RotateCcw, ExternalLink, Calendar, Maximize2, Timer, Play, Pause, RotateCw, Vote, HelpCircle, Trophy, ChevronDown, Lock, Link, Plus, Wallet, ChevronRight, User, TriangleIcon, Edit2, Car, ClipboardList, Users } from 'lucide-react';
 import { getTransformedImageUrl, getFocalPointStyles } from '../../utils/imageUtils';
 import { getIconComponent } from '../../utils/iconHelpers';
 
@@ -380,7 +380,7 @@ export const renderMarkdown = (text) => {
   return elements;
 };
 
-export const TextBlock = ({ data, onExpand }) => {
+export const TextBlock = ({ data, onExpand, canEdit, onEditContent }) => {
   const [isCollapsed, setIsCollapsed] = useState(data.defaultCollapsed ?? true);
   const blockRef = useRef(null);
   const title = data.title || 'Anteckning';
@@ -399,6 +399,13 @@ export const TextBlock = ({ data, onExpand }) => {
     }
   };
   
+  const handleEditClick = (e) => {
+    e.stopPropagation();
+    if (onEditContent) {
+      onEditContent();
+    }
+  };
+  
   return (
     <div ref={blockRef} className="space-y-2">
       {/* Collapsible header */}
@@ -412,7 +419,7 @@ export const TextBlock = ({ data, onExpand }) => {
             className={`text-gray-400 group-hover:text-white transition-all ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} 
           />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-1">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-400">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
             <polyline points="14 2 14 8 20 8"></polyline>
@@ -427,7 +434,17 @@ export const TextBlock = ({ data, onExpand }) => {
       
       {/* Collapsible content */}
       {!isCollapsed && (
-        <div className="bg-white/[0.03] rounded-xl p-4">
+        <div className="bg-white/[0.03] rounded-xl p-4 relative">
+          {/* Edit button for owners/editors */}
+          {canEdit && onEditContent && (
+            <button
+              onClick={handleEditClick}
+              className="absolute top-2 right-2 w-7 h-7 rounded-lg bg-white/5 hover:bg-blue-500/20 flex items-center justify-center text-gray-400 hover:text-blue-400 transition-all"
+              title="Redigera text"
+            >
+              <Edit2 size={14} />
+            </button>
+          )}
           <div className="text-sm leading-relaxed space-y-1">
             {renderMarkdown(data.content)}
           </div>
@@ -2574,6 +2591,291 @@ export const LeaderboardBlock = ({ data, currentUser, shares = {}, canEdit = fal
   );
 };
 
+// Distribution block - for carpooling, task assignment, etc.
+// Preset configs for different use cases
+const DISTRIBUTION_PRESETS = {
+  carpool: {
+    icon: Car,
+    color: 'text-blue-400',
+    bgColor: 'bg-blue-500/20',
+    title: 'Samåkning',
+    slotLabel: 'bil',
+    emptyStateUser: 'Du har inte valt bil än',
+    emptyStateGeneral: 'Inga bilar skapade än',
+    createLabel: 'Jag tar min bil',
+    joinLabel: 'Jag behöver plats',
+    capacityLabel: 'Antal platser (inkl. förare)',
+    infoPlaceholder: 'T.ex. "Hämtar i stan kl 19"',
+    slotPrefix: 'Bil',
+    assigneeLabel: 'passagerare',
+    spotsLeftLabel: (n) => n === 1 ? '1 plats kvar' : `${n} platser kvar`,
+    fullLabel: 'Full'
+  },
+  tasks: {
+    icon: ClipboardList,
+    color: 'text-blue-400',
+    bgColor: 'bg-blue-500/20',
+    title: 'Uppgiftstilldelning',
+    slotLabel: 'uppgift',
+    emptyStateUser: 'Du har inte valt uppgift',
+    emptyStateGeneral: 'Inga uppgifter skapade än',
+    createLabel: 'Skapa uppgift',
+    joinLabel: 'Välj uppgift',
+    capacityLabel: 'Max antal personer',
+    infoPlaceholder: 'Beskrivning av uppgiften',
+    slotPrefix: '',
+    assigneeLabel: 'tilldelade',
+    spotsLeftLabel: (n) => n === 1 ? '1 plats kvar' : `${n} platser kvar`,
+    fullLabel: 'Tilldelad'
+  }
+};
+
+export const DistributionBlock = ({ 
+  data, 
+  currentUser, 
+  shares = {}, 
+  canEdit = false, 
+  onOpenModal,
+  onExpand 
+}) => {
+  const [isCollapsed, setIsCollapsed] = useState(data.defaultCollapsed ?? true);
+  const blockRef = useRef(null);
+  
+  const preset = DISTRIBUTION_PRESETS[data.preset] || DISTRIBUTION_PRESETS.carpool;
+  const PresetIcon = preset.icon;
+  const title = data.title || preset.title;
+  const slots = data.slots || [];
+  
+  // Get current user's email key
+  const getUserEmailKey = (email) => {
+    if (!email) return null;
+    return email.replace(/\./g, '_DOT_');
+  };
+  
+  const currentUserKey = currentUser?.email ? getUserEmailKey(currentUser.email) : null;
+  
+  // Find which slot the current user is assigned to
+  const findUserSlot = () => {
+    if (!currentUserKey) return null;
+    return slots.find(slot => slot.assignees?.includes(currentUserKey));
+  };
+  
+  const userSlot = findUserSlot();
+  const isUserCreator = (slot) => slot.createdBy === currentUserKey;
+  
+  // Get display name for an email key
+  const getDisplayName = (emailKey) => {
+    if (!emailKey) return '';
+    const email = emailKey.replace(/_DOT_/g, '.');
+    // Check shares for displayName or name
+    if (shares[emailKey]?.displayName) return shares[emailKey].displayName;
+    if (shares[emailKey]?.name) return shares[emailKey].name;
+    // Check participants list for name
+    const participant = (data.participants || []).find(p => {
+      const pKey = p.email?.replace(/\./g, '_DOT_');
+      return pKey === emailKey;
+    });
+    if (participant?.name) return participant.name;
+    // Fall back to email prefix
+    return email.split('@')[0];
+  };
+  
+  // Sync collapsed state when defaultCollapsed changes
+  useEffect(() => {
+    setIsCollapsed(data.defaultCollapsed ?? true);
+  }, [data.defaultCollapsed]);
+  
+  // Scroll into view when expanded
+  const handleToggleCollapse = () => {
+    const wasCollapsed = isCollapsed;
+    setIsCollapsed(!isCollapsed);
+    if (wasCollapsed && onExpand) {
+      setTimeout(() => onExpand(blockRef.current), 100);
+    }
+  };
+  
+  // Calculate summary for collapsed view
+  const getCollapsedSummary = () => {
+    if (userSlot) {
+      if (data.preset === 'carpool') {
+        // Show "Bil X: förare, passagerare, Du"
+        const creatorName = getDisplayName(userSlot.createdBy);
+        const assigneeNames = userSlot.assignees
+          .map(key => key === currentUserKey ? 'Du' : getDisplayName(key))
+          .join(', ');
+        return `${userSlot.label}: ${assigneeNames}`;
+      } else {
+        // Tasks: show "Du: Uppgiftens namn"
+        return `Du: ${userSlot.label}`;
+      }
+    }
+    return preset.emptyStateUser;
+  };
+  
+  // Get spots left for a slot
+  const getSpotsLeft = (slot) => {
+    const assigned = slot.assignees?.length || 0;
+    const capacity = slot.capacity || 1;
+    return Math.max(0, capacity - assigned);
+  };
+  
+  if (slots.length === 0) {
+    return (
+      <div ref={blockRef} className="space-y-2">
+        <button
+          onClick={handleToggleCollapse}
+          className="w-full flex items-center gap-2.5 py-2 group touch-manipulation"
+        >
+          <div className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
+            <ChevronDown 
+              size={14} 
+              className={`text-gray-400 group-hover:text-white transition-all ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} 
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <PresetIcon size={14} className={preset.color} />
+            <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">
+              {title}
+            </span>
+          </div>
+        </button>
+        
+        {!isCollapsed && (
+          <div className="bg-white/[0.03] rounded-xl p-4">
+            <div className="text-sm text-gray-500 text-center py-2">
+              {preset.emptyStateGeneral}
+            </div>
+            {onOpenModal && (
+              <button
+                onClick={onOpenModal}
+                className={`w-full mt-2 py-2 text-sm ${preset.color} hover:bg-white/5 rounded-lg flex items-center justify-center gap-1 transition-colors`}
+              >
+                <Plus size={14} />
+                Kom igång
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+  
+  // Count totals
+  const totalSlots = slots.length;
+  const totalAssigned = slots.reduce((sum, slot) => sum + (slot.assignees?.length || 0), 0);
+  
+  return (
+    <div ref={blockRef} className="space-y-2">
+      {/* Collapsible header */}
+      <button
+        onClick={handleToggleCollapse}
+        className="w-full flex items-center gap-2.5 py-2 group touch-manipulation"
+      >
+        <div className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
+          <ChevronDown 
+            size={14} 
+            className={`text-gray-400 group-hover:text-white transition-all ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} 
+          />
+        </div>
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <PresetIcon size={14} className={preset.color} />
+          <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">
+            {title}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-500">{totalAssigned} {preset.assigneeLabel}</span>
+        </div>
+      </button>
+      
+      {/* Expanded content */}
+      {!isCollapsed && (
+        <div className="bg-white/[0.03] rounded-xl p-4 space-y-3">
+          {/* Slots list */}
+          {slots.map((slot, index) => {
+            const spotsLeft = getSpotsLeft(slot);
+            const isFull = spotsLeft === 0;
+            const isCreator = isUserCreator(slot);
+            const isAssigned = slot.assignees?.includes(currentUserKey);
+            
+            return (
+              <div 
+                key={slot.id || index} 
+                className={`p-3 rounded-lg border transition-colors ${
+                  isAssigned 
+                    ? `${preset.bgColor} border-white/20` 
+                    : 'bg-white/[0.02] border-white/5'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-white text-sm">{slot.label}</span>
+                      {isCreator && data.preset === 'carpool' && (
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-white/10 text-gray-400">
+                          Din
+                        </span>
+                      )}
+                    </div>
+                    {slot.info && (
+                      <div className="text-xs text-gray-500 mt-0.5">{slot.info}</div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {isFull ? (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-gray-600/50 text-gray-400">
+                        {preset.fullLabel}
+                      </span>
+                    ) : (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">
+                        {preset.spotsLeftLabel(spotsLeft)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Assignees */}
+                {slot.assignees && slot.assignees.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {slot.assignees.map((assigneeKey, i) => {
+                      const isMe = assigneeKey === currentUserKey;
+                      const displayName = isMe ? 'Du' : getDisplayName(assigneeKey);
+                      return (
+                        <span 
+                          key={i} 
+                          className={`text-xs px-2 py-1 rounded-full flex items-center gap-1 ${
+                            isMe 
+                              ? `${preset.bgColor} ${preset.color}` 
+                              : 'bg-white/10 text-gray-300'
+                          }`}
+                        >
+                          <User size={10} />
+                          {displayName}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          
+          {/* Action button to open modal */}
+          {onOpenModal && (
+            <button
+              onClick={onOpenModal}
+              className={`w-full py-2.5 text-sm ${preset.color} hover:bg-white/5 rounded-lg flex items-center justify-center gap-1.5 transition-colors border border-white/10`}
+            >
+              {userSlot ? 'Ändra val' : preset.joinLabel}
+              <ChevronRight size={14} />
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const blockComponents = {
   title: TitleBlock,
   location: LocationBlock,
@@ -2587,5 +2889,6 @@ export const blockComponents = {
   poll: PollBlock,
   audio: AudioBlock,
   split: SplitBlock,
-  leaderboard: LeaderboardBlock
+  leaderboard: LeaderboardBlock,
+  distribution: DistributionBlock
 };

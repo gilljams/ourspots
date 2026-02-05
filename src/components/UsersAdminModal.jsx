@@ -259,8 +259,8 @@ function UsersAdminModal({ currentUserId, onClose }) {
         if (obj.blocks) {
           let blocksModified = false;
           const updatedBlocks = obj.blocks.map(block => {
-            // Leaderboard and Split blocks - update participants
-            if (block.type === 'leaderboard' || block.type === 'split') {
+            // Leaderboard, Split and Distribution blocks - update participants
+            if (block.type === 'leaderboard' || block.type === 'split' || block.type === 'distribution') {
               const participants = block.data?.participants || [];
               if (participants.length === 0) return block;
               

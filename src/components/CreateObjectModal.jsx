@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, Plus, Upload, Loader, Navigation, ChevronDown, ChevronUp,
-  Map as MapIcon, FileText, CheckSquare, ClipboardList, Link2, Table2, Image as ImageIcon, Calendar, Phone, Timer, BarChart3, Folder, MapPin, Music, Wallet, Trophy 
+  Map as MapIcon, FileText, CheckSquare, ClipboardList, Link2, Table2, Image as ImageIcon, Calendar, Phone, Timer, BarChart3, Folder, MapPin, Music, Wallet, Trophy, Car, Users 
 } from 'lucide-react';
 import { 
   CLOUDINARY_CLOUD_NAME, 
@@ -12,7 +12,7 @@ import {
 import { getIconComponent } from '../utils/iconHelpers';
 import MapPicker from './MapPicker';
 import FocalPointPicker from './FocalPointPicker';
-import BlockEditor, { DateTagBlockEditor, TimerBlockEditor, PollBlockEditor, AudioBlockEditor, SplitBlockEditor, LeaderboardBlockEditor } from './BlockEditor';
+import BlockEditor, { DateTagBlockEditor, TimerBlockEditor, PollBlockEditor, AudioBlockEditor, SplitBlockEditor, LeaderboardBlockEditor, DistributionBlockEditor } from './BlockEditor';
 
 function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, saving, availableParents, defaultParentId, userLocation, categories, preciseGPS, isAdmin, currentUser, currentUserDisplayName }) {
   // ========== STATE ==========
@@ -48,7 +48,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
   const [customBlocks, setCustomBlocks] = useState(() => {
     if (!sourceObject) return [];
     return sourceObject.blocks
-      .filter(b => ['text', 'links', 'table', 'datetag', 'contact', 'timer', 'poll', 'audio', 'split', 'leaderboard'].includes(b.type))
+      .filter(b => ['text', 'links', 'table', 'datetag', 'contact', 'timer', 'poll', 'audio', 'split', 'leaderboard', 'distribution'].includes(b.type))
       .map(b => {
         if (b.type === 'links') {
           return {
@@ -142,6 +142,17 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             scores: isDuplicate ? {} : (b.data.scores || {}), // Clear scores when duplicating
             status: isDuplicate ? 'active' : (b.data.status || 'active'),
             sortOrder: b.data.sortOrder || 'desc',
+            defaultCollapsed: b.data.defaultCollapsed ?? true
+          };
+        }
+        if (b.type === 'distribution') {
+          return {
+            id: Math.random().toString(36).substr(2, 9),
+            type: 'distribution',
+            preset: b.data.preset || 'carpool',
+            title: b.data.title || '',
+            slots: isDuplicate ? [] : (b.data.slots || []), // Clear slots when duplicating
+            participants: isDuplicate ? [] : (b.data.participants || []), // Load participants
             defaultCollapsed: b.data.defaultCollapsed ?? true
           };
         }
@@ -528,6 +539,18 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             ]
           } 
         });
+      } else if (block.type === 'distribution') {
+        // Save distribution block (carpool/tasks)
+        blocks.push({ 
+          type: 'distribution', 
+          data: { 
+            preset: block.preset || 'carpool',
+            title: (block.title || (block.preset === 'tasks' ? 'Uppgifter' : 'Samåkning')).trim(),
+            slots: block.slots || [],
+            participants: block.participants || [],
+            defaultCollapsed: block.defaultCollapsed ?? true
+          } 
+        });
       } else if (block.content && block.content.trim()) {
         if (block.type === 'text') {
           blocks.push({ type: 'text', data: { title: (block.title || 'Anteckning').trim(), content: block.content.trim(), defaultCollapsed: block.defaultCollapsed || false } });
@@ -584,6 +607,13 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
       newBlock.scores = {};
       newBlock.status = 'active';
       newBlock.sortOrder = 'desc';
+      newBlock.defaultCollapsed = true;
+    }
+    if (type === 'distribution') {
+      // template can be 'carpool' or 'tasks'
+      newBlock.preset = template || 'carpool';
+      newBlock.title = template === 'tasks' ? 'Uppgifter' : 'Samåkning';
+      newBlock.slots = [];
       newBlock.defaultCollapsed = true;
     }
     setCustomBlocks(prev => [...prev, newBlock]);
@@ -956,6 +986,20 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   currentUser={currentUser}
                   currentUserDisplayName={currentUserDisplayName}
                 />
+              ) : block.type === 'distribution' ? (
+                <DistributionBlockEditor
+                  key={block.id}
+                  block={block}
+                  onUpdate={updateCustomBlock}
+                  onRemove={removeCustomBlock}
+                  onMove={moveCustomBlock}
+                  index={index}
+                  total={customBlocks.length}
+                  saving={saving}
+                  shares={sourceObject?.shares || {}}
+                  currentUser={currentUser}
+                  currentUserDisplayName={currentUserDisplayName}
+                />
               ) : (
                 <BlockEditor
                   key={block.id}
@@ -1032,6 +1076,12 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   </button>
                   <button type="button" onClick={() => addCustomBlock('leaderboard')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
                     <Trophy size={16} className="text-blue-400" /> Leaderboard
+                  </button>
+                  <button type="button" onClick={() => addCustomBlock('distribution', 'carpool')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
+                    <Car size={16} className="text-blue-400" /> Samåkning
+                  </button>
+                  <button type="button" onClick={() => addCustomBlock('distribution', 'tasks')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
+                    <Users size={16} className="text-blue-400" /> Uppgiftstilldelning
                   </button>
                   {isAdmin && (
                     <button type="button" onClick={() => addCustomBlock('audio')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-300 hover:bg-purple-500/20 text-sm">

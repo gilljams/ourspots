@@ -10,6 +10,8 @@ import { getTransformedImageUrl, getFocalPointStyles } from '../utils/imageUtils
 import { blockComponents } from './blocks';
 import DeleteConfirmModal from './DeleteConfirmModal';
 import LeaderboardModal from './LeaderboardModal';
+import DistributionModal from './DistributionModal';
+import { FullscreenTextEditor } from './BlockEditor';
 
 // Folder icon - we'll define it locally since it's only used here
 const Folder = ({ size = 24, ...props }) => (
@@ -25,6 +27,8 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
     return localStorage.getItem('ourspots-child-view-mode') || 'grid';
   });
   const [leaderboardModalData, setLeaderboardModalData] = useState(null); // { blockIndex, data }
+  const [textEditModalData, setTextEditModalData] = useState(null); // { blockIndex, content, title }
+  const [distributionModalData, setDistributionModalData] = useState(null); // { blockIndex, data }
   
   const toggleChildViewMode = () => {
     const newMode = childViewMode === 'grid' ? 'list' : 'grid';
@@ -416,6 +420,16 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                           // Leaderboard-specific props
                           onOpenModal={block.type === 'leaderboard' ? () => {
                             setLeaderboardModalData({ blockIndex: actualBlockIndex, data: block.data });
+                          } : block.type === 'distribution' ? () => {
+                            setDistributionModalData({ blockIndex: actualBlockIndex, data: block.data });
+                          } : undefined}
+                          // Text block inline edit - for owners/editors
+                          onEditContent={block.type === 'text' && canEdit ? () => {
+                            setTextEditModalData({ 
+                              blockIndex: actualBlockIndex, 
+                              content: block.data.content || '', 
+                              title: block.data.title || 'Anteckning' 
+                            });
                           } : undefined}
                           // Scroll into view when expanding collapsible blocks
                           onExpand={(element) => {
@@ -712,6 +726,136 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
               }));
             } catch (err) {
               console.error('Error toggling status:', err);
+            }
+          }}
+        />
+      )}
+      {textEditModalData && (
+        <FullscreenTextEditor
+          content={textEditModalData.content}
+          title={textEditModalData.title}
+          onSave={async (newContent) => {
+            try {
+              const updatedBlocks = [...object.blocks];
+              updatedBlocks[textEditModalData.blockIndex] = {
+                ...updatedBlocks[textEditModalData.blockIndex],
+                data: { 
+                  ...updatedBlocks[textEditModalData.blockIndex].data, 
+                  content: newContent 
+                }
+              };
+              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
+              setTextEditModalData(null);
+            } catch (err) {
+              console.error('Error saving text content:', err);
+              alert('Kunde inte spara texten');
+            }
+          }}
+          onCancel={() => setTextEditModalData(null)}
+        />
+      )}
+      {distributionModalData && (
+        <DistributionModal
+          data={object.blocks[distributionModalData.blockIndex]?.data || distributionModalData.data}
+          currentUser={currentUser}
+          shares={object.shares || {}}
+          canEdit={canEdit}
+          onClose={() => setDistributionModalData(null)}
+          onCreateSlot={async (newSlot, leaveSlotId) => {
+            try {
+              const updatedBlocks = [...object.blocks];
+              let currentSlots = updatedBlocks[distributionModalData.blockIndex].data.slots || [];
+              
+              // If user needs to leave another slot first, remove them
+              if (leaveSlotId) {
+                const currentUserKey = currentUser?.email?.replace(/\./g, '_DOT_');
+                currentSlots = currentSlots.map(slot => {
+                  if (slot.id === leaveSlotId) {
+                    return { ...slot, assignees: (slot.assignees || []).filter(key => key !== currentUserKey) };
+                  }
+                  return slot;
+                });
+              }
+              
+              updatedBlocks[distributionModalData.blockIndex] = {
+                ...updatedBlocks[distributionModalData.blockIndex],
+                data: { 
+                  ...updatedBlocks[distributionModalData.blockIndex].data, 
+                  slots: [...currentSlots, newSlot]
+                }
+              };
+              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
+            } catch (err) {
+              console.error('Error creating slot:', err);
+              alert('Kunde inte skapa');
+            }
+          }}
+          onJoinSlot={async (slotId, userKey) => {
+            try {
+              const updatedBlocks = [...object.blocks];
+              const currentSlots = updatedBlocks[distributionModalData.blockIndex].data.slots || [];
+              const updatedSlots = currentSlots.map(slot => {
+                if (slot.id === slotId) {
+                  const assignees = slot.assignees || [];
+                  if (!assignees.includes(userKey)) {
+                    return { ...slot, assignees: [...assignees, userKey] };
+                  }
+                }
+                return slot;
+              });
+              updatedBlocks[distributionModalData.blockIndex] = {
+                ...updatedBlocks[distributionModalData.blockIndex],
+                data: { 
+                  ...updatedBlocks[distributionModalData.blockIndex].data, 
+                  slots: updatedSlots
+                }
+              };
+              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
+            } catch (err) {
+              console.error('Error joining slot:', err);
+              alert('Kunde inte gå med');
+            }
+          }}
+          onLeaveSlot={async (slotId, userKey) => {
+            try {
+              const updatedBlocks = [...object.blocks];
+              const currentSlots = updatedBlocks[distributionModalData.blockIndex].data.slots || [];
+              const updatedSlots = currentSlots.map(slot => {
+                if (slot.id === slotId) {
+                  const assignees = (slot.assignees || []).filter(key => key !== userKey);
+                  return { ...slot, assignees };
+                }
+                return slot;
+              });
+              updatedBlocks[distributionModalData.blockIndex] = {
+                ...updatedBlocks[distributionModalData.blockIndex],
+                data: { 
+                  ...updatedBlocks[distributionModalData.blockIndex].data, 
+                  slots: updatedSlots
+                }
+              };
+              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
+            } catch (err) {
+              console.error('Error leaving slot:', err);
+              alert('Kunde inte lämna');
+            }
+          }}
+          onDeleteSlot={async (slotId) => {
+            try {
+              const updatedBlocks = [...object.blocks];
+              const currentSlots = updatedBlocks[distributionModalData.blockIndex].data.slots || [];
+              const updatedSlots = currentSlots.filter(slot => slot.id !== slotId);
+              updatedBlocks[distributionModalData.blockIndex] = {
+                ...updatedBlocks[distributionModalData.blockIndex],
+                data: { 
+                  ...updatedBlocks[distributionModalData.blockIndex].data, 
+                  slots: updatedSlots
+                }
+              };
+              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
+            } catch (err) {
+              console.error('Error deleting slot:', err);
+              alert('Kunde inte ta bort');
             }
           }}
         />
