@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapPin, Map as MapIcon, X, Check, RotateCcw, ExternalLink, Calendar, Maximize2, Timer, Play, Pause, RotateCw, Vote, HelpCircle, Trophy, ChevronDown, Lock, Link, Plus, Wallet, ChevronRight, User, TriangleIcon, Edit2, Car, ClipboardList, Users } from 'lucide-react';
+import { MapPin, Map as MapIcon, X, Check, RotateCcw, ExternalLink, Calendar, Maximize2, Timer, Play, Pause, RotateCw, Vote, HelpCircle, Trophy, ChevronDown, Lock, Link, Plus, Wallet, ChevronRight, User, TriangleIcon, Edit2, Car, ClipboardList, Users, Minus } from 'lucide-react';
 import { getTransformedImageUrl, getFocalPointStyles } from '../../utils/imageUtils';
 import { getIconComponent } from '../../utils/iconHelpers';
 
@@ -380,6 +380,22 @@ export const renderMarkdown = (text) => {
   return elements;
 };
 
+// Section block - visual separator with title
+export const SectionBlock = ({ data }) => {
+  const title = data.title || 'Sektion';
+  const isUppercase = data.uppercase !== false; // Default to uppercase
+  
+  return (
+    <div className="flex items-center gap-3 pt-2">
+      <div className="h-px flex-1 bg-gradient-to-r from-transparent via-blue-500/30 to-blue-500/50" />
+      <span className={`text-sm font-semibold text-blue-400 tracking-wide ${isUppercase ? 'uppercase' : ''}`}>
+        {title}
+      </span>
+      <div className="h-px flex-1 bg-gradient-to-l from-transparent via-blue-500/30 to-blue-500/50" />
+    </div>
+  );
+};
+
 export const TextBlock = ({ data, onExpand, canEdit, onEditContent }) => {
   const [isCollapsed, setIsCollapsed] = useState(data.defaultCollapsed ?? true);
   const blockRef = useRef(null);
@@ -413,20 +429,20 @@ export const TextBlock = ({ data, onExpand, canEdit, onEditContent }) => {
         onClick={handleToggleCollapse}
         className="w-full flex items-center gap-2.5 py-2 group touch-manipulation"
       >
-        <div className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
+        <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
           <ChevronDown 
-            size={14} 
+            size={16} 
             className={`text-gray-400 group-hover:text-white transition-all ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} 
           />
         </div>
-        <div className="flex items-center gap-2 flex-1">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-400">
+        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 flex-shrink-0">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
             <polyline points="14 2 14 8 20 8"></polyline>
             <line x1="16" y1="13" x2="8" y2="13"></line>
             <line x1="16" y1="17" x2="8" y2="17"></line>
           </svg>
-          <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">
+          <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors truncate">
             {title}
           </span>
         </div>
@@ -563,15 +579,15 @@ export const LinksBlock = ({ data, onExpand }) => {
         onClick={handleToggleCollapse}
         className="w-full flex items-center gap-2.5 py-2 group touch-manipulation"
       >
-        <div className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
+        <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
           <ChevronDown 
-            size={14} 
+            size={16} 
             className={`text-gray-400 group-hover:text-white transition-all ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} 
           />
         </div>
-        <div className="flex items-center gap-2">
-          <Link size={14} className="text-purple-400" />
-          <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">
+        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+          <Link size={16} className="text-gray-400 flex-shrink-0" />
+          <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors truncate">
             {title}
           </span>
         </div>
@@ -788,32 +804,32 @@ export const TableBlock = ({ data, objectId, blockIndex, onUpdate, onExpand }) =
 
     return (
       <div ref={blockRef} className="space-y-2">
-        {/* Collapsible header - matches other block headers */}
+        {/* Collapsible header */}
         <button
           onClick={handleToggleCollapse}
           className="w-full flex items-center gap-2.5 py-2 group touch-manipulation"
         >
-          <div className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
+          <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
             <ChevronDown 
-              size={14} 
+              size={16} 
               className={`text-gray-400 group-hover:text-white transition-all ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} 
             />
           </div>
-          <div className="flex items-center gap-2">
-            <Icon size={14} className={iconColorClass} />
-            <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">
+          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+            <Icon size={16} className="text-gray-400 flex-shrink-0" />
+            <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors truncate">
               {title || template.name}
             </span>
           </div>
           {checkboxCol && totalCount > 0 && (
-            <div className="flex items-center gap-2 ml-auto">
-              <div className="h-1.5 w-14 bg-gray-800 rounded-full overflow-hidden">
+            <div className="flex items-center gap-2 ml-2">
+              <div className="h-1.5 w-12 bg-white/10 rounded-full overflow-hidden">
                 <div 
                   className={`h-full bg-gradient-to-r ${progressColorClass} transition-all duration-300`}
                   style={{ width: `${(checkedCount / totalCount) * 100}%` }}
                 />
               </div>
-              <span className="text-xs text-gray-500">{checkedCount}/{totalCount}</span>
+              <span className="text-xs text-gray-500 tabular-nums">{checkedCount}/{totalCount}</span>
             </div>
           )}
         </button>
@@ -1056,24 +1072,22 @@ export const DateTagBlock = ({ data }) => {
   if (tags.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap gap-1.5">
       {tags.map((tag, i) => {
         const countdown = getCountdown(tag);
         return (
           <div 
             key={i}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium ${
-              tag.type === 'year' 
-                ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' 
-                : countdown?.highlight
-                  ? 'bg-amber-500/20 text-amber-200 border border-amber-500/30'
-                  : 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-medium ${
+              countdown?.highlight
+                ? 'bg-amber-500/15 text-amber-200 border border-amber-500/20'
+                : 'bg-blue-500/15 text-blue-300 border border-blue-500/20'
             }`}
           >
-            <Calendar size={14} />
+            <Calendar size={12} />
             <span>{formatTag(tag)}</span>
             {countdown && (
-              <span className={`text-xs ${countdown.highlight ? 'text-amber-300' : 'text-purple-400'}`}>
+              <span className={`text-xs ${countdown.highlight ? 'text-amber-300' : 'text-blue-400'}`}>
                 · {countdown.text}
               </span>
             )}
@@ -1601,22 +1615,22 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
     const isActive = currentUserVotes[optionId] === rank;
     const isDisabled = !currentUserKey || !onVote || isClosed;
     const colors = {
-      1: { active: 'bg-amber-500/30 text-amber-400 ring-1 ring-amber-500/50', label: '🥇' },
-      2: { active: 'bg-gray-400/30 text-gray-300 ring-1 ring-gray-400/50', label: '🥈' },
-      3: { active: 'bg-orange-700/30 text-orange-400 ring-1 ring-orange-600/50', label: '🥉' }
+      1: { active: 'bg-amber-500/30 text-amber-400 ring-1 ring-amber-500/50', inactive: 'text-amber-400/50' },
+      2: { active: 'bg-gray-400/30 text-gray-300 ring-1 ring-gray-400/50', inactive: 'text-gray-400/50' },
+      3: { active: 'bg-orange-700/30 text-orange-500 ring-1 ring-orange-600/50', inactive: 'text-orange-500/50' }
     };
     return (
       <button
         onClick={() => handleRankVote(optionId, rank)}
         disabled={isDisabled}
-        className={`w-8 h-8 rounded-md flex items-center justify-center transition-all text-sm ${
+        className={`w-8 h-8 rounded-md flex items-center justify-center transition-all ${
           isActive 
             ? colors[rank].active
-            : `bg-white/5 text-gray-500 hover:bg-white/10 ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`
+            : `bg-white/5 ${colors[rank].inactive} hover:bg-white/10 ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`
         }`}
         title={rank === 1 ? '1:a (3p)' : rank === 2 ? '2:a (2p)' : '3:a (1p)'}
       >
-        {colors[rank].label}
+        <Trophy size={14} />
       </button>
     );
   };
@@ -1638,27 +1652,26 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
         onClick={handleToggleCollapse}
         className="w-full flex items-center gap-2.5 py-2 group touch-manipulation"
       >
-        <div className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
+        <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
           <ChevronDown 
-            size={14} 
+            size={16} 
             className={`text-gray-400 group-hover:text-white transition-all ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} 
           />
         </div>
-        <div className="flex items-center gap-2">
-          <Vote size={14} className="text-purple-400" />
-          <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">
+        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+          <Vote size={16} className="text-gray-400 flex-shrink-0" />
+          <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors truncate">
             {title}
           </span>
-          {isClosed && (
-            <span className="text-xs px-1.5 py-0.5 rounded bg-gray-600/50 text-gray-400 flex items-center gap-1">
-              <Lock size={10} />
-              Avslutad
-            </span>
-          )}
         </div>
-        <div className="flex items-center gap-2 ml-auto">
-          <span className="text-xs text-gray-500">{participants.length} röster</span>
-        </div>
+        {isClosed ? (
+          <span className="text-xs px-2 py-1 rounded-md bg-white/5 text-gray-500 flex items-center gap-1.5">
+            <Lock size={10} />
+            Avslutad
+          </span>
+        ) : (
+          <span className="text-xs text-gray-500 tabular-nums">{participants.length} röster</span>
+        )}
       </button>
       
       {/* Collapsible content */}
@@ -1709,10 +1722,10 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
                         <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
                           <span className="font-medium">{score.total}p</span>
                           {showDetails && score.total > 0 && (
-                            <span className="truncate">
-                              {score.first > 0 && `🥇${score.voters.first.join(', ')}`}
-                              {score.second > 0 && ` 🥈${score.voters.second.join(', ')}`}
-                              {score.third > 0 && ` 🥉${score.voters.third.join(', ')}`}
+                            <span className="truncate flex items-center gap-1">
+                              {score.first > 0 && <><Trophy size={10} className="text-amber-400" />{score.voters.first.join(', ')}</>}
+                              {score.second > 0 && <><Trophy size={10} className="text-gray-300 ml-1" />{score.voters.second.join(', ')}</>}
+                              {score.third > 0 && <><Trophy size={10} className="text-orange-500 ml-1" />{score.voters.third.join(', ')}</>}
                             </span>
                           )}
                         </div>
@@ -1813,89 +1826,102 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
           
           {/* Footer with toggle, add suggestion, close button - all on one row */}
           <div className="flex items-center justify-between pt-2 flex-wrap gap-2">
-            <div className="flex items-center gap-3">
-              {/* Show names toggle */}
-              {participants.length > 0 || (pollType === 'ranked' && Object.keys(votes).length > 0) ? (
-                <button
-                  onClick={() => setShowDetails(!showDetails)}
-                  className="text-xs text-gray-500 hover:text-gray-400 flex items-center gap-1"
-                >
-                  <ChevronDown size={12} className={`transition-transform ${showDetails ? 'rotate-180' : ''}`} />
-                  {showDetails ? 'Kompakt' : 'Visa namn'}
-                </button>
-              ) : (
-                <span className="text-xs text-gray-500">Ingen har röstat än</span>
-              )}
-              
-              {/* Add suggestion - inline in footer */}
-              {allowSuggestions && !isClosed && currentUserKey && onAddOption && (
-                showSuggestionInput ? (
-                  <div className="flex items-center gap-1 flex-wrap">
-                    <input
-                      type="text"
-                      value={newSuggestion}
-                      onChange={(e) => setNewSuggestion(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && newSuggestion.trim()) {
-                          onAddOption(newSuggestion.trim(), currentUserKey, pollType === 'ranked' ? newSuggestionUrl.trim() : null);
-                          setNewSuggestion('');
-                          setNewSuggestionUrl('');
-                          setShowSuggestionInput(false);
-                        } else if (e.key === 'Escape') {
-                          setNewSuggestion('');
-                          setNewSuggestionUrl('');
-                          setShowSuggestionInput(false);
-                        }
-                      }}
-                      placeholder="Förslag..."
-                      className="w-24 px-2 py-0.5 text-xs bg-white/10 border border-white/20 rounded focus:outline-none focus:border-blue-500 text-white placeholder-gray-500"
-                      autoFocus
-                    />
-                    {pollType === 'ranked' && (
-                      <input
-                        type="url"
-                        value={newSuggestionUrl}
-                        onChange={(e) => setNewSuggestionUrl(e.target.value)}
-                        placeholder="URL (valfritt)"
-                        className="w-28 px-2 py-0.5 text-xs bg-white/10 border border-white/20 rounded focus:outline-none focus:border-blue-500 text-white placeholder-gray-500"
-                      />
-                    )}
-                    <button
-                      onClick={() => {
-                        if (newSuggestion.trim()) {
-                          onAddOption(newSuggestion.trim(), currentUserKey, pollType === 'ranked' ? newSuggestionUrl.trim() : null);
-                          setNewSuggestion('');
-                          setNewSuggestionUrl('');
-                          setShowSuggestionInput(false);
-                        }
-                      }}
-                      disabled={!newSuggestion.trim()}
-                      className="p-0.5 text-green-400 hover:bg-green-500/20 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="Lägg till"
-                    >
-                      <Check size={14} />
-                    </button>
-                    <button
-                      onClick={() => {
+            <div className="flex items-center gap-3 flex-1">
+              {/* Add suggestion - expanded mode takes full width */}
+              {allowSuggestions && !isClosed && currentUserKey && onAddOption && showSuggestionInput ? (
+                <div className="flex items-center gap-1 w-full">
+                  <input
+                    type="text"
+                    value={newSuggestion}
+                    onChange={(e) => setNewSuggestion(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && newSuggestion.trim()) {
+                        const finalUrl = newSuggestionUrl.trim();
+                        const processedUrl = finalUrl && !finalUrl.match(/^https?:\/\//) 
+                          ? `https://${finalUrl.replace(/^www\./, 'www.')}` 
+                          : finalUrl;
+                        onAddOption(newSuggestion.trim(), currentUserKey, pollType === 'ranked' ? processedUrl : null);
                         setNewSuggestion('');
                         setNewSuggestionUrl('');
                         setShowSuggestionInput(false);
-                      }}
-                      className="p-0.5 text-gray-400 hover:bg-white/10 rounded"
-                      title="Avbryt"
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
-                ) : (
+                      } else if (e.key === 'Escape') {
+                        setNewSuggestion('');
+                        setNewSuggestionUrl('');
+                        setShowSuggestionInput(false);
+                      }
+                    }}
+                    placeholder="Förslag..."
+                    className={`${pollType === 'ranked' ? 'w-2/5' : 'flex-1'} min-w-0 px-2 py-1.5 text-sm bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-blue-500 text-white placeholder-gray-500`}
+                    autoFocus
+                  />
+                  {pollType === 'ranked' && (
+                    <input
+                      type="text"
+                      value={newSuggestionUrl}
+                      onChange={(e) => setNewSuggestionUrl(e.target.value)}
+                      placeholder="www..."
+                      className="w-2/5 min-w-0 px-2 py-1.5 text-sm bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-blue-500 text-white placeholder-gray-500"
+                    />
+                  )}
                   <button
-                    onClick={() => setShowSuggestionInput(true)}
-                    className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                    onClick={() => {
+                      if (newSuggestion.trim()) {
+                        const finalUrl = newSuggestionUrl.trim();
+                        const processedUrl = finalUrl && !finalUrl.match(/^https?:\/\//) 
+                          ? `https://${finalUrl.replace(/^www\./, 'www.')}` 
+                          : finalUrl;
+                        onAddOption(newSuggestion.trim(), currentUserKey, pollType === 'ranked' ? processedUrl : null);
+                        setNewSuggestion('');
+                        setNewSuggestionUrl('');
+                        setShowSuggestionInput(false);
+                      }
+                    }}
+                    disabled={!newSuggestion.trim()}
+                    className="w-[10%] aspect-square flex-shrink-0 flex items-center justify-center text-green-400 hover:bg-green-500/20 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    title="Lägg till"
                   >
-                    <Plus size={12} />
-                    Föreslå
+                    <Check size={16} />
                   </button>
-                )
+                  <button
+                    onClick={() => {
+                      setNewSuggestion('');
+                      setNewSuggestionUrl('');
+                      setShowSuggestionInput(false);
+                    }}
+                    className="w-[10%] aspect-square flex-shrink-0 flex items-center justify-center text-gray-400 hover:bg-white/10 rounded-lg transition-colors"
+                    title="Avbryt"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {/* Show names toggle - compact switch */}
+                  {participants.length > 0 || (pollType === 'ranked' && Object.keys(votes).length > 0) ? (
+                    <button
+                      onClick={() => setShowDetails(!showDetails)}
+                      className={`relative w-12 h-6 rounded-full transition-colors ${showDetails ? 'bg-blue-500/30' : 'bg-white/10'}`}
+                      title={showDetails ? 'Kompakt vy' : 'Visa namn'}
+                    >
+                      <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform flex items-center justify-center ${showDetails ? 'translate-x-7' : 'translate-x-1'}`}>
+                        {showDetails ? <Users size={10} className="text-blue-600" /> : <Vote size={10} className="text-gray-600" />}
+                      </div>
+                    </button>
+                  ) : (
+                    <span className="text-xs text-gray-500">Ingen har röstat än</span>
+                  )}
+              
+                  {/* Add suggestion button */}
+                  {allowSuggestions && !isClosed && currentUserKey && onAddOption && (
+                    <button
+                      onClick={() => setShowSuggestionInput(true)}
+                      className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                    >
+                      <Plus size={12} />
+                      Föreslå
+                    </button>
+                  )}
+                </>
               )}
             </div>
             
@@ -2226,30 +2252,31 @@ export const SplitBlock = ({ data, currentUser, shares = {}, canEdit = false, on
         onClick={handleToggleCollapse}
         className="w-full flex items-center gap-2.5 py-2 group touch-manipulation"
       >
-        <div className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
+        <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
           <ChevronDown 
-            size={14} 
+            size={16} 
             className={`text-gray-400 group-hover:text-white transition-all ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} 
           />
         </div>
-        <div className="flex items-center gap-2">
-          <Wallet size={14} className="text-green-400" />
-          <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">
+        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+          <Wallet size={16} className="text-gray-400 flex-shrink-0" />
+          <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors truncate">
             {title}
           </span>
-          {isClosed && (
-            <span className="text-xs px-1.5 py-0.5 rounded bg-gray-600/50 text-gray-400 flex items-center gap-1">
-              <Lock size={10} />
-              Avslutad
-            </span>
-          )}
         </div>
-        <div className="flex items-center gap-2 ml-auto">
-          {totalPaid > 0 && (
-            <span className="text-xs text-gray-400">{formatAmount(totalPaid)} {currency}</span>
-          )}
-          <span className="text-xs text-gray-500">{paidCount}/{participants.length}</span>
-        </div>
+        {isClosed ? (
+          <span className="text-xs px-2 py-1 rounded-md bg-white/5 text-gray-500 flex items-center gap-1.5">
+            <Lock size={10} />
+            Avslutad
+          </span>
+        ) : (
+          <div className="flex items-center gap-2">
+            {totalPaid > 0 && (
+              <span className="text-xs text-gray-400">{formatAmount(totalPaid)} {currency}</span>
+            )}
+            <span className="text-xs text-gray-500 tabular-nums">{paidCount}/{participants.length}</span>
+          </div>
+        )}
       </button>
       
       {/* Collapsible content */}
@@ -2481,25 +2508,26 @@ export const LeaderboardBlock = ({ data, currentUser, shares = {}, canEdit = fal
         onClick={handleToggleCollapse}
         className="w-full flex items-center gap-2.5 py-2 group touch-manipulation"
       >
-        <div className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
+        <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
           <ChevronDown 
-            size={14} 
+            size={16} 
             className={`text-gray-400 group-hover:text-white transition-all ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} 
           />
         </div>
-        <div className="flex items-center gap-2">
-          <Trophy size={14} className="text-amber-400" />
-          <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">
+        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+          <Trophy size={16} className="text-gray-400 flex-shrink-0" />
+          <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors truncate">
             {title}
           </span>
-          {status === 'finished' && (
-            <span className="text-xs px-1.5 py-0.5 rounded bg-gray-600/50 text-gray-400 flex items-center gap-1">
-              <Lock size={10} />
-              Avslutad
-            </span>
-          )}
         </div>
-        <span className="text-xs text-gray-500 ml-auto">{participants.length} deltagare</span>
+        {status === 'finished' ? (
+          <span className="text-xs px-2 py-1 rounded-md bg-white/5 text-gray-500 flex items-center gap-1.5">
+            <Lock size={10} />
+            Avslutad
+          </span>
+        ) : (
+          <span className="text-xs text-gray-500 tabular-nums">{participants.length} deltagare</span>
+        )}
       </button>
       
       {/* Collapsible content */}
@@ -2726,15 +2754,15 @@ export const DistributionBlock = ({
           onClick={handleToggleCollapse}
           className="w-full flex items-center gap-2.5 py-2 group touch-manipulation"
         >
-          <div className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
+          <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
             <ChevronDown 
-              size={14} 
+              size={16} 
               className={`text-gray-400 group-hover:text-white transition-all ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} 
             />
           </div>
-          <div className="flex items-center gap-2">
-            <PresetIcon size={14} className={preset.color} />
-            <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">
+          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+            <PresetIcon size={16} className="text-gray-400 flex-shrink-0" />
+            <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors truncate">
               {title}
             </span>
           </div>
@@ -2771,21 +2799,19 @@ export const DistributionBlock = ({
         onClick={handleToggleCollapse}
         className="w-full flex items-center gap-2.5 py-2 group touch-manipulation"
       >
-        <div className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
+        <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
           <ChevronDown 
-            size={14} 
+            size={16} 
             className={`text-gray-400 group-hover:text-white transition-all ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} 
           />
         </div>
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <PresetIcon size={14} className={preset.color} />
-          <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">
+        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+          <PresetIcon size={16} className="text-gray-400 flex-shrink-0" />
+          <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors truncate">
             {title}
           </span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-500">{totalAssigned} {preset.assigneeLabel}</span>
-        </div>
+        <span className="text-xs text-gray-500 tabular-nums">{totalAssigned} {preset.assigneeLabel}</span>
       </button>
       
       {/* Expanded content */}
@@ -2880,6 +2906,7 @@ export const blockComponents = {
   title: TitleBlock,
   location: LocationBlock,
   image: ImageBlock,
+  section: SectionBlock,
   text: TextBlock,
   contact: ContactBlock,
   links: LinksBlock,

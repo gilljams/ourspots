@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, Plus, Upload, Loader, Navigation, ChevronDown, ChevronUp,
-  Map as MapIcon, FileText, CheckSquare, ClipboardList, Link2, Table2, Image as ImageIcon, Calendar, Phone, Timer, BarChart3, Folder, MapPin, Music, Wallet, Trophy, Car, Users 
+  Map as MapIcon, FileText, CheckSquare, ClipboardList, Link2, Table2, Image as ImageIcon, Calendar, Phone, Timer, BarChart3, Folder, MapPin, Music, Wallet, Trophy, Car, Users, Minus 
 } from 'lucide-react';
 import { 
   CLOUDINARY_CLOUD_NAME, 
@@ -12,7 +12,7 @@ import {
 import { getIconComponent } from '../utils/iconHelpers';
 import MapPicker from './MapPicker';
 import FocalPointPicker from './FocalPointPicker';
-import BlockEditor, { DateTagBlockEditor, TimerBlockEditor, PollBlockEditor, AudioBlockEditor, SplitBlockEditor, LeaderboardBlockEditor, DistributionBlockEditor } from './BlockEditor';
+import BlockEditor, { DateTagBlockEditor, TimerBlockEditor, PollBlockEditor, AudioBlockEditor, SplitBlockEditor, LeaderboardBlockEditor, DistributionBlockEditor, SectionBlockEditor } from './BlockEditor';
 
 function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, saving, availableParents, defaultParentId, userLocation, categories, preciseGPS, isAdmin, currentUser, currentUserDisplayName }) {
   // ========== STATE ==========
@@ -48,7 +48,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
   const [customBlocks, setCustomBlocks] = useState(() => {
     if (!sourceObject) return [];
     return sourceObject.blocks
-      .filter(b => ['text', 'links', 'table', 'datetag', 'contact', 'timer', 'poll', 'audio', 'split', 'leaderboard', 'distribution'].includes(b.type))
+      .filter(b => ['text', 'links', 'table', 'datetag', 'contact', 'timer', 'poll', 'audio', 'split', 'leaderboard', 'distribution', 'section'].includes(b.type))
       .map(b => {
         if (b.type === 'links') {
           return {
@@ -154,6 +154,14 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             slots: isDuplicate ? [] : (b.data.slots || []), // Clear slots when duplicating
             participants: isDuplicate ? [] : (b.data.participants || []), // Load participants
             defaultCollapsed: b.data.defaultCollapsed ?? true
+          };
+        }
+        if (b.type === 'section') {
+          return {
+            id: Math.random().toString(36).substr(2, 9),
+            type: 'section',
+            title: b.data.title || 'Sektion',
+            uppercase: b.data.uppercase !== false
           };
         }
         // Text blocks
@@ -551,6 +559,15 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             defaultCollapsed: block.defaultCollapsed ?? true
           } 
         });
+      } else if (block.type === 'section') {
+        // Save section block
+        blocks.push({ 
+          type: 'section', 
+          data: { 
+            title: (block.title || 'Sektion').trim(),
+            uppercase: block.uppercase !== false
+          } 
+        });
       } else if (block.content && block.content.trim()) {
         if (block.type === 'text') {
           blocks.push({ type: 'text', data: { title: (block.title || 'Anteckning').trim(), content: block.content.trim(), defaultCollapsed: block.defaultCollapsed || false } });
@@ -615,6 +632,10 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
       newBlock.title = template === 'tasks' ? 'Uppgifter' : 'Samåkning';
       newBlock.slots = [];
       newBlock.defaultCollapsed = true;
+    }
+    if (type === 'section') {
+      newBlock.title = 'Sektion';
+      newBlock.uppercase = true;
     }
     setCustomBlocks(prev => [...prev, newBlock]);
     setFormTouched(true);
@@ -1000,6 +1021,17 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   currentUser={currentUser}
                   currentUserDisplayName={currentUserDisplayName}
                 />
+              ) : block.type === 'section' ? (
+                <SectionBlockEditor
+                  key={block.id}
+                  block={block}
+                  onUpdate={updateCustomBlock}
+                  onRemove={removeCustomBlock}
+                  onMove={moveCustomBlock}
+                  index={index}
+                  total={customBlocks.length}
+                  saving={saving}
+                />
               ) : (
                 <BlockEditor
                   key={block.id}
@@ -1076,6 +1108,9 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   </button>
                   <button type="button" onClick={() => addCustomBlock('leaderboard')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
                     <Trophy size={16} className="text-blue-400" /> Leaderboard
+                  </button>
+                  <button type="button" onClick={() => addCustomBlock('section')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
+                    <Minus size={16} className="text-blue-400" /> Sektion
                   </button>
                   <button type="button" onClick={() => addCustomBlock('distribution', 'carpool')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
                     <Car size={16} className="text-blue-400" /> Samåkning

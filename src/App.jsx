@@ -70,8 +70,14 @@ function App() {
     const saved = localStorage.getItem('activeCategory');
     return saved || 'all';
   });
-  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
-  const [showOnlyOwned, setShowOnlyOwned] = useState(false);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(() => {
+    const saved = localStorage.getItem('showFavoritesOnly');
+    return saved === 'true';
+  });
+  const [showOnlyOwned, setShowOnlyOwned] = useState(() => {
+    const saved = localStorage.getItem('showOnlyOwned');
+    return saved === 'true';
+  });
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingObject, setEditingObject] = useState(null);
   const [duplicatingObject, setDuplicatingObject] = useState(null);
@@ -148,10 +154,18 @@ function App() {
   // Wrapper to use imported distance function with userLocation state
   const getObjectDistance = (obj) => getObjectDistanceUtil(obj, userLocation);
 
-  // Save sortByDistance preference
+  // Save filter preferences
   useEffect(() => {
     localStorage.setItem('sortByDistance', sortByDistance.toString());
   }, [sortByDistance]);
+
+  useEffect(() => {
+    localStorage.setItem('showFavoritesOnly', showFavoritesOnly.toString());
+  }, [showFavoritesOnly]);
+
+  useEffect(() => {
+    localStorage.setItem('showOnlyOwned', showOnlyOwned.toString());
+  }, [showOnlyOwned]);
 
   // Save activeCategory preference
   useEffect(() => {
@@ -1250,7 +1264,7 @@ function App() {
                 {userLocation && (
                   <button 
                     onClick={() => setSortByDistance(!sortByDistance)}
-                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl transition-all text-sm font-medium ${sortByDistance ? 'bg-purple-500/80 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20 border border-white/10'}`}
+                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl transition-all text-sm font-medium ${sortByDistance ? 'bg-blue-500 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20 border border-white/10'}`}
                   >
                     <Navigation size={16} />
                     <span>Närmast</span>
@@ -1259,7 +1273,7 @@ function App() {
                 {user && (
                   <button 
                     onClick={() => setShowOnlyOwned(!showOnlyOwned)}
-                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl transition-all text-sm font-medium ${showOnlyOwned ? 'bg-green-500/80 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20 border border-white/10'}`}
+                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl transition-all text-sm font-medium ${showOnlyOwned ? 'bg-blue-500 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20 border border-white/10'}`}
                   >
                     <User size={16} />
                     <span>Mina</span>
@@ -1270,29 +1284,31 @@ function App() {
               {/* Distance slider */}
               {userLocation && (
                 <div>
-                  <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
-                    <span>Max avstånd</span>
-                    <span className="text-gray-200">
-                      {maxDistanceKm ? `${maxDistanceKm} km` : 'Alla'}
-                    </span>
-                  </div>
                   <div className="flex items-center gap-3">
-                    <input
-                      type="range"
-                      min="1"
-                      max="50"
-                      step="1"
-                      value={maxDistanceKm ?? 25}
-                      onChange={(e) => setMaxDistanceKm(Number(e.target.value))}
-                      className="flex-1 accent-blue-500"
-                    />
-                    <button
-                      onClick={() => setMaxDistanceKm(null)}
-                      disabled={!maxDistanceKm}
-                      className="text-xs px-2.5 py-1 rounded-lg bg-white/10 text-gray-300 hover:bg-white/20 border border-white/10 disabled:opacity-40"
-                    >
-                      Alla
-                    </button>
+                    <div className="flex-1">
+                      <div className="text-xs text-gray-400 mb-1">Max avstånd</div>
+                      <input
+                        type="range"
+                        min="1"
+                        max="50"
+                        step="1"
+                        value={maxDistanceKm ?? 25}
+                        onChange={(e) => setMaxDistanceKm(Number(e.target.value))}
+                        className="w-full accent-blue-500"
+                      />
+                    </div>
+                    <div className="flex flex-col items-center">
+                      <span className="text-xs text-gray-200 mb-0.5">
+                        {maxDistanceKm ? `${maxDistanceKm} km` : 'Alla'}
+                      </span>
+                      <button
+                        onClick={() => setMaxDistanceKm(null)}
+                        disabled={!maxDistanceKm}
+                        className="text-xs px-2.5 py-1 rounded-lg bg-white/10 text-gray-300 hover:bg-white/20 border border-white/10 disabled:opacity-40"
+                      >
+                        Alla
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}

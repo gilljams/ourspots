@@ -48,6 +48,13 @@ Alla expanderbara block följer samma mönster:
   - **PollBlock** - Omröstningar med flerval (grön tema)
   - **SplitBlock** - Ekonomisk splitt mellan deltagare (grön tema)
   - **LeaderboardBlock** - Tävlingsresultat med rundor och ranking (blå/guld tema)
+  - **DistributionBlock** - Samåkning och uppgiftstilldelning (blå tema)
+- **Övriga blocktyper:**
+  - **SectionBlock** - Visuell separator med rubrik (blå linje, versaler/gemener)
+  - **DateTagBlock** - Datumtaggar med år eller datumintervall
+  - **TimerBlock** - Nedräkningstimers
+  - **ContactBlock** - Kontaktinformation (telefon, email, webb)
+  - **AudioBlock** - Ljuduppspelning (diskret eller synlig)
 
 #### LeaderboardBlock (Nytt!)
 - **Tävlingshantering** - Spåra resultat för golfturnéer, spelkvällar, etc.
@@ -560,6 +567,20 @@ Detta är en varning från Firebase Auth + GitHub Pages. Kan ignoreras - påverk
 - [ ] Content Security Policy headers
 
 ## 📝 Changelog
+
+### v1.6 - UI Harmonisering & Sektionsblock (2026-02-06)
+- 🎨 **Färgtema-harmonisering** - Konsistent blå färg genom hela appen
+  - Datumpills: Lila → Blå för konsistens
+  - Filter "Närmast": Lila → Blå
+  - Filter "Mina": Grön → Blå
+  - Favoriter behåller gul (klassisk ⭐)
+- 📐 **Förbättrad avstånds-slider** - "Alla" centrerad ovanför knappen
+- 💾 **Filter-persistens** - Favoriter och Mina sparas nu i localStorage (Närmast hade redan)
+- ✨ **Nytt Sektionsblock** - Visuell separator för att strukturera innehåll
+  - Elegant linje med centrerad titel
+  - Versaler/gemener-toggle (versaler default)
+  - Förhandsgranskning i editorn
+  - Proportionell spacing enligt typografi best practice
 
 ### v1.5 - Custom Domain & Infrastructure (2026-02-03)
 - 🌐 **Custom domain** - Appen nu live på ourspots.se

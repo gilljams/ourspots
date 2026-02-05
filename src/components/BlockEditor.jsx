@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, ArrowUp, ArrowDown, FileText, CheckSquare, ClipboardList, Link2, Plus, ChevronDown, Table2, Trash2, GripVertical, Calendar, Phone, Mail, Globe, Timer, Check, Maximize2, RotateCcw, BarChart3, Type, Music, Wallet, Users, Trophy } from 'lucide-react';
+import { X, ArrowUp, ArrowDown, FileText, CheckSquare, ClipboardList, Link2, Plus, ChevronDown, Table2, Trash2, GripVertical, Calendar, Phone, Mail, Globe, Timer, Check, Maximize2, RotateCcw, BarChart3, Type, Music, Wallet, Users, Trophy, Minus } from 'lucide-react';
 import { getIconComponent, LINK_ICONS } from '../utils/iconHelpers';
 import { TABLE_TEMPLATES } from './blocks';
 
@@ -1039,6 +1039,24 @@ function TableBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
                 </button>
               </div>
               
+              {/* Reset checkboxes button - only show for templates with checkboxes */}
+              {columns.some(col => col.type === 'checkbox') && rows.some(row => !row.isHeader && row.checked) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm('Vill du avbocka alla checkboxar? Detta kan inte ångras.')) {
+                      const resetRows = rows.map(row => row.isHeader ? row : { ...row, checked: false });
+                      setRows(resetRows);
+                      syncToParent(title, template, resetRows);
+                    }
+                  }}
+                  disabled={saving}
+                  className="w-full py-2 text-sm text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 rounded-lg border border-amber-500/20 transition-colors"
+                >
+                  Avbocka alla ({rows.filter(r => !r.isHeader && r.checked).length} av {rows.filter(r => !r.isHeader).length})
+                </button>
+              )}
+              
               {/* Hint */}
               <p className="text-xs text-gray-600 text-center">
                 Tips: Enter = ny rad • Ctrl+V = klistra in flera
@@ -1360,6 +1378,100 @@ function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }
           onSave={handleFullscreenSave}
           onCancel={() => setShowFullscreenEditor(false)}
         />
+      )}
+    </div>
+  );
+}
+
+// Section block editor component - simple title separator
+function SectionBlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }) {
+  const [title, setTitle] = useState(block.title || 'Sektion');
+  const [uppercase, setUppercase] = useState(block.uppercase !== false);
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const titleRef = React.useRef(title);
+  titleRef.current = title;
+
+  const syncTitle = () => {
+    onUpdate(block.id, { title: titleRef.current, uppercase });
+  };
+
+  const handleUppercaseChange = (newValue) => {
+    setUppercase(newValue);
+    onUpdate(block.id, { title: titleRef.current, uppercase: newValue });
+  };
+
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/5 overflow-hidden">
+      {/* Collapsible header */}
+      <div className="flex items-center gap-2 p-3">
+        <button
+          type="button"
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex items-center gap-2 flex-1 min-w-0"
+        >
+          <ChevronDown 
+            size={16} 
+            className={`text-gray-500 transition-transform flex-shrink-0 ${isExpanded ? '' : '-rotate-90'}`} 
+          />
+          <Minus size={16} className="text-blue-400 flex-shrink-0" />
+          <span className="text-sm font-medium text-gray-300 truncate">
+            Sektion: {title}
+          </span>
+        </button>
+        <div className="flex gap-1 flex-shrink-0">
+          <button type="button" onClick={() => onMove(block.id, -1)} disabled={index === 0} className="w-7 h-7 rounded bg-white/5 text-gray-400 hover:bg-white/10 flex items-center justify-center disabled:opacity-30">
+            <ArrowUp size={14} />
+          </button>
+          <button type="button" onClick={() => onMove(block.id, 1)} disabled={index === total - 1} className="w-7 h-7 rounded bg-white/5 text-gray-400 hover:bg-white/10 flex items-center justify-center disabled:opacity-30">
+            <ArrowDown size={14} />
+          </button>
+          <button type="button" onClick={() => onRemove(block.id)} className="w-7 h-7 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center">
+            <X size={14} />
+          </button>
+        </div>
+      </div>
+
+      {/* Expandable content */}
+      {isExpanded && (
+        <div className="px-3 pb-3 space-y-3">
+          {/* Title input */}
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Rubrik</label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onBlur={syncTitle}
+              className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500"
+              placeholder="Sektionsrubrik..."
+            />
+          </div>
+
+          {/* Uppercase toggle */}
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-gray-400">Versaler</span>
+            <button
+              type="button"
+              onClick={() => handleUppercaseChange(!uppercase)}
+              className={`relative w-10 h-5 rounded-full transition-colors ${uppercase ? 'bg-blue-500' : 'bg-white/20'}`}
+            >
+              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${uppercase ? 'translate-x-5' : 'translate-x-0.5'}`} />
+            </button>
+          </div>
+
+          {/* Preview */}
+          <div className="pt-2 border-t border-white/10">
+            <label className="block text-xs text-gray-500 mb-2">Förhandsgranskning</label>
+            <div className="flex items-center gap-3 pt-2">
+              <div className="h-px flex-1 bg-gradient-to-r from-transparent via-blue-500/30 to-blue-500/50" />
+              <span className={`text-sm font-semibold text-blue-400 tracking-wide ${uppercase ? 'uppercase' : ''}`}>
+                {title || 'Sektion'}
+              </span>
+              <div className="h-px flex-1 bg-gradient-to-l from-transparent via-blue-500/30 to-blue-500/50" />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -3168,6 +3280,21 @@ function DistributionBlockEditor({ block, onUpdate, onRemove, onMove, index, tot
             <span className="text-sm text-gray-400">Ihopfälld som standard</span>
           </label>
           
+          {/* Reset slots button */}
+          {(block.slots || []).length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                if (window.confirm(`Vill du nollställa alla ${block.preset === 'carpool' ? 'bilar' : 'uppgifter'}? Detta kan inte ångras.`)) {
+                  syncToParent({ slots: [] });
+                }
+              }}
+              className="w-full py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg border border-red-500/20 transition-colors"
+            >
+              Nollställ {block.preset === 'carpool' ? 'bilar' : 'uppgifter'} ({(block.slots || []).length})
+            </button>
+          )}
+          
           <div className="text-xs text-gray-500 pt-3 border-t border-white/5">
             Deltagare kan skapa och välja {block.preset === 'carpool' ? 'bilar' : 'uppgifter'} i objektvyn.
           </div>
@@ -3177,6 +3304,6 @@ function DistributionBlockEditor({ block, onUpdate, onRemove, onMove, index, tot
   );
 }
 
-export { DateTagBlockEditor, TimerBlockEditor, PollBlockEditor, AudioBlockEditor, SplitBlockEditor, LeaderboardBlockEditor, FullscreenTextEditor, DistributionBlockEditor };
+export { DateTagBlockEditor, TimerBlockEditor, PollBlockEditor, AudioBlockEditor, SplitBlockEditor, LeaderboardBlockEditor, FullscreenTextEditor, DistributionBlockEditor, SectionBlockEditor };
 
 export default BlockEditor;
