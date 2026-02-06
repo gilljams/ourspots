@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+/* iOS PWA safe area support */
+:root {
+  --sat: env(safe-area-inset-top);
+  --sar: env(safe-area-inset-right);
+  --sab: env(safe-area-inset-bottom);
+  --sal: env(safe-area-inset-left);
+}
+
 /* Prevent iOS double-tap zoom on interactive elements */
 button, a, input, textarea, select, [role="button"], .cursor-pointer {
   touch-action: manipulation;
@@ -86,5 +94,347 @@ input, textarea, select {
   }
   50% {
     box-shadow: 0 0 0 5px rgba(168, 85, 247, 0.15);
+  }
+}
+
+/* Animation plupp - cykel/gris som rör sig över bilden */
+.animation-plupp-container {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.animation-plupp {
+  position: absolute;
+  top: 50%;
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: plupp-ride 7s ease-in-out forwards;
+}
+
+/* Zanetti text animation - italiensk flagga stil */
+.zanetti-text-container {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 20;
+  background: rgba(0, 0, 0, 0.5);
+  animation: zanetti-bg-fade 3s ease-out forwards;
+}
+
+@keyframes zanetti-bg-fade {
+  0% { opacity: 0; }
+  10% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.zanetti-text {
+  font-size: 24px;
+  font-weight: 900;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  color: white;
+  text-shadow: 
+    2px 2px 0 #009246,
+    -2px -2px 0 #ce2b37,
+    4px 4px 8px rgba(0,0,0,0.9);
+  animation: zanetti-enter 3s ease-out forwards;
+  opacity: 0;
+}
+
+@keyframes zanetti-enter {
+  0% {
+    opacity: 0;
+    transform: scale(0.5) rotate(-5deg);
+  }
+  15% {
+    opacity: 1;
+    transform: scale(1.1) rotate(2deg);
+  }
+  25% {
+    transform: scale(1) rotate(0deg);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.9) rotate(0deg);
+  }
+}
+
+/* Italiensk flagga bakgrund som fladdrar */
+.italian-flag-wave {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, 
+    rgba(0, 146, 70, 0.4) 0%, 
+    rgba(0, 146, 70, 0.4) 33%, 
+    rgba(255, 255, 255, 0.4) 33%, 
+    rgba(255, 255, 255, 0.4) 66%, 
+    rgba(206, 43, 55, 0.4) 66%, 
+    rgba(206, 43, 55, 0.4) 100%
+  );
+  animation: flag-wave 0.5s ease-in-out infinite alternate, flag-fade 3s ease-out forwards;
+}
+
+@keyframes flag-fade {
+  0% { opacity: 0; }
+  10% { opacity: 0.7; }
+  70% { opacity: 0.7; }
+  100% { opacity: 0; }
+}
+
+.animation-plupp-img {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+}
+
+@keyframes plupp-ride {
+  /* Fas 1: Glid in från vänster, liten */
+  0% {
+    left: -80px;
+    transform: translateY(-50%) scale(0.5) scaleX(1);
+    opacity: 0;
+  }
+  /* Fade in och börja växa */
+  8% {
+    left: 5%;
+    transform: translateY(-50%) scale(0.6) scaleX(1);
+    opacity: 1;
+  }
+  /* Närma sig mitten, fortsätt växa */
+  20% {
+    left: 40%;
+    transform: translateY(-50%) scale(1.1) scaleX(1);
+    opacity: 1;
+  }
+  /* Pausa i mitten, maxstorlek */
+  28% {
+    left: 50%;
+    transform: translate(-50%, -50%) scale(1.35) scaleX(1);
+    opacity: 1;
+  }
+  /* Håll kvar i mitten */
+  38% {
+    left: 50%;
+    transform: translate(-50%, -50%) scale(1.3) scaleX(1);
+    opacity: 1;
+  }
+  /* Wobble */
+  40% {
+    left: 48%;
+    transform: translate(-50%, -50%) scale(1.28) rotate(-3deg) scaleX(1);
+    opacity: 1;
+  }
+  42% {
+    left: 52%;
+    transform: translate(-50%, -50%) scale(1.28) rotate(3deg) scaleX(1);
+    opacity: 1;
+  }
+  /* Åka ut åt höger */
+  50% {
+    left: 70%;
+    transform: translateY(-50%) scale(0.7) scaleX(1);
+    opacity: 1;
+  }
+  54% {
+    left: 105%;
+    transform: translateY(-50%) scale(0.4) scaleX(1);
+    opacity: 1;
+  }
+  /* Paus utanför bilden - gömd */
+  55% {
+    left: 110%;
+    transform: translateY(-50%) scale(0.4) scaleX(-1);
+    opacity: 0;
+  }
+  60% {
+    left: 110%;
+    transform: translateY(-50%) scale(0.4) scaleX(-1);
+    opacity: 0;
+  }
+  /* Fas 2: Spegelvänd, snabb return från höger uppåt */
+  62% {
+    left: 105%;
+    top: 70%;
+    transform: translateY(-50%) scale(0.5) scaleX(-1);
+    opacity: 1;
+  }
+  /* Snabb diagonal uppåt åt vänster, växer */
+  72% {
+    left: 50%;
+    top: 45%;
+    transform: translateY(-50%) scale(1.0) scaleX(-1);
+    opacity: 1;
+  }
+  /* Fortsätter diagonalt uppåt vänster, ännu större */
+  82% {
+    left: 15%;
+    top: 25%;
+    transform: translateY(-50%) scale(1.4) scaleX(-1);
+    opacity: 1;
+  }
+  /* Accelerera ut åt vänster uppåt */
+  92% {
+    left: -15%;
+    top: 10%;
+    transform: translateY(-50%) scale(1.6) scaleX(-1);
+    opacity: 1;
+  }
+  100% {
+    left: -30%;
+    top: 0%;
+    transform: translateY(-50%) scale(1.8) scaleX(-1);
+    opacity: 0;
+  }
+}
+
+/* Gris-animation - firar birdie! Hoppar upp från botten */
+.animation-plupp-gris {
+  position: absolute;
+  bottom: -100px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.35), 0 0 0 0 rgba(255, 215, 0, 0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: gris-celebrate 5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
+             gris-glow 0.6s ease-in-out 0.3s 6;
+}
+
+.animation-plupp-gris .animation-plupp-img {
+  width: 70px;
+  height: 70px;
+}
+
+/* Gyllene glöd-puls för firande */
+@keyframes gris-glow {
+  0%, 100% {
+    box-shadow: 0 4px 24px rgba(0,0,0,0.35), 0 0 0 0 rgba(255, 215, 0, 0.6);
+  }
+  50% {
+    box-shadow: 0 4px 24px rgba(0,0,0,0.35), 0 0 20px 8px rgba(255, 215, 0, 0.3);
+  }
+}
+
+@keyframes gris-celebrate {
+  /* Börja under bilden */
+  0% {
+    bottom: -100px;
+    transform: translateX(-50%) scale(0.6) rotate(0deg);
+    opacity: 0;
+  }
+  /* Hoppa upp snabbt med rotation */
+  8% {
+    bottom: 35%;
+    transform: translateX(-50%) scale(1.1) rotate(-12deg);
+    opacity: 1;
+  }
+  /* Liten studs tillbaka */
+  14% {
+    bottom: 20%;
+    transform: translateX(-50%) scale(1.0) rotate(8deg);
+  }
+  /* Andra hoppet - högre! */
+  22% {
+    bottom: 45%;
+    transform: translateX(-50%) scale(1.2) rotate(-15deg);
+  }
+  /* Landa lite */
+  28% {
+    bottom: 18%;
+    transform: translateX(-50%) scale(0.95) rotate(10deg);
+  }
+  /* Tredje hoppet - firande! */
+  36% {
+    bottom: 50%;
+    transform: translateX(-50%) scale(1.3) rotate(-8deg);
+  }
+  /* Håll uppe och vickla glatt - längre firande */
+  42% {
+    bottom: 35%;
+    transform: translateX(-50%) scale(1.25) rotate(10deg);
+  }
+  48% {
+    bottom: 40%;
+    transform: translateX(-50%) scale(1.28) rotate(-10deg);
+  }
+  54% {
+    bottom: 35%;
+    transform: translateX(-50%) scale(1.25) rotate(12deg);
+  }
+  60% {
+    bottom: 42%;
+    transform: translateX(-50%) scale(1.28) rotate(-8deg);
+  }
+  66% {
+    bottom: 38%;
+    transform: translateX(-50%) scale(1.22) rotate(8deg);
+  }
+  72% {
+    bottom: 40%;
+    transform: translateX(-50%) scale(1.2) rotate(-6deg);
+  }
+  /* Börja åka ner */
+  82% {
+    bottom: 25%;
+    transform: translateX(-50%) scale(1.0) rotate(4deg);
+    opacity: 1;
+  }
+  /* Glid ner och försvinn */
+  92% {
+    bottom: 5%;
+    transform: translateX(-50%) scale(0.7) rotate(-3deg);
+    opacity: 0.7;
+  }
+  100% {
+    bottom: -80px;
+    transform: translateX(-50%) scale(0.5) rotate(0deg);
+    opacity: 0;
+  }
+}
+
+/* Ken Burns effekt - mjuk zoom och rörelse på bakgrundsbilden */
+.image-ken-burns {
+  animation: ken-burns-move 4s ease-in-out forwards;
+  transform-origin: center center;
+}
+
+@keyframes ken-burns-move {
+  0% {
+    transform: scale(1) translate(0, 0);
+  }
+  25% {
+    transform: scale(1.08) translate(-1%, -1%);
+  }
+  50% {
+    transform: scale(1.12) translate(1%, 0%);
+  }
+  75% {
+    transform: scale(1.08) translate(0%, 1%);
+  }
+  100% {
+    transform: scale(1.05) translate(0.5%, -0.5%);
   }
 }

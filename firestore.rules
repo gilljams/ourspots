@@ -54,10 +54,12 @@ service cloud.firestore {
     }
     
     match /objects/{objectId} {
-      // Read access: Owner, in sharedWithEmails array, or Admin
+      // Read access: Owner, in sharedWithEmails array (includes pending), or Admin
+      // Note: Paused shares are still in sharedWithEmails but removed from acceptedShareEmails
+      // The UI handles hiding paused content - Firestore rules allow read for pending invitations
       allow read: if request.auth != null && (
                     resource.data.ownerId == request.auth.uid ||  // Owner
-                    isInSharedList(resource.data) ||               // In shared list
+                    isInSharedList(resource.data) ||               // In shared list (includes pending)
                     isAdmin()                                      // Admin
                   );
       

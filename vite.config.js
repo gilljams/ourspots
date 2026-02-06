@@ -5,11 +5,10 @@ export default defineConfig({
   plugins: [react()],
   base: '/',
   build: {
-    chunkSizeWarningLimit: 1000, // Höj gränsen till 1000kB för att undvika varningar
+    chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
         manualChunks: {
-          // Dela upp stora vendor-bibliotek i separata chunks
           'react-vendor': ['react', 'react-dom'],
           'firebase-vendor': ['firebase/app', 'firebase/firestore', 'firebase/auth'],
           'map-vendor': ['leaflet', 'react-leaflet', 'react-leaflet-cluster'],

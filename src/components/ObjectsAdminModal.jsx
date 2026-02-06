@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { List, ChevronDown, RefreshCw } from 'lucide-react';
+import { List, ChevronDown, RefreshCw, X, AlertTriangle, XCircle, RefreshCcw } from 'lucide-react';
 import { collection, onSnapshot, doc, updateDoc, deleteField, arrayUnion } from 'firebase/firestore';
 import { db } from '../firebase';
 
@@ -94,7 +94,7 @@ function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onView
 
   const getCategoryLabel = (typeId) => {
     const cat = categories.find(c => c.id === typeId);
-    return cat ? cat.label : `❌ ${typeId}`;
+    return cat ? cat.label : typeId;
   };
 
   const getChildCount = (objId) => {
@@ -257,10 +257,7 @@ function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onView
             className="w-11 h-11 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 active:bg-white/20 text-gray-400 hover:text-white transition-all touch-manipulation"
             aria-label="Stäng"
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
+<X size={24} />
           </button>
         </div>
         
@@ -384,7 +381,7 @@ function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onView
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className="text-white font-medium truncate">{getObjectTitle(obj)}</h3>
                         {(hasInvalidCategory || hasCircularParent || hasInvalidParent) && (
-                          <span className="text-yellow-400 text-xs">⚠️</span>
+                          <AlertTriangle size={14} className="text-yellow-400 flex-shrink-0" />
                         )}
                       </div>
                       <div className="text-sm text-gray-400 space-y-1">
@@ -392,7 +389,7 @@ function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onView
                         {obj.parentId && (
                           <div>
                             Parent: <span className={hasCircularParent ? 'text-red-400' : hasInvalidParent ? 'text-yellow-400' : 'text-blue-400'}>
-                              {hasCircularParent ? '🔁 Cirkulär (sig själv!)' : parent ? getObjectTitle(parent) : `❌ ${obj.parentId}`}
+                              {hasCircularParent ? <><RefreshCcw size={12} className="inline mr-1" />Cirkulär (sig själv!)</> : parent ? getObjectTitle(parent) : <><XCircle size={12} className="inline mr-1" />{obj.parentId}</>}
                             </span>
                           </div>
                         )}

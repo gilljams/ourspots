@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   X, Plus, Upload, Loader, Navigation, ChevronDown, ChevronUp,
   Map as MapIcon, FileText, CheckSquare, ClipboardList, Link2, Table2, Image as ImageIcon, Calendar, Phone, Timer, BarChart3, Folder, MapPin, Music, Wallet, Trophy, Car, Users, Minus 
@@ -114,7 +114,8 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             type: 'audio',
             title: b.data.title || '',
             url: b.data.url || '',
-            discrete: b.data.discrete !== false // Default true
+            discrete: b.data.discrete !== false, // Default true
+            animation: b.data.animation || 'none' // 'none', 'cykel', 'gris'
           };
         }
         if (b.type === 'split') {
@@ -197,6 +198,36 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
   // Refs
   const fileInputRef = useRef(null);
   const gpsWatchRef = useRef(null);
+  
+  // Calculate effective shares for block editors
+  // Combines sourceObject shares with parent's inheritable shares (for new objects under shared parent)
+  const effectiveShares = useMemo(() => {
+    // If editing existing object, use its shares
+    if (sourceObject?.shares) {
+      return sourceObject.shares;
+    }
+    
+    // For new objects: check if parent has shares with includeChildren
+    if (parentId) {
+      const parent = availableParents.find(p => p.id === parentId);
+      if (parent?.shares) {
+        const inheritableShares = {};
+        Object.entries(parent.shares).forEach(([emailKey, shareData]) => {
+          if (shareData.includeChildren && (shareData.status === 'accepted' || shareData.status === 'inherited')) {
+            inheritableShares[emailKey] = {
+              ...shareData,
+              status: 'inherited',
+              includeChildren: false,
+              inheritedFrom: parentId
+            };
+          }
+        });
+        return inheritableShares;
+      }
+    }
+    
+    return {};
+  }, [sourceObject?.shares, parentId, availableParents]);
   const customBlocksRef = useRef(customBlocks);
   customBlocksRef.current = customBlocks;
   
@@ -510,7 +541,8 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             data: { 
               title: (block.title || 'Ljud').trim(),
               url: block.url.trim(),
-              discrete: block.discrete !== false // Default true
+              discrete: block.discrete !== false, // Default true
+              animation: block.animation || 'none' // 'none', 'cykel', 'gris'
             } 
           });
         }
@@ -989,7 +1021,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   index={index}
                   total={customBlocks.length}
                   saving={saving}
-                  shares={sourceObject?.shares || {}}
+                  shares={effectiveShares}
                   currentUser={currentUser}
                   currentUserDisplayName={currentUserDisplayName}
                 />
@@ -1003,7 +1035,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   index={index}
                   total={customBlocks.length}
                   saving={saving}
-                  shares={sourceObject?.shares || {}}
+                  shares={effectiveShares}
                   currentUser={currentUser}
                   currentUserDisplayName={currentUserDisplayName}
                 />
@@ -1017,7 +1049,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   index={index}
                   total={customBlocks.length}
                   saving={saving}
-                  shares={sourceObject?.shares || {}}
+                  shares={effectiveShares}
                   currentUser={currentUser}
                   currentUserDisplayName={currentUserDisplayName}
                 />
@@ -1119,7 +1151,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                     <Users size={16} className="text-blue-400" /> Uppgiftstilldelning
                   </button>
                   {isAdmin && (
-                    <button type="button" onClick={() => addCustomBlock('audio')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-300 hover:bg-purple-500/20 text-sm">
+                    <button type="button" onClick={() => addCustomBlock('audio')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
                       <Music size={16} className="text-purple-400" /> Ljud
                     </button>
                   )}

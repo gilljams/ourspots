@@ -249,6 +249,9 @@ function FullscreenTextEditor({ content, title, onSave, onCancel }) {
           <ToolbarButton onPress={insertLink} title="Länk">
             <Link2 size={16} />
           </ToolbarButton>
+          <ToolbarButton onPress={() => insertMarkdown('```\n', '\n```', 'kod')} title="Kodblock">
+            <span className="font-mono text-xs">{'</>'}</span>
+          </ToolbarButton>
           <div className="flex-1" />
           <ToolbarButton onPress={handleClear} title="Rensa" variant="danger">
             <Trash2 size={16} />
@@ -290,6 +293,7 @@ function ContactBlockEditor({ block, onUpdate, onRemove, onMove, index, total, s
   const [phone, setPhone] = useState(block.phone || '');
   const [email, setEmail] = useState(block.email || '');
   const [website, setWebsite] = useState(block.website || '');
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // Use refs for blur handlers
   const phoneRef = React.useRef(phone);
@@ -307,13 +311,39 @@ function ContactBlockEditor({ block, onUpdate, onRemove, onMove, index, total, s
     });
   };
 
+  // Summary for collapsed state
+  const getSummary = () => {
+    const parts = [];
+    if (phone) parts.push(phone);
+    if (email) parts.push(email);
+    if (website) parts.push(website);
+    return parts.length > 0 ? parts.join(' • ') : 'Ingen kontaktinfo';
+  };
+
   return (
-    <div className="rounded-xl border border-white/10 p-3 bg-white/5">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-medium text-gray-300 flex items-center gap-2">
-          <Phone size={16} className="text-green-400" /> Kontaktinfo
-        </span>
-        <div className="flex gap-1">
+    <div className="rounded-xl border border-white/10 bg-white/5 overflow-hidden">
+      {/* Collapsible header */}
+      <div className="flex items-center gap-2 p-3">
+        <button
+          type="button"
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex items-center gap-2 flex-1 min-w-0"
+        >
+          <ChevronDown 
+            size={16} 
+            className={`text-gray-500 transition-transform flex-shrink-0 ${isExpanded ? '' : '-rotate-90'}`} 
+          />
+          <Phone size={16} className="text-green-400 flex-shrink-0" />
+          <span className="text-sm font-medium text-gray-300 truncate">
+            Kontaktinfo
+          </span>
+          {!isExpanded && (
+            <span className="text-xs text-gray-500 truncate ml-1">
+              {getSummary()}
+            </span>
+          )}
+        </button>
+        <div className="flex gap-1 flex-shrink-0">
           <button type="button" onClick={() => onMove(block.id, -1)} disabled={index === 0} className="w-7 h-7 rounded bg-white/5 text-gray-400 hover:bg-white/10 flex items-center justify-center disabled:opacity-30">
             <ArrowUp size={14} />
           </button>
@@ -325,7 +355,10 @@ function ContactBlockEditor({ block, onUpdate, onRemove, onMove, index, total, s
           </button>
         </div>
       </div>
-      <div className="space-y-2">
+      
+      {/* Expandable content */}
+      {isExpanded && (
+      <div className="space-y-2 p-3 pt-0">
         <div className="flex items-center gap-2">
           <Phone size={16} className="text-green-400 flex-shrink-0" />
           <input
@@ -363,6 +396,7 @@ function ContactBlockEditor({ block, onUpdate, onRemove, onMove, index, total, s
           />
         </div>
       </div>
+      )}
     </div>
   );
 }
@@ -959,7 +993,7 @@ function TableBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
                               <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
                                 row[col.id] ? 'bg-amber-500 border-amber-500' : 'border-gray-600 hover:border-amber-400'
                               }`}>
-                                {row[col.id] && <span className="text-white text-xs">✓</span>}
+                                {row[col.id] && <Check size={12} className="text-white" />}
                               </div>
                             </button>
                           ) : col.type === 'number' ? (
@@ -1136,6 +1170,7 @@ function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }
   const [defaultCollapsed, setDefaultCollapsed] = useState(block.defaultCollapsed ?? false);
   const [isFocused, setIsFocused] = useState(false);
   const [showFullscreenEditor, setShowFullscreenEditor] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const textareaRef = React.useRef(null);
   
   // Detect mobile (simple check for touch device + small screen)
@@ -1225,14 +1260,41 @@ function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }
   };
   
   const hasContent = content && content.trim().length > 0;
+
+  // Summary for collapsed state
+  const getSummary = () => {
+    if (title) return title;
+    if (content) {
+      const firstLine = content.split('\n')[0];
+      return firstLine.length > 40 ? firstLine.substring(0, 40) + '...' : firstLine;
+    }
+    return 'Ingen text';
+  };
   
   return (
-    <div className="rounded-xl border border-white/10 p-3 bg-white/5">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-sm font-medium text-gray-300 flex items-center gap-2">
-          {block.type === 'text' && <><FileText size={16} className="text-blue-400" /> Anteckning</>}
-        </span>
-        <div className="flex gap-1">
+    <div className="rounded-xl border border-white/10 bg-white/5 overflow-hidden">
+      {/* Collapsible header */}
+      <div className="flex items-center gap-2 p-3">
+        <button
+          type="button"
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex items-center gap-2 flex-1 min-w-0"
+        >
+          <ChevronDown 
+            size={16} 
+            className={`text-gray-500 transition-transform flex-shrink-0 ${isExpanded ? '' : '-rotate-90'}`} 
+          />
+          <FileText size={16} className="text-blue-400 flex-shrink-0" />
+          <span className="text-sm font-medium text-gray-300 truncate">
+            Anteckning
+          </span>
+          {!isExpanded && (
+            <span className="text-xs text-gray-500 truncate ml-1">
+              {getSummary()}
+            </span>
+          )}
+        </button>
+        <div className="flex gap-1 flex-shrink-0">
           <button type="button" onClick={() => onMove(block.id, -1)} disabled={index === 0} className="w-7 h-7 rounded bg-white/5 text-gray-400 hover:bg-white/10 flex items-center justify-center disabled:opacity-30">
             <ArrowUp size={14} />
           </button>
@@ -1244,6 +1306,10 @@ function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }
           </button>
         </div>
       </div>
+      
+      {/* Expandable content */}
+      {isExpanded && (
+      <div className="p-3 pt-0 space-y-2">
       <input
         type="text"
         value={title}
@@ -1251,11 +1317,11 @@ function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }
         onBlur={syncTitle}
         placeholder="Rubrik (valfritt)"
         disabled={saving}
-        className="w-full px-3 py-2 mb-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500"
+        className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500"
       />
       {/* Markdown toolbar - only for text blocks, hidden on mobile (uses fullscreen editor) */}
       {block.type === 'text' && !isMobile && (
-        <div className="flex gap-1 mb-2">
+        <div className="flex gap-1">
           <button
             type="button"
             onClick={() => insertMarkdown('**', '**', 'text')}
@@ -1312,6 +1378,14 @@ function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }
           >
             <Link2 size={14} />
           </button>
+          <button
+            type="button"
+            onClick={() => insertMarkdown('```\n', '\n```', 'kod')}
+            className="w-8 h-8 rounded bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center font-mono text-xs transition-colors"
+            title="Kodblock (```kod```)"
+          >
+            {'</>'}
+          </button>
           {/* Fullscreen button on mobile */}
           {isMobile && (
             <button
@@ -1354,7 +1428,7 @@ function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }
       
       {/* Default collapsed toggle - only for text blocks */}
       {block.type === 'text' && (
-        <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/10">
+        <div className="flex items-center justify-between pt-3 border-t border-white/10">
           <span className="text-sm text-gray-400">Ihopfälld som standard</span>
           <button
             type="button"
@@ -1368,6 +1442,8 @@ function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }
             }`} />
           </button>
         </div>
+      )}
+      </div>
       )}
       
       {/* Fullscreen editor modal */}
@@ -2008,7 +2084,7 @@ function PollBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
                   : 'bg-white/5 text-gray-400 hover:bg-white/10'
               }`}
             >
-              📅 Datum/tid
+              <Calendar size={14} className="inline mr-1" />Datum/tid
             </button>
             <button
               type="button"
@@ -2019,7 +2095,7 @@ function PollBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
                   : 'bg-white/5 text-gray-400 hover:bg-white/10'
               }`}
             >
-              🏆 Rankning
+              <Trophy size={14} className="inline mr-1" />Rankning
             </button>
           </div>
           
@@ -2124,7 +2200,7 @@ function PollBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
           <div className="flex items-center justify-between">
             <p className="text-xs text-gray-500">
               {pollType === 'ranked' 
-                ? 'Deltagare röstar 🥇🥈🥉 (3p, 2p, 1p)' 
+                ? 'Deltagare röstar 1:a, 2:a, 3:a (3p, 2p, 1p)' 
                 : 'Deltagare kan rösta Ja/Nej/Kanske'}
             </p>
             {voteCount > 0 && (
@@ -2186,13 +2262,16 @@ function AudioBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
   const [title, setTitle] = useState(block.title || '');
   const [url, setUrl] = useState(block.url || '');
   const [discrete, setDiscrete] = useState(block.discrete !== false); // Default to true (discrete)
+  const [animation, setAnimation] = useState(block.animation || 'none'); // 'none', 'cykel', 'gris'
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // Sync with block changes
   useEffect(() => {
     setTitle(block.title || '');
     setUrl(block.url || '');
     setDiscrete(block.discrete !== false);
-  }, [block.id, block.title, block.url, block.discrete]);
+    setAnimation(block.animation || 'none');
+  }, [block.id, block.title, block.url, block.discrete, block.animation]);
 
   const handleTitleChange = (value) => {
     setTitle(value);
@@ -2209,34 +2288,60 @@ function AudioBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
     onUpdate(block.id, { discrete: value });
   };
 
+  const handleAnimationChange = (value) => {
+    setAnimation(value);
+    onUpdate(block.id, { animation: value });
+  };
+
+  // Summary for collapsed state
+  const getSummary = () => {
+    if (title) return title;
+    if (url) return url.split('/').pop() || 'Ljudfil';
+    return 'Ingen ljudfil';
+  };
+
   return (
     <div className="rounded-xl bg-white/5 border border-white/10 overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between p-3 bg-purple-500/10 border-b border-white/5">
-        <div className="flex items-center gap-2">
-          <Music size={16} className="text-purple-400" />
-          <span className="text-sm font-medium text-white">Ljud (admin)</span>
-        </div>
-        <div className="flex items-center gap-1">
+      {/* Collapsible Header */}
+      <div className="flex items-center gap-2 p-3">
+        <button
+          type="button"
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex items-center gap-2 flex-1 min-w-0"
+        >
+          <ChevronDown 
+            size={16} 
+            className={`text-gray-500 transition-transform flex-shrink-0 ${isExpanded ? '' : '-rotate-90'}`} 
+          />
+          <Music size={16} className="text-purple-400 flex-shrink-0" />
+          <span className="text-sm font-medium text-gray-300 truncate">Ljud</span>
+          {!isExpanded && (
+            <span className="text-xs text-gray-500 truncate ml-1">
+              {getSummary()}
+            </span>
+          )}
+        </button>
+        <div className="flex gap-1 flex-shrink-0">
           {onMove && index > 0 && (
-            <button type="button" onClick={() => onMove(index, index - 1)} className="p-1.5 rounded-lg hover:bg-white/10 text-gray-400">
+            <button type="button" onClick={() => onMove(block.id, -1)} className="w-7 h-7 rounded bg-white/5 text-gray-400 hover:bg-white/10 flex items-center justify-center">
               <ArrowUp size={14} />
             </button>
           )}
           {onMove && index < total - 1 && (
-            <button type="button" onClick={() => onMove(index, index + 1)} className="p-1.5 rounded-lg hover:bg-white/10 text-gray-400">
+            <button type="button" onClick={() => onMove(block.id, 1)} className="w-7 h-7 rounded bg-white/5 text-gray-400 hover:bg-white/10 flex items-center justify-center">
               <ArrowDown size={14} />
             </button>
           )}
           {onRemove && (
-            <button type="button" onClick={() => onRemove(block.id)} className="p-1.5 rounded-lg hover:bg-red-500/20 text-gray-400 hover:text-red-400">
-              <Trash2 size={14} />
+            <button type="button" onClick={() => onRemove(block.id)} className="w-7 h-7 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center">
+              <X size={14} />
             </button>
           )}
         </div>
       </div>
 
-      {/* Content */}
+      {/* Expandable Content */}
+      {isExpanded && (
       <div className="p-3 space-y-3">
         <div>
           <label className="text-xs text-gray-400 mb-1 block">Titel</label>
@@ -2282,7 +2387,51 @@ function AudioBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
             }`} />
           </button>
         </div>
+
+        {/* Animation selector - only shown when discrete mode is on */}
+        {discrete && (
+          <div className="pt-3 border-t border-white/5">
+            <label className="text-sm text-white block mb-2">Animation</label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => handleAnimationChange('none')}
+                className={`flex-1 px-3 py-2 rounded-lg text-sm transition-all ${
+                  animation === 'none' 
+                    ? 'bg-purple-500/30 text-purple-300 ring-1 ring-purple-500/50' 
+                    : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                }`}
+              >
+                Ingen
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAnimationChange('cykel')}
+                className={`flex-1 px-3 py-2 rounded-lg text-sm transition-all ${
+                  animation === 'cykel' 
+                    ? 'bg-purple-500/30 text-purple-300 ring-1 ring-purple-500/50' 
+                    : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                }`}
+              >
+                Cykel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAnimationChange('gris')}
+                className={`flex-1 px-3 py-2 rounded-lg text-sm transition-all ${
+                  animation === 'gris' 
+                    ? 'bg-purple-500/30 text-purple-300 ring-1 ring-purple-500/50' 
+                    : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                }`}
+              >
+                Gris
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Visar en rolig animation över bilden vid uppspelning</p>
+          </div>
+        )}
       </div>
+      )}
     </div>
   );
 }
@@ -2970,7 +3119,7 @@ function LeaderboardBlockEditor({ block, onUpdate, onRemove, onMove, index, tota
                         team.id === 1 ? 'text-cyan-400' : 'text-orange-400'
                       }`}>
                         {team.name}
-                        {isSelected && <span className="ml-1">✓</span>}
+                        {isSelected && <Check size={12} className="inline ml-1" />}
                       </div>
                       <div className="space-y-1 min-h-[32px]">
                         {teamMembers.length === 0 ? (

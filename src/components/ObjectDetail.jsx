@@ -30,6 +30,11 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
   const [textEditModalData, setTextEditModalData] = useState(null); // { blockIndex, content, title }
   const [distributionModalData, setDistributionModalData] = useState(null); // { blockIndex, data }
   
+  // Centralized audio state for coordinating between LocationBlock and ImageBlock
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const [audioError, setAudioError] = useState(false);
+  const audioRef = useRef(null);
+  
   const toggleChildViewMode = () => {
     const newMode = childViewMode === 'grid' ? 'list' : 'grid';
     setChildViewMode(newMode);
@@ -162,6 +167,49 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
     ? rawAudioUrl.replace('/ourspots/', '/') 
     : rawAudioUrl;
   const audioIsDiscrete = audioBlock?.data?.discrete !== false; // Default true
+  const audioAnimation = audioBlock?.data?.animation || 'none'; // 'none', 'cykel', 'gris'
+  
+  // Initialize centralized audio element
+  useEffect(() => {
+    if (audioUrl && audioIsDiscrete) {
+      audioRef.current = new Audio(audioUrl);
+      audioRef.current.preload = 'metadata';
+      
+      const handleEnded = () => setIsAudioPlaying(false);
+      const handleError = () => {
+        setAudioError(true);
+        setIsAudioPlaying(false);
+      };
+      
+      audioRef.current.addEventListener('ended', handleEnded);
+      audioRef.current.addEventListener('error', handleError);
+      
+      return () => {
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current.removeEventListener('ended', handleEnded);
+          audioRef.current.removeEventListener('error', handleError);
+          audioRef.current = null;
+        }
+      };
+    }
+  }, [audioUrl, audioIsDiscrete]);
+  
+  // Toggle audio playback
+  const toggleAudio = () => {
+    if (!audioRef.current || audioError) return;
+    
+    if (isAudioPlaying) {
+      audioRef.current.pause();
+      setIsAudioPlaying(false);
+    } else {
+      audioRef.current.play().catch(err => {
+        console.error('Audio play error:', err);
+        setAudioError(true);
+      });
+      setIsAudioPlaying(true);
+    }
+  };
   
   const handleDelete = async () => {
     await onDelete(object.id);
@@ -302,7 +350,13 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                           onDelete={handleDeleteBlock}
                           positionNumber={locationBlocks.length > 1 ? locationIndex : null}
                           onShowOnMap={onShowOnMap}
-                          audioUrl={block.type === 'location' && !block.inherited && audioIsDiscrete ? audioUrl : undefined}
+                          // Location block: centralized audio props
+                          hasAudio={block.type === 'location' && !block.inherited && audioIsDiscrete && audioUrl && !audioError}
+                          isAudioPlaying={block.type === 'location' ? isAudioPlaying : undefined}
+                          onToggleAudio={block.type === 'location' ? toggleAudio : undefined}
+                          // Image block: animation props
+                          isPlaying={block.type === 'image' && audioIsDiscrete ? isAudioPlaying : false}
+                          animation={block.type === 'image' ? audioAnimation : 'none'}
                           // Poll-specific props
                           currentUser={currentUser}
                           userDisplayName={userDisplayName}

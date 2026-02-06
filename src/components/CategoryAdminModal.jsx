@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Settings, ArrowUp, ArrowDown, Edit2, Trash2, ChevronDown } from 'lucide-react';
+import { Settings, ArrowUp, ArrowDown, Edit2, Trash2, ChevronDown, AlertTriangle } from 'lucide-react';
 import { doc, setDoc, updateDoc, deleteDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { AVAILABLE_ICONS, getIconComponent } from '../utils/iconHelpers';
@@ -466,8 +466,9 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
             <p className="text-gray-300 mb-6">
               Är du säker på att du vill ta bort kategorin <span className="font-semibold text-white">"{showDeleteConfirm.label}"</span>?
               {objects.filter(obj => obj.type === showDeleteConfirm.id).length > 0 && (
-                <span className="block mt-2 text-yellow-400">
-                  ⚠️ {objects.filter(obj => obj.type === showDeleteConfirm.id).length} objekt använder denna kategori.
+                <span className="mt-2 text-yellow-400 flex items-center gap-1.5">
+                  <AlertTriangle size={14} className="flex-shrink-0" />
+                  <span>{objects.filter(obj => obj.type === showDeleteConfirm.id).length} objekt använder denna kategori.</span>
                 </span>
               )}
             </p>

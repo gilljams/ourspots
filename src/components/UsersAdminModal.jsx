@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Users, Shield, ShieldOff, Ban, CheckCircle, Search, X, ChevronDown, Mail, Package, Share2, Calendar, UserCheck, Settings, Save, RefreshCw } from 'lucide-react';
+import { Users, Shield, ShieldOff, Ban, CheckCircle, Search, X, ChevronDown, Mail, Package, Share2, Calendar, UserCheck, Settings, Save, RefreshCw, Check } from 'lucide-react';
 import { collection, onSnapshot, doc, updateDoc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 
@@ -523,7 +523,7 @@ function UsersAdminModal({ currentUserId, onClose }) {
             </div>
             <div className="flex justify-end items-center gap-3 mt-3">
               {settingsSaved && (
-                <span className="text-xs text-green-400">✓ Sparat!</span>
+                <span className="text-xs text-green-400 flex items-center gap-1"><Check size={14} /> Sparat!</span>
               )}
               <button
                 onClick={saveSettings}

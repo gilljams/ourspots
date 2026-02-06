@@ -1,5 +1,5 @@
 import React from 'react';
-import { Star, Share2, Users, Folder, MapPin, Map as MapIcon, Navigation, Home, CornerDownRight, ChevronRight, Clock } from 'lucide-react';
+import { Star, Share2, Users, Folder, MapPin, Map as MapIcon, Navigation, Home, CornerDownRight, ChevronRight, Clock, AlertTriangle } from 'lucide-react';
 import { getTransformedImageUrl, getFocalPointStyles } from '../utils/imageUtils';
 import { getIconComponent, PREDEFINED_ICONS } from '../utils/iconHelpers';
 
@@ -180,8 +180,9 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
       ) : null}
       <div className={imageBlock ? "p-4" : "p-4"}>
         {!category && isOwner && (
-          <div className="mb-2 text-xs text-yellow-400 bg-yellow-400/10 px-2 py-1 rounded border border-yellow-400/20">
-            ⚠️ Ogiltig kategori - redigera objektet
+          <div className="mb-2 text-xs text-yellow-400 bg-yellow-400/10 px-2 py-1 rounded border border-yellow-400/20 flex items-center gap-1.5">
+            <AlertTriangle size={14} className="flex-shrink-0" />
+            <span>Ogiltig kategori - redigera objektet</span>
           </div>
         )}
         <div className="flex items-center gap-2 mb-2">

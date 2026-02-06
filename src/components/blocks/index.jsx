@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapPin, Map as MapIcon, X, Check, RotateCcw, ExternalLink, Calendar, Maximize2, Timer, Play, Pause, RotateCw, Vote, HelpCircle, Trophy, ChevronDown, Lock, Link, Plus, Wallet, ChevronRight, User, TriangleIcon, Edit2, Car, ClipboardList, Users, Minus } from 'lucide-react';
+import { MapPin, Map as MapIcon, X, Check, RotateCcw, ExternalLink, Calendar, Maximize2, Timer, Play, Pause, RotateCw, Vote, HelpCircle, Trophy, ChevronDown, Lock, Link, Plus, Wallet, ChevronRight, User, TriangleIcon, Edit2, Car, ClipboardList, Users, Minus, Copy } from 'lucide-react';
 import { getTransformedImageUrl, getFocalPointStyles } from '../../utils/imageUtils';
 import { getIconComponent } from '../../utils/iconHelpers';
 
@@ -7,49 +7,7 @@ export const TitleBlock = ({ data }) => (
   <h2 className="text-2xl font-bold text-white mb-2">{data.text}</h2>
 );
 
-export const LocationBlock = ({ data, inherited, onDelete, canDelete, positionNumber, onShowOnMap, audioUrl }) => {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [audioError, setAudioError] = useState(false);
-  const audioRef = useRef(null);
-
-  // Initialize audio element
-  useEffect(() => {
-    if (audioUrl && !audioRef.current) {
-      audioRef.current = new Audio(audioUrl);
-      audioRef.current.preload = 'metadata';
-      
-      audioRef.current.addEventListener('ended', () => {
-        setIsPlaying(false);
-      });
-      
-      audioRef.current.addEventListener('error', () => {
-        setAudioError(true);
-        setIsPlaying(false);
-      });
-    }
-    
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-    };
-  }, [audioUrl]);
-
-  const toggleAudio = () => {
-    if (!audioRef.current || audioError) return;
-    
-    if (isPlaying) {
-      audioRef.current.pause();
-      setIsPlaying(false);
-    } else {
-      audioRef.current.play().catch(err => {
-        console.error('Audio play error:', err);
-        setAudioError(true);
-      });
-      setIsPlaying(true);
-    }
-  };
+export const LocationBlock = ({ data, inherited, onDelete, canDelete, positionNumber, onShowOnMap, hasAudio, isAudioPlaying, onToggleAudio }) => {
 
   const openGoogleMaps = () => {
     if (data.lat && data.lng) {
@@ -84,19 +42,19 @@ export const LocationBlock = ({ data, inherited, onDelete, canDelete, positionNu
       </div>
       {data.lat && data.lng && (
         <div className="flex items-center gap-1">
-          {/* Audio play button - shown if audio URL exists */}
-          {audioUrl && !audioError && (
+          {/* Audio play button - shown if audio exists (centralized playback) */}
+          {hasAudio && (
             <button
-              onClick={toggleAudio}
+              onClick={onToggleAudio}
               className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all flex-shrink-0 ${
-                isPlaying 
+                isAudioPlaying 
                   ? 'bg-purple-500/30 text-purple-300 ring-2 ring-purple-500/50 ring-offset-1 ring-offset-transparent' 
                   : 'bg-white/5 hover:bg-purple-500/20 text-gray-400 hover:text-purple-400'
               }`}
-              style={isPlaying ? { animation: 'pulse-glow 1s ease-in-out infinite' } : {}}
-              title={isPlaying ? 'Pausa' : 'Spela'}
+              style={isAudioPlaying ? { animation: 'pulse-glow 1s ease-in-out infinite' } : {}}
+              title={isAudioPlaying ? 'Pausa' : 'Spela'}
             >
-              {isPlaying ? (
+              {isAudioPlaying ? (
                 <Pause size={16} />
               ) : (
                 <Play size={16} />
@@ -149,9 +107,12 @@ export const LocationBlock = ({ data, inherited, onDelete, canDelete, positionNu
   );
 };
 
-export const ImageBlock = ({ data }) => {
+export const ImageBlock = ({ data, isPlaying = false, animation = 'none' }) => {
   const [showFullscreen, setShowFullscreen] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [animationActive, setAnimationActive] = useState(false);
+  const [animationKey, setAnimationKey] = useState(0);
+  const [showZanettiText, setShowZanettiText] = useState(false);
   const focalStyles = getFocalPointStyles(data.focalPoint);
   
   // Get optimized full image URL - max 1600px wide for good mobile quality without being huge
@@ -160,10 +121,49 @@ export const ImageBlock = ({ data }) => {
     return url.replace('/upload/', '/upload/c_limit,w_1600,q_auto:good/');
   };
   
+  // Handle animation start/stop based on audio playing state
+  useEffect(() => {
+    if (isPlaying && animation !== 'none' && !animationActive) {
+      setAnimationKey(prev => prev + 1); // Reset animation
+      setAnimationActive(true);
+      setShowZanettiText(false);
+    } else if (!isPlaying && animationActive) {
+      // Fade out animation smoothly
+      setAnimationActive(false);
+      setShowZanettiText(false);
+    }
+  }, [isPlaying, animation, animationActive]);
+  
+  // Separat useEffect för Zanetti-text timer
+  useEffect(() => {
+    let showTimer;
+    let hideTimer;
+    if (animationActive && animation === 'cykel') {
+      showTimer = setTimeout(() => {
+        setShowZanettiText(true);
+      }, 7000);
+      // Göm texten efter 3 sekunder
+      hideTimer = setTimeout(() => {
+        setShowZanettiText(false);
+      }, 10000);
+    }
+    return () => {
+      if (showTimer) clearTimeout(showTimer);
+      if (hideTimer) clearTimeout(hideTimer);
+    };
+  }, [animationActive, animation]);
+  
   // Reset loading state when opening fullscreen
   const openFullscreen = () => {
     setImageLoaded(false);
     setShowFullscreen(true);
+  };
+  
+  // Get animation image source
+  const getAnimationImage = () => {
+    if (animation === 'cykel') return '/media/cykel.png';
+    if (animation === 'gris') return '/media/gris.png';
+    return null;
   };
   
   return (
@@ -172,9 +172,36 @@ export const ImageBlock = ({ data }) => {
         <img 
           src={getTransformedImageUrl(data.url, data.focalPoint ? 'custom' : data.cropMode, 800, 480, data.focalPoint)} 
           alt="" 
-          className="w-full h-full object-cover"
+          className={`w-full h-full object-cover transition-transform ${animationActive ? 'image-ken-burns' : ''}`}
           style={focalStyles}
         />
+        
+        {/* Animation overlay */}
+        {animationActive && animation !== 'none' && (
+          <div 
+            key={animationKey}
+            className="animation-plupp-container"
+          >
+            <div className={animation === 'gris' ? 'animation-plupp-gris' : 'animation-plupp'}>
+              <img 
+                src={getAnimationImage()} 
+                alt="" 
+                className="animation-plupp-img"
+              />
+            </div>
+          </div>
+        )}
+        
+        {/* Zanetti text för cykel-animation */}
+        {showZanettiText && animation === 'cykel' && (
+          <>
+            <div className="italian-flag-wave" />
+            <div className="zanetti-text-container">
+              <span className="zanetti-text">Han är Zanetti</span>
+            </div>
+          </>
+        )}
+        
         <button
           onClick={openFullscreen}
           className="absolute bottom-2 right-2 p-1.5 rounded-md bg-black/30 text-white/70 hover:text-white hover:bg-black/50 transition-all"
@@ -215,6 +242,59 @@ export const ImageBlock = ({ data }) => {
   );
 };
 
+// Copyable code block component with touch support
+const CodeBlockCopyable = ({ code }) => {
+  const [copied, setCopied] = useState(false);
+  
+  const handleCopy = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    try {
+      // Try modern clipboard API first
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(code);
+      } else {
+        // Fallback for older browsers/mobile
+        const textArea = document.createElement('textarea');
+        textArea.value = code;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-9999px';
+        textArea.style.top = '-9999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+      
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Copy failed:', err);
+    }
+  };
+  
+  return (
+    <pre 
+      className="bg-black/40 border border-white/10 rounded-lg p-3 my-2 overflow-x-auto cursor-pointer hover:bg-black/50 active:bg-black/60 transition-colors group relative touch-manipulation"
+      onClick={handleCopy}
+      onTouchEnd={handleCopy}
+    >
+      <code className="text-sm font-mono text-blue-400 whitespace-pre">
+        {code}
+      </code>
+      <span className={`absolute top-2 right-2 flex items-center gap-1 text-xs transition-all ${copied ? 'text-green-400 opacity-100 scale-110' : 'text-gray-400 opacity-70 sm:opacity-0 sm:group-hover:opacity-100'}`}>
+        {copied ? (
+          <Check size={16} />
+        ) : (
+          <Copy size={16} />
+        )}
+      </span>
+    </pre>
+  );
+};
+
 // Lightweight markdown renderer - supports **bold**, *italic*, [links](url), > quotes, # headings, - bullets, numbered lists
 export const renderMarkdown = (text) => {
   if (!text) return null;
@@ -224,6 +304,8 @@ export const renderMarkdown = (text) => {
   let listItems = [];
   let listType = null; // 'ul' or 'ol'
   let quoteLines = []; // For multi-line quotes
+  let codeBlockLines = []; // For code blocks
+  let inCodeBlock = false;
   
   const flushList = () => {
     if (listItems.length > 0) {
@@ -253,6 +335,16 @@ export const renderMarkdown = (text) => {
         </blockquote>
       );
       quoteLines = [];
+    }
+  };
+  
+  const flushCodeBlock = () => {
+    if (codeBlockLines.length > 0) {
+      const codeContent = codeBlockLines.join('\n');
+      elements.push(
+        <CodeBlockCopyable key={`code-${elements.length}`} code={codeContent} />
+      );
+      codeBlockLines = [];
     }
   };
   
@@ -330,6 +422,27 @@ export const renderMarkdown = (text) => {
   };
   
   lines.forEach((line, index) => {
+    // Check for code block start/end (```)
+    if (line.trim().startsWith('```')) {
+      if (inCodeBlock) {
+        // End of code block
+        flushCodeBlock();
+        inCodeBlock = false;
+      } else {
+        // Start of code block
+        flushList();
+        flushQuote();
+        inCodeBlock = true;
+      }
+      return; // Skip the ``` line itself
+    }
+    
+    // If inside code block, just collect lines
+    if (inCodeBlock) {
+      codeBlockLines.push(line);
+      return;
+    }
+    
     // Check for quote (> )
     const quoteMatch = line.match(/^>\s*(.*)/);
     // Check for H1 heading (# )
@@ -377,6 +490,7 @@ export const renderMarkdown = (text) => {
   
   flushList();
   flushQuote();
+  flushCodeBlock(); // In case code block wasn't closed
   return elements;
 };
 
@@ -632,7 +746,7 @@ export const TABLE_TEMPLATES = {
     hideHeader: true,
     useCollapse: true,
     columns: [
-      { id: 'done', label: '✓', type: 'checkbox', width: 'w-8', hideInEditor: true },
+      { id: 'done', label: '', type: 'checkbox', width: 'w-8', hideInEditor: true },
       { id: 'item', label: 'Punkt', type: 'text', width: 'flex-1' }
     ]
   },
@@ -643,7 +757,7 @@ export const TABLE_TEMPLATES = {
     showSum: false,
     useCollapse: true,
     columns: [
-      { id: 'done', label: '✓', type: 'checkbox', width: 'w-8' },
+      { id: 'done', label: '', type: 'checkbox', width: 'w-8' },
       { id: 'who', label: 'Vem', type: 'text', width: 'w-20' },
       { id: 'item', label: 'Vad', type: 'text', width: 'flex-1' },
       { id: 'from', label: 'Från', type: 'text', width: 'w-20' }
@@ -656,7 +770,7 @@ export const TABLE_TEMPLATES = {
     showSum: false,
     useCollapse: true,
     columns: [
-      { id: 'done', label: '✓', type: 'checkbox', width: 'w-8' },
+      { id: 'done', label: '', type: 'checkbox', width: 'w-8' },
       { id: 'task', label: 'Uppgift', type: 'text', width: 'flex-1' },
       { id: 'who', label: 'Ansvarig', type: 'text', width: 'w-24' }
     ]
@@ -668,7 +782,7 @@ export const TABLE_TEMPLATES = {
     showSum: false,
     useCollapse: true,
     columns: [
-      { id: 'done', label: '✓', type: 'checkbox', width: 'w-8' },
+      { id: 'done', label: '', type: 'checkbox', width: 'w-8' },
       { id: 'item', label: 'Vara', type: 'text', width: 'flex-1' },
       { id: 'qty', label: 'Antal', type: 'number', width: 'w-16' }
     ]
@@ -680,7 +794,7 @@ export const TABLE_TEMPLATES = {
     showSum: false,
     useCollapse: true,
     columns: [
-      { id: 'confirmed', label: '✓', type: 'checkbox', width: 'w-8' },
+      { id: 'confirmed', label: '', type: 'checkbox', width: 'w-8' },
       { id: 'name', label: 'Namn', type: 'text', width: 'flex-1' },
       { id: 'note', label: 'Anteckning', type: 'text', width: 'w-32' }
     ]
@@ -2397,7 +2511,7 @@ export const SplitBlock = ({ data, currentUser, shares = {}, canEdit = false, on
               ))}
             </div>
           ) : (
-            <div className="text-sm text-gray-500">Alla är kvitt! 🎉</div>
+            <div className="text-sm text-gray-500">Alla är kvitt!</div>
           )}
         </div>
       )}

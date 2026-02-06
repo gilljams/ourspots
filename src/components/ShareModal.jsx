@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Share2, X, Mail, Loader, UserPlus, UserMinus, Users, Clock, Check, CornerDownRight, XCircle, Eye, Edit3 } from 'lucide-react';
+import { Share2, X, Mail, Loader, UserPlus, UserMinus, Users, Clock, Check, CornerDownRight, XCircle, Eye, Edit3, Pause, Play, Ban } from 'lucide-react';
 import { doc, updateDoc, onSnapshot, Timestamp, deleteField, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from '../firebase';
 import { emailToKey, keyToEmail } from '../utils/iconHelpers';
@@ -265,6 +265,82 @@ function ShareModal({ object, onClose, currentUserEmail, allObjects = [], shared
     }
   };
 
+  // Toggle pause/resume for a share
+  const handleTogglePause = async (emailKey, shareData, isPaused) => {
+    const userEmail = shareData?.email || keyToEmail(emailKey);
+    try {
+      // Update parent object
+      const updateData = {
+        [`shares.${emailKey}.paused`]: !isPaused
+      };
+      
+      // If pausing, remove from sharedWithEmails and acceptedShareEmails (hides object completely)
+      // If resuming, add back to both arrays
+      if (!isPaused) {
+        updateData.sharedWithEmails = arrayRemove(userEmail);
+        updateData.acceptedShareEmails = arrayRemove(userEmail);
+        updateData.editorEmails = arrayRemove(userEmail);
+      } else {
+        // Add back to sharedWithEmails
+        updateData.sharedWithEmails = arrayUnion(userEmail);
+        // Only add back to acceptedShareEmails if status is accepted or inherited
+        if (shareData?.status === 'accepted' || shareData?.status === 'inherited') {
+          updateData.acceptedShareEmails = arrayUnion(userEmail);
+        }
+        // Add back to editorEmails if editor role
+        if (shareData?.role === 'editor') {
+          updateData.editorEmails = arrayUnion(userEmail);
+        }
+      }
+      
+      await updateDoc(doc(db, 'objects', object.id), updateData);
+
+      // If this share included children, also update all descendants
+      if (shareData?.includeChildren && allDescendants.length > 0) {
+        await Promise.all(allDescendants.map(descendant => {
+          const descUpdateData = {
+            [`shares.${emailKey}.paused`]: !isPaused
+          };
+          if (!isPaused) {
+            descUpdateData.sharedWithEmails = arrayRemove(userEmail);
+            descUpdateData.acceptedShareEmails = arrayRemove(userEmail);
+            descUpdateData.editorEmails = arrayRemove(userEmail);
+          } else {
+            descUpdateData.sharedWithEmails = arrayUnion(userEmail);
+            const descShare = descendant.shares?.[emailKey];
+            if (descShare?.status === 'accepted' || descShare?.status === 'inherited') {
+              descUpdateData.acceptedShareEmails = arrayUnion(userEmail);
+            }
+            if (descShare?.role === 'editor') {
+              descUpdateData.editorEmails = arrayUnion(userEmail);
+            }
+          }
+          return updateDoc(doc(db, 'objects', descendant.id), descUpdateData);
+        }));
+      }
+    } catch (err) {
+      console.error('Error toggling pause:', err);
+    }
+  };
+
+  // Remove inherited share from this object only (exclude from parent's share)
+  const handleExcludeInherited = async (emailKey, shareData) => {
+    const displayEmail = shareData?.email || keyToEmail(emailKey);
+    if (!confirm(`Ta bort ärvd delning för ${displayEmail} från detta objekt?\n\nObjektet kommer inte längre vara delat med denna användare, även om föräldern är delad med dem.`)) return;
+    
+    try {
+      await updateDoc(doc(db, 'objects', object.id), {
+        [`shares.${emailKey}`]: deleteField(),
+        sharedWithEmails: arrayRemove(displayEmail),
+        editorEmails: arrayRemove(displayEmail),
+        acceptedShareEmails: arrayRemove(displayEmail)
+      });
+    } catch (err) {
+      console.error('Error excluding inherited share:', err);
+      alert('Kunde inte ta bort den ärvda delningen');
+    }
+  };
+
   const titleBlock = object.blocks?.find(b => b.type === 'title');
 
   return (
@@ -408,11 +484,12 @@ function ShareModal({ object, onClose, currentUserEmail, allObjects = [], shared
               </h3>
               <div className="space-y-2">
                 {sharesList.map(share => (
-                  <div key={share.key} className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10">
+                  <div key={share.key} className={`flex items-center gap-3 p-3 rounded-xl border ${share.paused ? 'bg-orange-500/10 border-orange-500/30' : 'bg-white/5 border-white/10'}`}>
                     <div className="flex-1 min-w-0">
-                      <p className="text-white text-sm truncate">{share.email}</p>
-                      <p className="text-xs text-gray-500 flex items-center gap-1">
-                        {share.status === 'pending' ? <><Clock size={10} className="text-amber-400" /> <span>Väntar på svar</span></> : 
+                      <p className={`text-sm truncate ${share.paused ? 'text-orange-300' : 'text-white'}`}>{share.email}</p>
+                      <p className="text-xs text-gray-500 flex items-center gap-1 flex-wrap">
+                        {share.paused ? <><Pause size={10} className="text-orange-400" /> <span className="text-orange-400">Pausad</span></> :
+                         share.status === 'pending' ? <><Clock size={10} className="text-amber-400" /> <span>Väntar på svar</span></> : 
                          share.status === 'accepted' ? <><Check size={10} className="text-green-400" /> <span>Accepterad</span></> : 
                          share.status === 'inherited' ? <><CornerDownRight size={10} className="text-blue-400" /> <span>Via förälder</span></> :
                          share.status === 'declined' ? <><XCircle size={10} className="text-red-400" /> <span>Nekad</span></> : 
@@ -429,13 +506,34 @@ function ShareModal({ object, onClose, currentUserEmail, allObjects = [], shared
                       <option value="viewer" className="bg-gray-800 text-white">Läsare</option>
                       <option value="editor" className="bg-gray-800 text-white">Redigerare</option>
                     </select>
-                    <button
-                      onClick={() => handleRemoveShare(share.key, share.email, share)}
-                      className="p-2 rounded-lg hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition-colors"
-                      title="Ta bort delning"
-                    >
-                      <UserMinus size={16} />
-                    </button>
+                    {/* Pause/Resume button */}
+                    {(share.status === 'accepted' || share.status === 'inherited') && (
+                      <button
+                        onClick={() => handleTogglePause(share.key, share, share.paused)}
+                        className={`p-2 rounded-lg transition-colors ${share.paused ? 'hover:bg-green-500/20 text-orange-400 hover:text-green-400' : 'hover:bg-orange-500/20 text-gray-400 hover:text-orange-400'}`}
+                        title={share.paused ? 'Återuppta delning' : 'Pausa delning'}
+                      >
+                        {share.paused ? <Play size={16} /> : <Pause size={16} />}
+                      </button>
+                    )}
+                    {/* Remove/Exclude button */}
+                    {share.status === 'inherited' ? (
+                      <button
+                        onClick={() => handleExcludeInherited(share.key, share)}
+                        className="p-2 rounded-lg hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition-colors"
+                        title="Exkludera från förälderns delning"
+                      >
+                        <Ban size={16} />
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleRemoveShare(share.key, share.email, share)}
+                        className="p-2 rounded-lg hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition-colors"
+                        title="Ta bort delning"
+                      >
+                        <UserMinus size={16} />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>

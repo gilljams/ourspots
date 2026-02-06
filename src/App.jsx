@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, Suspense, lazy } from 'react';
 import { 
   X, Plus, Image, Edit2, Trash2, 
   Loader, LogOut, LogIn, Check, Circle, Upload, 
   Map as MapIcon, List, ChevronDown, ArrowUp, ArrowDown, Search, Settings,
   Target, Lightbulb, SlidersHorizontal, Menu, Filter, Share2, UserPlus, UserMinus, Users, Mail, User,
-  FileText, MapPin, Home, RotateCcw, Star, Navigation, Eye, Edit3
+  FileText, MapPin, Home, RotateCcw, Star, Navigation, Eye, Edit3, AlertTriangle, Trophy
 } from 'lucide-react';
 
 // Version for cache-busting visual indicator (remove in production)
@@ -30,16 +30,28 @@ import {
 } from './components/blocks';
 import ObjectCard from './components/ObjectCard';
 import MapPicker from './components/MapPicker';
-import ShareModal from './components/ShareModal';
-import DeleteConfirmModal from './components/DeleteConfirmModal';
-import FocalPointPicker from './components/FocalPointPicker';
-import ObjectDetail from './components/ObjectDetail';
 import MapView from './components/MapView';
-import BlockEditor from './components/BlockEditor';
-import CreateObjectModal from './components/CreateObjectModal';
-import ObjectsAdminModal from './components/ObjectsAdminModal';
-import CategoryAdminModal from './components/CategoryAdminModal';
-import UsersAdminModal from './components/UsersAdminModal';
+
+// Lazy load modals and heavy components for better initial load performance
+const ShareModal = lazy(() => import('./components/ShareModal'));
+const DeleteConfirmModal = lazy(() => import('./components/DeleteConfirmModal'));
+const FocalPointPicker = lazy(() => import('./components/FocalPointPicker'));
+const ObjectDetail = lazy(() => import('./components/ObjectDetail'));
+const BlockEditor = lazy(() => import('./components/BlockEditor'));
+const CreateObjectModal = lazy(() => import('./components/CreateObjectModal'));
+const ObjectsAdminModal = lazy(() => import('./components/ObjectsAdminModal'));
+const CategoryAdminModal = lazy(() => import('./components/CategoryAdminModal'));
+const UsersAdminModal = lazy(() => import('./components/UsersAdminModal'));
+
+// Loading fallback for lazy components
+const ModalLoadingFallback = () => (
+  <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[2000] flex items-center justify-center">
+    <div className="bg-gray-900 rounded-xl p-6 flex items-center gap-3 border border-white/10">
+      <Loader className="w-5 h-5 animate-spin text-blue-400" />
+      <span className="text-white">Laddar...</span>
+    </div>
+  </div>
+);
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap, Tooltip, Popup } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
@@ -70,10 +82,7 @@ function App() {
     const saved = localStorage.getItem('activeCategory');
     return saved || 'all';
   });
-  const [showFavoritesOnly, setShowFavoritesOnly] = useState(() => {
-    const saved = localStorage.getItem('showFavoritesOnly');
-    return saved === 'true';
-  });
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false); // Don't persist - avoids flash of empty list on reload
   const [showOnlyOwned, setShowOnlyOwned] = useState(() => {
     const saved = localStorage.getItem('showOnlyOwned');
     return saved === 'true';
@@ -158,10 +167,6 @@ function App() {
   useEffect(() => {
     localStorage.setItem('sortByDistance', sortByDistance.toString());
   }, [sortByDistance]);
-
-  useEffect(() => {
-    localStorage.setItem('showFavoritesOnly', showFavoritesOnly.toString());
-  }, [showFavoritesOnly]);
 
   useEffect(() => {
     localStorage.setItem('showOnlyOwned', showOnlyOwned.toString());
@@ -352,6 +357,18 @@ function App() {
     return () => window.removeEventListener('resize', updateHeaderHeight);
   }, []);
 
+  // Warn before refresh/close when offline (prevents losing app access in the forest)
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (!navigator.onLine) {
+        e.preventDefault();
+        return 'Du är offline - om du lämnar sidan förlorar du tillgång till appen.';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, []);
+
   // Capture user's location on mount
   useEffect(() => {
     if ('geolocation' in navigator) {
@@ -448,12 +465,19 @@ function App() {
 
   // Listen to categories
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'categories'), (snap) => {
-      const cats = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.order - b.order);
-
-      setCategories(cats);
-      setCategoriesLoaded(true);
-    });
+    const unsub = onSnapshot(
+      collection(db, 'categories'), 
+      (snap) => {
+        const cats = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.order - b.order);
+        setCategories(cats);
+        setCategoriesLoaded(true);
+      },
+      (error) => {
+        console.error('Error loading categories:', error);
+        // Still mark as loaded so the app doesn't hang
+        setCategoriesLoaded(true);
+      }
+    );
     return () => unsub();
   }, []);
 
@@ -653,12 +677,15 @@ function App() {
     });
   }
 
+  // Check if running as installed PWA (standalone mode)
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                       window.navigator.standalone === true;
+
   const handleLogin = async () => {
     try {
-      // Use popup for now (redirect had issues)
       await signInWithPopup(auth, googleProvider);
     } catch (err) {
-      if (err.code !== 'auth/popup-closed-by-user') {
+      if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
         console.error('Login error:', err);
         alert('Kunde inte logga in. Försök igen!');
       }
@@ -695,7 +722,7 @@ function App() {
   // Quick capture functions
   const handleQuickCapture = async () => {
     if (!userLocation) {
-      alert('⚠️ Ingen GPS-position! Vänta tills GPS har hittats.');
+      alert('Ingen GPS-position! Vänta tills GPS har hittats.');
       return;
     }
 
@@ -717,15 +744,15 @@ function App() {
             blocks: updatedBlocks
           });
           const objectName = targetObject.blocks?.find(b => b.type === 'title')?.data?.text || 'objektet';
-          alert(`🍄 Position tillagd till "${objectName}"!`);
+          alert(`Position tillagd till "${objectName}"!`);
           return;
         } catch (err) {
           console.error('Error adding location:', err);
-          alert('❌ Kunde inte lägga till position');
+          alert('Kunde inte lägga till position');
           return;
         }
       } else {
-        alert('⚠️ Valt objekt finns inte längre. Välj ett nytt i inställningar.');
+        alert('Valt objekt finns inte längre. Välj ett nytt i inställningar.');
         return;
       }
     }
@@ -744,7 +771,7 @@ function App() {
     localStorage.setItem('ourspots_captures', JSON.stringify(newCaptures));
     
     // Visual feedback
-    alert('🍄 Position sparad! (' + newCaptures.length + ' st)');
+    alert('Position sparad! (' + newCaptures.length + ' st)');
   };
 
   const handleDeleteCapture = (captureId) => {
@@ -865,19 +892,150 @@ function App() {
       }
       
       if (editId) {
-        // Check if parent changed - need to update descendants' ancestorIds
+        // Check if parent changed - need to update descendants' ancestorIds and shares
         const existingObj = objects.find(o => o.id === editId);
         const parentChanged = existingObj?.parentId !== objectData.parentId;
+        const oldParentId = existingObj?.parentId;
+        const newParentId = objectData.parentId;
         
-        // Update existing
-        await updateDoc(doc(db, 'objects', editId), { ...dataWithPath, updatedAt: Timestamp.now() });
+        // Build shares update data if parent changed
+        let sharesUpdateData = {};
+        if (parentChanged) {
+          // Find old inherited shares (from old ancestors) that need to be removed
+          const oldAncestorIds = existingObj?.ancestorIds || [];
+          const sharesToRemove = {};
+          const emailsToRemove = [];
+          
+          if (existingObj?.shares) {
+            Object.entries(existingObj.shares).forEach(([emailKey, shareData]) => {
+              // Remove inherited shares that came from old ancestors
+              if (shareData.status === 'inherited' && oldAncestorIds.includes(shareData.inheritedFrom)) {
+                sharesToRemove[emailKey] = deleteField();
+                if (shareData.email) {
+                  emailsToRemove.push(shareData.email.toLowerCase());
+                }
+              }
+            });
+          }
+          
+          // Find new inherited shares from new parent
+          const newInheritedShares = {};
+          const newInheritedEmails = [];
+          const newInheritedEditorEmails = [];
+          
+          if (newParentId) {
+            const newParent = objects.find(o => o.id === newParentId);
+            if (newParent?.shares) {
+              Object.entries(newParent.shares).forEach(([emailKey, shareData]) => {
+                if (shareData.includeChildren && (shareData.status === 'accepted' || shareData.status === 'inherited')) {
+                  newInheritedShares[emailKey] = {
+                    ...shareData,
+                    status: 'inherited',
+                    includeChildren: false,
+                    inheritedFrom: newParentId
+                  };
+                  if (shareData.email) {
+                    const emailLower = shareData.email.toLowerCase();
+                    newInheritedEmails.push(emailLower);
+                    if (shareData.role === 'editor') {
+                      newInheritedEditorEmails.push(emailLower);
+                    }
+                  }
+                }
+              });
+            }
+          }
+          
+          // Build the shares update
+          Object.keys(sharesToRemove).forEach(key => {
+            sharesUpdateData[`shares.${key}`] = deleteField();
+          });
+          Object.entries(newInheritedShares).forEach(([key, data]) => {
+            sharesUpdateData[`shares.${key}`] = data;
+          });
+          
+          // Update array fields for removed emails
+          if (emailsToRemove.length > 0) {
+            sharesUpdateData.sharedWithEmails = arrayRemove(...emailsToRemove);
+            sharesUpdateData.acceptedShareEmails = arrayRemove(...emailsToRemove);
+            sharesUpdateData.editorEmails = arrayRemove(...emailsToRemove);
+          }
+        }
         
-        // If parent changed, update all descendants' ancestorIds
+        // Update existing object
+        const updatePayload = { ...dataWithPath, updatedAt: Timestamp.now(), ...sharesUpdateData };
+        await updateDoc(doc(db, 'objects', editId), updatePayload);
+        
+        // If new inherited emails, add them (separate update to handle arrayUnion after arrayRemove)
+        if (parentChanged && newParentId) {
+          const newParent = objects.find(o => o.id === newParentId);
+          if (newParent?.shares) {
+            const emailsToAdd = [];
+            const editorEmailsToAdd = [];
+            Object.entries(newParent.shares).forEach(([emailKey, shareData]) => {
+              if (shareData.includeChildren && (shareData.status === 'accepted' || shareData.status === 'inherited')) {
+                if (shareData.email) {
+                  emailsToAdd.push(shareData.email.toLowerCase());
+                  if (shareData.role === 'editor') {
+                    editorEmailsToAdd.push(shareData.email.toLowerCase());
+                  }
+                }
+              }
+            });
+            if (emailsToAdd.length > 0) {
+              const addPayload = {
+                sharedWithEmails: arrayUnion(...emailsToAdd),
+                acceptedShareEmails: arrayUnion(...emailsToAdd)
+              };
+              if (editorEmailsToAdd.length > 0) {
+                addPayload.editorEmails = arrayUnion(...editorEmailsToAdd);
+              }
+              await updateDoc(doc(db, 'objects', editId), addPayload);
+            }
+          }
+        }
+        
+        // If parent changed, update all descendants' ancestorIds AND shares
         if (parentChanged) {
           const descendants = objects.filter(o => o.ancestorIds?.includes(editId));
           if (descendants.length > 0) {
             // New ancestor path for the edited object
             const newAncestorBase = [...ancestorIds, editId];
+            // Old ancestors that are no longer in the chain
+            const oldAncestorIds = existingObj?.ancestorIds || [];
+            
+            // Get new inherited shares from the moved object's new ancestor chain
+            const newInheritedSharesForDesc = {};
+            const newInheritedEmailsForDesc = [];
+            const newInheritedEditorEmailsForDesc = [];
+            
+            // Check all new ancestors for shares with includeChildren
+            for (const ancId of ancestorIds) {
+              const ancestor = objects.find(o => o.id === ancId);
+              if (ancestor?.shares) {
+                Object.entries(ancestor.shares).forEach(([emailKey, shareData]) => {
+                  if (shareData.includeChildren && (shareData.status === 'accepted' || shareData.status === 'inherited')) {
+                    if (!newInheritedSharesForDesc[emailKey]) {
+                      newInheritedSharesForDesc[emailKey] = {
+                        ...shareData,
+                        status: 'inherited',
+                        includeChildren: false,
+                        inheritedFrom: ancId
+                      };
+                      if (shareData.email) {
+                        const emailLower = shareData.email.toLowerCase();
+                        if (!newInheritedEmailsForDesc.includes(emailLower)) {
+                          newInheritedEmailsForDesc.push(emailLower);
+                          if (shareData.role === 'editor') {
+                            newInheritedEditorEmailsForDesc.push(emailLower);
+                          }
+                        }
+                      }
+                    }
+                  }
+                });
+              }
+            }
             
             await Promise.all(descendants.map(async (desc) => {
               // Find where editId is in the descendant's ancestorIds
@@ -897,10 +1055,52 @@ function App() {
                   }
                 }
                 
-                await updateDoc(doc(db, 'objects', desc.id), {
-                  ancestorIds: newDescAncestorIds,
-                  parentPath: newParentPath
+                // Build shares update for descendant
+                const descSharesUpdate = {};
+                const descEmailsToRemove = [];
+                
+                // Remove inherited shares from old ancestors
+                if (desc.shares) {
+                  Object.entries(desc.shares).forEach(([emailKey, shareData]) => {
+                    if (shareData.status === 'inherited' && oldAncestorIds.includes(shareData.inheritedFrom)) {
+                      descSharesUpdate[`shares.${emailKey}`] = deleteField();
+                      if (shareData.email) {
+                        descEmailsToRemove.push(shareData.email.toLowerCase());
+                      }
+                    }
+                  });
+                }
+                
+                // Add new inherited shares
+                Object.entries(newInheritedSharesForDesc).forEach(([key, data]) => {
+                  descSharesUpdate[`shares.${key}`] = data;
                 });
+                
+                const descUpdatePayload = {
+                  ancestorIds: newDescAncestorIds,
+                  parentPath: newParentPath,
+                  ...descSharesUpdate
+                };
+                
+                if (descEmailsToRemove.length > 0) {
+                  descUpdatePayload.sharedWithEmails = arrayRemove(...descEmailsToRemove);
+                  descUpdatePayload.acceptedShareEmails = arrayRemove(...descEmailsToRemove);
+                  descUpdatePayload.editorEmails = arrayRemove(...descEmailsToRemove);
+                }
+                
+                await updateDoc(doc(db, 'objects', desc.id), descUpdatePayload);
+                
+                // Add new emails (separate update)
+                if (newInheritedEmailsForDesc.length > 0) {
+                  const addPayload = {
+                    sharedWithEmails: arrayUnion(...newInheritedEmailsForDesc),
+                    acceptedShareEmails: arrayUnion(...newInheritedEmailsForDesc)
+                  };
+                  if (newInheritedEditorEmailsForDesc.length > 0) {
+                    addPayload.editorEmails = arrayUnion(...newInheritedEditorEmailsForDesc);
+                  }
+                  await updateDoc(doc(db, 'objects', desc.id), addPayload);
+                }
               }
             }));
           }
@@ -991,6 +1191,7 @@ function App() {
     try {
       const userEmail = user.email.toLowerCase();
       const emailKey = emailToKey(userEmail);
+      const shareData = obj.shares?.[emailKey];
       
       await updateDoc(doc(db, 'objects', obj.id), {
         [`shares.${emailKey}`]: deleteField(),
@@ -998,6 +1199,25 @@ function App() {
         acceptedShareEmails: arrayRemove(userEmail),
         editorEmails: arrayRemove(userEmail)
       });
+      
+      // If this was the original share with includeChildren (not inherited), 
+      // also remove from all descendants
+      if (shareData?.includeChildren && shareData?.status !== 'inherited') {
+        const descendants = objects.filter(o => 
+          o.ancestorIds?.includes(obj.id) && 
+          o.shares?.[emailKey]?.inheritedFrom === obj.id
+        );
+        if (descendants.length > 0) {
+          await Promise.all(descendants.map(desc => 
+            updateDoc(doc(db, 'objects', desc.id), {
+              [`shares.${emailKey}`]: deleteField(),
+              sharedWithEmails: arrayRemove(userEmail),
+              acceptedShareEmails: arrayRemove(userEmail),
+              editorEmails: arrayRemove(userEmail)
+            })
+          ));
+        }
+      }
       
       setSelectedObject(null);
     } catch (err) {
@@ -1062,8 +1282,8 @@ function App() {
                            linear-gradient(to bottom right, #06070c, #0b1220, #06070c)`
       }}
     >
-      <header ref={headerRef} className="bg-gray-900/50 backdrop-blur-xl border-b border-white/10 sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+      <header ref={headerRef} className="bg-gray-900/50 backdrop-blur-xl border-b border-white/10 sticky top-0 z-40" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+        <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center" style={{ paddingLeft: 'max(1rem, env(safe-area-inset-left))', paddingRight: 'max(1rem, env(safe-area-inset-right))' }}>
           <div className="flex items-center gap-3">
             <button
               onClick={() => setShowMenu(true)}
@@ -1136,10 +1356,11 @@ function App() {
                           try {
                             const emailKey = emailToKey(user.email.toLowerCase());
                             const userEmail = user.email.toLowerCase();
+                            const userDisplayName = displayName || user.email.split('@')[0];
                             const updateData = {
                               [`shares.${emailKey}.status`]: 'accepted',
                               [`shares.${emailKey}.respondedAt`]: Timestamp.now(),
-                              [`shares.${emailKey}.displayName`]: displayName || user.email.split('@')[0],
+                              [`shares.${emailKey}.displayName`]: userDisplayName,
                               acceptedShareEmails: arrayUnion(userEmail)
                             };
                             // Add to editorEmails if editor role (for Firestore security rules)
@@ -1147,8 +1368,29 @@ function App() {
                               updateData.editorEmails = arrayUnion(userEmail);
                             }
                             await updateDoc(doc(db, 'objects', obj.id), updateData);
+                            
+                            // If includeChildren, also update all descendants that have inherited share
+                            if (shareInfo?.includeChildren) {
+                              const descendants = objects.filter(o => 
+                                o.ancestorIds?.includes(obj.id) && 
+                                o.shares?.[emailKey]?.status === 'inherited'
+                              );
+                              if (descendants.length > 0) {
+                                await Promise.all(descendants.map(desc => {
+                                  const descUpdateData = {
+                                    [`shares.${emailKey}.displayName`]: userDisplayName,
+                                    acceptedShareEmails: arrayUnion(userEmail)
+                                  };
+                                  if (shareInfo?.role === 'editor') {
+                                    descUpdateData.editorEmails = arrayUnion(userEmail);
+                                  }
+                                  return updateDoc(doc(db, 'objects', desc.id), descUpdateData);
+                                }));
+                              }
+                            }
                             if (pendingInvitations.length === 1) setShowInvitations(false);
                           } catch (err) {
+                            console.error('Error accepting invitation:', err);
                             alert('Kunde inte acceptera');
                           }
                         }}
@@ -1167,8 +1409,27 @@ function App() {
                               acceptedShareEmails: arrayRemove(userEmail),
                               editorEmails: arrayRemove(userEmail)
                             });
+                            
+                            // If includeChildren, also remove from all descendants that have inherited share
+                            if (shareInfo?.includeChildren) {
+                              const descendants = objects.filter(o => 
+                                o.ancestorIds?.includes(obj.id) && 
+                                o.shares?.[emailKey]?.inheritedFrom === obj.id
+                              );
+                              if (descendants.length > 0) {
+                                await Promise.all(descendants.map(desc => 
+                                  updateDoc(doc(db, 'objects', desc.id), {
+                                    [`shares.${emailKey}`]: deleteField(),
+                                    sharedWithEmails: arrayRemove(userEmail),
+                                    acceptedShareEmails: arrayRemove(userEmail),
+                                    editorEmails: arrayRemove(userEmail)
+                                  })
+                                ));
+                              }
+                            }
                             if (pendingInvitations.length === 1) setShowInvitations(false);
                           } catch (err) {
+                            console.error('Error declining invitation:', err);
                             alert('Kunde inte neka');
                           }
                         }}
@@ -1441,7 +1702,7 @@ function App() {
               className={`fixed right-6 w-14 h-14 bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 rounded-2xl shadow-xl shadow-orange-500/30 flex items-center justify-center text-white hover:scale-105 active:scale-95 z-[1200] transition-all duration-300 ${
                 (selectedObject || showCreateModal || showCategoryAdmin || showObjectsAdmin || showShareModal) ? 'bottom-6' : 'bottom-[10.5rem]'
               }`}
-              title="Snabbpinna GPS-position 🍄"
+              title="Snabbpinna GPS-position"
             >
               <Target size={22} />
               {captures.length > 0 && (
@@ -1454,104 +1715,107 @@ function App() {
         </>
       )}
 
-      {selectedObject && (
-        <ObjectDetail 
-          object={selectedObject} 
-          onClose={() => setSelectedObject(null)} 
-          onEdit={handleEdit} 
-          onDelete={handleDeleteObject} 
-          onDuplicate={handleDuplicate}
-          onBlockUpdate={handleBlockUpdate} 
-          currentUser={user} 
-          userDisplayName={displayName}
-          allObjects={objects} 
-          onNavigate={(obj) => setSelectedObject(obj)} 
-          categories={categories} 
-          isAdmin={isAdmin}
-          onShowOnMap={(coords) => {
-            setSelectedObject(null);
-            setViewMode('map');
-            setMapCenter(coords);
-            window.scrollTo(0, 0);
-          }}
-          onShare={(obj) => setShowShareModal(obj)}
-          onLeaveShare={handleLeaveShare}
-        />
-      )}
+      {/* Lazy-loaded modals wrapped in Suspense */}
+      <Suspense fallback={<ModalLoadingFallback />}>
+        {selectedObject && (
+          <ObjectDetail 
+            object={selectedObject} 
+            onClose={() => setSelectedObject(null)} 
+            onEdit={handleEdit} 
+            onDelete={handleDeleteObject} 
+            onDuplicate={handleDuplicate}
+            onBlockUpdate={handleBlockUpdate} 
+            currentUser={user} 
+            userDisplayName={displayName}
+            allObjects={objects} 
+            onNavigate={(obj) => setSelectedObject(obj)} 
+            categories={categories} 
+            isAdmin={isAdmin}
+            onShowOnMap={(coords) => {
+              setSelectedObject(null);
+              setViewMode('map');
+              setMapCenter(coords);
+              window.scrollTo(0, 0);
+            }}
+            onShare={(obj) => setShowShareModal(obj)}
+            onLeaveShare={handleLeaveShare}
+          />
+        )}
 
-      {showCreateModal && (
-        <CreateObjectModal 
-          onClose={() => { setShowCreateModal(false); setEditingObject(null); setDefaultParentId(null); setDuplicatingObject(null); }} 
-          onSave={handleSaveObject} 
-          editObject={editingObject} 
-          duplicateFromObject={duplicatingObject}
-          saving={saving} 
-          availableParents={objects.filter(o => {
-            // Filter out the object itself
-            if (o.id === editingObject?.id) return false;
-            // Filter out children of the object (to prevent circular references)
-            if (o.parentId === editingObject?.id) return false;
-            return true;
-          })} 
-          defaultParentId={defaultParentId} 
-          userLocation={userLocation} 
-          categories={categories}
-          preciseGPS={preciseGPS}
-          isAdmin={isAdmin}
-          currentUser={user}
-          currentUserDisplayName={displayName}
-        />
-      )}
+        {showCreateModal && (
+          <CreateObjectModal 
+            onClose={() => { setShowCreateModal(false); setEditingObject(null); setDefaultParentId(null); setDuplicatingObject(null); }} 
+            onSave={handleSaveObject} 
+            editObject={editingObject} 
+            duplicateFromObject={duplicatingObject}
+            saving={saving} 
+            availableParents={objects.filter(o => {
+              // Filter out the object itself
+              if (o.id === editingObject?.id) return false;
+              // Filter out children of the object (to prevent circular references)
+              if (o.parentId === editingObject?.id) return false;
+              return true;
+            })} 
+            defaultParentId={defaultParentId} 
+            userLocation={userLocation} 
+            categories={categories}
+            preciseGPS={preciseGPS}
+            isAdmin={isAdmin}
+            currentUser={user}
+            currentUserDisplayName={displayName}
+          />
+        )}
 
-      {showShareModal && (
-        <ShareModal
-          object={showShareModal}
-          onClose={() => setShowShareModal(null)}
-          currentUserEmail={user?.email?.toLowerCase()}
-          allObjects={objects}
-          sharedContacts={sharedContacts}
-          onAddContact={async (email) => {
-            const newContacts = [...sharedContacts.filter(c => c !== email), email].slice(-20); // Keep last 20
-            setSharedContacts(newContacts);
-            try {
-              await updateDoc(doc(db, 'users', user.uid), { sharedContacts: newContacts });
-            } catch (err) {
-              console.error('Error saving contact:', err);
-            }
-          }}
-        />
-      )}
+        {showShareModal && (
+          <ShareModal
+            object={showShareModal}
+            onClose={() => setShowShareModal(null)}
+            currentUserEmail={user?.email?.toLowerCase()}
+            allObjects={objects}
+            sharedContacts={sharedContacts}
+            onAddContact={async (email) => {
+              const newContacts = [...sharedContacts.filter(c => c !== email), email].slice(-20); // Keep last 20
+              setSharedContacts(newContacts);
+              try {
+                await updateDoc(doc(db, 'users', user.uid), { sharedContacts: newContacts });
+              } catch (err) {
+                console.error('Error saving contact:', err);
+              }
+            }}
+          />
+        )}
 
-      {showCategoryAdmin && (
-        <CategoryAdminModal
-          categories={categories}
-          onClose={() => setShowCategoryAdmin(false)}
-          currentUser={user}
-          objects={objects}
-        />
-      )}
+        {showCategoryAdmin && (
+          <CategoryAdminModal
+            categories={categories}
+            onClose={() => setShowCategoryAdmin(false)}
+            currentUser={user}
+            objects={objects}
+          />
+        )}
 
-      {showObjectsAdmin && (
-        <ObjectsAdminModal
-          objects={objects}
-          categories={categories}
-          onClose={() => setShowObjectsAdmin(false)}
-          onViewObject={(obj) => {
-            // Add object to list temporarily if not already there (for admin viewing other users' objects)
-            if (!objects.find(o => o.id === obj.id)) {
-              setObjects(prev => [...prev, { ...obj, _adminView: true }]);
-            }
-            setSelectedObject(obj);
-          }}
-        />
-      )}
+        {showObjectsAdmin && (
+          <ObjectsAdminModal
+            objects={objects}
+            categories={categories}
+            onClose={() => setShowObjectsAdmin(false)}
+            onViewObject={(obj) => {
+              // Add object to list temporarily if not already there (for admin viewing other users' objects)
+              if (!objects.find(o => o.id === obj.id)) {
+                setObjects(prev => [...prev, { ...obj, _adminView: true }]);
+              }
+              setSelectedObject(obj);
+            }}
+          />
+        )}
 
-      {showUsersAdmin && (
-        <UsersAdminModal
-          currentUserId={user?.uid}
-          onClose={() => setShowUsersAdmin(false)}
-        />
-      )}
+        {showUsersAdmin && (
+          <UsersAdminModal
+            currentUserId={user?.uid}
+            onClose={() => setShowUsersAdmin(false)}
+          />
+        )}
+      </Suspense>
 
       {/* Captures Modal */}
       {showCaptures && (
@@ -1576,10 +1840,7 @@ function App() {
                 className="w-11 h-11 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 active:bg-white/20 text-gray-400 hover:text-white transition-all touch-manipulation"
                 aria-label="Stäng"
               >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
+<X size={24} />
               </button>
             </div>
             
@@ -1667,10 +1928,7 @@ function App() {
                   className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 active:bg-white/20 text-gray-400 hover:text-white transition-all touch-manipulation"
                   aria-label="Stäng"
                 >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                  </svg>
+<X size={20} />
                 </button>
               </div>
             </div>
@@ -1786,13 +2044,13 @@ function App() {
                       </button>
                     </div>
                     {!('wakeLock' in navigator) && (
-                      <div className="mt-2 text-xs text-yellow-400">
-                        ⚠️ Din webbläsare stöder inte denna funktion
+                      <div className="mt-2 text-xs text-yellow-400 flex items-center gap-1">
+                        <AlertTriangle size={12} className="flex-shrink-0" /> Din webbläsare stöder inte denna funktion
                       </div>
                     )}
                     {keepScreenOn && 'wakeLock' in navigator && (
-                      <div className="mt-2 text-xs text-green-400">
-                        ✓ Aktiv - skärmen ska förbli påslagen
+                      <div className="mt-2 text-xs text-green-400 flex items-center gap-1">
+                        <Check size={12} className="flex-shrink-0" /> Aktiv - skärmen ska förbli påslagen
                       </div>
                     )}
                   </div>
@@ -1816,8 +2074,8 @@ function App() {
                       </button>
                     </div>
                     {preciseGPS && (
-                      <div className="mt-2 text-xs text-green-400">
-                        ✓ Väntar tills GPS är ±10m eller max 15 sek
+                      <div className="mt-2 text-xs text-green-400 flex items-center gap-1">
+                        <Check size={12} className="flex-shrink-0" /> Väntar tills GPS är ±10m eller max 15 sek
                       </div>
                     )}
                   </div>
@@ -1843,7 +2101,7 @@ function App() {
                   <div className="p-2.5 rounded-lg bg-white/5">
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
-                        <div className="text-sm font-medium text-white">Visa svampknapp 🍄</div>
+                        <div className="text-sm font-medium text-white">Visa snabbpinning</div>
                         <div className="text-xs text-gray-400 mt-0.5">Orange snabb-pinning för offline</div>
                       </div>
                       <button
