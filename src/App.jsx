@@ -57,7 +57,7 @@ import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { db, auth, googleProvider } from './firebase';
-import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, Timestamp, getDoc, setDoc, deleteField, query, where, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, Timestamp, getDoc, getDocs, setDoc, deleteField, query, where, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from 'firebase/auth';
 
 // Fix Leaflet default marker icon issue with bundlers
@@ -152,6 +152,7 @@ function App() {
   const [headerHeight, setHeaderHeight] = useState(64);
   const seedingRef = useRef(false);
   const wakeLockRef = useRef(null);
+  const isMountedRef = useRef(true);
   
   // User approval and limits
   const [userApproved, setUserApproved] = useState(false);
@@ -264,8 +265,23 @@ function App() {
     localStorage.setItem('preciseGPS', preciseGPS.toString());
   }, [preciseGPS]);
 
+  // Handle bfcache (back-forward cache) - force page reload to avoid stale state
+  useEffect(() => {
+    const handlePageShow = (event) => {
+      if (event.persisted) {
+        // Page was restored from bfcache - reload to get fresh state
+        console.log('Page restored from bfcache, reloading...');
+        window.location.reload();
+      }
+    };
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
+  }, []);
+
   // Auth listener + check admin status
   useEffect(() => {
+    isMountedRef.current = true;
+    
     // Handle redirect result (for mobile login)
     getRedirectResult(auth).catch((err) => {
       if (err.code !== 'auth/popup-closed-by-user') {
@@ -274,6 +290,7 @@ function App() {
     });
 
     const unsubAuth = onAuthStateChanged(auth, async (u) => {
+      if (!isMountedRef.current) return;
       setUser(u);
       if (u) {
         // Check if user is admin
@@ -289,6 +306,8 @@ function App() {
           }
 
           const userDoc = await getDoc(doc(db, 'users', u.uid));
+          if (!isMountedRef.current) return;
+          
           if (userDoc.exists()) {
             const userData = userDoc.data();
             
@@ -298,6 +317,8 @@ function App() {
               await signOut(auth);
               return;
             }
+            
+            if (!isMountedRef.current) return;
             
             const adminFlag = userData?.isAdmin === true;
             const userFavorites = userData?.favorites || [];
@@ -311,6 +332,7 @@ function App() {
             setDisplayName(userDisplayName);
             setSharedContacts(userSharedContacts);
           } else {
+            if (!isMountedRef.current) return;
 
             // Create user doc if it doesn't exist
             await setDoc(doc(db, 'users', u.uid), {
@@ -322,6 +344,7 @@ function App() {
               sharedContacts: [],
               createdAt: Timestamp.now()
             });
+            if (!isMountedRef.current) return;
             setIsAdmin(false);
             setUserApproved(false);
             setFavorites([]);
@@ -330,6 +353,7 @@ function App() {
           }
         } catch (err) {
           console.error('Error fetching user doc:', err);
+          if (!isMountedRef.current) return;
           setIsAdmin(false);
           setUserApproved(false);
           setFavorites([]);
@@ -342,7 +366,10 @@ function App() {
         setSharedContacts([]);
       }
     });
-    return () => unsubAuth();
+    return () => {
+      isMountedRef.current = false;
+      unsubAuth();
+    };
   }, []);
 
   useLayoutEffect(() => {
@@ -393,6 +420,7 @@ function App() {
       return;
     }
 
+    let isCancelled = false;
     const userEmail = user.email?.toLowerCase();
     const objectsRef = collection(db, 'objects');
     
@@ -410,7 +438,7 @@ function App() {
     let sharedLoaded = !sharedQuery; // If no email, consider it loaded
     
     const combineAndSetObjects = () => {
-      if (!ownedLoaded || !sharedLoaded) return;
+      if (!ownedLoaded || !sharedLoaded || isCancelled) return;
       
       // Combine and dedupe (owned objects take precedence)
       const ownedIds = new Set(ownedObjects.map(o => o.id));
@@ -432,12 +460,14 @@ function App() {
     
     // Subscribe to owned objects
     const unsubOwned = onSnapshot(ownedQuery, (snap) => {
+      if (isCancelled) return;
       ownedObjects = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
       ownedLoaded = true;
       combineAndSetObjects();
     }, (error) => {
       console.error('Error loading owned objects:', error);
+      if (isCancelled) return;
       ownedLoaded = true;
       combineAndSetObjects();
     });
@@ -446,39 +476,51 @@ function App() {
     let unsubShared = () => {};
     if (sharedQuery) {
       unsubShared = onSnapshot(sharedQuery, (snap) => {
+        if (isCancelled) return;
         sharedObjects = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
         sharedLoaded = true;
         combineAndSetObjects();
       }, (error) => {
         console.error('Error loading shared objects:', error);
+        if (isCancelled) return;
         sharedLoaded = true;
         combineAndSetObjects();
       });
     }
     
     return () => {
+      isCancelled = true;
       unsubOwned();
       unsubShared();
     };
   }, [user]);
 
-  // Listen to categories
+  // Fetch categories once at startup (they rarely change)
   useEffect(() => {
-    const unsub = onSnapshot(
-      collection(db, 'categories'), 
-      (snap) => {
-        const cats = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.order - b.order);
-        setCategories(cats);
-        setCategoriesLoaded(true);
-      },
-      (error) => {
-        console.error('Error loading categories:', error);
-        // Still mark as loaded so the app doesn't hang
-        setCategoriesLoaded(true);
+    let isCancelled = false;
+    
+    const fetchCategories = async () => {
+      try {
+        const snap = await getDocs(collection(db, 'categories'));
+        if (!isCancelled) {
+          const cats = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.order - b.order);
+          setCategories(cats);
+          setCategoriesLoaded(true);
+        }
+      } catch (err) {
+        console.error('Error fetching categories:', err);
+        if (!isCancelled) {
+          setCategoriesLoaded(true);
+        }
       }
-    );
-    return () => unsub();
+    };
+    
+    fetchCategories();
+    
+    return () => {
+      isCancelled = true;
+    };
   }, []);
 
   // Seed initial categories if needed
@@ -662,8 +704,9 @@ function App() {
     });
   }
   
-  // Apply distance sorting if enabled
+  // Apply sorting
   if (sortByDistance && userLocation) {
+    // Sort by distance when enabled
     displayObjects = [...displayObjects].sort((a, b) => {
       // Put hideLocation objects last when sorting by distance
       const catA = categories.find(c => c.id === a.type);
@@ -674,6 +717,13 @@ function App() {
       const distA = getObjectDistance(a);
       const distB = getObjectDistance(b);
       return (distA ?? Infinity) - (distB ?? Infinity);
+    });
+  } else {
+    // Default: sort alphabetically by title (case-insensitive)
+    displayObjects = [...displayObjects].sort((a, b) => {
+      const titleA = (a.blocks?.find(bl => bl.type === 'title')?.data?.text || '').toLowerCase();
+      const titleB = (b.blocks?.find(bl => bl.type === 'title')?.data?.text || '').toLowerCase();
+      return titleA.localeCompare(titleB, 'sv');
     });
   }
 
