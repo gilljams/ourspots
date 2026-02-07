@@ -1,5 +1,5 @@
 import React from 'react';
-import { Star, Share2, Users, Folder, MapPin, Map as MapIcon, Navigation, Home, CornerDownRight, ChevronRight, Clock, AlertTriangle } from 'lucide-react';
+import { Star, Share2, Users, Folder, MapPin, Map as MapIcon, Navigation, Home, CornerDownRight, ChevronRight, Clock, AlertTriangle, ClipboardList } from 'lucide-react';
 import { getTransformedImageUrl, getFocalPointStyles } from '../utils/imageUtils';
 import { getIconComponent, PREDEFINED_ICONS } from '../utils/iconHelpers';
 
@@ -56,13 +56,19 @@ const getNearestFutureDate = (blocks) => {
 };
 
 function ObjectCard({ object, onClick, currentUser, childCount, distance, categories, isFavorite, onToggleFavorite, onNavigate, onShare, isOrphanChild, parentChain, showAsChild, compact }) {
-  // Find category to get icon
+  // Find category to get icon - use ClipboardList for collections
   const category = categories.find(c => c.id === object.type);
-  const IconComponent = category ? getIconComponent(category.icon) : (PREDEFINED_ICONS[object.type]?.icon || Home);
+  const isCollection = object.isCollection;
+  const IconComponent = isCollection 
+    ? ClipboardList 
+    : (category ? getIconComponent(category.icon) : (PREDEFINED_ICONS[object.type]?.icon || Home));
   const titleBlock = object.blocks.find(b => b.type === 'title');
   const imageBlock = object.blocks.find(b => b.type === 'image');
   const locationBlock = object.blocks.find(b => b.type === 'location');
   const textBlock = object.blocks.find(b => b.type === 'text');
+  
+  // Count linked objects for collections
+  const linkedCount = isCollection ? (object.linkedObjectIds?.length || 0) : 0;
   
   // Get countdown for nearest future date
   const nearestDate = getNearestFutureDate(object.blocks || []);
@@ -104,7 +110,7 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
   const showBreadcrumb = showAsChild && parentChain && parentChain.length > 0;
 
   return (
-    <div onClick={onClick} className={`bg-white/5 backdrop-blur-md rounded-2xl overflow-hidden border border-white/10 hover:border-blue-400/50 transition-all cursor-pointer transform hover:scale-[1.02] relative group ${compact ? 'lg:rounded-xl' : ''}`}>
+    <div onClick={onClick} className={`bg-white/5 backdrop-blur-md overflow-hidden border border-white/10 hover:border-blue-400/50 transition-all cursor-pointer transform hover:scale-[1.02] relative group ${compact ? 'rounded-xl' : 'rounded-2xl'}`}>
       {/* Parent breadcrumb for orphan/search children */}
       {showBreadcrumb && (
         <div className="px-3 py-1.5 bg-blue-500/10 border-b border-white/5 flex items-center gap-1 text-[10px] text-blue-300/80 overflow-hidden">
@@ -157,7 +163,7 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
               </div>
             )}
           </div>
-          <div className={`w-full overflow-hidden relative ${compact ? 'h-28 lg:h-24' : 'h-40'}`}>
+          <div className={`w-full overflow-hidden relative ${compact ? 'h-20 sm:h-24' : 'h-40'}`}>
             <img 
               src={getTransformedImageUrl(imageBlock.data.url, imageBlock.data.focalPoint ? 'custom' : imageBlock.data.cropMode, 800, 320, imageBlock.data.focalPoint)} 
               alt="" 
@@ -178,7 +184,7 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
           </div>
         </>
       ) : null}
-      <div className={compact ? "p-3 lg:p-2.5" : "p-4"}>
+      <div className={compact ? "p-2 sm:p-2.5" : "p-4"}>
         {!category && isOwner && (
           <div className={`mb-2 text-yellow-400 bg-yellow-400/10 px-2 py-1 rounded border border-yellow-400/20 flex items-center gap-1.5 ${compact ? 'text-[10px]' : 'text-xs'}`}>
             <AlertTriangle size={compact ? 12 : 14} className="flex-shrink-0" />
@@ -186,11 +192,14 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
           </div>
         )}
         <div className="flex items-center gap-2 mb-2">
-          <div className={`rounded-lg bg-blue-500/20 flex items-center justify-center flex-shrink-0 ${compact ? 'w-6 h-6 lg:w-5 lg:h-5' : 'w-8 h-8'}`}>
-            <IconComponent size={compact ? 14 : 18} className="text-blue-400" />
+          <div className={`rounded-lg flex items-center justify-center flex-shrink-0 ${compact ? 'w-5 h-5 sm:w-6 sm:h-6' : 'w-8 h-8'} ${isCollection ? 'bg-purple-500/20' : 'bg-blue-500/20'}`}>
+            <IconComponent size={compact ? 12 : 18} className={isCollection ? 'text-purple-400' : 'text-blue-400'} />
           </div>
           <div className="flex-1 min-w-0">
-            {titleBlock && <h3 className={`font-semibold text-white truncate ${compact ? 'text-sm lg:text-xs' : 'text-lg'}`}>{titleBlock.data.text}</h3>}
+            {titleBlock && <h3 className={`font-semibold text-white truncate ${compact ? 'text-xs sm:text-sm' : 'text-lg'}`}>{titleBlock.data.text}</h3>}
+            {isCollection && linkedCount > 0 && (
+              <div className="text-xs text-purple-400">{linkedCount} objekt</div>
+            )}
           </div>
           {/* Favorite + Share buttons for cards without image */}
           {!imageBlock && (

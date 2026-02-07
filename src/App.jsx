@@ -5,7 +5,7 @@ import {
   Map as MapIcon, List, ChevronDown, ArrowUp, ArrowDown, ArrowLeft, Search, Settings,
   Target, Lightbulb, SlidersHorizontal, Menu, Filter, Share2, UserPlus, UserMinus, Users, Mail, User,
   FileText, MapPin, Home, RotateCcw, Star, Navigation, Eye, Edit3, AlertTriangle, Trophy,
-  LayoutGrid, LayoutList
+  LayoutGrid, LayoutList, ArrowUpDown
 } from 'lucide-react';
 
 // Version for cache-busting visual indicator (remove in production)
@@ -79,6 +79,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedObject, setSelectedObject] = useState(null);
+  const [navigationHistory, setNavigationHistory] = useState([]); // Stack of previously viewed objects
   const [activeCategory, setActiveCategory] = useState(() => {
     const saved = localStorage.getItem('activeCategory');
     return saved || 'all';
@@ -103,6 +104,7 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [maxDistanceKm, setMaxDistanceKm] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [viewFilter, setViewFilter] = useState('all'); // 'all' | 'collections' | 'objects'
   const [compactCards, setCompactCards] = useState(() => {
     const saved = localStorage.getItem('compactCards');
     return saved === 'true';
@@ -678,6 +680,13 @@ function App() {
     filteredObjects = filteredObjects.filter(o => o.ownerId === user.uid);
   }
   
+  // Apply view filter (collections vs objects)
+  if (viewFilter === 'collections') {
+    filteredObjects = filteredObjects.filter(o => o.isCollection === true);
+  } else if (viewFilter === 'objects') {
+    filteredObjects = filteredObjects.filter(o => !o.isCollection);
+  }
+  
   // Determine which objects to display
   let displayObjects;
   
@@ -1169,7 +1178,13 @@ function App() {
           ownerName: user.displayName, 
           ownerEmail: user.email, 
           createdAt: Timestamp.now(), 
-          updatedAt: Timestamp.now()
+          updatedAt: Timestamp.now(),
+          isCollection: objectData.isCollection || false,
+          linkedObjectIds: objectData.linkedObjectIds || [],
+          linkedUrls: objectData.linkedUrls || [],
+          linkedOrder: objectData.linkedOrder || [],
+          whatsappGroupUrl: objectData.whatsappGroupUrl || null
+          // Note: linkedObjectNotes is NOT copied - it contains time-specific info
         };
         
         // Add inherited shares if any
@@ -1228,9 +1243,24 @@ function App() {
       // Delete all descendants first, then the object itself
       const allToDelete = [...descendants.map(d => d.id), id];
       
-      await Promise.all(allToDelete.map(objId => 
-        deleteDoc(doc(db, 'objects', objId))
-      ));
+      // Find all collections that link to any of the deleted objects
+      const collectionsToUpdate = objects.filter(o => 
+        o.isCollection && 
+        o.linkedObjectIds?.some(linkedId => allToDelete.includes(linkedId))
+      );
+      
+      // Update collections to remove deleted object IDs
+      await Promise.all([
+        // Delete the objects
+        ...allToDelete.map(objId => deleteDoc(doc(db, 'objects', objId))),
+        // Clean up linkedObjectIds in collections
+        ...collectionsToUpdate.map(collection => 
+          updateDoc(doc(db, 'objects', collection.id), {
+            linkedObjectIds: (collection.linkedObjectIds || []).filter(linkedId => !allToDelete.includes(linkedId)),
+            updatedAt: Timestamp.now()
+          })
+        )
+      ]);
     } catch (err) {
       console.error('Error deleting objects:', err);
       alert('Kunde inte ta bort!');
@@ -1574,91 +1604,124 @@ function App() {
           </div>
           
           {showFilters && (
-            <div className="mt-3 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
-              {/* Search - mobile only */}
-              <div className="relative lg:hidden">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-white/10 text-white text-base placeholder:text-gray-400 rounded-xl pl-10 pr-10 py-2.5 border border-white/10 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/30 transition-all"
-                  placeholder="Sök på namn eller innehåll"
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-gray-300 transition-colors"
-                  >
-                    <X size={12} />
-                  </button>
-                )}
+            <div className="mt-3 space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
+              {/* Search + toggle - mobile only */}
+              <div className="flex gap-2 lg:hidden">
+                <div className="relative flex-1">
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full h-9 bg-white/10 text-white text-sm placeholder:text-gray-400 rounded-lg pl-9 pr-9 border border-white/10 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/30 transition-all"
+                    placeholder="Sök..."
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-gray-300 transition-colors"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+                {/* Compact cards toggle */}
+                <button
+                  onClick={() => {
+                    const newValue = !compactCards;
+                    setCompactCards(newValue);
+                    localStorage.setItem('compactCards', newValue);
+                  }}
+                  className={`h-9 w-9 flex items-center justify-center rounded-lg transition-all ${compactCards ? 'bg-blue-500 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20'}`}
+                  title={compactCards ? 'Stora kort' : 'Kompakta kort'}
+                >
+                  {compactCards ? <LayoutGrid size={16} /> : <LayoutList size={16} />}
+                </button>
               </div>
               
-              {/* Favorites + Sort by distance on same row */}
-              <div className="flex gap-2">
+              {/* Row 2: Favorites, Mina | View filter pills */}
+              <div className="flex items-center gap-1.5">
                 {user && (
                   <button
                     onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl transition-all text-sm font-medium ${showFavoritesOnly ? 'bg-yellow-500 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20 border border-white/10'}`}
+                    className={`h-8 flex items-center justify-center gap-1 px-2.5 rounded-lg transition-all text-sm font-medium ${showFavoritesOnly ? 'bg-yellow-500 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20'}`}
+                    title="Favoriter"
                   >
-                    <Star size={16} className={showFavoritesOnly ? 'fill-white' : ''} />
-                    <span>Favoriter</span>
+                    <Star size={14} className={showFavoritesOnly ? 'fill-white' : ''} />
                     {validFavoritesCount > 0 && (
-                      <span className={`px-1.5 py-0.5 rounded-full text-xs ${showFavoritesOnly ? 'bg-white/25' : 'bg-yellow-500/20 text-yellow-400'}`}>
+                      <span className={`text-xs ${showFavoritesOnly ? '' : 'text-yellow-400'}`}>
                         {validFavoritesCount}
                       </span>
                     )}
                   </button>
                 )}
-                {userLocation && (
-                  <button 
-                    onClick={() => setSortByDistance(!sortByDistance)}
-                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl transition-all text-sm font-medium ${sortByDistance ? 'bg-blue-500 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20 border border-white/10'}`}
-                  >
-                    <Navigation size={16} />
-                    <span>Närmast</span>
-                  </button>
-                )}
                 {user && (
                   <button 
                     onClick={() => setShowOnlyOwned(!showOnlyOwned)}
-                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl transition-all text-sm font-medium ${showOnlyOwned ? 'bg-blue-500 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20 border border-white/10'}`}
+                    className={`h-8 flex items-center justify-center gap-1 px-2.5 rounded-lg transition-all text-sm font-medium ${showOnlyOwned ? 'bg-blue-500 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20'}`}
                   >
-                    <User size={16} />
-                    <span>Mina</span>
+                    <User size={14} />
+                    <span className="text-xs">Mina</span>
                   </button>
                 )}
+                
+                <div className="w-px h-5 bg-white/20 mx-1.5" />
+                
+                {/* Connected pill group for view filter */}
+                <div className="flex h-8 rounded-lg overflow-hidden border border-white/10">
+                  <button
+                    onClick={() => setViewFilter('all')}
+                    className={`px-2.5 transition-all text-xs font-medium border-r border-white/10 ${viewFilter === 'all' ? 'bg-blue-500 text-white' : 'bg-white/5 text-gray-300 hover:bg-white/10'}`}
+                  >
+                    Alla
+                  </button>
+                  <button
+                    onClick={() => setViewFilter('collections')}
+                    className={`px-2.5 transition-all text-xs font-medium border-r border-white/10 ${viewFilter === 'collections' ? 'bg-purple-500 text-white' : 'bg-white/5 text-gray-300 hover:bg-white/10'}`}
+                  >
+                    Samlingar
+                  </button>
+                  <button
+                    onClick={() => setViewFilter('objects')}
+                    className={`px-2.5 transition-all text-xs font-medium ${viewFilter === 'objects' ? 'bg-blue-500 text-white' : 'bg-white/5 text-gray-300 hover:bg-white/10'}`}
+                  >
+                    Objekt
+                  </button>
+                </div>
               </div>
               
-              {/* Distance slider */}
+              {/* Row 3: Distance slider + Närmast */}
               {userLocation && (
-                <div>
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1">
-                      <div className="text-xs text-gray-400 mb-1">Max avstånd</div>
-                      <input
-                        type="range"
-                        min="1"
-                        max="50"
-                        step="1"
-                        value={maxDistanceKm ?? 25}
-                        onChange={(e) => setMaxDistanceKm(Number(e.target.value))}
-                        className="w-full accent-blue-500"
-                      />
-                    </div>
-                    <div className="flex flex-col items-center">
-                      <span className="text-xs text-gray-200 mb-0.5">
-                        {maxDistanceKm ? `${maxDistanceKm} km` : 'Alla'}
-                      </span>
-                      <button
-                        onClick={() => setMaxDistanceKm(null)}
-                        disabled={!maxDistanceKm}
-                        className="text-xs px-2.5 py-1 rounded-lg bg-white/10 text-gray-300 hover:bg-white/20 border border-white/10 disabled:opacity-40"
-                      >
-                        Alla
-                      </button>
-                    </div>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <Navigation size={14} className="text-gray-500 flex-shrink-0" />
+                  <input
+                    type="range"
+                    min="1"
+                    max="50"
+                    step="1"
+                    value={maxDistanceKm ?? 50}
+                    onChange={(e) => setMaxDistanceKm(Number(e.target.value))}
+                    className="flex-1 h-1.5 accent-blue-500"
+                  />
+                  <span className="text-xs text-gray-300 w-14 text-right tabular-nums">
+                    {maxDistanceKm ? `≤${maxDistanceKm} km` : 'Alla'}
+                  </span>
+                  {maxDistanceKm && (
+                    <button
+                      onClick={() => setMaxDistanceKm(null)}
+                      className="h-6 w-6 flex items-center justify-center rounded-full bg-white/10 text-gray-400 hover:bg-white/20 hover:text-white transition-all"
+                      title="Rensa avståndsfilter"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                  <div className="w-px h-5 bg-white/20 mx-1" />
+                  <button 
+                    onClick={() => setSortByDistance(!sortByDistance)}
+                    className={`h-8 flex items-center gap-1 px-2.5 rounded-lg transition-all text-xs font-medium ${sortByDistance ? 'bg-blue-500 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20'}`}
+                  >
+                    <ArrowUpDown size={12} />
+                    <span>Närmast</span>
+                  </button>
                 </div>
               )}
             </div>
@@ -1669,7 +1732,7 @@ function App() {
       <main className="max-w-6xl mx-auto px-4 lg:max-w-7xl">
         {viewMode === 'list' ? (
           <div className="py-6">
-            <div className={`grid gap-4 ${compactCards ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
+            <div className={`grid ${compactCards ? 'grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6' : 'grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3'}`}>
               {displayObjects.map(obj => {
                 const childCount = objects.filter(o => o.parentId === obj.id).length;
                 const distance = getObjectDistance(obj);
@@ -1747,10 +1810,24 @@ function App() {
             )}
           </div>
         ) : (
-          <MapView objects={displayObjects.filter(obj => {
-            const cat = categories.find(c => c.id === obj.type);
-            return !cat?.hideLocation;
-          })} onSelectObject={setSelectedObject} currentUser={user} userLocation={userLocation} categories={categories} mapCenter={mapCenter} showFilters={showFilters} />
+          <MapView objects={(() => {
+            // Filter out objects with hideLocation categories
+            let mapObjects = displayObjects.filter(obj => {
+              const cat = categories.find(c => c.id === obj.type);
+              return !cat?.hideLocation;
+            });
+            // Ensure the returnToObjectId object is included even if filtered out
+            if (returnToObjectId && !mapObjects.find(o => o.id === returnToObjectId)) {
+              const targetObj = objects.find(o => o.id === returnToObjectId);
+              if (targetObj) {
+                const cat = categories.find(c => c.id === targetObj.type);
+                if (!cat?.hideLocation) {
+                  mapObjects = [...mapObjects, targetObj];
+                }
+              }
+            }
+            return mapObjects;
+          })()} onSelectObject={setSelectedObject} currentUser={user} userLocation={userLocation} categories={categories} mapCenter={mapCenter} showFilters={showFilters} />
         )}
       </main>
 
@@ -1834,7 +1911,7 @@ function App() {
         {selectedObject && (
           <ObjectDetail 
             object={selectedObject} 
-            onClose={() => setSelectedObject(null)} 
+            onClose={() => { setSelectedObject(null); setNavigationHistory([]); }} 
             onEdit={handleEdit} 
             onDelete={handleDeleteObject} 
             onDuplicate={handleDuplicate}
@@ -1842,7 +1919,16 @@ function App() {
             currentUser={user} 
             userDisplayName={displayName}
             allObjects={objects} 
-            onNavigate={(obj) => setSelectedObject(obj)} 
+            onNavigate={(obj) => {
+              setNavigationHistory(prev => [...prev, selectedObject]);
+              setSelectedObject(obj);
+            }}
+            onGoBack={navigationHistory.length > 0 ? () => {
+              const prev = navigationHistory[navigationHistory.length - 1];
+              setNavigationHistory(h => h.slice(0, -1));
+              setSelectedObject(prev);
+            } : null}
+            previousObject={navigationHistory.length > 0 ? navigationHistory[navigationHistory.length - 1] : null}
             categories={categories} 
             isAdmin={isAdmin}
             onShowOnMap={(coords, objectId) => {
@@ -1854,6 +1940,142 @@ function App() {
             }}
             onShare={(obj) => setShowShareModal(obj)}
             onLeaveShare={handleLeaveShare}
+            collections={objects.filter(o => o.isCollection && (o.ownerId === user?.uid || isAdmin))}
+            onAddToCollection={async (objectId, collectionId) => {
+              try {
+                // Prevent circular linking (adding collection to itself)
+                if (objectId === collectionId) {
+                  alert('En samlingsvy kan inte länka till sig själv');
+                  return;
+                }
+                const collection = objects.find(o => o.id === collectionId);
+                if (!collection) return;
+                const currentLinked = collection.linkedObjectIds || [];
+                if (currentLinked.includes(objectId)) {
+                  alert('Objektet finns redan i samlingsvyn');
+                  return;
+                }
+                // Add to both linkedObjectIds and linkedOrder
+                const currentOrder = collection.linkedOrder || [];
+                await updateDoc(doc(db, 'objects', collectionId), {
+                  linkedObjectIds: [...currentLinked, objectId],
+                  linkedOrder: [...currentOrder, { type: 'object', id: objectId }],
+                  updatedAt: Timestamp.now()
+                });
+                const collectionTitle = collection.blocks?.find(b => b.type === 'title')?.data?.text || 'samlingsvyn';
+                alert(`Tillagt i "${collectionTitle}"!`);
+              } catch (err) {
+                console.error('Error adding to collection:', err);
+                alert('Kunde inte lägga till i samlingsvyn');
+              }
+            }}
+            onRemoveFromCollection={async (collectionId, objectId) => {
+              try {
+                const collection = objects.find(o => o.id === collectionId);
+                if (!collection) return;
+                const currentLinked = collection.linkedObjectIds || [];
+                const currentOrder = collection.linkedOrder || [];
+                await updateDoc(doc(db, 'objects', collectionId), {
+                  linkedObjectIds: currentLinked.filter(id => id !== objectId),
+                  linkedOrder: currentOrder.filter(item => !(item.type === 'object' && item.id === objectId)),
+                  updatedAt: Timestamp.now()
+                });
+              } catch (err) {
+                console.error('Error removing from collection:', err);
+                alert('Kunde inte ta bort från samlingsvyn');
+              }
+            }}
+            onUpdateLinkedNote={async (collectionId, linkedObjectId, note) => {
+              try {
+                const collection = objects.find(o => o.id === collectionId);
+                if (!collection) return;
+                const currentNotes = collection.linkedObjectNotes || {};
+                const updatedNotes = { ...currentNotes };
+                if (note) {
+                  updatedNotes[linkedObjectId] = note;
+                } else {
+                  delete updatedNotes[linkedObjectId];
+                }
+                await updateDoc(doc(db, 'objects', collectionId), {
+                  linkedObjectNotes: updatedNotes,
+                  updatedAt: Timestamp.now()
+                });
+              } catch (err) {
+                console.error('Error updating linked note:', err);
+              }
+            }}
+            onAddLinkedUrl={async (collectionId, urlData) => {
+              try {
+                const collection = objects.find(o => o.id === collectionId);
+                if (!collection) return;
+                const newUrl = {
+                  id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+                  title: urlData.title,
+                  url: urlData.url,
+                  note: urlData.note || ''
+                };
+                const currentUrls = collection.linkedUrls || [];
+                const currentOrder = collection.linkedOrder || [];
+                await updateDoc(doc(db, 'objects', collectionId), {
+                  linkedUrls: [...currentUrls, newUrl],
+                  linkedOrder: [...currentOrder, { type: 'url', id: newUrl.id }],
+                  updatedAt: Timestamp.now()
+                });
+              } catch (err) {
+                console.error('Error adding linked URL:', err);
+                alert('Kunde inte lägga till länken');
+              }
+            }}
+            onUpdateLinkedUrl={async (collectionId, urlId, urlData) => {
+              try {
+                const collection = objects.find(o => o.id === collectionId);
+                if (!collection) return;
+                const currentUrls = collection.linkedUrls || [];
+                const updatedUrls = currentUrls.map(u => u.id === urlId ? { ...u, ...urlData } : u);
+                await updateDoc(doc(db, 'objects', collectionId), {
+                  linkedUrls: updatedUrls,
+                  updatedAt: Timestamp.now()
+                });
+              } catch (err) {
+                console.error('Error updating linked URL:', err);
+              }
+            }}
+            onRemoveLinkedUrl={async (collectionId, urlId) => {
+              try {
+                const collection = objects.find(o => o.id === collectionId);
+                if (!collection) return;
+                const currentUrls = collection.linkedUrls || [];
+                const currentOrder = collection.linkedOrder || [];
+                await updateDoc(doc(db, 'objects', collectionId), {
+                  linkedUrls: currentUrls.filter(u => u.id !== urlId),
+                  linkedOrder: currentOrder.filter(item => !(item.type === 'url' && item.id === urlId)),
+                  updatedAt: Timestamp.now()
+                });
+              } catch (err) {
+                console.error('Error removing linked URL:', err);
+              }
+            }}
+            onReorderLinked={async (collectionId, currentIndex, direction) => {
+              try {
+                const collection = objects.find(o => o.id === collectionId);
+                if (!collection) return;
+                
+                const currentOrder = [...(collection.linkedOrder || [])];
+                const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+                
+                if (newIndex < 0 || newIndex >= currentOrder.length) return;
+                
+                // Swap in the unified order array
+                [currentOrder[currentIndex], currentOrder[newIndex]] = [currentOrder[newIndex], currentOrder[currentIndex]];
+                
+                await updateDoc(doc(db, 'objects', collectionId), {
+                  linkedOrder: currentOrder,
+                  updatedAt: Timestamp.now()
+                });
+              } catch (err) {
+                console.error('Error reordering linked item:', err);
+              }
+            }}
           />
         )}
 
@@ -1878,6 +2100,7 @@ function App() {
             isAdmin={isAdmin}
             currentUser={user}
             currentUserDisplayName={displayName}
+            hasChildren={editingObject?.id ? objects.some(o => o.parentId === editingObject.id) : false}
           />
         )}
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Plus, Edit2, Trash2, Settings, ChevronDown, 
-  Share2, Users, UserMinus, Home, List, LayoutGrid, FileText, Copy, BarChart3
+  Plus, Edit2, Trash2, Settings, ChevronDown, ChevronUp,
+  Share2, Users, UserMinus, Home, List, LayoutGrid, FileText, Copy, BarChart3, ClipboardList, Link2, X, Search, Check, ExternalLink, Map as MapIcon, Navigation, Maximize2
 } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -12,6 +12,9 @@ import DeleteConfirmModal from './DeleteConfirmModal';
 import LeaderboardModal from './LeaderboardModal';
 import DistributionModal from './DistributionModal';
 import { FullscreenTextEditor } from './BlockEditor';
+import { MapContainer, TileLayer, Marker, Tooltip, Popup, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import { createColoredIcon, createUserIcon } from '../utils/mapIcons';
 
 // Folder icon - we'll define it locally since it's only used here
 const Folder = ({ size = 24, ...props }) => (
@@ -20,15 +23,256 @@ const Folder = ({ size = 24, ...props }) => (
   </svg>
 );
 
-function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockUpdate, currentUser, userDisplayName, allObjects, onNavigate, categories, isAdmin, onShowOnMap, onShare, onLeaveShare }) {
+// Component to fit map bounds to all markers - only runs once on mount
+function FitBounds({ positions }) {
+  const map = useMap();
+  const hasInitialized = useRef(false);
+  
+  useEffect(() => {
+    if (hasInitialized.current) return;
+    if (positions.length === 0) return;
+    
+    hasInitialized.current = true;
+    
+    if (positions.length === 1) {
+      map.setView([positions[0].lat, positions[0].lng], 13);
+    } else {
+      const bounds = L.latLngBounds(positions.map(p => [p.lat, p.lng]));
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
+    }
+  }, [map, positions]);
+  
+  return null;
+}
+
+// Mini map view for collection
+function CollectionMapView({ objects, categories, onSelectObject, userLocation }) {
+  const [currentUserLocation, setCurrentUserLocation] = useState(userLocation);
+  
+  const positions = objects.map(obj => {
+    const loc = obj.blocks.find(b => b.type === 'location');
+    return { lat: loc.data.lat, lng: loc.data.lng };
+  });
+  
+  const center = positions.length > 0 
+    ? [
+        positions.reduce((sum, p) => sum + p.lat, 0) / positions.length,
+        positions.reduce((sum, p) => sum + p.lng, 0) / positions.length
+      ]
+    : [59.33, 18.06];
+
+  const isTouchDevice = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+
+  // Request user location
+  const requestLocation = () => {
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setCurrentUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+        },
+        () => {}, // Ignore errors silently
+        { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+      );
+    }
+  };
+
+  // Try to get location on mount if not provided
+  useEffect(() => {
+    if (!currentUserLocation) {
+      requestLocation();
+    }
+  }, []);
+
+  return (
+    <MapContainer 
+      center={center} 
+      zoom={10} 
+      style={{ height: '100%', width: '100%' }}
+      scrollWheelZoom={true}
+    >
+      <TileLayer
+        attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+      />
+      <FitBounds positions={positions} />
+      
+      {/* User location marker */}
+      {currentUserLocation && (
+        <Marker 
+          position={[currentUserLocation.lat, currentUserLocation.lng]} 
+          icon={createUserIcon()}
+          zIndexOffset={1000}
+        >
+          <Tooltip permanent={false} direction="top">Din plats</Tooltip>
+        </Marker>
+      )}
+      
+      {objects.map(obj => {
+        const loc = obj.blocks.find(b => b.type === 'location');
+        const titleBlock = obj.blocks.find(b => b.type === 'title');
+        const imageBlock = obj.blocks.find(b => b.type === 'image');
+        const category = categories?.find(c => c.id === obj.type);
+        const isCollectionSelf = obj.isCollectionSelf;
+        // Collection's own location gets a special gold/star color
+        const markerColor = isCollectionSelf ? '#F59E0B' : (category?.color || '#A855F7');
+        const icon = createColoredIcon(markerColor);
+        const note = obj._collectionNote; // Will be set if passed
+        
+        return (
+          <Marker 
+            key={obj.id} 
+            position={[loc.data.lat, loc.data.lng]} 
+            icon={icon}
+            zIndexOffset={isCollectionSelf ? 500 : 0}
+          >
+            <Popup>
+              <div className="min-w-[160px]">
+                {imageBlock && (
+                  <div className="w-full h-20 -mx-3 -mt-2 mb-2 overflow-hidden">
+                    <img 
+                      src={getTransformedImageUrl(imageBlock.data.url, 'center', 200, 80)} 
+                      alt="" 
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+                <div className="text-sm font-semibold mb-1">
+                  {isCollectionSelf && <span className="text-amber-500">★ </span>}
+                  {titleBlock?.data?.text || 'Namnlöst'}
+                </div>
+                {loc.data.address && (
+                  <div className="text-xs text-gray-600 mb-2 truncate">{loc.data.address}</div>
+                )}
+                {!isCollectionSelf && (
+                  <button
+                    onClick={() => onSelectObject(obj)}
+                    className="w-full px-3 py-1.5 rounded bg-purple-500 hover:bg-purple-600 text-white text-xs font-medium transition-colors"
+                  >
+                    Öppna
+                  </button>
+                )}
+                {isCollectionSelf && (
+                  <div className="text-xs text-amber-600 font-medium">Samlingens plats</div>
+                )}
+              </div>
+            </Popup>
+            {!isTouchDevice && (
+              <Tooltip direction="top" offset={[0, -8]} opacity={0.95}>
+                <div className="text-xs font-medium">
+                  {isCollectionSelf && '★ '}
+                  {titleBlock?.data?.text || 'Namnlöst'}
+                </div>
+              </Tooltip>
+            )}
+          </Marker>
+        );
+      })}
+      
+      {/* Map control buttons */}
+      <CenterOnLocationButton onLocationFound={setCurrentUserLocation} />
+      <FitAllButton positions={positions} />
+    </MapContainer>
+  );
+}
+
+// Button to center on user location - must be inside MapContainer to use useMap
+function CenterOnLocationButton({ onLocationFound }) {
+  const map = useMap();
+  const [isLocating, setIsLocating] = useState(false);
+  
+  const handleCenterOnUser = () => {
+    if (!('geolocation' in navigator)) {
+      alert('Din enhet stöder inte platsåtkomst');
+      return;
+    }
+    
+    setIsLocating(true);
+    
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        map.setView([latitude, longitude], 13);
+        if (onLocationFound) {
+          onLocationFound({ lat: latitude, lng: longitude });
+        }
+        setIsLocating(false);
+      },
+      (error) => {
+        setIsLocating(false);
+        let message = 'Kunde inte hämta din position. ';
+        if (error.code === 1) {
+          message = 'Du nekade platsåtkomst.';
+        }
+        alert(message);
+      },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 30000 }
+    );
+  };
+  
+  return (
+    <button
+      onClick={handleCenterOnUser}
+      disabled={isLocating}
+      className={`absolute top-4 right-16 z-[1000] p-3 rounded-lg ${isLocating ? 'bg-blue-400' : 'bg-blue-500 hover:bg-blue-600'} text-white shadow-lg transition-all flex items-center justify-center`}
+      title="Gå till min position"
+      style={{ position: 'absolute' }}
+    >
+      <Navigation size={20} className={isLocating ? 'animate-pulse' : ''} />
+    </button>
+  );
+}
+
+// Button to fit all markers in view
+function FitAllButton({ positions }) {
+  const map = useMap();
+  
+  const handleFitAll = () => {
+    if (positions.length === 0) return;
+    
+    if (positions.length === 1) {
+      map.setView([positions[0].lat, positions[0].lng], 13);
+    } else {
+      const bounds = L.latLngBounds(positions.map(p => [p.lat, p.lng]));
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
+    }
+  };
+  
+  return (
+    <button
+      onClick={handleFitAll}
+      className="absolute top-4 right-4 z-[1000] p-3 rounded-lg bg-purple-500 hover:bg-purple-600 text-white shadow-lg transition-all flex items-center justify-center"
+      title="Visa alla platser"
+      style={{ position: 'absolute' }}
+    >
+      <Maximize2 size={20} />
+    </button>
+  );
+}
+
+function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockUpdate, currentUser, userDisplayName, allObjects, onNavigate, onGoBack, previousObject, categories, isAdmin, onShowOnMap, onShare, onLeaveShare, collections, onAddToCollection, onRemoveFromCollection, onUpdateLinkedNote, onAddLinkedUrl, onUpdateLinkedUrl, onRemoveLinkedUrl, onReorderLinked }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showManageSection, setShowManageSection] = useState(false);
+  const [showCollectionPicker, setShowCollectionPicker] = useState(false);
+  const [showAddObjectPicker, setShowAddObjectPicker] = useState(false);
+  const [objectSearchQuery, setObjectSearchQuery] = useState('');
+  const [editingNoteId, setEditingNoteId] = useState(null);
+  const [editingNoteText, setEditingNoteText] = useState('');
+  const [linkedEditMode, setLinkedEditMode] = useState(false);
+  const [showAddUrlForm, setShowAddUrlForm] = useState(false);
+  const [newUrlTitle, setNewUrlTitle] = useState('');
+  const [newUrlValue, setNewUrlValue] = useState('');
+  const [newUrlNote, setNewUrlNote] = useState('');
+  const [editingUrlId, setEditingUrlId] = useState(null);
   const [childViewMode, setChildViewMode] = useState(() => {
     return localStorage.getItem('ourspots-child-view-mode') || 'grid';
   });
   const [leaderboardModalData, setLeaderboardModalData] = useState(null); // { blockIndex, data }
   const [textEditModalData, setTextEditModalData] = useState(null); // { blockIndex, content, title }
   const [distributionModalData, setDistributionModalData] = useState(null); // { blockIndex, data }
+  const [showCollectionMap, setShowCollectionMap] = useState(false); // For collection map modal
   
   // Centralized audio state for coordinating between LocationBlock and ImageBlock
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
@@ -113,8 +357,11 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
   
   // Find category to get icon
   const category = categories.find(c => c.id === object.type);
-  const IconComponent = category ? getIconComponent(category.icon) : (PREDEFINED_ICONS[object.type]?.icon || Home);
-  const categoryColor = category?.color || '#3B82F6';
+  const isCollection = object.isCollection;
+  const IconComponent = isCollection 
+    ? ClipboardList 
+    : (category ? getIconComponent(category.icon) : (PREDEFINED_ICONS[object.type]?.icon || Home));
+  const categoryColor = isCollection ? '#A855F7' : (category?.color || '#3B82F6');
   const isOwner = currentUser && object.ownerId === currentUser.uid;
   const isSharedWithMe = object.isSharedWithMe;
   const userEmailKey = currentUser?.email ? emailToKey(currentUser.email.toLowerCase()) : null;
@@ -126,6 +373,69 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
   
   const childObjects = allObjects.filter(o => o.parentId === object.id);
   const parentObject = object.parentId ? allObjects.find(o => o.id === object.parentId) : null;
+  
+  // For collections: get linked objects that user has access to
+  const totalLinkedCount = isCollection ? (object.linkedObjectIds || []).length : 0;
+  const linkedObjects = isCollection 
+    ? (object.linkedObjectIds || [])
+        .map(id => allObjects.find(o => o.id === id))
+        .filter(Boolean)
+    : [];
+  const hiddenLinkedCount = totalLinkedCount - linkedObjects.length;
+  
+  // Build unified ordered list of linked items (objects + URLs)
+  const orderedLinkedItems = (() => {
+    if (!isCollection) return [];
+    
+    const linkedOrder = object.linkedOrder || [];
+    const linkedUrls = object.linkedUrls || [];
+    const objectsMap = new Map(linkedObjects.map(o => [o.id, o]));
+    const urlsMap = new Map(linkedUrls.map(u => [u.id, u]));
+    
+    // If no linkedOrder yet (legacy data), create default order: objects first, then URLs
+    if (linkedOrder.length === 0) {
+      const items = [];
+      linkedObjects.forEach(obj => items.push({ type: 'object', id: obj.id, data: obj }));
+      linkedUrls.forEach(url => items.push({ type: 'url', id: url.id, data: url }));
+      return items;
+    }
+    
+    // Use linkedOrder but skip items that don't exist or user can't access
+    return linkedOrder
+      .map(item => {
+        if (item.type === 'object') {
+          const obj = objectsMap.get(item.id);
+          return obj ? { type: 'object', id: item.id, data: obj } : null;
+        } else if (item.type === 'url') {
+          const url = urlsMap.get(item.id);
+          return url ? { type: 'url', id: item.id, data: url } : null;
+        }
+        return null;
+      })
+      .filter(Boolean);
+  })();
+  
+  // Get linked objects with coordinates for map view
+  const linkedObjectsWithCoords = (() => {
+    const linkedItems = orderedLinkedItems
+      .filter(item => item.type === 'object')
+      .map(item => item.data)
+      .filter(obj => {
+        const loc = obj.blocks?.find(b => b.type === 'location');
+        return loc?.data?.lat && loc?.data?.lng;
+      });
+    
+    // Also include the collection's own location if it has one
+    if (isCollection && object.blocks) {
+      const ownLocation = object.blocks.find(b => b.type === 'location');
+      if (ownLocation?.data?.lat != null && ownLocation?.data?.lng != null) {
+        // Add the collection itself as first item with a special marker
+        linkedItems.unshift({ ...object, isCollectionSelf: true });
+      }
+    }
+    
+    return linkedItems;
+  })();
   
   // Find all descendants (children, grandchildren, etc.) for cascade delete warning
   const allDescendants = allObjects.filter(o => o.ancestorIds?.includes(object.id));
@@ -294,8 +604,20 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
             </div>
           </div>
           
-          {/* Parent navigation */}
-          {parentObject && (
+          {/* Navigation back - prioritize navigation history over parent */}
+          {(onGoBack && previousObject) ? (
+            <div className="px-4 py-2 border-b border-white/5">
+              <button
+                onClick={onGoBack}
+                className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m15 18-6-6 6-6"/>
+                </svg>
+                <span>Tillbaka till {previousObject.blocks?.find(b => b.type === 'title')?.data?.text || 'föregående'}</span>
+              </button>
+            </div>
+          ) : parentObject && (
             <div className="px-4 py-2 border-b border-white/5">
               <button
                 onClick={() => onNavigate(parentObject)}
@@ -352,6 +674,11 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                           onDelete={handleDeleteBlock}
                           positionNumber={locationBlocks.length > 1 ? locationIndex : null}
                           onShowOnMap={onShowOnMap ? (coords) => onShowOnMap(coords, object.id) : undefined}
+                          // Location block: collection map props
+                          isCollection={block.type === 'location' && isCollection}
+                          collectionPlacesCount={block.type === 'location' && isCollection ? linkedObjectsWithCoords.length : 0}
+                          onShowCollectionMap={block.type === 'location' && isCollection && linkedObjectsWithCoords.length > 0 ? () => setShowCollectionMap(true) : undefined}
+                          whatsappGroupUrl={block.type === 'location' && isCollection ? object.whatsappGroupUrl : undefined}
                           // Location block: centralized audio props
                           hasAudio={block.type === 'location' && !block.inherited && audioIsDiscrete && audioUrl && !audioError}
                           isAudioPlaying={block.type === 'location' ? isAudioPlaying : undefined}
@@ -600,6 +927,367 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                 )}
               </div>
             )}
+            {/* Linked objects section for collections */}
+            {isCollection && orderedLinkedItems.length > 0 && (
+              <div className="mt-6 pt-6 border-t border-purple-500/20">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <ClipboardList size={16} className="text-purple-400" />
+                    <h3 className="text-sm font-medium text-purple-400">Innehåll ({orderedLinkedItems.length})</h3>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {canManage && linkedEditMode && onAddToCollection && (
+                      <button
+                        onClick={() => { setObjectSearchQuery(''); setShowAddObjectPicker(true); }}
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 hover:text-purple-200 transition-colors"
+                      >
+                        <Plus size={14} />
+                        Objekt
+                      </button>
+                    )}
+                    {canManage && linkedEditMode && onAddLinkedUrl && (
+                      <button
+                        onClick={() => { setShowAddUrlForm(true); setNewUrlTitle(''); setNewUrlValue(''); setNewUrlNote(''); }}
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 hover:text-purple-200 transition-colors"
+                      >
+                        <Link2 size={14} />
+                        URL
+                      </button>
+                    )}
+                    {canManage && (
+                      <button
+                        onClick={() => setLinkedEditMode(!linkedEditMode)}
+                        className={`p-2 rounded-lg transition-colors ${
+                          linkedEditMode 
+                            ? 'bg-purple-500/30 text-purple-300' 
+                            : 'hover:bg-white/10 text-gray-500 hover:text-purple-300'
+                        }`}
+                        title={linkedEditMode ? 'Avsluta redigering' : 'Redigera'}
+                      >
+                        <Edit2 size={14} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {/* Add URL form */}
+                {showAddUrlForm && (
+                  <div className="mb-3 p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                    <div className="space-y-2">
+                      <input
+                        type="text"
+                        value={newUrlTitle}
+                        onChange={e => setNewUrlTitle(e.target.value)}
+                        placeholder="Titel (t.ex. Restaurang Bolaget)"
+                        className="w-full px-3 py-2 text-sm bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-400"
+                        autoFocus
+                      />
+                      <input
+                        type="url"
+                        value={newUrlValue}
+                        onChange={e => setNewUrlValue(e.target.value)}
+                        placeholder="URL (https://...)"
+                        className="w-full px-3 py-2 text-sm bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-400"
+                      />
+                      <input
+                        type="text"
+                        value={newUrlNote}
+                        onChange={e => setNewUrlNote(e.target.value)}
+                        placeholder="Anteckning (valfritt, t.ex. Middag fredag 20:00)"
+                        className="w-full px-3 py-2 text-sm bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-400"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            if (newUrlTitle.trim() && newUrlValue.trim()) {
+                              onAddLinkedUrl(object.id, { title: newUrlTitle.trim(), url: newUrlValue.trim(), note: newUrlNote.trim() });
+                              setShowAddUrlForm(false);
+                            }
+                          }}
+                          disabled={!newUrlTitle.trim() || !newUrlValue.trim()}
+                          className="flex-1 px-3 py-2 text-sm font-medium rounded-lg bg-purple-500 hover:bg-purple-600 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          Lägg till
+                        </button>
+                        <button
+                          onClick={() => setShowAddUrlForm(false)}
+                          className="px-3 py-2 text-sm rounded-lg bg-white/10 hover:bg-white/20 text-gray-300 transition-colors"
+                        >
+                          Avbryt
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div className="space-y-1">
+                  {orderedLinkedItems.map((item, itemIndex) => {
+                    const isFirst = itemIndex === 0;
+                    const isLast = itemIndex === orderedLinkedItems.length - 1;
+                    
+                    if (item.type === 'object') {
+                      const linked = item.data;
+                      const linkedTitle = linked.blocks.find(bl => bl.type === 'title');
+                      const linkedImage = linked.blocks.find(bl => bl.type === 'image');
+                      const linkedCategory = categories?.find(c => c.id === linked.type);
+                      const LinkedIcon = linkedCategory ? getIconComponent(linkedCategory.icon) : (PREDEFINED_ICONS[linked.type]?.icon || Home);
+                      const linkedNote = object.linkedObjectNotes?.[linked.id] || '';
+                      const isEditingThis = editingNoteId === linked.id;
+                      
+                      return (
+                        <div key={`obj_${linked.id}`} className="flex items-center gap-1">
+                          {/* Reorder arrows */}
+                          {canManage && linkedEditMode && onReorderLinked && (
+                            <div className="flex items-center gap-0.5 mr-1">
+                              <button
+                                onClick={() => onReorderLinked(object.id, itemIndex, 'up')}
+                                disabled={isFirst}
+                                className={`p-1.5 rounded-lg transition-colors ${isFirst ? 'text-gray-700 cursor-default' : 'text-gray-400 hover:text-purple-300 hover:bg-white/10 active:bg-purple-500/20'}`}
+                                title="Flytta upp"
+                              >
+                                <ChevronUp size={18} />
+                              </button>
+                              <button
+                                onClick={() => onReorderLinked(object.id, itemIndex, 'down')}
+                                disabled={isLast}
+                                className={`p-1.5 rounded-lg transition-colors ${isLast ? 'text-gray-700 cursor-default' : 'text-gray-400 hover:text-purple-300 hover:bg-white/10 active:bg-purple-500/20'}`}
+                                title="Flytta ner"
+                              >
+                                <ChevronDown size={18} />
+                              </button>
+                            </div>
+                          )}
+                          <button
+                            onClick={() => onNavigate(linked)}
+                            className="flex-1 flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 hover:border-purple-400/30 transition-all text-left"
+                          >
+                            {linkedImage ? (
+                              <div className="w-8 h-8 rounded overflow-hidden flex-shrink-0">
+                                <img 
+                                  src={getTransformedImageUrl(linkedImage.data.url, linkedImage.data.focalPoint ? 'custom' : linkedImage.data.focalPoint, 64, 64, linkedImage.data.focalPoint)} 
+                                  alt="" 
+                                  className="w-full h-full object-cover"
+                                  style={getFocalPointStyles(linkedImage.data.focalPoint)}
+                                />
+                              </div>
+                            ) : (
+                              <div className="w-8 h-8 rounded bg-purple-500/20 flex items-center justify-center flex-shrink-0">
+                                <LinkedIcon size={14} className="text-purple-400" />
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium text-white truncate">{linkedTitle?.data?.text || 'Namnlöst'}</div>
+                              {linkedNote && !isEditingThis && (
+                                <div className="text-xs text-purple-300 truncate">{linkedNote}</div>
+                              )}
+                            </div>
+                          </button>
+                          {/* Note edit button/field - only in edit mode */}
+                          {canManage && linkedEditMode && onUpdateLinkedNote && (
+                            isEditingThis ? (
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="text"
+                                  value={editingNoteText}
+                                  onChange={e => setEditingNoteText(e.target.value)}
+                                  onKeyDown={e => {
+                                    if (e.key === 'Enter') {
+                                      onUpdateLinkedNote(object.id, linked.id, editingNoteText.trim());
+                                      setEditingNoteId(null);
+                                    } else if (e.key === 'Escape') {
+                                      setEditingNoteId(null);
+                                    }
+                                  }}
+                                  placeholder="t.ex. Lördag 10:00"
+                                  className="w-28 px-2 py-1.5 text-xs bg-white/10 border border-purple-500/50 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-400"
+                                  autoFocus
+                                />
+                                <button
+                                  onClick={() => {
+                                    onUpdateLinkedNote(object.id, linked.id, editingNoteText.trim());
+                                    setEditingNoteId(null);
+                                  }}
+                                  className="p-1.5 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300"
+                                >
+                                  <Check size={14} />
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  setEditingNoteId(linked.id);
+                                  setEditingNoteText(linkedNote);
+                                }}
+                                className="p-2 rounded-lg hover:bg-white/10 text-gray-500 hover:text-purple-300 transition-all"
+                                title={linkedNote ? 'Redigera anteckning' : 'Lägg till anteckning'}
+                              >
+                                <Edit2 size={14} />
+                              </button>
+                            )
+                          )}
+                          {canManage && linkedEditMode && onRemoveFromCollection && (
+                            <button
+                              onClick={() => onRemoveFromCollection(object.id, linked.id)}
+                              className="p-2 rounded-lg hover:bg-red-500/20 text-gray-500 hover:text-red-400 transition-all"
+                              title="Ta bort från samlingsvy"
+                            >
+                              <X size={16} />
+                            </button>
+                          )}
+                        </div>
+                      );
+                    } else {
+                      // URL item
+                      const urlItem = item.data;
+                      const isEditingUrlNote = editingNoteId === `url_${urlItem.id}`;
+                      
+                      return (
+                        <div key={`url_${urlItem.id}`} className="flex items-center gap-1">
+                          {/* Reorder arrows for URLs */}
+                          {canManage && linkedEditMode && onReorderLinked && (
+                            <div className="flex items-center gap-0.5 mr-1">
+                              <button
+                                onClick={() => onReorderLinked(object.id, itemIndex, 'up')}
+                                disabled={isFirst}
+                                className={`p-1.5 rounded-lg transition-colors ${isFirst ? 'text-gray-700 cursor-default' : 'text-gray-400 hover:text-purple-300 hover:bg-white/10 active:bg-purple-500/20'}`}
+                                title="Flytta upp"
+                              >
+                                <ChevronUp size={18} />
+                              </button>
+                              <button
+                                onClick={() => onReorderLinked(object.id, itemIndex, 'down')}
+                                disabled={isLast}
+                                className={`p-1.5 rounded-lg transition-colors ${isLast ? 'text-gray-700 cursor-default' : 'text-gray-400 hover:text-purple-300 hover:bg-white/10 active:bg-purple-500/20'}`}
+                                title="Flytta ner"
+                              >
+                                <ChevronDown size={18} />
+                              </button>
+                            </div>
+                          )}
+                          <a
+                            href={urlItem.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-1 flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 hover:border-purple-400/30 transition-all text-left"
+                          >
+                            <div className="w-8 h-8 rounded bg-purple-500/20 flex items-center justify-center flex-shrink-0">
+                              <ExternalLink size={14} className="text-purple-400" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium text-white truncate">{urlItem.title}</div>
+                              {urlItem.note && !isEditingUrlNote && (
+                                <div className="text-xs text-purple-300 truncate">{urlItem.note}</div>
+                              )}
+                            </div>
+                          </a>
+                          {/* Note edit for URL */}
+                          {canManage && linkedEditMode && onUpdateLinkedUrl && (
+                            isEditingUrlNote ? (
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="text"
+                                  value={editingNoteText}
+                                  onChange={e => setEditingNoteText(e.target.value)}
+                                  onKeyDown={e => {
+                                    if (e.key === 'Enter') {
+                                      onUpdateLinkedUrl(object.id, urlItem.id, { ...urlItem, note: editingNoteText.trim() });
+                                      setEditingNoteId(null);
+                                    } else if (e.key === 'Escape') {
+                                      setEditingNoteId(null);
+                                    }
+                                  }}
+                                  placeholder="t.ex. Middag 20:00"
+                                  className="w-28 px-2 py-1.5 text-xs bg-white/10 border border-purple-500/50 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-400"
+                                  autoFocus
+                                />
+                                <button
+                                  onClick={() => {
+                                    onUpdateLinkedUrl(object.id, urlItem.id, { ...urlItem, note: editingNoteText.trim() });
+                                    setEditingNoteId(null);
+                                  }}
+                                  className="p-1.5 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300"
+                                >
+                                  <Check size={14} />
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  setEditingNoteId(`url_${urlItem.id}`);
+                                  setEditingNoteText(urlItem.note || '');
+                                }}
+                                className="p-2 rounded-lg hover:bg-white/10 text-gray-500 hover:text-blue-300 transition-all"
+                                title={urlItem.note ? 'Redigera anteckning' : 'Lägg till anteckning'}
+                              >
+                                <Edit2 size={14} />
+                              </button>
+                            )
+                          )}
+                          {canManage && linkedEditMode && onRemoveLinkedUrl && (
+                            <button
+                              onClick={() => onRemoveLinkedUrl(object.id, urlItem.id)}
+                              className="p-2 rounded-lg hover:bg-red-500/20 text-gray-500 hover:text-red-400 transition-all"
+                              title="Ta bort länk"
+                            >
+                              <X size={16} />
+                            </button>
+                          )}
+                        </div>
+                      );
+                    }
+                  })}
+                </div>
+              </div>
+            )}
+            {isCollection && orderedLinkedItems.length === 0 && totalLinkedCount === 0 && canManage && (
+              <div className="mt-6 pt-6 border-t border-purple-500/20">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <ClipboardList size={16} className="text-purple-400" />
+                    <h3 className="text-sm font-medium text-purple-400">Innehåll</h3>
+                  </div>
+                </div>
+                <div className="text-sm text-gray-500 text-center py-6 bg-white/5 rounded-lg border border-dashed border-white/10">
+                  <p className="mb-3">Ingen innehåll ännu</p>
+                  <div className="flex gap-2 justify-center">
+                    {onAddToCollection && (
+                      <button
+                        onClick={() => { setObjectSearchQuery(''); setShowAddObjectPicker(true); }}
+                        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 hover:text-purple-200 transition-colors"
+                      >
+                        <Plus size={16} />
+                        Objekt
+                      </button>
+                    )}
+                    {onAddLinkedUrl && (
+                      <button
+                        onClick={() => { setShowAddUrlForm(true); setNewUrlTitle(''); setNewUrlValue(''); setNewUrlNote(''); }}
+                        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 hover:text-purple-200 transition-colors"
+                      >
+                        <Link2 size={16} />
+                        URL
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+            {/* User sees some linked objects but not all */}
+            {isCollection && linkedObjects.length > 0 && hiddenLinkedCount > 0 && (
+              <div className="mt-2 text-xs text-gray-500 text-center">
+                + {hiddenLinkedCount} {hiddenLinkedCount === 1 ? 'objekt' : 'objekt'} du inte har tillgång till
+              </div>
+            )}
+            {/* User has no access to any linked objects - don't show confusing empty state */}
+            {isCollection && linkedObjects.length === 0 && hiddenLinkedCount > 0 && (
+              <div className="mt-6 pt-6 border-t border-purple-500/20">
+                <div className="flex items-center gap-2 mb-3">
+                  <ClipboardList size={16} className="text-purple-400" />
+                  <h3 className="text-sm font-medium text-purple-400">Länkade objekt</h3>
+                </div>
+                <div className="text-sm text-gray-500 text-center py-4 bg-white/5 rounded-lg border border-white/10">
+                  {hiddenLinkedCount} {hiddenLinkedCount === 1 ? 'objekt länkat' : 'objekt länkade'} som du inte har tillgång till
+                </div>
+              </div>
+            )}
             {(canManage || canEdit || isSharedWithMe) && (
               <div ref={manageSectionRef} className="mt-6 lg:mt-4 pt-6 lg:pt-4 border-t border-white/10">
                 <button
@@ -621,38 +1309,23 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                   />
                 </button>
                 {showManageSection && (
-                  <div className="mt-3 p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-3 animate-in slide-in-from-top-2 duration-200">
-                    {(canManage || onDuplicate) && (
+                  <div className="mt-3 p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-2 animate-in slide-in-from-top-2 duration-200">
+                    {/* Edit, Copy, Delete buttons - all on same row */}
+                    {canEdit && (
                       <div className="flex gap-2">
-                        {canManage && (
-                          <button
-                            onClick={() => onEdit({ parentId: object.id })}
-                            className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:text-white transition-all"
-                          >
-                            <Plus size={16} />
-                            <span className="text-sm">Lägg till barn</span>
-                          </button>
-                        )}
+                        <button onClick={() => onEdit(object)} className="flex-1 h-10 flex items-center justify-center gap-1.5 px-2 rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:text-white transition-all">
+                          <Edit2 size={15} />
+                          <span className="text-sm">Redigera</span>
+                        </button>
                         {onDuplicate && (
-                          <button
-                            onClick={() => onDuplicate(object)}
-                            className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:text-white transition-all"
-                          >
-                            <Copy size={16} />
+                          <button onClick={() => onDuplicate(object)} className="flex-1 h-10 flex items-center justify-center gap-1.5 px-2 rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:text-white transition-all">
+                            <Copy size={15} />
                             <span className="text-sm">Kopiera</span>
                           </button>
                         )}
-                      </div>
-                    )}
-                    {canEdit && (
-                      <div className="flex gap-2">
-                        <button onClick={() => onEdit(object)} className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:text-white transition-all">
-                          <Edit2 size={16} />
-                          <span className="text-sm">Redigera</span>
-                        </button>
                         {canManage && (
-                          <button onClick={() => setShowDeleteConfirm(true)} className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/30 transition-all">
-                            <Trash2 size={16} />
+                          <button onClick={() => setShowDeleteConfirm(true)} className="flex-1 h-10 flex items-center justify-center gap-1.5 px-2 rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/30 transition-all">
+                            <Trash2 size={15} />
                             <span className="text-sm">Ta bort</span>
                           </button>
                         )}
@@ -661,11 +1334,42 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                     {isSharedWithMe && !isOwner && (
                       <button 
                         onClick={() => onLeaveShare(object)} 
-                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:bg-orange-500/20 hover:text-orange-400 hover:border-orange-500/30 transition-all"
+                        className="w-full h-10 flex items-center justify-center gap-2 px-3 rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:bg-orange-500/20 hover:text-orange-400 hover:border-orange-500/30 transition-all"
                       >
-                        <UserMinus size={16} />
+                        <UserMinus size={15} />
                         <span className="text-sm">Lämna delning</span>
                       </button>
+                    )}
+                    {/* Add child / Add to collection - on same row for non-collections */}
+                    {!isCollection && (canManage || (collections && collections.length > 0)) && (
+                      <div className="pt-2 border-t border-white/5">
+                        <div className="flex gap-2">
+                          {canManage && (
+                            <button
+                              onClick={() => onEdit({ parentId: object.id })}
+                              className="flex-1 h-9 flex items-center justify-center gap-1.5 px-2 rounded-lg bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white transition-all text-xs"
+                              title="Skapar ett objekt som tillhör detta"
+                            >
+                              <Plus size={13} />
+                              <span>Lägg till barn</span>
+                            </button>
+                          )}
+                          {collections && collections.length > 0 && (
+                            <button 
+                              onClick={() => setShowCollectionPicker(true)} 
+                              className="flex-1 h-9 flex items-center justify-center gap-1.5 px-2 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400 hover:bg-purple-500/20 hover:text-purple-200 transition-all text-xs"
+                              title="Länka utan att flytta objektet"
+                            >
+                              <Link2 size={13} />
+                              <span>Lägg till i samlingsvy</span>
+                            </button>
+                          )}
+                        </div>
+                        <div className="flex gap-2 mt-1 text-[10px] text-gray-600">
+                          {canManage && <span className="flex-1 text-center">Skapar nytt under detta</span>}
+                          {collections && collections.length > 0 && <span className="flex-1 text-center">Länkar utan att flytta</span>}
+                        </div>
+                      </div>
                     )}
                     <div className="text-xs text-gray-600 pt-2 border-t border-white/5">
                       ID: {object.id.slice(0, 8)}...
@@ -678,6 +1382,201 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
         </div>
       </div>
       {showDeleteConfirm && <DeleteConfirmModal object={object} onConfirm={handleDelete} onCancel={() => setShowDeleteConfirm(false)} />}
+      {/* Collection picker modal */}
+      {showCollectionPicker && (
+        <div 
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[1100] flex items-center justify-center p-4"
+          onClick={() => setShowCollectionPicker(false)}
+        >
+          <div 
+            className="bg-gray-900 rounded-xl border border-white/10 w-full max-w-sm overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ClipboardList size={18} className="text-purple-400" />
+                <h3 className="font-medium text-white">Välj samlingsvy</h3>
+              </div>
+              <button 
+                onClick={() => setShowCollectionPicker(false)}
+                className="p-1 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-2 max-h-64 overflow-y-auto">
+              {collections && collections.length > 0 ? (
+                collections.map(col => {
+                  const colTitle = col.blocks?.find(b => b.type === 'title')?.data?.text || 'Namnlös samlingsvy';
+                  const alreadyLinked = (col.linkedObjectIds || []).includes(object.id);
+                  return (
+                    <button
+                      key={col.id}
+                      onClick={() => {
+                        if (!alreadyLinked && onAddToCollection) {
+                          onAddToCollection(object.id, col.id);
+                          setShowCollectionPicker(false);
+                        }
+                      }}
+                      disabled={alreadyLinked}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all ${
+                        alreadyLinked 
+                          ? 'bg-purple-500/10 text-purple-300 cursor-default' 
+                          : 'hover:bg-white/10 text-gray-300 hover:text-white'
+                      }`}
+                    >
+                      <ClipboardList size={16} className="text-purple-400 flex-shrink-0" />
+                      <span className="flex-1 truncate">{colTitle}</span>
+                      {alreadyLinked && (
+                        <span className="text-xs text-purple-400">✓ Tillagd</span>
+                      )}
+                    </button>
+                  );
+                })
+              ) : (
+                <div className="text-center py-4 text-gray-500 text-sm">
+                  Du har inga samlingsvyer ännu
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Add object to collection picker */}
+      {showAddObjectPicker && isCollection && (
+        <div 
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[1100] flex items-center justify-center p-4"
+          onClick={() => setShowAddObjectPicker(false)}
+        >
+          <div 
+            className="bg-gray-900 rounded-xl border border-white/10 w-full max-w-md overflow-hidden flex flex-col max-h-[80vh]"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between flex-shrink-0">
+              <div className="flex items-center gap-2">
+                <Plus size={18} className="text-purple-400" />
+                <h3 className="font-medium text-white">Lägg till objekt</h3>
+              </div>
+              <button 
+                onClick={() => setShowAddObjectPicker(false)}
+                className="p-1 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            {/* Search field */}
+            <div className="px-3 py-2 border-b border-white/5 flex-shrink-0">
+              <div className="relative">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                <input
+                  type="text"
+                  value={objectSearchQuery}
+                  onChange={e => setObjectSearchQuery(e.target.value)}
+                  placeholder="Sök objekt..."
+                  className="w-full pl-9 pr-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                  autoFocus
+                />
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-2">
+              {(() => {
+                // Filter objects that can be added (not already linked, not this object, not children)
+                const alreadyLinkedIds = object.linkedObjectIds || [];
+                const availableObjects = allObjects.filter(obj => 
+                  obj.id !== object.id && 
+                  !alreadyLinkedIds.includes(obj.id) &&
+                  obj.parentId !== object.id && // Not children
+                  (obj.ownerId === currentUser?.uid || isAdmin || obj.acceptedShareEmails?.includes(currentUser?.email?.toLowerCase()))
+                );
+                
+                // Apply search filter
+                const searchLower = objectSearchQuery.toLowerCase().trim();
+                const filteredObjects = searchLower 
+                  ? availableObjects.filter(obj => {
+                      const title = obj.blocks?.find(b => b.type === 'title')?.data?.text || '';
+                      return title.toLowerCase().includes(searchLower);
+                    })
+                  : availableObjects;
+                
+                // Group by category
+                const grouped = {};
+                filteredObjects.forEach(obj => {
+                  const catId = obj.type || 'other';
+                  if (!grouped[catId]) grouped[catId] = [];
+                  grouped[catId].push(obj);
+                });
+                
+                const categoryIds = Object.keys(grouped).sort((a, b) => {
+                  const catA = categories?.find(c => c.id === a);
+                  const catB = categories?.find(c => c.id === b);
+                  return (catA?.label || a).localeCompare(catB?.label || b);
+                });
+                
+                if (categoryIds.length === 0) {
+                  return (
+                    <div className="text-center py-8 text-gray-500 text-sm">
+                      {searchLower ? 'Inga objekt matchar sökningen' : 'Inga tillgängliga objekt att lägga till'}
+                    </div>
+                  );
+                }
+                
+                return categoryIds.map(catId => {
+                  const category = categories?.find(c => c.id === catId);
+                  const CategoryIcon = category ? getIconComponent(category.icon) : (PREDEFINED_ICONS[catId]?.icon || Home);
+                  const categoryLabel = category?.label || PREDEFINED_ICONS[catId]?.label || catId;
+                  const objectsInCategory = grouped[catId];
+                  
+                  return (
+                    <div key={catId} className="mb-3">
+                      <div className="flex items-center gap-2 px-2 py-1.5 text-xs font-medium text-gray-400 uppercase tracking-wide">
+                        <CategoryIcon size={12} />
+                        {categoryLabel} ({objectsInCategory.length})
+                      </div>
+                      <div className="space-y-0.5">
+                        {objectsInCategory.map(obj => {
+                          const objTitle = obj.blocks?.find(b => b.type === 'title')?.data?.text || 'Namnlöst';
+                          const objImage = obj.blocks?.find(b => b.type === 'image');
+                          const ObjIcon = category ? getIconComponent(category.icon) : (PREDEFINED_ICONS[obj.type]?.icon || Home);
+                          
+                          return (
+                            <button
+                              key={obj.id}
+                              onClick={() => {
+                                if (onAddToCollection) {
+                                  onAddToCollection(obj.id, object.id);
+                                  setShowAddObjectPicker(false);
+                                }
+                              }}
+                              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left hover:bg-white/10 text-gray-300 hover:text-white transition-all"
+                            >
+                              {objImage ? (
+                                <div className="w-8 h-8 rounded overflow-hidden flex-shrink-0">
+                                  <img 
+                                    src={getTransformedImageUrl(objImage.data.url, objImage.data.focalPoint ? 'custom' : objImage.data.focalPoint, 64, 64, objImage.data.focalPoint)} 
+                                    alt="" 
+                                    className="w-full h-full object-cover"
+                                    style={getFocalPointStyles(objImage.data.focalPoint)}
+                                  />
+                                </div>
+                              ) : (
+                                <div className="w-8 h-8 rounded bg-white/10 flex items-center justify-center flex-shrink-0">
+                                  <ObjIcon size={14} className="text-gray-400" />
+                                </div>
+                              )}
+                              <span className="flex-1 truncate text-sm">{objTitle}</span>
+                              <Plus size={16} className="text-purple-400 opacity-0 group-hover:opacity-100" />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
       {leaderboardModalData && (
         <LeaderboardModal
           data={leaderboardModalData.data}
@@ -920,6 +1819,46 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
             }
           }}
         />
+      )}
+
+      {/* Collection Map Modal */}
+      {showCollectionMap && linkedObjectsWithCoords.length > 0 && (
+        <div 
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[3000] flex items-center justify-center p-4"
+          onClick={() => setShowCollectionMap(false)}
+        >
+          <div 
+            className="bg-gray-900 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-purple-500/30 shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+              <div className="flex items-center gap-2">
+                <MapIcon size={18} className="text-purple-400" />
+                <h3 className="font-medium text-white">
+                  Karta ({linkedObjectsWithCoords.length} {linkedObjectsWithCoords.length === 1 ? 'plats' : 'platser'})
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowCollectionMap(false)}
+                className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            {/* Map */}
+            <div className="h-[70vh]">
+              <CollectionMapView 
+                objects={linkedObjectsWithCoords}
+                categories={categories}
+                onSelectObject={(obj) => {
+                  setShowCollectionMap(false);
+                  onNavigate(obj);
+                }}
+              />
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, ArrowUp, ArrowDown, FileText, CheckSquare, ClipboardList, Link2, Plus, ChevronDown, Table2, Trash2, GripVertical, Calendar, Phone, Mail, Globe, Timer, Check, Maximize2, RotateCcw, BarChart3, Type, Music, Wallet, Users, Trophy, Minus } from 'lucide-react';
-import { getIconComponent, LINK_ICONS } from '../utils/iconHelpers';
+import { getIconComponent, LINK_ICONS, detectIconFromUrl } from '../utils/iconHelpers';
 import { TABLE_TEMPLATES } from './blocks';
 
 // Fullscreen text editor for mobile - iOS Notes-like experience
@@ -452,9 +452,21 @@ function LinksBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
   };
 
   const updateLink = (linkIndex, field, value) => {
-    const newLinks = links.map((link, i) => 
-      i === linkIndex ? { ...link, [field]: value } : link
-    );
+    const newLinks = links.map((link, i) => {
+      if (i !== linkIndex) return link;
+      
+      const updatedLink = { ...link, [field]: value };
+      
+      // Auto-detect icon when URL changes and icon hasn't been manually set (still default 'Link')
+      if (field === 'url' && link.icon === 'Link') {
+        const detectedIcon = detectIconFromUrl(value);
+        if (detectedIcon) {
+          updatedLink.icon = detectedIcon;
+        }
+      }
+      
+      return updatedLink;
+    });
     setLinks(newLinks);
     linksRef.current = newLinks;
   };
@@ -552,7 +564,7 @@ function LinksBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
                           onClick={(e) => { e.stopPropagation(); setShowIconPicker(null); }}
                         />
                         <div 
-                          className="absolute top-12 left-0 z-[101] bg-gray-800 border border-white/10 rounded-xl p-2 shadow-xl grid grid-cols-4 gap-1 w-48"
+                          className="absolute top-12 left-0 z-[101] bg-gray-800 border border-white/10 rounded-xl p-2 shadow-xl grid grid-cols-6 gap-1 w-64 max-h-48 overflow-y-auto"
                           onClick={(e) => e.stopPropagation()}
                         >
                           {LINK_ICONS.map(({ name, label }) => {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapPin, Map as MapIcon, X, Check, RotateCcw, ExternalLink, Calendar, Maximize2, Timer, Play, Pause, RotateCw, Vote, HelpCircle, Trophy, ChevronDown, Lock, Link, Plus, Wallet, ChevronRight, User, TriangleIcon, Edit2, Car, ClipboardList, Users, Minus, Copy } from 'lucide-react';
+import { MapPin, Map as MapIcon, X, Check, RotateCcw, ExternalLink, Calendar, Maximize2, Timer, Play, Pause, RotateCw, Vote, HelpCircle, Trophy, ChevronDown, Lock, Link, Plus, Wallet, ChevronRight, User, TriangleIcon, Edit2, Car, ClipboardList, Users, Minus, Copy, MessageCircle } from 'lucide-react';
 import { getTransformedImageUrl, getFocalPointStyles } from '../../utils/imageUtils';
 import { getIconComponent } from '../../utils/iconHelpers';
 
@@ -7,7 +7,7 @@ export const TitleBlock = ({ data }) => (
   <h2 className="text-2xl font-bold text-white mb-2">{data.text}</h2>
 );
 
-export const LocationBlock = ({ data, inherited, onDelete, canDelete, positionNumber, onShowOnMap, hasAudio, isAudioPlaying, onToggleAudio }) => {
+export const LocationBlock = ({ data, inherited, onDelete, canDelete, positionNumber, onShowOnMap, hasAudio, isAudioPlaying, onToggleAudio, isCollection, collectionPlacesCount, onShowCollectionMap, whatsappGroupUrl }) => {
 
   const openGoogleMaps = () => {
     if (data.lat && data.lng) {
@@ -18,6 +18,12 @@ export const LocationBlock = ({ data, inherited, onDelete, canDelete, positionNu
   const openWaze = () => {
     if (data.lat && data.lng) {
       window.open(`https://waze.com/ul?ll=${data.lat},${data.lng}&navigate=yes`, '_blank');
+    }
+  };
+
+  const openWhatsApp = () => {
+    if (whatsappGroupUrl) {
+      window.open(whatsappGroupUrl, '_blank');
     }
   };
 
@@ -43,13 +49,23 @@ export const LocationBlock = ({ data, inherited, onDelete, canDelete, positionNu
       {data.lat && data.lng && (
         <div className="flex items-center gap-1">
           {/* Audio play button - shown if audio exists (centralized playback) */}
+          {/* Collection: WhatsApp first, then map, then audio */}
+          {isCollection && whatsappGroupUrl && (
+            <button
+              onClick={openWhatsApp}
+              className="w-9 h-9 rounded-lg bg-green-500/20 hover:bg-green-500/30 flex items-center justify-center text-green-400 hover:text-green-300 transition-all flex-shrink-0"
+              title="WhatsApp-grupp"
+            >
+              <MessageCircle size={16} />
+            </button>
+          )}
           {hasAudio && (
             <button
               onClick={onToggleAudio}
               className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all flex-shrink-0 ${
                 isAudioPlaying 
-                  ? 'bg-purple-500/30 text-purple-300 ring-2 ring-purple-500/50 ring-offset-1 ring-offset-transparent' 
-                  : 'bg-white/5 hover:bg-purple-500/20 text-gray-400 hover:text-purple-400'
+                  ? 'bg-blue-500/30 text-blue-300 ring-2 ring-blue-500/50 ring-offset-1 ring-offset-transparent' 
+                  : 'bg-white/5 hover:bg-blue-500/20 text-gray-400 hover:text-blue-400'
               }`}
               style={isAudioPlaying ? { animation: 'pulse-glow 1s ease-in-out infinite' } : {}}
               title={isAudioPlaying ? 'Pausa' : 'Spela'}
@@ -61,37 +77,52 @@ export const LocationBlock = ({ data, inherited, onDelete, canDelete, positionNu
               )}
             </button>
           )}
-          {onShowOnMap && (
+          {isCollection && collectionPlacesCount > 0 && onShowCollectionMap && (
             <button
-              onClick={handleShowOnMap}
-              className="w-9 h-9 rounded-lg bg-white/5 hover:bg-blue-500/20 flex items-center justify-center text-gray-400 hover:text-blue-400 transition-all"
-              title="Visa på karta"
+              onClick={onShowCollectionMap}
+              className="h-9 px-3 rounded-lg bg-white/5 hover:bg-blue-500/20 flex items-center gap-2 text-gray-400 hover:text-blue-400 transition-all"
+              title="Visa alla platser på karta"
             >
               <MapIcon size={16} />
+              <span className="text-sm font-medium">{collectionPlacesCount} {collectionPlacesCount === 1 ? 'plats' : 'platser'}</span>
             </button>
           )}
-          <button
-            onClick={openGoogleMaps}
-            className="w-9 h-9 rounded-lg bg-white/5 hover:bg-blue-500/20 flex items-center justify-center text-gray-400 hover:text-blue-400 transition-all"
-            title="Google Maps"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10"/>
-              <line x1="2" y1="12" x2="22" y2="12"/>
-              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-            </svg>
-          </button>
-          <button
-            onClick={openWaze}
-            className="w-9 h-9 rounded-lg bg-white/5 hover:bg-blue-500/20 flex items-center justify-center text-gray-400 hover:text-blue-400 transition-all"
-            title="Waze"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9L18 10l-1.8-3.2c-.3-.5-.8-.8-1.4-.8H9.2c-.6 0-1.1.3-1.4.8L6 10l-2.5 1.1C2.7 11.3 2 12.1 2 13v3c0 .6.4 1 1 1h2"/>
-              <circle cx="7" cy="17" r="2"/>
-              <circle cx="17" cy="17" r="2"/>
-            </svg>
-          </button>
+          {/* Non-collection: Show on map button */}
+          {!isCollection && (
+            <>
+              {onShowOnMap && (
+                <button
+                  onClick={handleShowOnMap}
+                  className="w-9 h-9 rounded-lg bg-white/5 hover:bg-blue-500/20 flex items-center justify-center text-gray-400 hover:text-blue-400 transition-all"
+                  title="Visa på karta"
+                >
+                  <MapIcon size={16} />
+                </button>
+              )}
+              <button
+                onClick={openGoogleMaps}
+                className="w-9 h-9 rounded-lg bg-white/5 hover:bg-blue-500/20 flex items-center justify-center text-gray-400 hover:text-blue-400 transition-all"
+                title="Google Maps"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="2" y1="12" x2="22" y2="12"/>
+                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                </svg>
+              </button>
+              <button
+                onClick={openWaze}
+                className="w-9 h-9 rounded-lg bg-white/5 hover:bg-blue-500/20 flex items-center justify-center text-gray-400 hover:text-blue-400 transition-all"
+                title="Waze"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9L18 10l-1.8-3.2c-.3-.5-.8-.8-1.4-.8H9.2c-.6 0-1.1.3-1.4.8L6 10l-2.5 1.1C2.7 11.3 2 12.1 2 13v3c0 .6.4 1 1 1h2"/>
+                  <circle cx="7" cy="17" r="2"/>
+                  <circle cx="17" cy="17" r="2"/>
+                </svg>
+              </button>
+            </>
+          )}
         </div>
       )}
       {canDelete && onDelete && (

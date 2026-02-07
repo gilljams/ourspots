@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Share2, X, Mail, Loader, UserPlus, UserMinus, Users, Clock, Check, CornerDownRight, XCircle, Eye, Edit3, Pause, Play, Ban } from 'lucide-react';
+import { Share2, X, Mail, Loader, UserPlus, UserMinus, Users, Clock, Check, CornerDownRight, XCircle, Eye, Edit3, Pause, Play, Ban, Link2, ClipboardList } from 'lucide-react';
 import { doc, updateDoc, onSnapshot, Timestamp, deleteField, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from '../firebase';
 import { emailToKey, keyToEmail } from '../utils/iconHelpers';
@@ -35,6 +35,18 @@ function ShareModal({ object, onClose, currentUserEmail, allObjects = [], shared
     findDescendants(object.id);
     return descendants;
   }, [object.id, allObjects]);
+  
+  // For collections: get linked objects and their share status
+  const isCollection = object.isCollection;
+  const linkedObjects = useMemo(() => {
+    if (!isCollection) return [];
+    return (object.linkedObjectIds || [])
+      .map(id => allObjects.find(o => o.id === id))
+      .filter(Boolean);
+  }, [isCollection, object.linkedObjectIds, allObjects]);
+  
+  // Track which shares have been pushed to linked objects (state for UI feedback)
+  const [pushingToLinked, setPushingToLinked] = useState(false);
   
   // Swipe to close state
   const [touchStart, setTouchStart] = useState(null);
@@ -341,6 +353,54 @@ function ShareModal({ object, onClose, currentUserEmail, allObjects = [], shared
     }
   };
 
+  // Push sharing to all linked objects in a collection (one-off operation)
+  const handlePushToLinkedObjects = async (emailKey, shareData) => {
+    if (!isCollection || linkedObjects.length === 0) return;
+    
+    const userEmail = shareData?.email || keyToEmail(emailKey);
+    
+    // Count how many linked objects already have this share
+    const alreadyShared = linkedObjects.filter(obj => obj.shares?.[emailKey]);
+    const toShare = linkedObjects.filter(obj => !obj.shares?.[emailKey]);
+    
+    if (toShare.length === 0) {
+      alert(`Alla ${linkedObjects.length} länkade objekt är redan delade med ${userEmail}.`);
+      return;
+    }
+    
+    const confirmMsg = alreadyShared.length > 0 
+      ? `Dela ${toShare.length} objekt med ${userEmail}?\n\n${alreadyShared.length} objekt är redan delade och behålls som de är.\n\nDetta är en engångsåtgärd – framtida ändringar hanteras på respektive objekt.`
+      : `Dela alla ${toShare.length} länkade objekt med ${userEmail}?\n\nDetta är en engångsåtgärd – framtida ändringar hanteras på respektive objekt.`;
+    
+    if (!confirm(confirmMsg)) return;
+    
+    setPushingToLinked(true);
+    try {
+      const shareEntry = {
+        email: userEmail,
+        role: shareData?.role || 'viewer',
+        status: 'pending',
+        sharedAt: Timestamp.now(),
+        sharedBy: currentUserEmail,
+        includeChildren: false // Don't propagate to children of linked objects
+      };
+      
+      await Promise.all(toShare.map(obj => 
+        updateDoc(doc(db, 'objects', obj.id), {
+          [`shares.${emailKey}`]: shareEntry,
+          sharedWithEmails: arrayUnion(userEmail)
+        })
+      ));
+      
+      alert(`✓ Delat ${toShare.length} objekt med ${userEmail}!`);
+    } catch (err) {
+      console.error('Error pushing to linked objects:', err);
+      alert('Kunde inte dela alla länkade objekt. Försök igen.');
+    } finally {
+      setPushingToLinked(false);
+    }
+  };
+
   const titleBlock = object.blocks?.find(b => b.type === 'title');
 
   return (
@@ -538,6 +598,55 @@ function ShareModal({ object, onClose, currentUserEmail, allObjects = [], shared
                     )}
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Collection: Linked objects sharing section */}
+          {isCollection && linkedObjects.length > 0 && sharesList.length > 0 && (
+            <div className="border-t border-white/10 pt-4">
+              <h3 className="text-sm font-medium text-purple-300 mb-3 flex items-center gap-2">
+                <ClipboardList size={16} />
+                Länkade objekt ({linkedObjects.length})
+              </h3>
+              <p className="text-xs text-gray-500 mb-3">
+                Delning sker separat på varje objekt. Använd knappen för att snabbt dela alla med en person.
+              </p>
+              <div className="space-y-2">
+                {sharesList.map(share => {
+                  const sharedCount = linkedObjects.filter(obj => obj.shares?.[share.key]).length;
+                  const notSharedCount = linkedObjects.length - sharedCount;
+                  const allShared = notSharedCount === 0;
+                  
+                  return (
+                    <div key={`linked-${share.key}`} className="flex items-center gap-3 p-3 rounded-xl bg-purple-500/10 border border-purple-500/20">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-purple-200 truncate">{share.email}</p>
+                        <p className="text-xs text-gray-500">
+                          {allShared ? (
+                            <span className="text-green-400">✓ Alla {linkedObjects.length} objekt delade</span>
+                          ) : (
+                            <span>{sharedCount} av {linkedObjects.length} objekt delade</span>
+                          )}
+                        </p>
+                      </div>
+                      {!allShared && (
+                        <button
+                          onClick={() => handlePushToLinkedObjects(share.key, share)}
+                          disabled={pushingToLinked}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 hover:text-purple-200 transition-colors disabled:opacity-50 disabled:cursor-wait"
+                        >
+                          {pushingToLinked ? (
+                            <Loader size={12} className="animate-spin" />
+                          ) : (
+                            <Link2 size={12} />
+                          )}
+                          Dela alla
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   X, Plus, Upload, Loader, Navigation, ChevronDown, ChevronUp,
-  Map as MapIcon, FileText, CheckSquare, ClipboardList, Link2, Table2, Image as ImageIcon, Calendar, Phone, Timer, BarChart3, Folder, MapPin, Music, Wallet, Trophy, Car, Users, Minus 
+  Map as MapIcon, FileText, CheckSquare, ClipboardList, Link2, Table2, Image as ImageIcon, Calendar, Phone, Timer, BarChart3, Folder, MapPin, Music, Wallet, Trophy, Car, Users, Minus, MessageCircle 
 } from 'lucide-react';
 import { 
   CLOUDINARY_CLOUD_NAME, 
@@ -14,7 +14,7 @@ import MapPicker from './MapPicker';
 import FocalPointPicker from './FocalPointPicker';
 import BlockEditor, { DateTagBlockEditor, TimerBlockEditor, PollBlockEditor, AudioBlockEditor, SplitBlockEditor, LeaderboardBlockEditor, DistributionBlockEditor, SectionBlockEditor } from './BlockEditor';
 
-function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, saving, availableParents, defaultParentId, userLocation, categories, preciseGPS, isAdmin, currentUser, currentUserDisplayName }) {
+function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, saving, availableParents, defaultParentId, userLocation, categories, preciseGPS, isAdmin, currentUser, currentUserDisplayName, hasChildren }) {
   // ========== STATE ==========
   const isEdit = !!editObject;
   const isDuplicate = !!duplicateFromObject;
@@ -28,6 +28,13 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
   const [selectedType, setSelectedType] = useState(sourceObject?.type || defaultType);
   const [parentId, setParentId] = useState(sourceObject?.parentId || defaultParentId || '');
   const [inheritLocation, setInheritLocation] = useState(false);
+  const [isCollection, setIsCollection] = useState(sourceObject?.isCollection || false);
+  const [whatsappGroupUrl, setWhatsappGroupUrl] = useState(sourceObject?.whatsappGroupUrl || '');
+  
+  // Collection fields - copy structure but NOT notes (linkedObjectNotes is time-specific)
+  const linkedObjectIds = sourceObject?.linkedObjectIds || [];
+  const linkedUrls = sourceObject?.linkedUrls || [];
+  const linkedOrder = sourceObject?.linkedOrder || [];
   
   // For duplicates, add " (kopia)" suffix to title (strip existing suffixes first)
   const originalTitle = sourceObject?.blocks?.find(b => b.type === 'title')?.data?.text || '';
@@ -607,7 +614,20 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
       }
     });
 
-    onSave({ type: selectedType, layerId: 'default', blocks, parentId: parentId || null }, isEdit ? editObject.id : null);
+    // Build save data
+    const saveData = { type: selectedType, layerId: 'default', blocks, parentId: parentId || null, isCollection };
+    
+    // For collections (both edit and duplicate), include linked items
+    // Note: linkedObjectNotes is NOT copied during duplicate - it contains time-specific info
+    if (isCollection) {
+      saveData.linkedObjectIds = linkedObjectIds;
+      saveData.linkedUrls = linkedUrls;
+      saveData.linkedOrder = linkedOrder;
+      saveData.whatsappGroupUrl = whatsappGroupUrl.trim() || null;
+      // linkedObjectNotes intentionally not included - will start fresh
+    }
+    
+    onSave(saveData, isEdit ? editObject.id : null);
   };
 
   const addCustomBlock = (type, template = null) => {
@@ -782,6 +802,55 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                 className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500"
               />
             </div>
+
+            {/* Collection toggle */}
+            <div className={`flex items-center gap-3 p-3 rounded-xl border ${hasChildren ? 'bg-gray-800/50 border-white/5' : 'bg-white/5 border-white/10'}`}>
+              <button
+                type="button"
+                onClick={() => { 
+                  if (!hasChildren) {
+                    setIsCollection(!isCollection); 
+                    setFormTouched(true); 
+                  }
+                }}
+                disabled={saving || hasChildren}
+                className={`relative w-11 h-6 rounded-full transition-colors ${hasChildren ? 'bg-gray-700 cursor-not-allowed' : isCollection ? 'bg-blue-500' : 'bg-gray-600'}`}
+              >
+                <span 
+                  className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${isCollection && !hasChildren ? 'translate-x-5' : 'translate-x-0'}`} 
+                />
+              </button>
+              <div className="flex-1">
+                <div className="text-sm font-medium text-white flex items-center gap-2">
+                  <ClipboardList size={16} className={hasChildren ? 'text-gray-500' : 'text-blue-400'} />
+                  Samlingsvy
+                </div>
+                {hasChildren ? (
+                  <div className="text-xs text-yellow-500">Kan inte ändras – objektet har barn</div>
+                ) : (
+                  <div className="text-xs text-gray-500">Samlar och visar andra objekt (kan ej ha barn)</div>
+                )}
+              </div>
+            </div>
+
+            {/* WhatsApp group link - only for collections */}
+            {isCollection && (
+              <div className="space-y-2">
+                <label className="text-sm text-gray-300 flex items-center gap-2">
+                  <MessageCircle size={16} className="text-green-400" />
+                  WhatsApp-grupplänk
+                </label>
+                <input
+                  type="url"
+                  value={whatsappGroupUrl}
+                  onChange={(e) => { setWhatsappGroupUrl(e.target.value); setFormTouched(true); }}
+                  disabled={saving}
+                  placeholder="https://chat.whatsapp.com/..."
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-green-500"
+                />
+                <p className="text-xs text-gray-500">Länk till gruppens WhatsApp-chatt (valfritt)</p>
+              </div>
+            )}
 
             {/* Inherit location checkbox - shown when parent has location */}
             {!hideLocation && parentId && parentHasLocation && (
