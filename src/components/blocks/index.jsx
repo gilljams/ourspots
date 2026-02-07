@@ -168,7 +168,7 @@ export const ImageBlock = ({ data, isPlaying = false, animation = 'none' }) => {
   
   return (
     <>
-      <div className="relative w-full h-48 rounded-xl overflow-hidden mb-4 border border-white/10 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.7)]">
+      <div className="relative w-full h-48 lg:h-auto lg:aspect-[16/9] rounded-xl overflow-hidden mb-4 border border-white/10 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.7)]">
         <img 
           src={getTransformedImageUrl(data.url, data.focalPoint ? 'custom' : data.cropMode, 800, 480, data.focalPoint)} 
           alt="" 

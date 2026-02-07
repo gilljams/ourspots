@@ -418,38 +418,40 @@ function UsersAdminModal({ currentUserId, onClose }) {
 
   return (
     <div 
-      className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[1000] flex items-end sm:items-center justify-center sm:p-8"
+      className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[1000] flex items-end sm:items-center justify-center lg:justify-start sm:p-8 lg:p-6"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div 
         ref={modalRef}
-        className="bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-xl border-t sm:border border-white/10 w-full sm:max-w-2xl h-full sm:h-auto sm:max-h-[85vh] overflow-hidden flex flex-col"
+        className="bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-xl lg:rounded-2xl border-t sm:border border-white/10 w-full sm:max-w-2xl lg:max-w-md sm:w-[90%] lg:w-[30%] h-full sm:h-auto sm:max-h-[85vh] lg:h-[calc(100vh-2rem)] lg:max-h-none overflow-hidden flex flex-col"
         style={{ transform: `translateX(${touchDelta}px)`, opacity: touchDelta > 0 ? 1 - (touchDelta / 300) : 1 }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
         {/* Header */}
-        <div className="px-4 py-4 border-b border-white/10 bg-gray-900/80 backdrop-blur-xl flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
-              <Users size={20} className="text-purple-400" />
+        <div className="px-4 lg:px-5 py-4 lg:py-3 border-b border-white/10 bg-gray-900/80 backdrop-blur-xl flex items-center justify-between">
+          <div className="flex items-center gap-3 lg:gap-2">
+            <div className="w-10 h-10 lg:w-8 lg:h-8 rounded-xl lg:rounded-lg bg-purple-500/20 flex items-center justify-center">
+              <Users size={20} className="lg:hidden text-purple-400" />
+              <Users size={16} className="hidden lg:block text-purple-400" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white">Användare</h2>
+              <h2 className="text-lg lg:text-base font-bold text-white">Användare</h2>
               <p className="text-xs text-gray-400">{users.length} användare totalt</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10 transition-colors">
-            <X size={20} className="text-gray-400" />
+          <button onClick={onClose} className="w-11 h-11 lg:w-8 lg:h-8 flex items-center justify-center rounded-xl lg:rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
+            <X size={20} className="lg:hidden text-gray-400" />
+            <X size={16} className="hidden lg:block text-gray-400" />
           </button>
         </div>
         
         {/* Stats bar */}
-        <div className="px-4 py-3 border-b border-white/5 flex flex-wrap gap-2 text-xs">
+        <div className="px-4 lg:px-3 py-3 lg:py-2 border-b border-white/5 flex flex-wrap gap-2 lg:gap-1 text-xs lg:text-[11px]">
           <button 
             onClick={() => setFilterStatus('all')}
-            className={`flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors ${filterStatus === 'all' ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white'}`}
+            className={`flex items-center gap-1.5 lg:gap-1 px-2 lg:px-1.5 py-1 lg:py-0.5 rounded-lg transition-colors ${filterStatus === 'all' ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white'}`}
           >
             <Users size={14} />
             <span>Alla ({users.length})</span>
@@ -538,53 +540,53 @@ function UsersAdminModal({ currentUserId, onClose }) {
         )}
         
         {/* Sync display names button */}
-        <div className="px-4 py-3 border-b border-white/5">
+        <div className="px-4 lg:px-3 py-3 lg:py-2 border-b border-white/5">
           <button
             onClick={syncDisplayNames}
             disabled={syncingNames}
-            className="w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 border border-purple-500/30 flex items-center justify-center gap-2"
+            className="w-full px-3 py-2.5 lg:py-1.5 rounded-lg text-sm lg:text-xs font-medium transition-all bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white border border-white/10 flex items-center justify-center gap-2 disabled:opacity-50"
           >
-            <RefreshCw size={14} className={syncingNames ? 'animate-spin' : ''} />
-            {syncingNames ? 'Synkar...' : 'Synka visningsnamn överallt'}
+            <RefreshCw size={14} className={`lg:w-3 lg:h-3 ${syncingNames ? 'animate-spin' : ''}`} />
+            {syncingNames ? 'Synkar...' : 'Synka visningsnamn'}
           </button>
-          <p className="text-xs text-gray-500 mt-1.5 text-center">
+          <p className="text-xs lg:text-[11px] text-gray-500 mt-1.5 lg:mt-1 text-center">
             Uppdaterar namn i delningar, leaderboards, polls m.m.
           </p>
           {syncNamesResult && (
-            <p className={`text-xs mt-2 text-center ${syncNamesResult.success ? 'text-green-400' : 'text-red-400'}`}>
+            <p className={`text-xs lg:text-[11px] mt-2 lg:mt-1.5 text-center ${syncNamesResult.success ? 'text-green-400' : 'text-red-400'}`}>
               {syncNamesResult.message}
             </p>
           )}
         </div>
         
         {/* Search and sort */}
-        <div className="px-4 py-3 border-b border-white/5 flex gap-3">
+        <div className="px-4 lg:px-3 py-3 lg:py-2 border-b border-white/5 flex gap-3 lg:gap-2">
           <div className="flex-1 relative">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+            <Search size={16} className="absolute left-3 lg:left-2 top-1/2 -translate-y-1/2 text-gray-500 lg:w-3.5 lg:h-3.5" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Sök på namn eller email..."
-              className="w-full pl-9 pr-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-purple-500/50"
+              className="w-full pl-9 lg:pl-7 pr-3 py-2 lg:py-1.5 bg-white/5 border border-white/10 rounded-lg text-white text-sm lg:text-xs placeholder-gray-500 focus:outline-none focus:border-purple-500/50"
             />
           </div>
           <div className="relative">
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="appearance-none bg-white/5 border border-white/10 rounded-lg px-3 py-2 pr-8 text-white text-sm focus:outline-none focus:border-purple-500/50"
+              className="appearance-none bg-white/5 border border-white/10 rounded-lg px-3 lg:px-2 py-2 lg:py-1.5 pr-8 lg:pr-6 text-white text-sm lg:text-xs focus:outline-none focus:border-purple-500/50"
             >
               <option value="name">Namn</option>
               <option value="objects">Flest objekt</option>
               <option value="created">Senast skapad</option>
             </select>
-            <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+            <ChevronDown size={14} className="absolute right-2 lg:right-1.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none lg:w-3 lg:h-3" />
           </div>
         </div>
         
         {/* User list */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        <div className="flex-1 overflow-y-auto p-4 lg:p-3 space-y-3 lg:space-y-2">
           {loading ? (
             <div className="text-center py-8 text-gray-400">Laddar användare...</div>
           ) : filteredUsers.length === 0 ? (
@@ -593,7 +595,7 @@ function UsersAdminModal({ currentUserId, onClose }) {
             filteredUsers.map(user => (
               <div 
                 key={user.id}
-                className={`p-4 rounded-xl border transition-all ${
+                className={`p-4 lg:p-3 rounded-xl lg:rounded-lg border transition-all ${
                   user.blocked 
                     ? 'bg-red-500/5 border-red-500/20' 
                     : user.isAdmin 
@@ -603,10 +605,10 @@ function UsersAdminModal({ currentUserId, onClose }) {
                         : 'bg-white/5 border-white/10'
                 }`}
               >
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start justify-between gap-3 lg:gap-2">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium text-white truncate">
+                    <div className="flex items-center gap-2 lg:gap-1.5 flex-wrap">
+                      <span className="font-medium lg:text-sm text-white truncate">
                         {user.displayName || user.email?.split('@')[0] || 'Okänd'}
                       </span>
                       {user.isAdmin && (
@@ -639,9 +641,14 @@ function UsersAdminModal({ currentUserId, onClose }) {
                     <div className="flex items-center gap-1.5 mt-1 text-xs text-gray-400">
                       <Mail size={12} />
                       <span className="truncate">{user.email || '-'}</span>
+                      <span className="text-gray-600 lg:inline hidden">·</span>
+                      <span className="lg:flex items-center gap-1 hidden text-gray-500 whitespace-nowrap shrink-0" title={formatDate(user.createdAt)}>
+                        <Calendar size={11} />
+                        {formatDate(user.createdAt)}
+                      </span>
                     </div>
                     
-                    <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                    <div className="flex items-center gap-3 lg:gap-2 mt-1.5 lg:mt-1 text-xs text-gray-500">
                       <span className="flex items-center gap-1">
                         <Package size={12} />
                         {user.objectCount} objekt
@@ -649,10 +656,6 @@ function UsersAdminModal({ currentUserId, onClose }) {
                       <span className="flex items-center gap-1">
                         <Share2 size={12} />
                         {user.sharedToOthers} delade
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Calendar size={12} />
-                        {formatDate(user.createdAt)}
                       </span>
                     </div>
                   </div>

@@ -710,25 +710,26 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
     <>
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-black/80 z-[1000] flex items-end sm:items-center justify-center sm:p-8"
+        className="fixed inset-0 bg-black/80 z-[1000] flex items-end sm:items-center justify-center lg:justify-end sm:p-8 lg:p-6"
         onClick={(e) => { 
           if (!saving && e.target === e.currentTarget) onClose(); 
         }}
       >
         {/* Modal */}
         <div 
-          className="bg-gray-900 sm:rounded-xl border-t sm:border border-white/10 w-full sm:max-w-2xl h-full sm:h-auto sm:max-h-[90vh] overflow-hidden flex flex-col"
+          className="bg-gray-900 sm:rounded-xl lg:rounded-2xl border-t sm:border border-white/10 w-full sm:max-w-2xl lg:max-w-xl sm:w-[90%] lg:w-[40%] h-full sm:h-auto sm:max-h-[90vh] lg:h-[calc(100vh-2rem)] lg:max-h-none overflow-hidden flex flex-col"
           style={{ touchAction: 'pan-y' }}
         >
           
           {/* Header */}
-          <div className="flex-shrink-0 px-4 py-4 border-b border-white/10 flex items-center justify-between bg-gray-900">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
-                <Plus size={20} className="text-blue-400" />
+          <div className="flex-shrink-0 px-4 lg:px-6 py-4 lg:py-3 border-b border-white/10 flex items-center justify-between bg-gray-900">
+            <div className="flex items-center gap-3 lg:gap-2">
+              <div className="w-10 h-10 lg:w-8 lg:h-8 rounded-xl lg:rounded-lg bg-blue-500/20 flex items-center justify-center">
+                <Plus size={20} className="lg:hidden text-blue-400" />
+                <Plus size={16} className="hidden lg:block text-blue-400" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-white">{isEdit ? 'Redigera objekt' : isDuplicate ? 'Kopiera objekt' : 'Skapa nytt objekt'}</h2>
+                <h2 className="text-lg lg:text-base font-bold text-white">{isEdit ? 'Redigera objekt' : isDuplicate ? 'Kopiera objekt' : 'Skapa nytt objekt'}</h2>
                 <p className="text-xs text-gray-400">{isEdit ? 'Uppdatera detaljer' : isDuplicate ? 'Skapa kopia med nya ändringar' : 'Fyll i detaljer nedan'}</p>
               </div>
             </div>
@@ -736,14 +737,15 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
               type="button"
               onClick={onClose} 
               disabled={saving}
-              className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+              className="w-10 h-10 lg:w-8 lg:h-8 flex items-center justify-center rounded-xl lg:rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
             >
-              <X size={20} />
+              <X size={20} className="lg:hidden" />
+              <X size={16} className="hidden lg:block" />
             </button>
           </div>
 
           {/* Scrollable Content */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-6">
+          <div className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-6 lg:space-y-4">
             
             {/* Category selector */}
             <div>
@@ -1161,13 +1163,13 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
           </div>
 
           {/* Footer */}
-          <div className="flex-shrink-0 p-4 border-t border-white/10 bg-gray-900">
-            <div className="flex gap-3">
+          <div className="flex-shrink-0 p-4 lg:px-6 lg:py-3 border-t border-white/10 bg-gray-900">
+            <div className="flex gap-3 lg:gap-2">
               <button 
                 type="button" 
                 onClick={onClose} 
                 disabled={saving} 
-                className="flex-1 px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 active:bg-white/20 touch-manipulation"
+                className="flex-1 px-6 lg:px-4 py-3 lg:py-2 rounded-xl lg:rounded-lg bg-white/5 border border-white/10 text-gray-300 lg:text-sm hover:bg-white/10 active:bg-white/20 touch-manipulation"
               >
                 Avbryt
               </button>
@@ -1181,7 +1183,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   handleSubmit(e);
                 }}
                 disabled={saving || (isEdit && !hasChanges)} 
-                className={`flex-1 px-6 py-3 rounded-xl font-medium flex items-center justify-center gap-2 touch-manipulation ${
+                className={`flex-1 px-6 lg:px-4 py-3 lg:py-2 rounded-xl lg:rounded-lg font-medium lg:text-sm flex items-center justify-center gap-2 touch-manipulation ${
                   isEdit && !hasChanges 
                     ? 'bg-gray-600 text-gray-400' 
                     : 'bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white'

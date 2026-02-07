@@ -345,12 +345,12 @@ function ShareModal({ object, onClose, currentUserEmail, allObjects = [], shared
 
   return (
     <div 
-      className="fixed inset-0 bg-black/80 sm:bg-black/70 backdrop-blur-sm z-[1100] flex items-end sm:items-center justify-center sm:p-8"
+      className="fixed inset-0 bg-black/80 sm:bg-black/70 backdrop-blur-sm z-[1100] flex items-end sm:items-center justify-center lg:justify-end sm:p-8 lg:p-6"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div 
         ref={modalRef}
-        className="bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-xl border-t sm:border border-white/10 sm:border-white/[0.08] w-full sm:max-w-md sm:w-[90%] h-full sm:h-auto sm:max-h-[85vh] overflow-hidden flex flex-col transition-transform duration-200 ease-out relative sm:shadow-2xl sm:shadow-black/50"
+        className="bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-xl lg:rounded-2xl border-t sm:border border-white/10 sm:border-white/[0.08] w-full sm:max-w-md lg:max-w-sm sm:w-[90%] lg:w-[28%] h-full sm:h-auto sm:max-h-[85vh] lg:h-[calc(100vh-2rem)] lg:max-h-none overflow-hidden flex flex-col transition-transform duration-200 ease-out relative sm:shadow-2xl sm:shadow-black/50"
         style={{ transform: `translateX(${touchDelta}px)`, opacity: touchDelta > 0 ? 1 - (touchDelta / 300) : 1 }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
@@ -364,22 +364,24 @@ function ShareModal({ object, onClose, currentUserEmail, allObjects = [], shared
         />
         
         {/* Fixed header */}
-        <div className="sticky top-0 z-10 px-4 py-4 sm:p-5 border-b border-white/5 bg-gradient-to-r from-gray-900/98 via-gray-900/95 to-gray-900/98 backdrop-blur-xl flex items-center justify-between shadow-[0_1px_12px_rgba(0,0,0,0.4)]">
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-purple-500/20">
-              <Share2 size={20} className="text-purple-400" />
+        <div className="sticky top-0 z-10 px-4 lg:px-5 py-4 lg:py-3 border-b border-white/5 bg-gradient-to-r from-gray-900/98 via-gray-900/95 to-gray-900/98 backdrop-blur-xl flex items-center justify-between shadow-[0_1px_12px_rgba(0,0,0,0.4)]">
+          <div className="flex items-center gap-3 lg:gap-2 flex-1 min-w-0">
+            <div className="w-10 h-10 lg:w-8 lg:h-8 rounded-xl lg:rounded-lg flex items-center justify-center flex-shrink-0 bg-purple-500/20">
+              <Share2 size={20} className="lg:hidden text-purple-400" />
+              <Share2 size={16} className="hidden lg:block text-purple-400" />
             </div>
             <div className="min-w-0 flex-1">
-              <h2 className="text-lg sm:text-xl font-bold text-white truncate">Dela objekt</h2>
+              <h2 className="text-lg sm:text-xl lg:text-base font-bold text-white truncate">Dela objekt</h2>
               <span className="text-xs text-gray-400 truncate block">{titleBlock?.data?.text || 'Namnlöst objekt'}</span>
             </div>
           </div>
           <button 
             onClick={onClose} 
-            className="w-11 h-11 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 active:bg-white/20 text-gray-400 hover:text-white transition-all touch-manipulation flex-shrink-0 ml-2"
+            className="w-11 h-11 lg:w-8 lg:h-8 flex items-center justify-center rounded-xl lg:rounded-lg bg-white/5 hover:bg-white/10 active:bg-white/20 text-gray-400 hover:text-white transition-all touch-manipulation flex-shrink-0 ml-2"
             aria-label="Stäng"
           >
-            <X size={24} />
+            <X size={24} className="lg:hidden" />
+            <X size={18} className="hidden lg:block" />
           </button>
         </div>
 

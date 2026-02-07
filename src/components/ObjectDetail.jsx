@@ -223,12 +223,12 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
   return (
     <>
       <div 
-        className="fixed inset-0 bg-black/80 sm:bg-black/70 backdrop-blur-sm z-[1000] flex items-end sm:items-center justify-center sm:p-8"
+        className="fixed inset-0 bg-black/80 sm:bg-black/70 backdrop-blur-sm z-[1000] flex items-end sm:items-center justify-center lg:justify-end sm:p-8 lg:p-6"
         onClick={(e) => e.target === e.currentTarget && onClose()}
       >
         <div 
           ref={modalRef}
-          className="bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-xl border-t sm:border border-white/10 sm:border-white/[0.08] w-full sm:max-w-lg sm:w-[90%] h-full sm:h-auto sm:max-h-[85vh] overflow-hidden flex flex-col transition-transform duration-200 ease-out relative sm:shadow-2xl sm:shadow-black/50"
+          className="bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-xl lg:rounded-2xl border-t sm:border border-white/10 sm:border-white/[0.08] w-full sm:max-w-lg lg:max-w-xl sm:w-[90%] lg:w-[40%] h-full sm:h-auto sm:max-h-[85vh] lg:h-[calc(100vh-2rem)] lg:max-h-none overflow-hidden flex flex-col transition-transform duration-200 ease-out relative sm:shadow-2xl sm:shadow-black/50"
           style={{ transform: `translateX(${touchDelta}px)`, opacity: touchDelta > 0 ? 1 - (touchDelta / 300) : 1, touchAction: 'pan-y' }}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
@@ -242,16 +242,17 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
           />
           
           {/* Fixed header */}
-          <div className="sticky top-0 z-10 px-4 py-4 sm:p-5 border-b border-white/5 bg-gradient-to-r from-gray-900/98 via-gray-900/95 to-gray-900/98 backdrop-blur-xl flex items-center justify-between shadow-[0_1px_12px_rgba(0,0,0,0.4)]">
-            <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className="sticky top-0 z-10 px-4 py-4 sm:p-5 lg:px-6 lg:py-3 border-b border-white/5 bg-gradient-to-r from-gray-900/98 via-gray-900/95 to-gray-900/98 backdrop-blur-xl flex items-center justify-between shadow-[0_1px_12px_rgba(0,0,0,0.4)]">
+            <div className="flex items-center gap-3 lg:gap-2 flex-1 min-w-0">
               <div 
-                className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                className="w-10 h-10 lg:w-8 lg:h-8 rounded-xl lg:rounded-lg flex items-center justify-center flex-shrink-0"
                 style={{ backgroundColor: `${categoryColor}20` }}
               >
-                <IconComponent size={20} style={{ color: categoryColor }} />
+                <IconComponent size={20} className="lg:hidden" style={{ color: categoryColor }} />
+                <IconComponent size={16} className="hidden lg:block" style={{ color: categoryColor }} />
               </div>
               <div className="min-w-0 flex-1">
-                <h2 className="text-lg sm:text-xl font-bold text-white truncate">{objectTitle}</h2>
+                <h2 className="text-lg sm:text-xl lg:text-lg font-bold text-white truncate">{objectTitle}</h2>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-400">{category?.label || 'Objekt'}</span>
                   {isSharedWithMe && (
@@ -268,23 +269,24 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 lg:gap-1">
               {isOwner && (
                 <button 
                   onClick={() => onShare && onShare(object)} 
-                  className="w-11 h-11 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 active:bg-white/20 text-gray-400 hover:text-white transition-all touch-manipulation flex-shrink-0"
+                  className="w-11 h-11 lg:w-9 lg:h-9 flex items-center justify-center rounded-xl lg:rounded-lg bg-white/5 hover:bg-white/10 active:bg-white/20 text-gray-400 hover:text-white transition-all touch-manipulation flex-shrink-0"
                   aria-label="Dela"
                   title="Dela"
                 >
-                  <Share2 size={20} />
+                  <Share2 size={20} className="lg:hidden" />
+                  <Share2 size={16} className="hidden lg:block" />
                 </button>
               )}
               <button 
                 onClick={onClose} 
-                className="w-11 h-11 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 active:bg-white/20 text-gray-400 hover:text-white transition-all touch-manipulation flex-shrink-0"
+                className="w-11 h-11 lg:w-9 lg:h-9 flex items-center justify-center rounded-xl lg:rounded-lg bg-white/5 hover:bg-white/10 active:bg-white/20 text-gray-400 hover:text-white transition-all touch-manipulation flex-shrink-0"
                 aria-label="Stäng"
               >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg className="w-6 h-6 lg:w-5 lg:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="18" y1="6" x2="6" y2="18"></line>
                   <line x1="6" y1="6" x2="18" y2="18"></line>
                 </svg>
@@ -308,7 +310,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
           )}
           
           {/* Scrollable content */}
-          <div className="overflow-y-auto flex-1 p-4 sm:p-5 pb-8 sm:pb-10">
+          <div className="overflow-y-auto flex-1 p-4 sm:p-5 lg:p-6 pb-8 sm:pb-10 lg:pb-6">
             <div className="space-y-5">
               {(() => {
                 const sorted = blocksToRender
@@ -349,7 +351,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                           canDelete={canDeleteLocation}
                           onDelete={handleDeleteBlock}
                           positionNumber={locationBlocks.length > 1 ? locationIndex : null}
-                          onShowOnMap={onShowOnMap}
+                          onShowOnMap={onShowOnMap ? (coords) => onShowOnMap(coords, object.id) : undefined}
                           // Location block: centralized audio props
                           hasAudio={block.type === 'location' && !block.inherited && audioIsDiscrete && audioUrl && !audioError}
                           isAudioPlaying={block.type === 'location' ? isAudioPlaying : undefined}
@@ -599,18 +601,23 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
               </div>
             )}
             {(canManage || canEdit || isSharedWithMe) && (
-              <div ref={manageSectionRef} className="mt-6 pt-6 border-t border-white/10">
+              <div ref={manageSectionRef} className="mt-6 lg:mt-4 pt-6 lg:pt-4 border-t border-white/10">
                 <button
                   onClick={() => setShowManageSection(!showManageSection)}
-                  className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-gray-400 hover:text-white transition-all"
+                  className="w-full flex items-center justify-between px-4 lg:px-3 py-3 lg:py-2 rounded-xl lg:rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-gray-400 hover:text-white transition-all"
                 >
                   <div className="flex items-center gap-2">
-                    <Settings size={18} />
-                    <span className="font-medium">{showAsSharedView ? 'Delning' : 'Hantera objekt'}</span>
+                    <Settings size={18} className="lg:hidden" />
+                    <Settings size={16} className="hidden lg:block" />
+                    <span className="font-medium lg:text-sm">{showAsSharedView ? 'Delning' : 'Hantera objekt'}</span>
                   </div>
                   <ChevronDown 
                     size={18} 
-                    className={`transition-transform ${showManageSection ? 'rotate-180' : ''}`}
+                    className={`lg:hidden transition-transform ${showManageSection ? 'rotate-180' : ''}`}
+                  />
+                  <ChevronDown 
+                    size={14} 
+                    className={`hidden lg:block transition-transform ${showManageSection ? 'rotate-180' : ''}`}
                   />
                 </button>
                 {showManageSection && (

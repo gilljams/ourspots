@@ -166,12 +166,12 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
 
   return (
     <div 
-      className="fixed inset-0 bg-black/80 sm:bg-black/70 backdrop-blur-sm z-[2100] flex items-end sm:items-center justify-center sm:p-8"
+      className="fixed inset-0 bg-black/80 sm:bg-black/70 backdrop-blur-sm z-[2100] flex items-end sm:items-center justify-center lg:justify-start sm:p-8 lg:p-6"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div 
         ref={modalRef}
-        className="bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-xl border-t sm:border border-white/10 sm:border-white/[0.08] w-full sm:max-w-lg sm:w-[90%] h-full sm:h-auto sm:max-h-[85vh] overflow-hidden flex flex-col transition-transform duration-200 ease-out relative sm:shadow-2xl sm:shadow-black/50"
+        className="bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-xl lg:rounded-2xl border-t sm:border border-white/10 sm:border-white/[0.08] w-full sm:max-w-lg lg:max-w-md sm:w-[90%] lg:w-[30%] h-full sm:h-auto sm:max-h-[85vh] lg:h-[calc(100vh-2rem)] lg:max-h-none overflow-hidden flex flex-col transition-transform duration-200 ease-out relative sm:shadow-2xl sm:shadow-black/50"
         style={{ transform: `translateX(${touchDelta}px)`, opacity: touchDelta > 0 ? 1 - (touchDelta / 300) : 1 }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
@@ -181,53 +181,54 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
         <div className="absolute top-0 left-0 right-0 h-72 bg-gradient-to-b from-blue-600/8 via-blue-900/5 to-transparent pointer-events-none" />
         
         {/* Fixed header */}
-        <div className="sticky top-0 z-10 px-4 py-4 sm:p-6 border-b border-white/5 bg-gradient-to-r from-gray-900/98 via-gray-900/95 to-gray-900/98 backdrop-blur-xl flex items-center justify-between shadow-[0_1px_12px_rgba(0,0,0,0.4)]">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-600/20 flex items-center justify-center">
-              <Settings size={20} className="text-blue-400" />
+        <div className="sticky top-0 z-10 px-4 lg:px-5 py-4 lg:py-3 border-b border-white/5 bg-gradient-to-r from-gray-900/98 via-gray-900/95 to-gray-900/98 backdrop-blur-xl flex items-center justify-between shadow-[0_1px_12px_rgba(0,0,0,0.4)]">
+          <div className="flex items-center gap-3 lg:gap-2">
+            <div className="w-10 h-10 lg:w-8 lg:h-8 rounded-xl lg:rounded-lg bg-gradient-to-br from-blue-500/20 to-blue-600/20 flex items-center justify-center">
+              <Settings size={20} className="lg:hidden text-blue-400" />
+              <Settings size={16} className="hidden lg:block text-blue-400" />
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-white">Kategorier</h2>
+            <h2 className="text-xl sm:text-2xl lg:text-lg font-bold text-white">Kategorier</h2>
           </div>
           <button
             onClick={onClose}
-            className="w-11 h-11 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 active:bg-white/20 text-gray-400 hover:text-white transition-all touch-manipulation"
+            className="w-11 h-11 lg:w-8 lg:h-8 flex items-center justify-center rounded-xl lg:rounded-lg bg-white/5 hover:bg-white/10 active:bg-white/20 text-gray-400 hover:text-white transition-all touch-manipulation"
             aria-label="Stäng"
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg className="w-6 h-6 lg:w-5 lg:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
           </button>
         </div>
 
-        <div className="p-4 sm:p-6 overflow-y-auto flex-1">
+        <div className="p-4 sm:p-6 lg:p-4 overflow-y-auto flex-1">
           {/* Add new category */}
-          <div className="mb-6 p-4 rounded-xl bg-white/5 border border-white/10">
-            <h3 className="text-lg font-semibold text-white mb-3">Skapa ny kategori</h3>
-            <div className="space-y-3">
+          <div className="mb-6 lg:mb-4 p-4 lg:p-3 rounded-xl lg:rounded-lg bg-white/5 border border-white/10">
+            <h3 className="text-lg lg:text-sm font-semibold text-white mb-3 lg:mb-2">Skapa ny kategori</h3>
+            <div className="space-y-3 lg:space-y-2">
               <div>
-                <label className="block text-sm text-gray-300 mb-1">Namn</label>
+                <label className="block text-sm lg:text-xs text-gray-300 mb-1">Namn</label>
                 <input
                   type="text"
                   value={newCategory.label}
                   onChange={(e) => setNewCategory({ ...newCategory, label: e.target.value })}
                   placeholder="T.ex. Restauranger"
-                  className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-400"
+                  className="w-full px-3 py-2 lg:py-1.5 lg:text-sm rounded-lg bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-400"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 lg:gap-2">
                 <div className="relative">
-                  <label className="block text-sm text-gray-300 mb-1">Ikon</label>
+                  <label className="block text-sm lg:text-xs text-gray-300 mb-1">Ikon</label>
                   <button
                     type="button"
                     onClick={() => setShowIconPicker(showIconPicker === 'new' ? null : 'new')}
-                    className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white flex items-center justify-between hover:bg-white/10 transition-colors"
+                    className="w-full px-3 py-2 lg:py-1.5 rounded-lg bg-white/5 border border-white/10 text-white flex items-center justify-between hover:bg-white/10 transition-colors"
                   >
                     <div className="flex items-center gap-2">
-                      {React.createElement(getIconComponent(newCategory.icon), { size: 18, className: 'text-gray-300' })}
-                      <span className="text-sm">{AVAILABLE_ICONS.find(i => i.name === newCategory.icon)?.label || 'Välj'}</span>
+                      {React.createElement(getIconComponent(newCategory.icon), { size: 18, className: 'text-gray-300 lg:w-4 lg:h-4' })}
+                      <span className="text-sm lg:text-xs">{AVAILABLE_ICONS.find(i => i.name === newCategory.icon)?.label || 'Välj'}</span>
                     </div>
-                    <ChevronDown size={16} className={`text-gray-400 transition-transform ${showIconPicker === 'new' ? 'rotate-180' : ''}`} />
+                    <ChevronDown size={16} className={`text-gray-400 transition-transform lg:w-3 lg:h-3 ${showIconPicker === 'new' ? 'rotate-180' : ''}`} />
                   </button>
                   {showIconPicker === 'new' && (
                     <div className="absolute z-50 top-full left-0 right-0 mt-1 p-2 rounded-lg bg-gray-800 border border-white/20 shadow-xl max-h-48 overflow-y-auto">
@@ -287,7 +288,7 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
               <button
                 onClick={handleSaveCategory}
                 disabled={!newCategory.label.trim() || saving}
-                className="w-full px-4 py-2 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full px-4 py-2 lg:py-1.5 lg:text-sm rounded-xl lg:rounded-lg bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {saving ? 'Sparar...' : 'Skapa kategori'}
               </button>
@@ -296,15 +297,15 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
 
           {/* Existing categories */}
           <div className="space-y-2">
-            <h3 className="text-lg font-semibold text-white mb-3">Befintliga kategorier</h3>
+            <h3 className="text-lg lg:text-sm font-semibold text-white mb-3 lg:mb-2">Befintliga kategorier</h3>
             {categories.length === 0 ? (
-              <p className="text-gray-400 text-sm">Inga kategorier än</p>
+              <p className="text-gray-400 text-sm lg:text-xs">Inga kategorier än</p>
             ) : (
               categories.map((cat, index) => {
                 const IconComp = getIconComponent(cat.icon);
                 const objectCount = objects.filter(obj => obj.type === cat.id).length;
                 return (
-                  <div key={cat.id} className="p-4 rounded-xl bg-white/5 border border-white/10">
+                  <div key={cat.id} className="p-4 lg:p-3 rounded-xl lg:rounded-lg bg-white/5 border border-white/10">
                     {editingCategory?.id === cat.id ? (
                       <div className="space-y-3">
                         <div>

@@ -55,7 +55,7 @@ const getNearestFutureDate = (blocks) => {
   return nearestDate;
 };
 
-function ObjectCard({ object, onClick, currentUser, childCount, distance, categories, isFavorite, onToggleFavorite, onNavigate, onShare, isOrphanChild, parentChain, showAsChild }) {
+function ObjectCard({ object, onClick, currentUser, childCount, distance, categories, isFavorite, onToggleFavorite, onNavigate, onShare, isOrphanChild, parentChain, showAsChild, compact }) {
   // Find category to get icon
   const category = categories.find(c => c.id === object.type);
   const IconComponent = category ? getIconComponent(category.icon) : (PREDEFINED_ICONS[object.type]?.icon || Home);
@@ -104,7 +104,7 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
   const showBreadcrumb = showAsChild && parentChain && parentChain.length > 0;
 
   return (
-    <div onClick={onClick} className="bg-white/5 backdrop-blur-md rounded-2xl overflow-hidden border border-white/10 hover:border-blue-400/50 transition-all cursor-pointer transform hover:scale-[1.02] relative group">
+    <div onClick={onClick} className={`bg-white/5 backdrop-blur-md rounded-2xl overflow-hidden border border-white/10 hover:border-blue-400/50 transition-all cursor-pointer transform hover:scale-[1.02] relative group ${compact ? 'lg:rounded-xl' : ''}`}>
       {/* Parent breadcrumb for orphan/search children */}
       {showBreadcrumb && (
         <div className="px-3 py-1.5 bg-blue-500/10 border-b border-white/5 flex items-center gap-1 text-[10px] text-blue-300/80 overflow-hidden">
@@ -124,11 +124,11 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
             {currentUser && (
               <button
                 onClick={handleFavoriteClick}
-                className="p-1.5 rounded-full bg-gray-900/70 backdrop-blur-sm hover:bg-gray-800/90 hover:scale-110 transition-all duration-200"
+                className={`rounded-full bg-gray-900/70 backdrop-blur-sm hover:bg-gray-800/90 hover:scale-110 transition-all duration-200 ${compact ? 'p-1 lg:p-1' : 'p-1.5'}`}
                 title={isFavorite ? 'Ta bort från favoriter' : 'Lägg till i favoriter'}
               >
                 <Star 
-                  size={16} 
+                  size={compact ? 14 : 16} 
                   className={`transition-colors ${isFavorite ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400 hover:text-yellow-300'}`}
                 />
               </button>
@@ -136,28 +136,28 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
             {isOwner && (
               <button
                 onClick={handleShareClick}
-                className="p-1.5 rounded-full bg-gray-900/70 backdrop-blur-sm hover:bg-gray-800/90 hover:scale-110 transition-all duration-200"
+                className={`rounded-full bg-gray-900/70 backdrop-blur-sm hover:bg-gray-800/90 hover:scale-110 transition-all duration-200 ${compact ? 'p-1 lg:p-1' : 'p-1.5'}`}
                 title="Dela"
               >
-                <Share2 size={16} className="text-gray-400 hover:text-blue-300" />
+                <Share2 size={compact ? 14 : 16} className="text-gray-400 hover:text-blue-300" />
               </button>
             )}
           </div>
           {/* Top right badges: Shared indicator + Child count */}
           <div className={`absolute ${showBreadcrumb ? 'top-8' : 'top-2'} right-2 z-10 flex items-center gap-1.5`}>
             {isSharedWithMe && (
-              <div className="bg-purple-500/20 backdrop-blur-sm text-purple-300 text-xs px-2 py-1 rounded-full border border-purple-500/30 flex items-center gap-1" title={`Delad med dig som ${myShareRole === 'editor' ? 'redigerare' : 'läsare'}`}>
-                <Users size={12} />
+              <div className={`bg-purple-500/20 backdrop-blur-sm text-purple-300 rounded-full border border-purple-500/30 flex items-center gap-1 ${compact ? 'text-[10px] px-1.5 py-0.5' : 'text-xs px-2 py-1'}`} title={`Delad med dig som ${myShareRole === 'editor' ? 'redigerare' : 'läsare'}`}>
+                <Users size={compact ? 10 : 12} />
               </div>
             )}
             {childCount > 0 && (
-              <div className="bg-white/10 backdrop-blur-sm text-gray-200 text-xs px-2 py-1 rounded-full border border-white/15 flex items-center gap-1">
-                <Folder size={12} className="text-gray-300" />
+              <div className={`bg-white/10 backdrop-blur-sm text-gray-200 rounded-full border border-white/15 flex items-center gap-1 ${compact ? 'text-[10px] px-1.5 py-0.5' : 'text-xs px-2 py-1'}`}>
+                <Folder size={compact ? 10 : 12} className="text-gray-300" />
                 {childCount}
               </div>
             )}
           </div>
-          <div className="w-full h-40 overflow-hidden relative">
+          <div className={`w-full overflow-hidden relative ${compact ? 'h-28 lg:h-24' : 'h-40'}`}>
             <img 
               src={getTransformedImageUrl(imageBlock.data.url, imageBlock.data.focalPoint ? 'custom' : imageBlock.data.cropMode, 800, 320, imageBlock.data.focalPoint)} 
               alt="" 
@@ -166,31 +166,31 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
             />
             {/* Countdown badge at bottom left */}
             {countdown && (
-              <div className={`absolute bottom-2 left-2 z-10 backdrop-blur-sm text-xs px-2 py-1 rounded-full flex items-center gap-1 ${
+              <div className={`absolute bottom-2 left-2 z-10 backdrop-blur-sm rounded-full flex items-center gap-1 ${
                 countdown.highlight 
                   ? 'bg-amber-500/30 text-amber-200 border border-amber-500/40' 
                   : 'bg-gray-900/70 text-gray-300 border border-white/10'
-              }`}>
-                <Clock size={11} />
+              } ${compact ? 'text-[10px] px-1.5 py-0.5' : 'text-xs px-2 py-1'}`}>
+                <Clock size={compact ? 9 : 11} />
                 {countdown.text}
               </div>
             )}
           </div>
         </>
       ) : null}
-      <div className={imageBlock ? "p-4" : "p-4"}>
+      <div className={compact ? "p-3 lg:p-2.5" : "p-4"}>
         {!category && isOwner && (
-          <div className="mb-2 text-xs text-yellow-400 bg-yellow-400/10 px-2 py-1 rounded border border-yellow-400/20 flex items-center gap-1.5">
-            <AlertTriangle size={14} className="flex-shrink-0" />
-            <span>Ogiltig kategori - redigera objektet</span>
+          <div className={`mb-2 text-yellow-400 bg-yellow-400/10 px-2 py-1 rounded border border-yellow-400/20 flex items-center gap-1.5 ${compact ? 'text-[10px]' : 'text-xs'}`}>
+            <AlertTriangle size={compact ? 12 : 14} className="flex-shrink-0" />
+            <span>Ogiltig kategori - redigera</span>
           </div>
         )}
         <div className="flex items-center gap-2 mb-2">
-          <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center flex-shrink-0">
-            <IconComponent size={18} className="text-blue-400" />
+          <div className={`rounded-lg bg-blue-500/20 flex items-center justify-center flex-shrink-0 ${compact ? 'w-6 h-6 lg:w-5 lg:h-5' : 'w-8 h-8'}`}>
+            <IconComponent size={compact ? 14 : 18} className="text-blue-400" />
           </div>
           <div className="flex-1 min-w-0">
-            {titleBlock && <h3 className="text-lg font-semibold text-white truncate">{titleBlock.data.text}</h3>}
+            {titleBlock && <h3 className={`font-semibold text-white truncate ${compact ? 'text-sm lg:text-xs' : 'text-lg'}`}>{titleBlock.data.text}</h3>}
           </div>
           {/* Favorite + Share buttons for cards without image */}
           {!imageBlock && (
@@ -202,7 +202,7 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
                   title={isFavorite ? 'Ta bort från favoriter' : 'Lägg till i favoriter'}
                 >
                   <Star 
-                    size={16} 
+                    size={compact ? 14 : 16} 
                     className={`transition-colors ${isFavorite ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400 hover:text-yellow-300'}`}
                   />
                 </button>
@@ -213,12 +213,12 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
                   className="p-1.5 rounded-full hover:bg-white/10 hover:scale-110 transition-all duration-200 flex-shrink-0"
                   title="Dela"
                 >
-                  <Share2 size={16} className="text-gray-400 hover:text-blue-300" />
+                  <Share2 size={compact ? 14 : 16} className="text-gray-400 hover:text-blue-300" />
                 </button>
               )}
               {isSharedWithMe && (
                 <div className="p-1.5 rounded-full flex-shrink-0" title={`Delad med dig som ${myShareRole === 'editor' ? 'redigerare' : 'läsare'}`}>
-                  <Users size={16} className="text-purple-400" />
+                  <Users size={compact ? 14 : 16} className="text-purple-400" />
                 </div>
               )}
             </div>
@@ -227,16 +227,16 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
         
         {/* Compact info row for cards without image */}
         {!imageBlock && (childCount > 0 || distance !== undefined) && (
-          <div className="flex items-center gap-3 text-xs text-gray-500 mb-2">
+          <div className={`flex items-center gap-3 text-gray-500 mb-2 ${compact ? 'text-[10px]' : 'text-xs'}`}>
             {childCount > 0 && (
               <span className="flex items-center gap-1">
-                <Folder size={12} />
+                <Folder size={compact ? 10 : 12} />
                 {childCount} objekt
               </span>
             )}
             {distance !== undefined && (
               <span className="flex items-center gap-1 text-blue-400">
-                <MapPin size={12} />
+                <MapPin size={compact ? 10 : 12} />
                 {distance.toFixed(1)} km
               </span>
             )}
@@ -245,8 +245,8 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
         
         {/* Location info - only address for cards with image */}
         {imageBlock && locationBlock?.data?.address && (
-          <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
-            <MapPin size={14} className="flex-shrink-0" />
+          <div className={`flex items-center gap-2 text-gray-400 mb-2 ${compact ? 'text-xs lg:text-[11px]' : 'text-sm'}`}>
+            <MapPin size={compact ? 12 : 14} className="flex-shrink-0" />
             <span className="truncate flex-1">{locationBlock.data.address}</span>
             {distance !== undefined && (
               <span className="text-blue-400 flex-shrink-0">{distance.toFixed(1)} km</span>
@@ -254,8 +254,8 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
           </div>
         )}
         
-        {/* Action buttons */}
-        {hasLocation && (
+        {/* Action buttons - hide in compact mode */}
+        {hasLocation && !compact && (
           <div className="flex gap-2">
             <button
               onClick={handleShowOnMap}

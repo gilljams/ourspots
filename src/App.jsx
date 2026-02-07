@@ -2,9 +2,10 @@ import React, { useState, useEffect, useLayoutEffect, useRef, Suspense, lazy } f
 import { 
   X, Plus, Image, Edit2, Trash2, 
   Loader, LogOut, LogIn, Check, Circle, Upload, 
-  Map as MapIcon, List, ChevronDown, ArrowUp, ArrowDown, Search, Settings,
+  Map as MapIcon, List, ChevronDown, ArrowUp, ArrowDown, ArrowLeft, Search, Settings,
   Target, Lightbulb, SlidersHorizontal, Menu, Filter, Share2, UserPlus, UserMinus, Users, Mail, User,
-  FileText, MapPin, Home, RotateCcw, Star, Navigation, Eye, Edit3, AlertTriangle, Trophy
+  FileText, MapPin, Home, RotateCcw, Star, Navigation, Eye, Edit3, AlertTriangle, Trophy,
+  LayoutGrid, LayoutList
 } from 'lucide-react';
 
 // Version for cache-busting visual indicator (remove in production)
@@ -102,6 +103,10 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [maxDistanceKm, setMaxDistanceKm] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [compactCards, setCompactCards] = useState(() => {
+    const saved = localStorage.getItem('compactCards');
+    return saved === 'true';
+  });
   const [showMenu, setShowMenu] = useState(false);
   const [showInvitations, setShowInvitations] = useState(false);
   const [showCategoryAdmin, setShowCategoryAdmin] = useState(false);
@@ -148,6 +153,7 @@ function App() {
     return saved !== 'false'; // Default expanded
   });
   const [mapCenter, setMapCenter] = useState(null);
+  const [returnToObjectId, setReturnToObjectId] = useState(null); // For "back to object" from map
   const headerRef = useRef(null);
   const [headerHeight, setHeaderHeight] = useState(64);
   const seedingRef = useRef(false);
@@ -1525,6 +1531,38 @@ function App() {
               })}
             </div>
             
+            {/* Desktop search field */}
+            <div className="hidden lg:flex relative flex-shrink-0 w-64">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-white/10 text-white text-sm placeholder:text-gray-400 rounded-xl pl-9 pr-8 py-2 border border-white/10 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/30 transition-all"
+                placeholder="Sök..."
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-gray-300 transition-colors"
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+            
+            {/* Compact cards toggle - desktop only */}
+            <button
+              onClick={() => {
+                const newValue = !compactCards;
+                setCompactCards(newValue);
+                localStorage.setItem('compactCards', newValue);
+              }}
+              className={`hidden lg:flex items-center gap-2 px-3 py-2 rounded-xl whitespace-nowrap transition-all text-sm font-medium flex-shrink-0 ${compactCards ? 'bg-blue-500 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20'}`}
+              title={compactCards ? 'Stora kort' : 'Kompakta kort'}
+            >
+              {compactCards ? <LayoutGrid size={16} /> : <LayoutList size={16} />}
+            </button>
+            
             {/* Filter button - fixed position */}
             <button
               onClick={() => setShowFilters(!showFilters)}
@@ -1537,8 +1575,8 @@ function App() {
           
           {showFilters && (
             <div className="mt-3 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
-              {/* Search - at top with clear button */}
-              <div className="relative">
+              {/* Search - mobile only */}
+              <div className="relative lg:hidden">
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
                   value={searchQuery}
@@ -1628,10 +1666,10 @@ function App() {
         </div>
       </div>
       
-      <main className="max-w-6xl mx-auto px-4">
+      <main className="max-w-6xl mx-auto px-4 lg:max-w-7xl">
         {viewMode === 'list' ? (
           <div className="py-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className={`grid gap-4 ${compactCards ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
               {displayObjects.map(obj => {
                 const childCount = objects.filter(o => o.parentId === obj.id).length;
                 const distance = getObjectDistance(obj);
@@ -1681,6 +1719,7 @@ function App() {
                     isOrphanChild={isOrphanChild}
                     parentChain={parentChain}
                     showAsChild={!!obj.parentId && (searchTerm || isOrphanChild)}
+                    compact={compactCards}
                     onNavigate={(coords) => {
                       setViewMode('map');
                       setMapCenter(coords);
@@ -1727,10 +1766,29 @@ function App() {
               >
                 <Plus size={26} strokeWidth={2.5} />
               </button>
+              {/* Back to object button - shows when we navigated to map from ObjectDetail */}
+              {viewMode === 'map' && returnToObjectId && (
+                <button
+                  onClick={() => {
+                    const obj = objects.find(o => o.id === returnToObjectId);
+                    if (obj) {
+                      setSelectedObject(obj);
+                    }
+                    setViewMode('list'); // Go back to list view
+                    setMapCenter(null);
+                    setReturnToObjectId(null);
+                  }}
+                  className="fixed bottom-24 right-6 w-14 h-14 bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-400 hover:to-purple-500 backdrop-blur-sm rounded-2xl shadow-xl shadow-purple-500/30 flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 z-[1200]"
+                  title="Tillbaka till objekt"
+                >
+                  <ArrowLeft size={22} />
+                </button>
+              )}
               <button
                 onClick={() => {
                   const newMode = viewMode === 'list' ? 'map' : 'list';
                   setViewMode(newMode);
+                  setReturnToObjectId(null); // Clear return state when manually toggling
                   if (newMode === 'map') {
                     window.scrollTo(0, 0);
                   } else {
@@ -1738,7 +1796,9 @@ function App() {
                     setMapCenter(null);
                   }
                 }}
-                className="fixed bottom-24 right-6 w-14 h-14 bg-gray-800/90 hover:bg-gray-700 backdrop-blur-sm rounded-2xl shadow-xl flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 z-[1200] border border-white/10"
+                className={`fixed right-6 w-14 h-14 bg-gray-800/90 hover:bg-gray-700 backdrop-blur-sm rounded-2xl shadow-xl flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 z-[1200] border border-white/10 ${
+                  viewMode === 'map' && returnToObjectId ? 'bottom-[10.5rem]' : 'bottom-24'
+                }`}
                 title={viewMode === 'list' ? 'Visa karta' : 'Visa lista'}
               >
                 {viewMode === 'list' ? <MapIcon size={22} /> : <List size={22} />}
@@ -1750,7 +1810,11 @@ function App() {
             <button
               onClick={handleQuickCapture}
               className={`fixed right-6 w-14 h-14 bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 rounded-2xl shadow-xl shadow-orange-500/30 flex items-center justify-center text-white hover:scale-105 active:scale-95 z-[1200] transition-all duration-300 ${
-                (selectedObject || showCreateModal || showCategoryAdmin || showObjectsAdmin || showShareModal) ? 'bottom-6' : 'bottom-[10.5rem]'
+                (selectedObject || showCreateModal || showCategoryAdmin || showObjectsAdmin || showShareModal) 
+                  ? 'bottom-6' 
+                  : viewMode === 'map' && returnToObjectId 
+                    ? 'bottom-[15rem]' 
+                    : 'bottom-[10.5rem]'
               }`}
               title="Snabbpinna GPS-position"
             >
@@ -1781,7 +1845,8 @@ function App() {
             onNavigate={(obj) => setSelectedObject(obj)} 
             categories={categories} 
             isAdmin={isAdmin}
-            onShowOnMap={(coords) => {
+            onShowOnMap={(coords, objectId) => {
+              setReturnToObjectId(objectId || selectedObject?.id);
               setSelectedObject(null);
               setViewMode('map');
               setMapCenter(coords);

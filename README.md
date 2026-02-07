@@ -15,7 +15,7 @@ OurSpots är en platsbaserad app (primärt för mobil) med dark theme som låter
 - Organisera i lager (parent/child) och kategorier
 - Se objekt på karta med avstånd och navigation
 
-## 🏗️ Nuvarande Status (v1.5 - Custom Domain & Infrastructure)
+## 🏗️ Nuvarande Status (v1.7 - Responsiv Desktop-layout)
 
 ### ✅ Implementerat
 
@@ -144,6 +144,14 @@ Alla expanderbara block följer samma mönster:
 - **Ägarskap** - Objekt märks med "Ditt" för inloggad användare
 - **Förbättrad favoritknapp** - Större träffyta och fixad undefined-bug för stabil favorithantering
 - **Omstrukturerad burgermeny** - Inställningar först, Snabbpinningar sist med villkorlig visning
+
+#### Responsiv Desktop-layout
+- **Kompakta modaler** - Objektmodaler högerplacerade (40% bredd), admin-modaler vänsterplacerade
+- **Tillbaka till objekt** - Lila knapp på kartan för att återgå till objektet man kom ifrån
+- **Kompakt kort-toggle** - Växla mellan normal och kompakt kortvisning (sparas i localStorage)
+- **Desktop sökfält** - Sökfältet i header-raden på stora skärmar
+- **Custom scrollbar** - Mörkt tema för scrollbars som matchar appen
+- **Kompaktare användarkort** - Email och datum på samma rad, optimerad för desktop
 
 #### Admin-funktioner
 - **Admin-sektion** - Kategorihantering och objekthantering för administratörer
@@ -567,6 +575,24 @@ Detta är en varning från Firebase Auth + GitHub Pages. Kan ignoreras - påverk
 - [ ] Content Security Policy headers
 
 ## 📝 Changelog
+
+### v1.7 - Responsiv Desktop-layout & UX-förbättringar (2026-02-07)
+- 🖥️ **Kompakt desktop-layout** - Smalare modaler och mindre bulkiga element på stora skärmar
+  - Objektmodaler (ObjectDetail, CreateObjectModal): Högerplacerade, max 40% bredd
+  - Admin-modaler: Vänsterplacerade (följer hamburgermenyn logiskt)
+  - Kompakt padding, text och spacing med lg: breakpoints
+- 🔙 **Tillbaka till objekt** - Ny lila knapp på kartan när man navigerat dit från ObjectDetail
+  - Spårar ursprungsobjektet med `returnToObjectId` state
+  - Återgår till listvyn och öppnar objektet igen
+  - Knappar staplas korrekt utan överlapp
+- 📱 **Kompakt kort-toggle** - Växla mellan normal och kompakt kortvisning på desktop
+  - Sparas i localStorage för persistens
+  - Mindre bilder och text i kompakt läge
+- 🔍 **Desktop sökfält** - Sökfältet flyttat till header-raden på stora skärmar
+- 📜 **Custom scrollbar** - Mörkt tema för scrollbars (8px, transparent track, vit thumb)
+- 👥 **Kompaktare användarkort** - Email och datum på samma rad, mindre gap
+- 🎨 **Harmoniserade knappar** - "Synka hierarki" och "Synka visningsnamn" med konsistent neutral design
+- ⚙️ **Cache-hantering** - Korrekta cache-headers i firebase.json (immutable för assets, no-cache för HTML)
 
 ### v1.6 - UI Harmonisering & Sektionsblock (2026-02-06)
 - 🎨 **Färgtema-harmonisering** - Konsistent blå färg genom hela appen
