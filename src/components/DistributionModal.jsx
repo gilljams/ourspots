@@ -66,11 +66,16 @@ function DistributionModal({
   onLeaveSlot,
   onDeleteSlot
 }) {
-  const [step, setStep] = useState('intent'); // 'intent', 'create', 'join', 'fill'
+  const [step, setStep] = useState('intent'); // 'intent', 'create', 'join', 'fill', 'confirm-join'
   const [slotLabel, setSlotLabel] = useState('');
   const [slotCapacity, setSlotCapacity] = useState('');
   const [slotInfo, setSlotInfo] = useState('');
   const [selectedPassengers, setSelectedPassengers] = useState([]); // For pre-filling car
+  
+  // Extra seats state (for passengers with companions)
+  const [joiningSlotId, setJoiningSlotId] = useState(null); // Which slot user is about to join
+  const [extraSeats, setExtraSeats] = useState(0); // How many extra seats needed
+  const [extraSeatsNote, setExtraSeatsNote] = useState(''); // Description of companions
   
   const preset = DISTRIBUTION_PRESETS[data.preset] || DISTRIBUTION_PRESETS.carpool;
   const PresetIcon = preset.icon;
@@ -105,27 +110,60 @@ function DistributionModal({
   const hasCreatedSlot = !!userCreatedSlot;
   
   // Get display name for an email key
-  const getDisplayName = (emailKey) => {
+  const getDisplayName = (emailKey, slot = null, includeExtras = false) => {
     if (!emailKey) return '';
     const email = emailKey.replace(/_DOT_/g, '.');
     // Check shares for displayName or name
-    if (shares[emailKey]?.displayName) return shares[emailKey].displayName;
-    if (shares[emailKey]?.name) return shares[emailKey].name;
-    // Check participants list for name
-    const participant = (data.participants || []).find(p => {
-      const pKey = p.email?.replace(/\./g, '_DOT_');
-      return pKey === emailKey;
-    });
-    if (participant?.name) return participant.name;
-    // Fall back to email prefix
-    return email.split('@')[0];
+    let name = '';
+    if (shares[emailKey]?.displayName) {
+      name = shares[emailKey].displayName;
+    } else if (shares[emailKey]?.name) {
+      name = shares[emailKey].name;
+    } else {
+      // Check participants list for name
+      const participant = (data.participants || []).find(p => {
+        const pKey = p.email?.replace(/\./g, '_DOT_');
+        return pKey === emailKey;
+      });
+      if (participant?.name) {
+        name = participant.name;
+      } else {
+        // Fall back to email prefix
+        name = email.split('@')[0];
+      }
+    }
+    
+    // Add extra seats suffix if applicable
+    if (includeExtras && slot?.assigneeDetails?.[emailKey]) {
+      const details = slot.assigneeDetails[emailKey];
+      if (details.extraSeats > 0) {
+        const suffix = details.note || details.extraSeats;
+        name = `${name} (+${suffix})`;
+      }
+    }
+    
+    return name;
   };
   
-  // Get spots left for a slot
+  // Get total seats taken in a slot (including extra seats)
+  const getTotalSeatsTaken = (slot) => {
+    const assignees = slot.assignees || [];
+    let total = assignees.length;
+    // Add extra seats for each assignee
+    assignees.forEach(key => {
+      const details = slot.assigneeDetails?.[key];
+      if (details?.extraSeats) {
+        total += details.extraSeats;
+      }
+    });
+    return total;
+  };
+  
+  // Get spots left for a slot (accounting for extra seats)
   const getSpotsLeft = (slot) => {
-    const assigned = slot.assignees?.length || 0;
+    const taken = getTotalSeatsTaken(slot);
     const capacity = slot.capacity || 1;
-    return Math.max(0, capacity - assigned);
+    return Math.max(0, capacity - taken);
   };
   
   // Available slots (with spots left)
@@ -184,18 +222,32 @@ function DistributionModal({
     onClose();
   };
   
-  // Handle joining a slot
+  // Handle clicking on a slot to join (for carpool: show confirmation dialog)
   const handleJoinSlot = (slotId) => {
+    if (data.preset === 'carpool') {
+      // Show confirmation dialog for extra seats
+      setJoiningSlotId(slotId);
+      setExtraSeats(0);
+      setExtraSeatsNote('');
+      setStep('confirm-join');
+    } else {
+      // Tasks: direct join/toggle
+      onJoinSlot(slotId, currentUserKey);
+    }
+  };
+  
+  // Confirm joining with extra seats info
+  const handleConfirmJoin = () => {
+    if (!joiningSlotId) return;
+    
     // For carpool: if already in another slot, leave it first
-    // For tasks: allow being in multiple slots
-    if (data.preset === 'carpool' && userSlot && userSlot.id !== slotId) {
+    if (userSlot && userSlot.id !== joiningSlotId) {
       onLeaveSlot(userSlot.id, currentUserKey);
     }
-    onJoinSlot(slotId, currentUserKey);
-    // Don't close for tasks - user might want to select more
-    if (data.preset === 'carpool') {
-      onClose();
-    }
+    
+    // Join with extra seats info
+    onJoinSlot(joiningSlotId, currentUserKey, extraSeats, extraSeatsNote.trim() || null);
+    onClose();
   };
   
   // Handle toggling a task (join or leave)
@@ -262,19 +314,26 @@ function DistributionModal({
           </div>
           {userSlot.assignees && userSlot.assignees.length > 1 && (
             <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-white/10">
-              {userSlot.assignees.map((key, i) => (
-                <span 
-                  key={i} 
-                  className={`text-xs px-2 py-1 rounded-full flex items-center gap-1 ${
-                    key === currentUserKey 
-                      ? `${preset.bgColor} ${preset.color}` 
-                      : 'bg-white/10 text-gray-300'
-                  }`}
-                >
-                  <User size={10} />
-                  {key === currentUserKey ? 'Du' : getDisplayName(key)}
-                </span>
-              ))}
+              {userSlot.assignees.map((key, i) => {
+                const baseName = key === currentUserKey ? 'Du' : getDisplayName(key);
+                const details = userSlot.assigneeDetails?.[key];
+                const displayName = details?.extraSeats > 0 
+                  ? `${baseName} (+${details.note || details.extraSeats})`
+                  : baseName;
+                return (
+                  <span 
+                    key={i} 
+                    className={`text-xs px-2 py-1 rounded-full flex items-center gap-1 ${
+                      key === currentUserKey 
+                        ? `${preset.bgColor} ${preset.color}` 
+                        : 'bg-white/10 text-gray-300'
+                    }`}
+                  >
+                    <User size={10} />
+                    {displayName}
+                  </span>
+                );
+              })}
             </div>
           )}
         </div>
@@ -586,21 +645,28 @@ function DistributionModal({
             </div>
             
             {/* Passengers with remove button */}
-            {currentPassengers.map((key, i) => (
-              <div key={i} className="flex items-center gap-2 text-sm">
-                <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center">
-                  <User size={12} className="text-gray-400" />
+            {currentPassengers.map((key, i) => {
+              const baseName = getDisplayName(key);
+              const details = userCreatedSlot.assigneeDetails?.[key];
+              const displayName = details?.extraSeats > 0 
+                ? `${baseName} (+${details.note || details.extraSeats})`
+                : baseName;
+              return (
+                <div key={i} className="flex items-center gap-2 text-sm">
+                  <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center">
+                    <User size={12} className="text-gray-400" />
+                  </div>
+                  <span className="text-gray-300 flex-1">{displayName}</span>
+                  <button
+                    onClick={() => handleRemovePassenger(key)}
+                    className="w-6 h-6 rounded-full bg-white/5 hover:bg-red-500/20 flex items-center justify-center text-gray-500 hover:text-red-400 transition-colors"
+                    title="Ta bort passagerare"
+                  >
+                    <X size={12} />
+                  </button>
                 </div>
-                <span className="text-gray-300 flex-1">{getDisplayName(key)}</span>
-                <button
-                  onClick={() => handleRemovePassenger(key)}
-                  className="w-6 h-6 rounded-full bg-white/5 hover:bg-red-500/20 flex items-center justify-center text-gray-500 hover:text-red-400 transition-colors"
-                  title="Ta bort passagerare"
-                >
-                  <X size={12} />
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
         
@@ -702,11 +768,18 @@ function DistributionModal({
                       {/* Current assignees */}
                       {slot.assignees && slot.assignees.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-2">
-                          {slot.assignees.map((key, i) => (
-                            <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-white/10 text-gray-300">
-                              {key === currentUserKey ? 'Du' : getDisplayName(key)}
-                            </span>
-                          ))}
+                          {slot.assignees.map((key, i) => {
+                            const baseName = key === currentUserKey ? 'Du' : getDisplayName(key);
+                            const details = slot.assigneeDetails?.[key];
+                            const displayName = details?.extraSeats > 0 
+                              ? `${baseName} (+${details.note || details.extraSeats})`
+                              : baseName;
+                            return (
+                              <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-white/10 text-gray-300">
+                                {displayName}
+                              </span>
+                            );
+                          })}
                         </div>
                       )}
                     </div>
@@ -766,6 +839,125 @@ function DistributionModal({
     );
   };
   
+  // Render confirm join step (for carpool - extra seats confirmation)
+  const renderConfirmJoinStep = () => {
+    const slot = slots.find(s => s.id === joiningSlotId);
+    if (!slot) return null;
+    
+    const spotsLeft = getSpotsLeft(slot);
+    const totalNeeded = 1 + extraSeats;
+    const canFit = totalNeeded <= spotsLeft;
+    
+    return (
+      <div className="space-y-4">
+        {/* Back button */}
+        <button
+          onClick={() => {
+            setJoiningSlotId(null);
+            setExtraSeats(0);
+            setExtraSeatsNote('');
+            setStep('join');
+          }}
+          className="flex items-center gap-1 text-sm text-gray-400 hover:text-white transition-colors"
+        >
+          <ChevronLeft size={16} />
+          Tillbaka
+        </button>
+        
+        {/* Selected car info */}
+        <div className={`p-3 rounded-xl ${preset.bgColor} border ${preset.borderColor}`}>
+          <div className="font-medium text-white">{slot.label}</div>
+          {slot.info && (
+            <div className="text-xs text-gray-400 mt-0.5">{slot.info}</div>
+          )}
+          <div className="text-xs text-gray-400 mt-1">
+            {spotsLeft} {spotsLeft === 1 ? 'plats' : 'platser'} kvar
+          </div>
+        </div>
+        
+        {/* Extra seats question */}
+        <div className="space-y-3">
+          <label className="block text-sm text-gray-300 font-medium">
+            Åker du med någon?
+          </label>
+          
+          <div className="space-y-2">
+            <label className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/10 cursor-pointer hover:bg-white/[0.05] transition-colors">
+              <input 
+                type="radio" 
+                name="extraSeats" 
+                checked={extraSeats === 0}
+                onChange={() => setExtraSeats(0)}
+                className="w-4 h-4 text-blue-500"
+              />
+              <span className="text-white">Nej, bara jag</span>
+            </label>
+            
+            <label className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/10 cursor-pointer hover:bg-white/[0.05] transition-colors">
+              <input 
+                type="radio" 
+                name="extraSeats" 
+                checked={extraSeats > 0}
+                onChange={() => setExtraSeats(1)}
+                className="w-4 h-4 text-blue-500"
+              />
+              <span className="text-white">Ja, vi är totalt</span>
+              <select 
+                value={extraSeats > 0 ? 1 + extraSeats : 2}
+                onChange={(e) => setExtraSeats(parseInt(e.target.value) - 1)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (extraSeats === 0) setExtraSeats(1);
+                }}
+                className="ml-auto px-3 py-1 rounded-lg bg-white/10 border border-white/10 text-white text-sm focus:outline-none focus:border-blue-500"
+              >
+                {[2, 3, 4, 5, 6].map(n => (
+                  <option key={n} value={n}>{n} personer</option>
+                ))}
+              </select>
+            </label>
+          </div>
+          
+          {/* Note field when extra seats selected */}
+          {extraSeats > 0 && (
+            <div>
+              <label className="block text-sm text-gray-400 mb-1.5">
+                Beskriv vilka (valfritt)
+              </label>
+              <input
+                type="text"
+                value={extraSeatsNote}
+                onChange={(e) => setExtraSeatsNote(e.target.value)}
+                placeholder={`T.ex. "${extraSeats} barn" eller "min fru"`}
+                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+              />
+            </div>
+          )}
+          
+          {/* Warning if not enough seats */}
+          {!canFit && (
+            <div className="p-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-300 text-sm">
+              Det finns bara {spotsLeft} {spotsLeft === 1 ? 'plats' : 'platser'} kvar i denna bil, men ni behöver {totalNeeded}.
+            </div>
+          )}
+        </div>
+        
+        {/* Confirm button */}
+        <button
+          onClick={handleConfirmJoin}
+          disabled={!canFit}
+          className={`w-full py-3 rounded-xl font-medium transition-all ${
+            canFit 
+              ? `${preset.bgColor} ${preset.color} hover:opacity-90` 
+              : 'bg-white/5 text-gray-500 cursor-not-allowed'
+          }`}
+        >
+          Bekräfta
+        </button>
+      </div>
+    );
+  };
+  
   return (
     <div 
       className="fixed inset-0 bg-black/80 z-[2000] flex items-end sm:items-center justify-center sm:p-8"
@@ -785,6 +977,7 @@ function DistributionModal({
                 {step === 'create' && preset.createTitle}
                 {step === 'join' && `Välj ${preset.slotLabel}`}
                 {step === 'fill' && 'Fyll din bil'}
+                {step === 'confirm-join' && 'Bekräfta deltagande'}
               </p>
             </div>
           </div>
@@ -802,6 +995,7 @@ function DistributionModal({
           {step === 'create' && renderCreateStep()}
           {step === 'join' && renderJoinStep()}
           {step === 'fill' && renderFillStep()}
+          {step === 'confirm-join' && renderConfirmJoinStep()}
         </div>
       </div>
     </div>

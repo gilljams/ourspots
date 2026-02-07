@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Plus, Edit2, Trash2, Settings, ChevronDown, ChevronUp,
-  Share2, Users, UserMinus, Home, List, LayoutGrid, FileText, Copy, BarChart3, ClipboardList, Link2, X, Search, Check, ExternalLink, Map as MapIcon, Navigation, Maximize2
+  Share2, Users, UserMinus, Home, List, LayoutGrid, FileText, Copy, BarChart3, ClipboardList, Link2, X, Search, Check, ExternalLink, Map as MapIcon, Navigation, Maximize2, Target
 } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -46,13 +46,19 @@ function FitBounds({ positions }) {
 }
 
 // Mini map view for collection
-function CollectionMapView({ objects, categories, onSelectObject, userLocation }) {
+function CollectionMapView({ objects, categories, onSelectObject, userLocation, onAddLocation, pendingLocations = [] }) {
   const [currentUserLocation, setCurrentUserLocation] = useState(userLocation);
   
   const positions = objects.map(obj => {
     const loc = obj.blocks.find(b => b.type === 'location');
     return { lat: loc.data.lat, lng: loc.data.lng };
   });
+  
+  // Include pending locations in positions for map bounds
+  const allPositions = [
+    ...positions,
+    ...pendingLocations.map(p => ({ lat: p.lat, lng: p.lng }))
+  ];
   
   const center = positions.length > 0 
     ? [
@@ -141,6 +147,7 @@ function CollectionMapView({ objects, categories, onSelectObject, userLocation }
                 )}
                 <div className="text-sm font-semibold mb-1">
                   {isCollectionSelf && <span className="text-amber-500">★ </span>}
+                  {obj._locationIndex && <span className="text-blue-500">#{obj._locationIndex} </span>}
                   {titleBlock?.data?.text || 'Namnlöst'}
                 </div>
                 {loc.data.address && (
@@ -163,6 +170,7 @@ function CollectionMapView({ objects, categories, onSelectObject, userLocation }
               <Tooltip direction="top" offset={[0, -8]} opacity={0.95}>
                 <div className="text-xs font-medium">
                   {isCollectionSelf && '★ '}
+                  {obj._locationIndex && `#${obj._locationIndex} `}
                   {titleBlock?.data?.text || 'Namnlöst'}
                 </div>
               </Tooltip>
@@ -171,17 +179,57 @@ function CollectionMapView({ objects, categories, onSelectObject, userLocation }
         );
       })}
       
+      {/* Pending locations (saved offline, waiting to sync) */}
+      {pendingLocations.map((pending, idx) => (
+        <Marker 
+          key={`pending-${pending.id || idx}`}
+          position={[pending.lat, pending.lng]} 
+          icon={createColoredIcon('#F97316')} // Orange for pending
+          zIndexOffset={100}
+        >
+          <Popup>
+            <div className="min-w-[140px]">
+              <div className="text-sm font-semibold mb-1 text-orange-600">
+                ⏳ Väntar på synk
+              </div>
+              <div className="text-xs text-gray-600">
+                #{objects.length + idx + 1} • {new Date(pending.timestamp).toLocaleString('sv-SE')}
+              </div>
+            </div>
+          </Popup>
+          {!isTouchDevice && (
+            <Tooltip direction="top" offset={[0, -8]} opacity={0.95}>
+              <div className="text-xs font-medium text-orange-600">
+                ⏳ #{objects.length + idx + 1} (väntar)
+              </div>
+            </Tooltip>
+          )}
+        </Marker>
+      ))}
+      
       {/* Map control buttons */}
       <CenterOnLocationButton onLocationFound={setCurrentUserLocation} />
-      <FitAllButton positions={positions} />
+      <FitAllButton positions={allPositions} />
+      {onAddLocation && <AddLocationButton onAddLocation={onAddLocation} onLocationUpdate={setCurrentUserLocation} pendingCount={pendingLocations.length} />}
     </MapContainer>
   );
 }
 
-// Button to center on user location - must be inside MapContainer to use useMap
+// Button to center on user location with optional continuous tracking
 function CenterOnLocationButton({ onLocationFound }) {
   const map = useMap();
   const [isLocating, setIsLocating] = useState(false);
+  const [isWatching, setIsWatching] = useState(false);
+  const watchIdRef = useRef(null);
+  
+  // Cleanup watch on unmount
+  useEffect(() => {
+    return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+    };
+  }, []);
   
   const handleCenterOnUser = () => {
     if (!('geolocation' in navigator)) {
@@ -189,16 +237,44 @@ function CenterOnLocationButton({ onLocationFound }) {
       return;
     }
     
+    // If already watching, toggle it off
+    if (isWatching) {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+      setIsWatching(false);
+      return;
+    }
+    
     setIsLocating(true);
     
+    // First get current position to center
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
-        map.setView([latitude, longitude], 13);
+        map.setView([latitude, longitude], 15);
         if (onLocationFound) {
           onLocationFound({ lat: latitude, lng: longitude });
         }
         setIsLocating(false);
+        
+        // Start continuous watching
+        setIsWatching(true);
+        watchIdRef.current = navigator.geolocation.watchPosition(
+          (pos) => {
+            const { latitude: lat, longitude: lng } = pos.coords;
+            if (onLocationFound) {
+              onLocationFound({ lat, lng });
+            }
+            // Optionally keep map centered on user
+            map.setView([lat, lng], map.getZoom(), { animate: true });
+          },
+          (err) => {
+            console.log('Watch position error:', err);
+          },
+          { enableHighAccuracy: true, timeout: 30000, maximumAge: 5000 }
+        );
       },
       (error) => {
         setIsLocating(false);
@@ -208,7 +284,7 @@ function CenterOnLocationButton({ onLocationFound }) {
         }
         alert(message);
       },
-      { enableHighAccuracy: false, timeout: 10000, maximumAge: 30000 }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
     );
   };
   
@@ -216,11 +292,15 @@ function CenterOnLocationButton({ onLocationFound }) {
     <button
       onClick={handleCenterOnUser}
       disabled={isLocating}
-      className={`absolute top-4 right-16 z-[1000] p-3 rounded-lg ${isLocating ? 'bg-blue-400' : 'bg-blue-500 hover:bg-blue-600'} text-white shadow-lg transition-all flex items-center justify-center`}
-      title="Gå till min position"
+      className={`absolute top-4 right-16 z-[1000] w-11 h-11 rounded-lg ${isWatching ? 'bg-green-500 hover:bg-green-600' : isLocating ? 'bg-blue-400' : 'bg-blue-500 hover:bg-blue-600'} text-white shadow-lg transition-all flex items-center justify-center`}
+      title={isWatching ? 'Stoppa positionsspårning' : 'Följ min position'}
       style={{ position: 'absolute' }}
     >
-      <Navigation size={20} className={isLocating ? 'animate-pulse' : ''} />
+      <Navigation size={20} />
+      {/* Pulsing ring indicator when tracking */}
+      {(isLocating || isWatching) && (
+        <span className="absolute inset-0 rounded-lg border-2 border-white/50 animate-ping" />
+      )}
     </button>
   );
 }
@@ -252,7 +332,114 @@ function FitAllButton({ positions }) {
   );
 }
 
-function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockUpdate, currentUser, userDisplayName, allObjects, onNavigate, onGoBack, previousObject, categories, isAdmin, onShowOnMap, onShare, onLeaveShare, collections, onAddToCollection, onRemoveFromCollection, onUpdateLinkedNote, onAddLinkedUrl, onUpdateLinkedUrl, onRemoveLinkedUrl, onReorderLinked }) {
+// Button to add a new location to the object (kantarellknappen)
+function AddLocationButton({ onAddLocation, onLocationUpdate, pendingCount = 0 }) {
+  const map = useMap();
+  const [isAdding, setIsAdding] = useState(false);
+  
+  const handleAddLocation = () => {
+    if (!('geolocation' in navigator)) {
+      alert('Din enhet stöder inte platsåtkomst');
+      return;
+    }
+    
+    setIsAdding(true);
+    
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        const newPos = { lat: latitude, lng: longitude };
+        
+        // Update user location marker
+        if (onLocationUpdate) {
+          onLocationUpdate(newPos);
+        }
+        
+        // Add the location to the object
+        if (onAddLocation) {
+          onAddLocation(newPos);
+        }
+        
+        // Center map on new location
+        map.setView([latitude, longitude], 14);
+        
+        setIsAdding(false);
+      },
+      (error) => {
+        setIsAdding(false);
+        let message = 'Kunde inte hämta din position. ';
+        if (error.code === 1) {
+          message = 'Du nekade platsåtkomst.';
+        }
+        alert(message);
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+  };
+  
+  return (
+    <button
+      onClick={handleAddLocation}
+      disabled={isAdding}
+      className={`absolute bottom-4 right-4 z-[1000] p-3 rounded-lg shadow-lg transition-all flex items-center justify-center ${
+        isAdding 
+          ? 'bg-gradient-to-br from-orange-400 to-orange-500 text-white animate-pulse shadow-orange-500/30' 
+          : 'bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 text-white shadow-orange-500/30'
+      }`}
+      title="Lägg till ny plats här"
+      style={{ position: 'absolute' }}
+    >
+      <Target size={20} />
+      {pendingCount > 0 && (
+        <span className="absolute -top-1 -right-1 bg-yellow-500 text-black text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+          {pendingCount}
+        </span>
+      )}
+    </button>
+  );
+}
+
+// Helper to get/set pending locations from localStorage
+const PENDING_LOCATIONS_KEY = 'ourspots_pending_locations';
+
+function getPendingLocations(objectId) {
+  try {
+    const all = JSON.parse(localStorage.getItem(PENDING_LOCATIONS_KEY) || '{}');
+    return all[objectId] || [];
+  } catch {
+    return [];
+  }
+}
+
+function savePendingLocation(objectId, coords) {
+  try {
+    const all = JSON.parse(localStorage.getItem(PENDING_LOCATIONS_KEY) || '{}');
+    const pending = all[objectId] || [];
+    pending.push({
+      id: `pending_${Date.now()}`,
+      lat: coords.lat,
+      lng: coords.lng,
+      timestamp: Date.now()
+    });
+    all[objectId] = pending;
+    localStorage.setItem(PENDING_LOCATIONS_KEY, JSON.stringify(all));
+    return pending;
+  } catch {
+    return [];
+  }
+}
+
+function clearPendingLocations(objectId) {
+  try {
+    const all = JSON.parse(localStorage.getItem(PENDING_LOCATIONS_KEY) || '{}');
+    delete all[objectId];
+    localStorage.setItem(PENDING_LOCATIONS_KEY, JSON.stringify(all));
+  } catch {
+    // Ignore
+  }
+}
+
+function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockUpdate, currentUser, userDisplayName, userLocation, showQuickCapture, allObjects, onNavigate, onGoBack, previousObject, categories, isAdmin, onShowOnMap, onShare, onLeaveShare, collections, onAddToCollection, onRemoveFromCollection, onUpdateLinkedNote, onAddLinkedUrl, onUpdateLinkedUrl, onRemoveLinkedUrl, onReorderLinked }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showManageSection, setShowManageSection] = useState(false);
   const [showCollectionPicker, setShowCollectionPicker] = useState(false);
@@ -273,11 +460,60 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
   const [textEditModalData, setTextEditModalData] = useState(null); // { blockIndex, content, title }
   const [distributionModalData, setDistributionModalData] = useState(null); // { blockIndex, data }
   const [showCollectionMap, setShowCollectionMap] = useState(false); // For collection map modal
+  const [showMultiLocationMap, setShowMultiLocationMap] = useState(false); // For multi-location objects map
+  const [pendingLocations, setPendingLocations] = useState(() => getPendingLocations(object.id));
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   
   // Centralized audio state for coordinating between LocationBlock and ImageBlock
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [audioError, setAudioError] = useState(false);
   const audioRef = useRef(null);
+  
+  // Track online status reactively
+  useEffect(() => {
+    const handleOnlineChange = () => setIsOnline(navigator.onLine);
+    window.addEventListener('online', handleOnlineChange);
+    window.addEventListener('offline', handleOnlineChange);
+    return () => {
+      window.removeEventListener('online', handleOnlineChange);
+      window.removeEventListener('offline', handleOnlineChange);
+    };
+  }, []);
+  
+  // Sync pending locations when online
+  useEffect(() => {
+    const syncPendingLocations = async () => {
+      const pending = getPendingLocations(object.id);
+      if (pending.length === 0 || !isOnline) return;
+      
+      try {
+        // Get fresh object data
+        const currentBlocks = object.blocks || [];
+        const newBlocks = pending.map(p => ({
+          type: 'location',
+          data: { lat: p.lat, lng: p.lng, address: '' }
+        }));
+        
+        await updateDoc(doc(db, 'objects', object.id), {
+          blocks: [...currentBlocks, ...newBlocks]
+        });
+        
+        // Clear pending after successful sync
+        clearPendingLocations(object.id);
+        setPendingLocations([]);
+        
+        if (pending.length > 0) {
+          alert(`${pending.length} sparade platser synkade!`);
+        }
+      } catch (err) {
+        console.error('Failed to sync pending locations:', err);
+        // Keep pending, will try again later
+      }
+    };
+    
+    // Sync on mount and when isOnline changes to true
+    syncPendingLocations();
+  }, [object.id, object.blocks, isOnline]);
   
   const toggleChildViewMode = () => {
     const newMode = childViewMode === 'grid' ? 'list' : 'grid';
@@ -436,6 +672,27 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
     
     return linkedItems;
   })();
+  
+  // Count of linked objects with coords (excluding collection's own location)
+  const linkedObjectsCount = linkedObjectsWithCoords.filter(obj => !obj.isCollectionSelf).length;
+  
+  // Get own location blocks for multi-location map (non-collection objects with multiple locations)
+  const ownLocationBlocks = object.blocks
+    .filter(b => b.type === 'location' && b.data?.lat != null && b.data?.lng != null);
+  const hasMultipleLocations = !isCollection && (ownLocationBlocks.length > 1 || (ownLocationBlocks.length >= 1 && pendingLocations.length > 0) || pendingLocations.length > 1);
+  const hasImageBlock = object.blocks.some(b => b.type === 'image' && b.data?.url);
+  
+  // Create fake "objects" for the multi-location map view (one per location)
+  const multiLocationMapObjects = ownLocationBlocks.map((locBlock, idx) => ({
+    id: `${object.id}-loc-${idx}`,
+    blocks: [
+      object.blocks.find(b => b.type === 'title'),
+      object.blocks.find(b => b.type === 'image'),
+      locBlock
+    ].filter(Boolean),
+    type: object.type,
+    _locationIndex: idx + 1 // For display in popup
+  }));
   
   // Find all descendants (children, grandchildren, etc.) for cascade delete warning
   const allDescendants = allObjects.filter(o => o.ancestorIds?.includes(object.id));
@@ -634,6 +891,22 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
           {/* Scrollable content */}
           <div className="overflow-y-auto flex-1 p-4 sm:p-5 lg:p-6 pb-8 sm:pb-10 lg:pb-6">
             <div className="space-y-5">
+              {/* Show multi-location map button at top if no image block exists */}
+              {!hasImageBlock && hasMultipleLocations && (
+                <div className="flex items-center justify-end">
+                  <button
+                    onClick={() => setShowMultiLocationMap(true)}
+                    className="h-9 px-3 rounded-lg bg-white/5 hover:bg-blue-500/20 flex items-center gap-2 text-gray-400 hover:text-blue-400 transition-all"
+                    title="Visa alla platser på karta"
+                  >
+                    <MapIcon size={16} />
+                    <span className="text-sm font-medium">
+                      {ownLocationBlocks.length + pendingLocations.length} {(ownLocationBlocks.length + pendingLocations.length) === 1 ? 'plats' : 'platser'}
+                      {pendingLocations.length > 0 && <span className="text-yellow-400 ml-1">({pendingLocations.length} väntar)</span>}
+                    </span>
+                  </button>
+                </div>
+              )}
               {(() => {
                 const sorted = blocksToRender
                   .filter(block => blockComponents[block.type] && block.type !== 'title')
@@ -674,11 +947,11 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                           onDelete={handleDeleteBlock}
                           positionNumber={locationBlocks.length > 1 ? locationIndex : null}
                           onShowOnMap={onShowOnMap ? (coords) => onShowOnMap(coords, object.id) : undefined}
-                          // Location block: collection map props
-                          isCollection={block.type === 'location' && isCollection}
+                          // Location block: collection map props (only show if there are linked objects with coords)
+                          isCollection={block.type === 'location' && isCollection && linkedObjectsCount > 0}
                           collectionPlacesCount={block.type === 'location' && isCollection ? linkedObjectsWithCoords.length : 0}
-                          onShowCollectionMap={block.type === 'location' && isCollection && linkedObjectsWithCoords.length > 0 ? () => setShowCollectionMap(true) : undefined}
-                          whatsappGroupUrl={block.type === 'location' && isCollection ? object.whatsappGroupUrl : undefined}
+                          onShowCollectionMap={block.type === 'location' && isCollection && linkedObjectsCount > 0 ? () => setShowCollectionMap(true) : undefined}
+                          whatsappGroupUrl={block.type === 'location' && isCollection && linkedObjectsCount > 0 ? object.whatsappGroupUrl : undefined}
                           // Location block: centralized audio props
                           hasAudio={block.type === 'location' && !block.inherited && audioIsDiscrete && audioUrl && !audioError}
                           isAudioPlaying={block.type === 'location' ? isAudioPlaying : undefined}
@@ -845,6 +1118,46 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                             }
                           }}
                         />
+                    {/* Show collection map buttons right after image block - only if no location block and there are linked objects with coords */}
+                    {block.type === 'image' && isCollection && !blocksToRender.some(b => b.type === 'location') && linkedObjectsCount > 0 && (
+                      <div className="flex items-center justify-end gap-2 flex-wrap mt-3">
+                        {object.whatsappGroupUrl && (
+                          <button
+                            onClick={() => window.open(object.whatsappGroupUrl, '_blank')}
+                            className="w-9 h-9 rounded-lg bg-green-500/20 hover:bg-green-500/30 flex items-center justify-center text-green-400 hover:text-green-300 transition-all flex-shrink-0"
+                            title="WhatsApp-grupp"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+                            </svg>
+                          </button>
+                        )}
+                        <button
+                          onClick={() => setShowCollectionMap(true)}
+                          className="h-9 px-3 rounded-lg bg-white/5 hover:bg-blue-500/20 flex items-center gap-2 text-gray-400 hover:text-blue-400 transition-all"
+                          title="Visa alla platser på karta"
+                        >
+                          <MapIcon size={16} />
+                          <span className="text-sm font-medium">{linkedObjectsWithCoords.length} {linkedObjectsWithCoords.length === 1 ? 'plats' : 'platser'}</span>
+                        </button>
+                      </div>
+                    )}
+                    {/* Show multi-location map button for non-collection objects with 2+ locations */}
+                    {block.type === 'image' && hasMultipleLocations && (
+                      <div className="flex items-center justify-end mt-3">
+                        <button
+                          onClick={() => setShowMultiLocationMap(true)}
+                          className="h-9 px-3 rounded-lg bg-white/5 hover:bg-blue-500/20 flex items-center gap-2 text-gray-400 hover:text-blue-400 transition-all"
+                          title="Visa alla platser på karta"
+                        >
+                          <MapIcon size={16} />
+                          <span className="text-sm font-medium">
+                            {ownLocationBlocks.length + pendingLocations.length} {(ownLocationBlocks.length + pendingLocations.length) === 1 ? 'plats' : 'platser'}
+                            {pendingLocations.length > 0 && <span className="text-yellow-400 ml-1">({pendingLocations.length} väntar)</span>}
+                          </span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ) : null;
               });
@@ -927,6 +1240,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                 )}
               </div>
             )}
+
             {/* Linked objects section for collections */}
             {isCollection && orderedLinkedItems.length > 0 && (
               <div className="mt-6 pt-6 border-t border-purple-500/20">
@@ -1750,7 +2064,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
               alert('Kunde inte skapa');
             }
           }}
-          onJoinSlot={async (slotId, userKey) => {
+          onJoinSlot={async (slotId, userKey, extraSeats = 0, extraSeatsNote = null) => {
             try {
               const updatedBlocks = [...object.blocks];
               const currentSlots = updatedBlocks[distributionModalData.blockIndex].data.slots || [];
@@ -1758,7 +2072,14 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                 if (slot.id === slotId) {
                   const assignees = slot.assignees || [];
                   if (!assignees.includes(userKey)) {
-                    return { ...slot, assignees: [...assignees, userKey] };
+                    // Add to assignees
+                    const newAssignees = [...assignees, userKey];
+                    // Store extra seats info if provided
+                    const assigneeDetails = { ...(slot.assigneeDetails || {}) };
+                    if (extraSeats > 0 || extraSeatsNote) {
+                      assigneeDetails[userKey] = { extraSeats, note: extraSeatsNote };
+                    }
+                    return { ...slot, assignees: newAssignees, assigneeDetails };
                   }
                 }
                 return slot;
@@ -1783,7 +2104,10 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
               const updatedSlots = currentSlots.map(slot => {
                 if (slot.id === slotId) {
                   const assignees = (slot.assignees || []).filter(key => key !== userKey);
-                  return { ...slot, assignees };
+                  // Remove from assigneeDetails too
+                  const assigneeDetails = { ...(slot.assigneeDetails || {}) };
+                  delete assigneeDetails[userKey];
+                  return { ...slot, assignees, assigneeDetails };
                 }
                 return slot;
               });
@@ -1851,9 +2175,86 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
               <CollectionMapView 
                 objects={linkedObjectsWithCoords}
                 categories={categories}
+                userLocation={userLocation}
                 onSelectObject={(obj) => {
                   setShowCollectionMap(false);
                   onNavigate(obj);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Multi-Location Map Modal (for objects with multiple location blocks) */}
+      {showMultiLocationMap && multiLocationMapObjects.length > 0 && (
+        <div 
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[3000] flex items-center justify-center p-4"
+          onClick={() => setShowMultiLocationMap(false)}
+        >
+          <div 
+            className="bg-gray-900 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-white/20 shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+              <div className="flex items-center gap-2">
+                <MapIcon size={18} className="text-blue-400" />
+                <h3 className="font-medium text-white">
+                  {object.blocks.find(b => b.type === 'title')?.data?.text || 'Platser'} ({multiLocationMapObjects.length + pendingLocations.length} platser)
+                </h3>
+                {pendingLocations.length > 0 && (
+                  <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs font-medium rounded-full">
+                    {pendingLocations.length} väntar
+                  </span>
+                )}
+                {!isOnline && (
+                  <span className="px-2 py-0.5 bg-red-500/20 text-red-400 text-xs font-medium rounded-full">
+                    Offline
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={() => setShowMultiLocationMap(false)}
+                className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            {/* Map */}
+            <div className="h-[70vh]">
+              <CollectionMapView 
+                objects={multiLocationMapObjects}
+                categories={categories}
+                userLocation={userLocation}
+                pendingLocations={pendingLocations}
+                onAddLocation={showQuickCapture ? async (coords) => {
+                  // Try to save to Firestore first
+                  try {
+                    const newBlock = {
+                      type: 'location',
+                      data: {
+                        lat: coords.lat,
+                        lng: coords.lng,
+                        address: ''
+                      }
+                    };
+                    const updatedBlocks = [...(object.blocks || []), newBlock];
+                    await updateDoc(doc(db, 'objects', object.id), {
+                      blocks: updatedBlocks
+                    });
+                    alert(`Plats #${ownLocationBlocks.length + pendingLocations.length + 1} tillagd!`);
+                  } catch (err) {
+                    console.error('Error adding location, saving locally:', err);
+                    // Fallback: Save to localStorage for later sync
+                    const newPending = savePendingLocation(object.id, coords);
+                    setPendingLocations(newPending);
+                    alert(`Plats #${ownLocationBlocks.length + newPending.length} sparad lokalt (synkas när nät finns)`);
+                  }
+                } : undefined}
+                onSelectObject={() => {
+                  // Stay on same object, just close the map
+                  setShowMultiLocationMap(false);
                 }}
               />
             </div>

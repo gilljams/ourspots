@@ -1918,6 +1918,8 @@ function App() {
             onBlockUpdate={handleBlockUpdate} 
             currentUser={user} 
             userDisplayName={displayName}
+            userLocation={userLocation}
+            showQuickCapture={showQuickCapture}
             allObjects={objects} 
             onNavigate={(obj) => {
               setNavigationHistory(prev => [...prev, selectedObject]);

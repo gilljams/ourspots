@@ -15,7 +15,7 @@ OurSpots är en platsbaserad app (primärt för mobil) med dark theme som låter
 - Organisera i lager (parent/child) och kategorier
 - Se objekt på karta med avstånd och navigation
 
-## 🏗️ Nuvarande Status (v1.7 - Responsiv Desktop-layout)
+## 🏗️ Nuvarande Status (v1.8 - Kantarellknappen & Offline-säkerhet)
 
 ### ✅ Implementerat
 
@@ -104,12 +104,15 @@ Alla expanderbara block följer samma mönster:
 - **Meny döljs utanför klick** - Click-outside detection för smidig UX
 - **Kartknapp döljs vid modal** - Ingen visuell kollision mellan kartknapp och öppen modal
 
-#### Offline & Quick Capture (🍄 Svampknapp)
+#### Offline & Quick Capture (🍄 Kantarellknappen)
 - **Quick GPS Capture** - Orange flytande knapp med Target-ikon för snabb positionslagring
-- **Offline-plockning** - Spara GPS-positioner i skogen utan uppkoppling (localStorage)
+- **Offline-säker pinning** - Spara GPS-positioner i skogen utan uppkoppling (localStorage fallback)
+- **Automatisk synkronisering** - Pending locations synkas automatiskt när uppkoppling återkommer
+- **Reaktiv online-status** - "Offline"-indikator försvinner direkt när nät finns
 - **Direkt till objekt** - Välj objekt att lägga till positioner direkt på (snabbare än via lista)
 - **Flera location-blocks** - Varje objekt kan ha många GPS-positioner (Pin 1, Pin 2, etc.)
-- **Pin-numrering** - Tydlig numrering i detaljvy och på karta för att matcha positioner
+- **Pin-numrering** - Tydlig numrering (#1, #2) i detaljvy, kartpopups och tooltips
+- **Pending-indikatorer** - Orange markörer med ⏳ för lokalt sparade platser, gult "(X väntar)"-badge
 - **Capture-lista** - Modal med alla sparade pinningar inkl. tidsstämplar och koordinater
 - **Radera captures** - Ta bort enskilda pinningar från listan
 - **Radera location-blocks** - Ta bort enskilda positioner från objekt
@@ -119,6 +122,15 @@ Alla expanderbara block följer samma mönster:
 - **Villkorlig synlighet** - "Visa pinningar" visas bara när svampknappen är aktiverad
 - **Animerad svampknapp** - Glider mjukt ner när modal öppnas (fyller mellanrum när kartknappen döljs)
 - **Perfekt för svampplockning** - Markera flera kantarellställen på samma objekt
+
+#### Multi-location kartmodal
+- **"X platser"-knapp** - Visas under bild (eller överst om ingen bild) för objekt med 2+ platser
+- **Samlad kartvy** - Se alla location-blocks för ett objekt på en karta
+- **Kantarellknapp i modal** - Orange GPS-knapp direkt i kartan för snabb pinning
+- **Kontinuerlig positionsspårning** - Blå knapp → tryck → grön "följ mig"-läge med ping-animation
+- **Fungerar offline** - GPS kräver inte internet, tracking fortsätter i skogen
+- **Position-numrering** - Markörer visar #1, #2 etc i popups och tooltips
+- **Fit all-knapp** - Lila knapp för att visa alla platser i bild
 
 #### Hierarki & Organisation
 - **Hierarki (Parent-Child)** - Organisera objekt som förälder-barn, dela plats mellan nivåer
@@ -575,6 +587,23 @@ Detta är en varning från Firebase Auth + GitHub Pages. Kan ignoreras - påverk
 - [ ] Content Security Policy headers
 
 ## 📝 Changelog
+
+### v1.8 - Kantarellknappen & Offline-säkerhet (2026-02-07)
+- 🍄 **Kantarellknappen i multi-location modal** - Orange GPS-knapp direkt i kartan för snabb pinning
+- 📴 **Offline-säker pinning** - Spara platser lokalt med localStorage fallback när nät saknas
+- 🔄 **Automatisk synkronisering** - Pending locations synkas automatiskt när uppkoppling återkommer
+- 🟢 **Reaktiv online-status** - "Offline"-indikator uppdateras direkt vid nätverksändring
+- 🧭 **Kontinuerlig positionsspårning** - Blå knapp → grön "följ mig"-läge med ping-animation
+  - GPS fungerar offline - perfekt för skogspromenader
+  - Kartan följer din position automatiskt
+  - Tryck igen för att stoppa tracking
+- 📍 **"X platser"-knapp** - Visas även utan bild (placeras överst i content-arean)
+- 🏷️ **Pending-indikatorer** - Orange markörer med ⏳, gult "(X väntar)"-badge på knapp
+- 🔢 **Pin-numrering** - #1, #2 etc i popups och tooltips för alla location-markers
+- 🐛 **Fixar:**
+  - Centrerad ikon i tracking-knappen (ping-animation istället för pulse)
+  - Multi-location knapp visas korrekt även utan bild-block
+  - Korrekt räkning: 2+ sparade ELLER 1 sparad + pending
 
 ### v1.7 - Responsiv Desktop-layout & UX-förbättringar (2026-02-07)
 - 🖥️ **Kompakt desktop-layout** - Smalare modaler och mindre bulkiga element på stora skärmar

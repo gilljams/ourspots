@@ -21,12 +21,6 @@ export const LocationBlock = ({ data, inherited, onDelete, canDelete, positionNu
     }
   };
 
-  const openWhatsApp = () => {
-    if (whatsappGroupUrl) {
-      window.open(whatsappGroupUrl, '_blank');
-    }
-  };
-
   const handleShowOnMap = () => {
     if (onShowOnMap && data.lat && data.lng) {
       onShowOnMap({ lat: data.lat, lng: data.lng });
@@ -48,17 +42,17 @@ export const LocationBlock = ({ data, inherited, onDelete, canDelete, positionNu
       </div>
       {data.lat && data.lng && (
         <div className="flex items-center gap-1">
-          {/* Audio play button - shown if audio exists (centralized playback) */}
-          {/* Collection: WhatsApp first, then map, then audio */}
+          {/* Collection: WhatsApp button */}
           {isCollection && whatsappGroupUrl && (
             <button
-              onClick={openWhatsApp}
+              onClick={() => window.open(whatsappGroupUrl, '_blank')}
               className="w-9 h-9 rounded-lg bg-green-500/20 hover:bg-green-500/30 flex items-center justify-center text-green-400 hover:text-green-300 transition-all flex-shrink-0"
               title="WhatsApp-grupp"
             >
               <MessageCircle size={16} />
             </button>
           )}
+          {/* Audio play button - shown if audio exists (centralized playback) */}
           {hasAudio && (
             <button
               onClick={onToggleAudio}
@@ -77,6 +71,7 @@ export const LocationBlock = ({ data, inherited, onDelete, canDelete, positionNu
               )}
             </button>
           )}
+          {/* Collection: Show all places on map button */}
           {isCollection && collectionPlacesCount > 0 && onShowCollectionMap && (
             <button
               onClick={onShowCollectionMap}
@@ -2836,21 +2831,61 @@ export const DistributionBlock = ({
   const userSlot = findUserSlot();
   const isUserCreator = (slot) => slot.createdBy === currentUserKey;
   
-  // Get display name for an email key
-  const getDisplayName = (emailKey) => {
+  // Get display name for an email key (including extra seats info)
+  const getDisplayName = (emailKey, slot = null, includeExtras = true) => {
     if (!emailKey) return '';
     const email = emailKey.replace(/_DOT_/g, '.');
     // Check shares for displayName or name
-    if (shares[emailKey]?.displayName) return shares[emailKey].displayName;
-    if (shares[emailKey]?.name) return shares[emailKey].name;
-    // Check participants list for name
-    const participant = (data.participants || []).find(p => {
-      const pKey = p.email?.replace(/\./g, '_DOT_');
-      return pKey === emailKey;
+    let name = '';
+    if (shares[emailKey]?.displayName) {
+      name = shares[emailKey].displayName;
+    } else if (shares[emailKey]?.name) {
+      name = shares[emailKey].name;
+    } else {
+      // Check participants list for name
+      const participant = (data.participants || []).find(p => {
+        const pKey = p.email?.replace(/\./g, '_DOT_');
+        return pKey === emailKey;
+      });
+      if (participant?.name) {
+        name = participant.name;
+      } else {
+        // Fall back to email prefix
+        name = email.split('@')[0];
+      }
+    }
+    
+    // Add extra seats suffix if applicable
+    if (includeExtras && slot?.assigneeDetails?.[emailKey]) {
+      const details = slot.assigneeDetails[emailKey];
+      if (details.extraSeats > 0) {
+        const suffix = details.note || details.extraSeats;
+        name = `${name} (+${suffix})`;
+      }
+    }
+    
+    return name;
+  };
+  
+  // Get total seats taken in a slot (including extra seats)
+  const getTotalSeatsTaken = (slot) => {
+    const assignees = slot.assignees || [];
+    let total = assignees.length;
+    // Add extra seats for each assignee
+    assignees.forEach(key => {
+      const details = slot.assigneeDetails?.[key];
+      if (details?.extraSeats) {
+        total += details.extraSeats;
+      }
     });
-    if (participant?.name) return participant.name;
-    // Fall back to email prefix
-    return email.split('@')[0];
+    return total;
+  };
+  
+  // Get spots left for a slot (accounting for extra seats)
+  const getSpotsLeft = (slot) => {
+    const taken = getTotalSeatsTaken(slot);
+    const capacity = slot.capacity || 1;
+    return Math.max(0, capacity - taken);
   };
   
   // Sync collapsed state when defaultCollapsed changes
@@ -2871,10 +2906,18 @@ export const DistributionBlock = ({
   const getCollapsedSummary = () => {
     if (userSlot) {
       if (data.preset === 'carpool') {
-        // Show "Bil X: förare, passagerare, Du"
-        const creatorName = getDisplayName(userSlot.createdBy);
+        // Show "Bil X: förare, passagerare, Du (+2)"
         const assigneeNames = userSlot.assignees
-          .map(key => key === currentUserKey ? 'Du' : getDisplayName(key))
+          .map(key => {
+            const name = key === currentUserKey ? 'Du' : getDisplayName(key, userSlot, false);
+            // Add extra seats suffix
+            const details = userSlot.assigneeDetails?.[key];
+            if (details?.extraSeats > 0) {
+              const suffix = details.note || details.extraSeats;
+              return `${name} (+${suffix})`;
+            }
+            return name;
+          })
           .join(', ');
         return `${userSlot.label}: ${assigneeNames}`;
       } else {
@@ -2884,14 +2927,7 @@ export const DistributionBlock = ({
     }
     return preset.emptyStateUser;
   };
-  
-  // Get spots left for a slot
-  const getSpotsLeft = (slot) => {
-    const assigned = slot.assignees?.length || 0;
-    const capacity = slot.capacity || 1;
-    return Math.max(0, capacity - assigned);
-  };
-  
+
   if (slots.length === 0) {
     return (
       <div ref={blockRef} className="space-y-2">
@@ -2933,9 +2969,9 @@ export const DistributionBlock = ({
     );
   }
   
-  // Count totals
+  // Count totals (including extra seats)
   const totalSlots = slots.length;
-  const totalAssigned = slots.reduce((sum, slot) => sum + (slot.assignees?.length || 0), 0);
+  const totalAssigned = slots.reduce((sum, slot) => sum + getTotalSeatsTaken(slot), 0);
   
   return (
     <div ref={blockRef} className="space-y-2">
@@ -3010,7 +3046,12 @@ export const DistributionBlock = ({
                   <div className="flex flex-wrap gap-1.5 mt-2">
                     {slot.assignees.map((assigneeKey, i) => {
                       const isMe = assigneeKey === currentUserKey;
-                      const displayName = isMe ? 'Du' : getDisplayName(assigneeKey);
+                      const baseName = isMe ? 'Du' : getDisplayName(assigneeKey, null, false);
+                      // Add extra seats suffix
+                      const details = slot.assigneeDetails?.[assigneeKey];
+                      const displayName = details?.extraSeats > 0 
+                        ? `${baseName} (+${details.note || details.extraSeats})`
+                        : baseName;
                       return (
                         <span 
                           key={i} 
