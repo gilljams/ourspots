@@ -1000,7 +1000,7 @@ function TableBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
             <div>
               <label className="block text-xs text-gray-500 mb-2">Välj tabelltyp</label>
               <div className="grid grid-cols-4 gap-2">
-                {Object.values(TABLE_TEMPLATES).map(t => {
+                {Object.values(TABLE_TEMPLATES).filter(t => t.id !== 'list').map(t => {
                   const TIcon = getIconComponent(t.icon);
                   const isSelected = template === t.id;
                   return (

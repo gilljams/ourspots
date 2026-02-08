@@ -7,7 +7,7 @@ import { emailToKey, keyToEmail } from '../utils/iconHelpers';
 function ShareModal({ object, onClose, currentUserEmail, allObjects = [], sharedContacts = [], onAddContact }) {
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('viewer');
-  const [includeChildren, setIncludeChildren] = useState(true);
+  const [includeChildren, setIncludeChildren] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [shares, setShares] = useState(object.shares || {});
@@ -523,18 +523,21 @@ function ShareModal({ object, onClose, currentUserEmail, allObjects = [], shared
               </div>
             </div>
 
-            <label className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10 cursor-pointer hover:bg-white/10 transition-colors">
-              <input
-                type="checkbox"
-                checked={includeChildren}
-                onChange={(e) => setIncludeChildren(e.target.checked)}
-                className="w-5 h-5 rounded border-purple-500 text-purple-500 focus:ring-purple-500"
-              />
-              <div>
-                <span className="text-gray-200 text-sm">Inkludera barn-objekt</span>
-                <p className="text-xs text-gray-500">Dela också alla objekt under detta. Kan inte ändras senare – ta bort och lägg till igen vid behov.</p>
-              </div>
-            </label>
+            {/* Hide for collections since they use links not children */}
+            {!isCollection && (
+              <label className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10 cursor-pointer hover:bg-white/10 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={includeChildren}
+                  onChange={(e) => setIncludeChildren(e.target.checked)}
+                  className="w-5 h-5 rounded border-purple-500 text-purple-500 focus:ring-purple-500"
+                />
+                <div>
+                  <span className="text-gray-200 text-sm">Inkludera barn-objekt</span>
+                  <p className="text-xs text-gray-500">Dela också alla objekt under detta. Kan inte ändras senare – ta bort och lägg till igen vid behov.</p>
+                </div>
+              </label>
+            )}
           </div>
 
           {/* Current shares */}

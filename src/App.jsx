@@ -96,6 +96,8 @@ function App() {
   const [defaultParentId, setDefaultParentId] = useState(null);
   const [viewMode, setViewMode] = useState('list');
   const [userLocation, setUserLocation] = useState(null);
+  const [liveUserLocation, setLiveUserLocation] = useState(null);
+  const [isGlobalTracking, setIsGlobalTracking] = useState(false);
   const [showShareModal, setShowShareModal] = useState(null); // Object to share
   const [sortByDistance, setSortByDistance] = useState(() => {
     const saved = localStorage.getItem('sortByDistance');
@@ -161,6 +163,7 @@ function App() {
   const seedingRef = useRef(false);
   const wakeLockRef = useRef(null);
   const isMountedRef = useRef(true);
+  const globalTrackingWatchRef = useRef(null);
   
   // User approval and limits
   const [userApproved, setUserApproved] = useState(false);
@@ -171,6 +174,31 @@ function App() {
 
   // Wrapper to use imported distance function with userLocation state
   const getObjectDistance = (obj) => getObjectDistanceUtil(obj, userLocation);
+
+  // Global GPS tracking functions for MapView
+  const startGlobalTracking = () => {
+    if (!('geolocation' in navigator)) return;
+    
+    setIsGlobalTracking(true);
+    globalTrackingWatchRef.current = navigator.geolocation.watchPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setLiveUserLocation({ lat: latitude, lng: longitude });
+      },
+      (error) => {
+        console.log('Global tracking error:', error);
+      },
+      { enableHighAccuracy: true, timeout: 30000, maximumAge: 5000 }
+    );
+  };
+
+  const stopGlobalTracking = () => {
+    if (globalTrackingWatchRef.current !== null) {
+      navigator.geolocation.clearWatch(globalTrackingWatchRef.current);
+      globalTrackingWatchRef.current = null;
+    }
+    setIsGlobalTracking(false);
+  };
 
   // Save filter preferences
   useEffect(() => {
@@ -382,6 +410,10 @@ function App() {
     return () => {
       isMountedRef.current = false;
       unsubAuth();
+      // Clean up global GPS tracking
+      if (globalTrackingWatchRef.current !== null) {
+        navigator.geolocation.clearWatch(globalTrackingWatchRef.current);
+      }
     };
   }, []);
 
@@ -1806,7 +1838,7 @@ function App() {
               }
             }
             return mapObjects;
-          })()} onSelectObject={setSelectedObject} currentUser={user} userLocation={userLocation} categories={categories} mapCenter={mapCenter} showFilters={showFilters} />
+          })()} onSelectObject={setSelectedObject} currentUser={user} userLocation={userLocation} categories={categories} mapCenter={mapCenter} showFilters={showFilters} isGlobalTracking={isGlobalTracking} startGlobalTracking={startGlobalTracking} stopGlobalTracking={stopGlobalTracking} liveUserLocation={liveUserLocation} setLiveUserLocation={setLiveUserLocation} />
         )}
       </main>
 

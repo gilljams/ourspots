@@ -73,10 +73,10 @@ service cloud.firestore {
                        request.auth.uid == resource.data.ownerId ||  // Owner
                        isAdmin() ||                                   // Admin
                        hasEditorAccess(resource.data) ||              // Editor role (via editorEmails array)
-                       // Allow any shared user to update shares, sharedWithEmails, acceptedShareEmails (accept/decline/leave)
+                       // Allow any shared user to update shares, sharedWithEmails, acceptedShareEmails, editorEmails (accept/decline/leave)
                        (isInSharedList(resource.data) &&
                         request.resource.data.diff(resource.data).affectedKeys()
-                          .hasOnly(['shares', 'sharedWithEmails', 'acceptedShareEmails'])) ||
+                          .hasOnly(['shares', 'sharedWithEmails', 'acceptedShareEmails', 'editorEmails'])) ||
                        // Allow any accepted shared user to update blocks and updatedAt (checklist/todo)
                        (hasAcceptedShareAccess(resource.data) &&
                         request.resource.data.diff(resource.data).affectedKeys()

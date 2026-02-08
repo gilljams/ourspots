@@ -845,21 +845,9 @@ export const TABLE_TEMPLATES = {
       { id: 'qty', label: 'Antal', type: 'number', width: 'w-16' }
     ]
   },
-  guests: {
-    id: 'guests',
-    name: 'Gästlista',
-    icon: 'Users',
-    showSum: false,
-    useCollapse: true,
-    columns: [
-      { id: 'confirmed', label: '', type: 'checkbox', width: 'w-8' },
-      { id: 'name', label: 'Namn', type: 'text', width: 'flex-1' },
-      { id: 'note', label: 'Anteckning', type: 'text', width: 'w-32' }
-    ]
-  },
   contacts: {
     id: 'contacts',
-    name: 'Kontakter',
+    name: 'Telefonlista',
     icon: 'UserCircle',
     showSum: false,
     useCollapse: true,
@@ -934,7 +922,6 @@ export const TableBlock = ({ data, objectId, blockIndex, onUpdate, onExpand }) =
       wishlist: 'text-pink-400',
       tasks: 'text-amber-400',
       shopping: 'text-green-400',
-      guests: 'text-purple-400',
       contacts: 'text-cyan-400'
     }[template.id] || 'text-blue-400';
     
@@ -943,7 +930,6 @@ export const TableBlock = ({ data, objectId, blockIndex, onUpdate, onExpand }) =
       wishlist: 'from-pink-500 to-pink-400',
       tasks: 'from-amber-500 to-amber-400',
       shopping: 'from-green-500 to-green-400',
-      guests: 'from-purple-500 to-purple-400',
       contacts: 'from-cyan-500 to-cyan-400'
     }[template.id] || 'from-blue-500 to-blue-400';
     
@@ -952,7 +938,6 @@ export const TableBlock = ({ data, objectId, blockIndex, onUpdate, onExpand }) =
       wishlist: 'bg-pink-500 border-pink-500',
       tasks: 'bg-amber-500 border-amber-500',
       shopping: 'bg-green-500 border-green-500',
-      guests: 'bg-purple-500 border-purple-500',
       contacts: 'bg-cyan-500 border-cyan-500'
     }[template.id] || 'bg-blue-500 border-blue-500';
     
@@ -961,7 +946,6 @@ export const TableBlock = ({ data, objectId, blockIndex, onUpdate, onExpand }) =
       wishlist: 'hover:border-pink-400',
       tasks: 'hover:border-amber-400',
       shopping: 'hover:border-green-400',
-      guests: 'hover:border-purple-400',
       contacts: 'hover:border-cyan-400'
     }[template.id] || 'hover:border-blue-400';
     
@@ -970,7 +954,6 @@ export const TableBlock = ({ data, objectId, blockIndex, onUpdate, onExpand }) =
       wishlist: 'text-pink-400',
       tasks: 'text-amber-400',
       shopping: 'text-green-400',
-      guests: 'text-purple-400',
       contacts: 'text-cyan-400'
     }[template.id] || 'text-blue-400';
 

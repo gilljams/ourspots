@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Plus, Edit2, Trash2, Settings, ChevronDown, ChevronUp,
-  Share2, Users, UserMinus, Home, List, LayoutGrid, FileText, Copy, BarChart3, ClipboardList, Link2, X, Search, Check, ExternalLink, Map as MapIcon, Navigation, Maximize2, Target
+  Share2, Users, UserMinus, Home, List, LayoutGrid, FileText, Copy, BarChart3, ClipboardList, Link2, X, Search, Check, ExternalLink, Map as MapIcon, Navigation, Maximize2, Target, Locate
 } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -12,7 +12,7 @@ import DeleteConfirmModal from './DeleteConfirmModal';
 import LeaderboardModal from './LeaderboardModal';
 import DistributionModal from './DistributionModal';
 import { FullscreenTextEditor } from './BlockEditor';
-import { MapContainer, TileLayer, Marker, Tooltip, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Tooltip, Popup, useMap, useMapEvents, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import { createColoredIcon, createUserIcon } from '../utils/mapIcons';
 
@@ -48,6 +48,8 @@ function FitBounds({ positions }) {
 // Mini map view for collection
 function CollectionMapView({ objects, categories, onSelectObject, userLocation, onAddLocation, pendingLocations = [] }) {
   const [currentUserLocation, setCurrentUserLocation] = useState(userLocation);
+  const [navigationTarget, setNavigationTarget] = useState(null);
+  const [hasPannedAway, setHasPannedAway] = useState(false);
   
   const positions = objects.map(obj => {
     const loc = obj.blocks.find(b => b.type === 'location');
@@ -91,6 +93,75 @@ function CollectionMapView({ objects, categories, onSelectObject, userLocation, 
       requestLocation();
     }
   }, []);
+
+  // Calculate distance between two points in meters
+  const calculateDistance = (lat1, lng1, lat2, lng2) => {
+    const R = 6371000;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  };
+
+  const formatDistance = (meters) => {
+    if (meters < 1000) return `${Math.round(meters)} m`;
+    return `${(meters / 1000).toFixed(1)} km`;
+  };
+
+  // Detect when user manually pans the map
+  function MapDragDetector() {
+    useMapEvents({
+      dragstart: () => {
+        setHasPannedAway(true);
+      }
+    });
+    return null;
+  }
+
+  // Button to recenter on user when panned away
+  function RecenterButton() {
+    const map = useMap();
+    
+    if (!hasPannedAway || !currentUserLocation) return null;
+    
+    const handleRecenter = () => {
+      map.setView([currentUserLocation.lat, currentUserLocation.lng], Math.max(map.getZoom(), 15), { animate: true });
+      setHasPannedAway(false);
+    };
+    
+    return (
+      <button
+        onClick={handleRecenter}
+        className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[1000] px-4 py-2.5 rounded-full bg-blue-500 hover:bg-blue-600 text-white shadow-lg transition-all flex items-center gap-2 text-sm font-medium"
+      >
+        <Locate size={16} />
+        Centrera på mig
+      </button>
+    );
+  }
+
+  // Direction line from user to navigation target
+  function DirectionLine() {
+    if (!navigationTarget || !currentUserLocation) return null;
+    
+    return (
+      <Polyline
+        positions={[
+          [currentUserLocation.lat, currentUserLocation.lng],
+          [navigationTarget.lat, navigationTarget.lng]
+        ]}
+        pathOptions={{
+          color: '#10B981',
+          weight: 3,
+          dashArray: '10, 10',
+          opacity: 0.8
+        }}
+      />
+    );
+  }
 
   // Group objects by exact same coordinates
   const groupedByLocation = objects.reduce((acc, obj) => {
@@ -189,6 +260,15 @@ function CollectionMapView({ objects, categories, onSelectObject, userLocation, 
                     {isPrimaryLocation && !isCollectionSelf && (
                       <div className="flex-1 text-xs text-amber-600 font-medium">Primär plats</div>
                     )}
+                    {currentUserLocation && (
+                      <button
+                        onClick={() => setNavigationTarget({ lat, lng, name: titleBlock?.data?.text || 'Mål' })}
+                        className="w-8 h-8 rounded bg-emerald-500/20 hover:bg-emerald-500/30 flex items-center justify-center text-emerald-500 transition-colors flex-shrink-0"
+                        title="Visa väg"
+                      >
+                        <Navigation size={14} />
+                      </button>
+                    )}
                     <button
                       onClick={() => window.open(`https://waze.com/ul?ll=${lat},${lng}&navigate=yes`, '_blank')}
                       className="w-8 h-8 rounded bg-blue-500/20 hover:bg-blue-500/30 flex items-center justify-center text-blue-500 transition-colors flex-shrink-0"
@@ -232,17 +312,28 @@ function CollectionMapView({ objects, categories, onSelectObject, userLocation, 
                   <div className="text-sm font-semibold text-gray-700">
                     {groupObjects.length} platser här
                   </div>
-                  <button
-                    onClick={() => window.open(`https://waze.com/ul?ll=${lat},${lng}&navigate=yes`, '_blank')}
-                    className="w-7 h-7 rounded bg-blue-500/20 hover:bg-blue-500/30 flex items-center justify-center text-blue-500 transition-colors flex-shrink-0"
-                    title="Waze"
-                  >
+                  <div className="flex items-center gap-1">
+                    {currentUserLocation && (
+                      <button
+                        onClick={() => setNavigationTarget({ lat, lng, name: `${groupObjects.length} platser` })}
+                        className="w-7 h-7 rounded bg-emerald-500/20 hover:bg-emerald-500/30 flex items-center justify-center text-emerald-500 transition-colors flex-shrink-0"
+                        title="Visa väg"
+                      >
+                        <Navigation size={12} />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => window.open(`https://waze.com/ul?ll=${lat},${lng}&navigate=yes`, '_blank')}
+                      className="w-7 h-7 rounded bg-blue-500/20 hover:bg-blue-500/30 flex items-center justify-center text-blue-500 transition-colors flex-shrink-0"
+                      title="Waze"
+                    >
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9L18 10l-1.8-3.2c-.3-.5-.8-.8-1.4-.8H9.2c-.6 0-1.1.3-1.4.8L6 10l-2.5 1.1C2.7 11.3 2 12.1 2 13v3c0 .6.4 1 1 1h2"/>
                       <circle cx="7" cy="17" r="2"/>
                       <circle cx="17" cy="17" r="2"/>
                     </svg>
-                  </button>
+                    </button>
+                  </div>
                 </div>
                 {firstLoc.data.address && (
                   <div className="text-xs text-gray-500 mb-2 truncate">{firstLoc.data.address}</div>
@@ -319,9 +410,29 @@ function CollectionMapView({ objects, categories, onSelectObject, userLocation, 
       ))}
       
       {/* Map control buttons */}
+      <MapDragDetector />
+      <DirectionLine />
       <CenterOnLocationButton onLocationFound={setCurrentUserLocation} />
       <FitAllButton positions={allPositions} />
+      <RecenterButton />
       {onAddLocation && <AddLocationButton onAddLocation={onAddLocation} onLocationUpdate={setCurrentUserLocation} pendingCount={pendingLocations.length} />}
+      
+      {/* Navigation info panel */}
+      {navigationTarget && currentUserLocation && (
+        <div className="absolute top-4 left-4 z-[1000] bg-gray-900/90 backdrop-blur text-white px-3 py-2 rounded-lg shadow-lg flex items-center gap-3" style={{ position: 'absolute' }}>
+          <div>
+            <div className="text-xs text-gray-400">Till {navigationTarget.name}</div>
+            <div className="text-lg font-bold text-emerald-400">{formatDistance(calculateDistance(currentUserLocation.lat, currentUserLocation.lng, navigationTarget.lat, navigationTarget.lng))}</div>
+          </div>
+          <button
+            onClick={() => setNavigationTarget(null)}
+            className="p-1 hover:bg-white/10 rounded"
+            title="Ta bort linje"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
     </MapContainer>
   );
 }
