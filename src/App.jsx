@@ -1399,8 +1399,9 @@ function App() {
             )}
           </div>
           
-          {/* Center: Search field */}
-          <div className="flex-1 min-w-0 max-w-md">
+          {/* Right side: Search + User */}
+          <div className="flex-1 flex items-center justify-end gap-3">
+          <div className="min-w-0 max-w-md w-full sm:w-auto sm:min-w-[200px] lg:min-w-[280px]">
             <div className="relative">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
               <input
@@ -1420,7 +1421,7 @@ function App() {
             </div>
           </div>
           
-          {/* Right: User avatar or login */}
+          {/* User avatar or login */}
           <div className="flex-shrink-0">
             {user ? (
               <div className="flex items-center gap-2">
@@ -1442,6 +1443,7 @@ function App() {
                 <span className="hidden sm:inline">Logga in</span>
               </button>
             )}
+          </div>
           </div>
         </div>
       </header>
@@ -1706,7 +1708,7 @@ function App() {
         </div>
       </div>
       
-      <main className="max-w-6xl mx-auto px-4 lg:max-w-7xl">
+      <main className="max-w-6xl mx-auto px-4">
         {viewMode === 'list' ? (
           <div className="pt-4 pb-8">
             <div className={`grid ${compactCards ? 'grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6' : 'grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3'}`}>
