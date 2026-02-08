@@ -92,6 +92,16 @@ function CollectionMapView({ objects, categories, onSelectObject, userLocation, 
     }
   }, []);
 
+  // Group objects by exact same coordinates
+  const groupedByLocation = objects.reduce((acc, obj) => {
+    const loc = obj.blocks.find(b => b.type === 'location');
+    if (!loc) return acc;
+    const key = `${loc.data.lat},${loc.data.lng}`;
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(obj);
+    return acc;
+  }, {});
+
   return (
     <MapContainer 
       center={center} 
@@ -116,62 +126,163 @@ function CollectionMapView({ objects, categories, onSelectObject, userLocation, 
         </Marker>
       )}
       
-      {objects.map(obj => {
-        const loc = obj.blocks.find(b => b.type === 'location');
-        const titleBlock = obj.blocks.find(b => b.type === 'title');
-        const imageBlock = obj.blocks.find(b => b.type === 'image');
-        const category = categories?.find(c => c.id === obj.type);
-        const isCollectionSelf = obj.isCollectionSelf;
-        // Collection's own location gets a special gold/star color
-        const markerColor = isCollectionSelf ? '#F59E0B' : (category?.color || '#A855F7');
+      {Object.entries(groupedByLocation).map(([coordKey, groupObjects]) => {
+        const [lat, lng] = coordKey.split(',').map(Number);
+        const firstObj = groupObjects[0];
+        const category = categories?.find(c => c.id === firstObj.type);
+        const hasCollectionSelf = groupObjects.some(o => o.isCollectionSelf);
+        const hasPrimaryLocation = groupObjects.some(o => o._isPrimary);
+        // Gold color for collection's own location OR primary location in multi-location view
+        const markerColor = (hasCollectionSelf || hasPrimaryLocation) ? '#F59E0B' : (category?.color || '#A855F7');
         const icon = createColoredIcon(markerColor);
-        const note = obj._collectionNote; // Will be set if passed
         
+        // Single object at this location - render as before
+        if (groupObjects.length === 1) {
+          const obj = firstObj;
+          const loc = obj.blocks.find(b => b.type === 'location');
+          const titleBlock = obj.blocks.find(b => b.type === 'title');
+          const imageBlock = obj.blocks.find(b => b.type === 'image');
+          const isCollectionSelf = obj.isCollectionSelf;
+          const isPrimaryLocation = obj._isPrimary;
+          
+          return (
+            <Marker 
+              key={obj.id} 
+              position={[lat, lng]} 
+              icon={icon}
+              zIndexOffset={(isCollectionSelf || isPrimaryLocation) ? 500 : 0}
+            >
+              <Popup>
+                <div className="min-w-[160px]">
+                  {imageBlock && (
+                    <div className="w-full h-20 -mx-3 -mt-2 mb-2 overflow-hidden">
+                      <img 
+                        src={getTransformedImageUrl(imageBlock.data.url, 'center', 200, 80)} 
+                        alt="" 
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+                  <div className="text-sm font-semibold mb-1">
+                    {(isCollectionSelf || isPrimaryLocation) && <span className="text-amber-500">★ </span>}
+                    {obj._locationIndex && <span className="text-blue-500">#{obj._locationIndex} </span>}
+                    {titleBlock?.data?.text || 'Namnlöst'}
+                  </div>
+                  {loc.data.address && (
+                    <div className="text-xs text-gray-600 mb-1 truncate">{loc.data.address}</div>
+                  )}
+                  {loc.data.note && (
+                    <div className="text-xs text-gray-500 italic mb-2">"{loc.data.note}"</div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    {!isCollectionSelf && !isPrimaryLocation && (
+                      <button
+                        onClick={() => onSelectObject(obj)}
+                        className="flex-1 px-3 py-1.5 rounded bg-purple-500 hover:bg-purple-600 text-white text-xs font-medium transition-colors"
+                      >
+                        Öppna
+                      </button>
+                    )}
+                    {isCollectionSelf && (
+                      <div className="flex-1 text-xs text-amber-600 font-medium">Samlingens plats</div>
+                    )}
+                    {isPrimaryLocation && !isCollectionSelf && (
+                      <div className="flex-1 text-xs text-amber-600 font-medium">Primär plats</div>
+                    )}
+                    <button
+                      onClick={() => window.open(`https://waze.com/ul?ll=${lat},${lng}&navigate=yes`, '_blank')}
+                      className="w-8 h-8 rounded bg-blue-500/20 hover:bg-blue-500/30 flex items-center justify-center text-blue-500 transition-colors flex-shrink-0"
+                      title="Waze"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9L18 10l-1.8-3.2c-.3-.5-.8-.8-1.4-.8H9.2c-.6 0-1.1.3-1.4.8L6 10l-2.5 1.1C2.7 11.3 2 12.1 2 13v3c0 .6.4 1 1 1h2"/>
+                        <circle cx="7" cy="17" r="2"/>
+                        <circle cx="17" cy="17" r="2"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </Popup>
+              {!isTouchDevice && (
+                <Tooltip direction="top" offset={[0, -8]} opacity={0.95}>
+                  <div className="text-xs font-medium">
+                    {(isCollectionSelf || isPrimaryLocation) && '★ '}
+                    {obj._locationIndex && `#${obj._locationIndex} `}
+                    {titleBlock?.data?.text || 'Namnlöst'}
+                    {loc.data.note && <div className="text-xs font-normal italic text-gray-500">"{loc.data.note}"</div>}
+                  </div>
+                </Tooltip>
+              )}
+            </Marker>
+          );
+        }
+        
+        // Multiple objects at same location - render grouped popup
+        const firstLoc = firstObj.blocks.find(b => b.type === 'location');
         return (
           <Marker 
-            key={obj.id} 
-            position={[loc.data.lat, loc.data.lng]} 
+            key={coordKey} 
+            position={[lat, lng]} 
             icon={icon}
-            zIndexOffset={isCollectionSelf ? 500 : 0}
+            zIndexOffset={hasCollectionSelf ? 500 : 0}
           >
             <Popup>
-              <div className="min-w-[160px]">
-                {imageBlock && (
-                  <div className="w-full h-20 -mx-3 -mt-2 mb-2 overflow-hidden">
-                    <img 
-                      src={getTransformedImageUrl(imageBlock.data.url, 'center', 200, 80)} 
-                      alt="" 
-                      className="w-full h-full object-cover"
-                    />
+              <div className="min-w-[180px]">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-sm font-semibold text-gray-700">
+                    {groupObjects.length} platser här
                   </div>
-                )}
-                <div className="text-sm font-semibold mb-1">
-                  {isCollectionSelf && <span className="text-amber-500">★ </span>}
-                  {obj._locationIndex && <span className="text-blue-500">#{obj._locationIndex} </span>}
-                  {titleBlock?.data?.text || 'Namnlöst'}
-                </div>
-                {loc.data.address && (
-                  <div className="text-xs text-gray-600 mb-2 truncate">{loc.data.address}</div>
-                )}
-                {!isCollectionSelf && (
                   <button
-                    onClick={() => onSelectObject(obj)}
-                    className="w-full px-3 py-1.5 rounded bg-purple-500 hover:bg-purple-600 text-white text-xs font-medium transition-colors"
+                    onClick={() => window.open(`https://waze.com/ul?ll=${lat},${lng}&navigate=yes`, '_blank')}
+                    className="w-7 h-7 rounded bg-blue-500/20 hover:bg-blue-500/30 flex items-center justify-center text-blue-500 transition-colors flex-shrink-0"
+                    title="Waze"
                   >
-                    Öppna
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9L18 10l-1.8-3.2c-.3-.5-.8-.8-1.4-.8H9.2c-.6 0-1.1.3-1.4.8L6 10l-2.5 1.1C2.7 11.3 2 12.1 2 13v3c0 .6.4 1 1 1h2"/>
+                      <circle cx="7" cy="17" r="2"/>
+                      <circle cx="17" cy="17" r="2"/>
+                    </svg>
                   </button>
+                </div>
+                {firstLoc.data.address && (
+                  <div className="text-xs text-gray-500 mb-2 truncate">{firstLoc.data.address}</div>
                 )}
-                {isCollectionSelf && (
-                  <div className="text-xs text-amber-600 font-medium">Samlingens plats</div>
-                )}
+                <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                  {groupObjects.map(obj => {
+                    const titleBlock = obj.blocks.find(b => b.type === 'title');
+                    const loc = obj.blocks.find(b => b.type === 'location');
+                    const isCollectionSelf = obj.isCollectionSelf;
+                    const isPrimaryLocation = obj._isPrimary;
+                    
+                    return (
+                      <div key={obj.id} className="border-b border-gray-100 pb-1.5 last:border-0">
+                        <div className="text-xs font-medium">
+                          {(isCollectionSelf || isPrimaryLocation) && <span className="text-amber-500">★ </span>}
+                          {obj._locationIndex && <span className="text-blue-500">#{obj._locationIndex} </span>}
+                          {titleBlock?.data?.text || 'Namnlöst'}
+                        </div>
+                        {loc.data.note && (
+                          <div className="text-xs text-gray-500 italic">"{loc.data.note}"</div>
+                        )}
+                        {!isCollectionSelf && !isPrimaryLocation && (
+                          <button
+                            onClick={() => onSelectObject(obj)}
+                            className="mt-1 px-2 py-0.5 rounded bg-purple-500 hover:bg-purple-600 text-white text-xs transition-colors"
+                          >
+                            Öppna
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </Popup>
             {!isTouchDevice && (
               <Tooltip direction="top" offset={[0, -8]} opacity={0.95}>
                 <div className="text-xs font-medium">
-                  {isCollectionSelf && '★ '}
-                  {obj._locationIndex && `#${obj._locationIndex} `}
-                  {titleBlock?.data?.text || 'Namnlöst'}
+                  {(hasCollectionSelf || hasPrimaryLocation) && '★ '}
+                  {groupObjects.length} platser här
                 </div>
               </Tooltip>
             )}
@@ -683,16 +794,24 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
   const hasImageBlock = object.blocks.some(b => b.type === 'image' && b.data?.url);
   
   // Create fake "objects" for the multi-location map view (one per location)
-  const multiLocationMapObjects = ownLocationBlocks.map((locBlock, idx) => ({
-    id: `${object.id}-loc-${idx}`,
-    blocks: [
-      object.blocks.find(b => b.type === 'title'),
-      object.blocks.find(b => b.type === 'image'),
-      locBlock
-    ].filter(Boolean),
-    type: object.type,
-    _locationIndex: idx + 1 // For display in popup
-  }));
+  // Use same numbering logic as rendering: primary = no number, extras = #2, #3, etc.
+  const primaryLocationForMap = ownLocationBlocks.find(b => b.data?.isPrimary === true);
+  const extraLocationsForMap = ownLocationBlocks.filter(b => b.data?.isPrimary !== true);
+  const multiLocationMapObjects = ownLocationBlocks.map((locBlock, idx) => {
+    const isPrimary = locBlock.data?.isPrimary === true;
+    const extraIndex = isPrimary ? null : extraLocationsForMap.indexOf(locBlock) + 2;
+    return {
+      id: `${object.id}-loc-${idx}`,
+      blocks: [
+        object.blocks.find(b => b.type === 'title'),
+        object.blocks.find(b => b.type === 'image'),
+        locBlock
+      ].filter(Boolean),
+      type: object.type,
+      _locationIndex: isPrimary ? null : extraIndex, // null = primary, 2+ = extra
+      _isPrimary: isPrimary
+    };
+  });
   
   // Find all descendants (children, grandchildren, etc.) for cascade delete warning
   const allDescendants = allObjects.filter(o => o.ancestorIds?.includes(object.id));
@@ -908,21 +1027,69 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                 </div>
               )}
               {(() => {
+                // Identify primary and extra location blocks upfront
+                const allLocationBlocks = blocksToRender.filter(b => b.type === 'location' && !b.inherited);
+                const primaryLocationBlock = allLocationBlocks.find(b => b.data?.isPrimary === true);
+                const extraLocationBlocks = allLocationBlocks.filter(b => b.data?.isPrimary !== true);
+                const hasImageBlock = blocksToRender.some(b => b.type === 'image');
+                
                 const sorted = blocksToRender
                   .filter(block => blockComponents[block.type] && block.type !== 'title')
-                  .filter(block => !(block.type === 'audio' && block.data?.discrete !== false)); // Hide discrete audio blocks
-                return sorted.map((block, index) => {
+                  .filter(block => !(block.type === 'audio' && block.data?.discrete !== false)) // Hide discrete audio blocks
+                  .filter(block => !(block.type === 'location' && block.data?.isPrimary === true && !block.inherited)); // Hide primary location from list (rendered separately after image)
+                
+                // Helper to render primary location block
+                const renderPrimaryLocation = () => {
+                  if (!primaryLocationBlock) return null;
+                  const PrimaryLocationComponent = blockComponents['location'];
+                  const primaryBlockIndex = primaryLocationBlock.objectBlockIndex;
+                  
+                  return (
+                    <div className="mt-3">
+                      <PrimaryLocationComponent 
+                        data={primaryLocationBlock.data}
+                        objectId={object.id}
+                        blockIndex={primaryBlockIndex}
+                        onUpdate={onBlockUpdate}
+                        inherited={false}
+                        canDelete={false}
+                        positionNumber={null}
+                        isExtraLocation={false}
+                        onShowOnMap={onShowOnMap ? (coords) => onShowOnMap(coords, object.id) : undefined}
+                        isCollection={isCollection && linkedObjectsCount > 0}
+                        collectionPlacesCount={isCollection ? linkedObjectsWithCoords.length : 0}
+                        onShowCollectionMap={isCollection && linkedObjectsCount > 0 ? () => setShowCollectionMap(true) : undefined}
+                        whatsappGroupUrl={isCollection && linkedObjectsCount > 0 ? object.whatsappGroupUrl : undefined}
+                        hasAudio={audioIsDiscrete && audioUrl && !audioError}
+                        isAudioPlaying={isAudioPlaying}
+                        onToggleAudio={toggleAudio}
+                      />
+                    </div>
+                  );
+                };
+                
+                // If no image block, render primary location at the top
+                const primaryLocationAtTop = !hasImageBlock ? renderPrimaryLocation() : null;
+                
+                return (
+                  <>
+                    {primaryLocationAtTop}
+                    {sorted.map((block, index) => {
                 // Use the original index in object.blocks (tracked as objectBlockIndex)
                 const actualBlockIndex = block.objectBlockIndex;
                 const BlockComponent = blockComponents[block.type];
                 
-                // For location blocks, show delete if there are multiple AND user can edit
+                // For location blocks, identify primary vs extra by isPrimary flag
                 const locationBlocks = blocksToRender.filter(b => b.type === 'location' && !b.inherited);
-                const canDeleteLocation = canEdit && block.type === 'location' && locationBlocks.length > 1 && !block.inherited;
-                const locationIndex = block.type === 'location' && !block.inherited ? locationBlocks.indexOf(block) + 1 : null;
+                const isPrimaryLocation = block.type === 'location' && block === primaryLocationBlock && !block.inherited;
+                const isExtraLocation = block.type === 'location' && block.data?.isPrimary !== true && !block.inherited;
+                
+                // Calculate position number: primary shows "primär", extras show #2, #3, etc.
+                const extraLocationIndex = isExtraLocation ? extraLocationBlocks.indexOf(block) + 2 : null;
+                const canDeleteLocation = canEdit && block.type === 'location' && !block.inherited && !isPrimaryLocation;
                 
                 const handleDeleteBlock = async () => {
-                  if (!window.confirm('Ta bort denna position?')) return;
+                  // Note: confirmation dialog is handled in LocationBlock component
                   try {
                     const updatedBlocks = object.blocks.filter((_, i) => i !== actualBlockIndex);
                     await updateDoc(doc(db, 'objects', object.id), {
@@ -933,6 +1100,23 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                     alert('Kunde inte ta bort position');
                   }
                 };
+                
+                const handleEditNote = block.type === 'location' && canEdit && !block.inherited ? () => {
+                  const currentNote = block.data?.note || '';
+                  const newNote = window.prompt('Anteckning för denna position:', currentNote);
+                  if (newNote === null) return; // User cancelled
+                  
+                  const updatedBlocks = [...object.blocks];
+                  updatedBlocks[actualBlockIndex] = {
+                    ...updatedBlocks[actualBlockIndex],
+                    data: { ...updatedBlocks[actualBlockIndex].data, note: newNote }
+                  };
+                  updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks })
+                    .catch(err => {
+                      console.error('Error updating note:', err);
+                      alert('Kunde inte spara anteckning');
+                    });
+                } : undefined;
                 
                 return BlockComponent ? (
                   <div key={actualBlockIndex}>
@@ -945,7 +1129,9 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                           inherited={block.inherited}
                           canDelete={canDeleteLocation}
                           onDelete={handleDeleteBlock}
-                          positionNumber={locationBlocks.length > 1 ? locationIndex : null}
+                          onEditNote={handleEditNote}
+                          positionNumber={isExtraLocation ? extraLocationIndex : null}
+                          isExtraLocation={isExtraLocation}
                           onShowOnMap={onShowOnMap ? (coords) => onShowOnMap(coords, object.id) : undefined}
                           // Location block: collection map props (only show if there are linked objects with coords)
                           isCollection={block.type === 'location' && isCollection && linkedObjectsCount > 0}
@@ -1158,9 +1344,13 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                         </button>
                       </div>
                     )}
+                    {/* Render primary location directly after image block */}
+                    {block.type === 'image' && hasImageBlock && renderPrimaryLocation()}
                   </div>
                 ) : null;
-              });
+              })}
+                  </>
+                );
               })()}
             </div>
             {childObjects.length > 0 && (

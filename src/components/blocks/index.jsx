@@ -7,7 +7,19 @@ export const TitleBlock = ({ data }) => (
   <h2 className="text-2xl font-bold text-white mb-2">{data.text}</h2>
 );
 
-export const LocationBlock = ({ data, inherited, onDelete, canDelete, positionNumber, onShowOnMap, hasAudio, isAudioPlaying, onToggleAudio, isCollection, collectionPlacesCount, onShowCollectionMap, whatsappGroupUrl }) => {
+export const LocationBlock = ({ data, inherited, onDelete, canDelete, positionNumber, isPrimaryLocation, onShowOnMap, onEditNote, hasAudio, isAudioPlaying, onToggleAudio, isCollection, collectionPlacesCount, onShowCollectionMap, whatsappGroupUrl, isExtraLocation }) => {
+
+  const handleShowOnMap = () => {
+    if (onShowOnMap && data.lat && data.lng) {
+      onShowOnMap({ lat: data.lat, lng: data.lng });
+    }
+  };
+  
+  const handleDelete = () => {
+    if (window.confirm('Ta bort denna position?')) {
+      onDelete();
+    }
+  };
 
   const openGoogleMaps = () => {
     if (data.lat && data.lng) {
@@ -21,26 +33,26 @@ export const LocationBlock = ({ data, inherited, onDelete, canDelete, positionNu
     }
   };
 
-  const handleShowOnMap = () => {
-    if (onShowOnMap && data.lat && data.lng) {
-      onShowOnMap({ lat: data.lat, lng: data.lng });
-    }
-  };
-
   return (
-    <div className="flex items-center gap-3">
-      <div className="flex items-center gap-2 flex-1 min-w-0">
-        <MapPin size={16} className="text-gray-400 flex-shrink-0" />
-        {positionNumber && (
-          <span className="text-xs font-medium text-orange-400">
-            #{positionNumber}
+    <div className="space-y-1">
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <MapPin size={16} className="text-gray-400 flex-shrink-0" />
+          {isPrimaryLocation && (
+            <span className="text-xs font-medium text-blue-400">
+              primär
+            </span>
+          )}
+          {positionNumber && (
+            <span className="text-xs font-medium text-orange-400">
+              #{positionNumber}
+            </span>
+          )}
+          <span className="text-sm text-gray-300 truncate">
+            {data.address || (data.lat && data.lng ? `${data.lat.toFixed(5)}, ${data.lng.toFixed(5)}` : 'Ingen plats')}
           </span>
-        )}
-        <span className="text-sm text-gray-300 truncate">
-          {data.address || (data.lat && data.lng ? `${data.lat.toFixed(5)}, ${data.lng.toFixed(5)}` : 'Ingen plats')}
-        </span>
-      </div>
-      {data.lat && data.lng && (
+        </div>
+        {data.lat && data.lng && (
         <div className="flex items-center gap-1">
           {/* Collection: WhatsApp button */}
           {isCollection && whatsappGroupUrl && (
@@ -83,51 +95,71 @@ export const LocationBlock = ({ data, inherited, onDelete, canDelete, positionNu
             </button>
           )}
           {/* Non-collection: Show on map button */}
-          {!isCollection && (
-            <>
-              {onShowOnMap && (
-                <button
-                  onClick={handleShowOnMap}
-                  className="w-9 h-9 rounded-lg bg-white/5 hover:bg-blue-500/20 flex items-center justify-center text-gray-400 hover:text-blue-400 transition-all"
-                  title="Visa på karta"
-                >
-                  <MapIcon size={16} />
-                </button>
-              )}
-              <button
-                onClick={openGoogleMaps}
-                className="w-9 h-9 rounded-lg bg-white/5 hover:bg-blue-500/20 flex items-center justify-center text-gray-400 hover:text-blue-400 transition-all"
-                title="Google Maps"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10"/>
-                  <line x1="2" y1="12" x2="22" y2="12"/>
-                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-                </svg>
-              </button>
-              <button
-                onClick={openWaze}
-                className="w-9 h-9 rounded-lg bg-white/5 hover:bg-blue-500/20 flex items-center justify-center text-gray-400 hover:text-blue-400 transition-all"
-                title="Waze"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9L18 10l-1.8-3.2c-.3-.5-.8-.8-1.4-.8H9.2c-.6 0-1.1.3-1.4.8L6 10l-2.5 1.1C2.7 11.3 2 12.1 2 13v3c0 .6.4 1 1 1h2"/>
-                  <circle cx="7" cy="17" r="2"/>
-                  <circle cx="17" cy="17" r="2"/>
-                </svg>
-              </button>
-            </>
+          {!isCollection && onShowOnMap && (
+            <button
+              onClick={handleShowOnMap}
+              className="w-9 h-9 rounded-lg bg-white/5 hover:bg-blue-500/20 flex items-center justify-center text-gray-400 hover:text-blue-400 transition-all"
+              title="Visa på karta"
+            >
+              <MapIcon size={16} />
+            </button>
+          )}
+          {/* Google Maps button - only for primary location, not extras */}
+          {!isCollection && !isExtraLocation && (
+            <button
+              onClick={openGoogleMaps}
+              className="w-9 h-9 rounded-lg bg-white/5 hover:bg-blue-500/20 flex items-center justify-center text-gray-400 hover:text-blue-400 transition-all"
+              title="Google Maps"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="2" y1="12" x2="22" y2="12"/>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+              </svg>
+            </button>
+          )}
+          {/* Waze button - only for primary location, not extras */}
+          {!isCollection && !isExtraLocation && (
+            <button
+              onClick={openWaze}
+              className="w-9 h-9 rounded-lg bg-white/5 hover:bg-blue-500/20 flex items-center justify-center text-gray-400 hover:text-blue-400 transition-all"
+              title="Waze"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9L18 10l-1.8-3.2c-.3-.5-.8-.8-1.4-.8H9.2c-.6 0-1.1.3-1.4.8L6 10l-2.5 1.1C2.7 11.3 2 12.1 2 13v3c0 .6.4 1 1 1h2"/>
+                <circle cx="7" cy="17" r="2"/>
+                <circle cx="17" cy="17" r="2"/>
+              </svg>
+            </button>
+          )}
+          {/* Edit note button */}
+          {onEditNote && (
+            <button
+              onClick={onEditNote}
+              className="w-9 h-9 rounded-lg bg-white/5 hover:bg-blue-500/20 flex items-center justify-center text-gray-400 hover:text-blue-400 transition-all"
+              title={data.note ? 'Redigera anteckning' : 'Lägg till anteckning'}
+            >
+              <Edit2 size={16} />
+            </button>
+          )}
+          {/* Delete button */}
+          {canDelete && onDelete && (
+            <button
+              onClick={handleDelete}
+              className="w-9 h-9 rounded-lg bg-white/5 hover:bg-red-500/20 flex items-center justify-center text-gray-400 hover:text-red-400 transition-all"
+              title="Ta bort position"
+            >
+              <X size={16} />
+            </button>
           )}
         </div>
       )}
-      {canDelete && onDelete && (
-        <button
-          onClick={onDelete}
-          className="w-9 h-9 rounded-lg bg-white/5 hover:bg-red-500/20 flex items-center justify-center text-gray-400 hover:text-red-400 transition-all"
-          title="Ta bort position"
-        >
-          <X size={16} />
-        </button>
+      </div>
+      {/* Show note if available */}
+      {data.note && (
+        <div className="ml-6 text-xs text-gray-500 italic">
+          "{data.note}"
+        </div>
       )}
     </div>
   );

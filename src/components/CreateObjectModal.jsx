@@ -43,18 +43,31 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
   
   // Location handling - preserve extra location blocks (e.g., mushroom spots added via quick capture)
   const locationBlocks = sourceObject?.blocks?.filter(b => b.type === 'location') || [];
-  const primaryLocation = locationBlocks[0];
+  // Find primary location by isPrimary flag only
+  const primaryLocation = locationBlocks.find(b => b.data?.isPrimary === true);
   const [address, setAddress] = useState(primaryLocation?.data?.address || '');
   const [lat, setLat] = useState(primaryLocation?.data?.lat ?? null);
   const [lng, setLng] = useState(primaryLocation?.data?.lng ?? null);
-  // Extra locations (index 1+) are preserved but not editable in the modal
-  const extraLocationBlocks = locationBlocks.slice(1);
+  // Extra locations (non-primary) are editable in customBlocks
   const [imageUrl, setImageUrl] = useState(sourceObject?.blocks?.find(b => b.type === 'image')?.data?.url || '');
   const [imageCropMode, setImageCropMode] = useState(sourceObject?.blocks?.find(b => b.type === 'image')?.data?.cropMode || 'auto');
   const [imageFocalPoint, setImageFocalPoint] = useState(sourceObject?.blocks?.find(b => b.type === 'image')?.data?.focalPoint || null);
   const [customBlocks, setCustomBlocks] = useState(() => {
     if (!sourceObject) return [];
-    return sourceObject.blocks
+    
+    // Get extra location blocks (all locations without isPrimary: true)
+    const extraLocationBlocks = locationBlocks
+      .filter(b => b.data?.isPrimary !== true)
+      .map((b, idx) => ({
+        id: Math.random().toString(36).substr(2, 9),
+        type: 'location',
+        lat: b.data.lat,
+        lng: b.data.lng,
+        address: b.data.address || '',
+        note: b.data.note || ''
+      }));
+    
+    const otherBlocks = sourceObject.blocks
       .filter(b => ['text', 'links', 'table', 'datetag', 'contact', 'timer', 'poll', 'audio', 'split', 'leaderboard', 'distribution', 'section'].includes(b.type))
       .map(b => {
         if (b.type === 'links') {
@@ -181,6 +194,9 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
           defaultCollapsed: b.data.defaultCollapsed || false
         };
       });
+    
+    // Return extra locations first, then other blocks
+    return [...extraLocationBlocks, ...otherBlocks];
   });
 
   // UI state
@@ -439,19 +455,14 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
         data: { 
           lat: lat !== null ? Number(lat) : null,
           lng: lng !== null ? Number(lng) : null,
-          address: address.trim() || (lat !== null && lng !== null ? `${lat.toFixed(5)}, ${lng.toFixed(5)}` : '')
+          address: address.trim() || (lat !== null && lng !== null ? `${lat.toFixed(5)}, ${lng.toFixed(5)}` : ''),
+          note: '', // Primary location has no note by default
+          isPrimary: true // Mark as primary location
         }
       });
     }
     
-    // Preserve extra location blocks (e.g., mushroom spots added via quick capture)
-    // For edit: keep the extra locations from the original object
-    // For duplicate: copy ALL locations from source (so the copy also gets mushroom spots)
-    if ((isEdit || isDuplicate) && extraLocationBlocks.length > 0) {
-      extraLocationBlocks.forEach(locBlock => {
-        blocks.push({ type: 'location', data: locBlock.data });
-      });
-    }
+    // Extra location blocks are now in customBlocks and will be saved below
 
     if (imageUrl.trim()) {
       const imageData = { url: imageUrl.trim(), cropMode: imageCropMode };
@@ -462,7 +473,21 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
     const currentCustomBlocks = customBlocksRef.current;
     
     currentCustomBlocks.forEach(block => {
-      if (block.type === 'links') {
+      if (block.type === 'location') {
+        // Extra location blocks (from quick capture or added manually)
+        if (block.lat != null && block.lng != null) {
+          blocks.push({
+            type: 'location',
+            data: {
+              lat: block.lat,
+              lng: block.lng,
+              address: block.address || '',
+              note: block.note || '',
+              isPrimary: false // Mark as extra location
+            }
+          });
+        }
+      } else if (block.type === 'links') {
         const validLinks = (block.links || []).filter(l => l.url?.trim());
         if (validLinks.length > 0) {
           blocks.push({ 
@@ -1036,8 +1061,43 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
               )}
             </div>
 
+            {/* Primary location display - only show if there are extra locations (pinnings) */}
+            {customBlocks.some(b => b.type === 'location') && (
+              <div className="rounded-xl border border-white/10 bg-white/5 overflow-hidden">
+                <div className="flex items-center gap-2 p-3">
+                  <MapPin size={16} className="text-blue-400 flex-shrink-0" />
+                  <span className="text-sm font-medium text-gray-300">
+                    Plats #1 <span className="text-gray-500 font-normal">(primär)</span>
+                  </span>
+                  <span className="text-xs text-gray-500 truncate ml-1 flex-1">
+                    {lat != null && lng != null 
+                      ? (address || `${lat.toFixed(5)}, ${lng.toFixed(5)}`)
+                      : <span className="text-amber-500 italic">Saknas – ange under Plats ovan</span>
+                    }
+                  </span>
+                  {lat != null && lng != null && (
+                    <span className="text-xs text-gray-600 bg-white/5 px-2 py-0.5 rounded">Readonly</span>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Custom blocks */}
-            {customBlocks.map((block, index) => (
+            {customBlocks.map((block, index) => {
+              // For location blocks in customBlocks, they are always "extra" locations (position 2+)
+              // so we calculate their display number based on their order among location blocks here
+              // The first location block in customBlocks is #2, second is #3, etc.
+              const locationBlocksBeforeThis = customBlocks.slice(0, index).filter(b => b.type === 'location').length;
+              // Location blocks in customBlocks always start at #2 (primary is #1, handled separately in form)
+              const locationDisplayNumber = block.type === 'location' ? locationBlocksBeforeThis + 2 : 0;
+              // Calculate offset so that LocationBlockEditor displays correct number
+              // LocationBlockEditor does: displayNumber = index + 1 + offset
+              // We want: locationDisplayNumber = index + 1 + offset → offset = locationDisplayNumber - index - 1
+              const locationIndexOffset = block.type === 'location' 
+                ? locationDisplayNumber - index - 1 
+                : 0;
+              
+              return (
               block.type === 'datetag' ? (
                 <DateTagBlockEditor
                   key={block.id}
@@ -1145,9 +1205,10 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   index={index}
                   total={customBlocks.length}
                   saving={saving}
+                  locationIndexOffset={locationIndexOffset}
                 />
               )
-            ))}
+            );})}
 
             {/* Add block buttons */}
             <div className="pt-4 border-t border-white/10">
