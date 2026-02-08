@@ -139,13 +139,13 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
                 />
               </button>
             )}
-            {isOwner && (
+            {isOwner && !compact && (
               <button
                 onClick={handleShareClick}
-                className={`rounded-full bg-gray-900/70 backdrop-blur-sm hover:bg-gray-800/90 hover:scale-110 transition-all duration-200 ${compact ? 'p-1 lg:p-1' : 'p-1.5'}`}
+                className="rounded-full bg-gray-900/70 backdrop-blur-sm hover:bg-gray-800/90 hover:scale-110 transition-all duration-200 p-1.5"
                 title="Dela"
               >
-                <Share2 size={compact ? 14 : 16} className="text-gray-400 hover:text-blue-300" />
+                <Share2 size={16} className="text-gray-400 hover:text-blue-300" />
               </button>
             )}
           </div>
@@ -160,6 +160,12 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
               <div className={`bg-white/10 backdrop-blur-sm text-gray-200 rounded-full border border-white/15 flex items-center gap-1 ${compact ? 'text-[10px] px-1.5 py-0.5' : 'text-xs px-2 py-1'}`}>
                 <Folder size={compact ? 10 : 12} className="text-gray-300" />
                 {childCount}
+              </div>
+            )}
+            {linkedCount > 0 && (
+              <div className={`bg-white/10 backdrop-blur-sm text-gray-200 rounded-full border border-white/15 flex items-center gap-1 ${compact ? 'text-[10px] px-1.5 py-0.5' : 'text-xs px-2 py-1'}`}>
+                <Folder size={compact ? 10 : 12} className="text-gray-300" />
+                {linkedCount}
               </div>
             )}
           </div>
@@ -192,14 +198,11 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
           </div>
         )}
         <div className="flex items-center gap-2 mb-2">
-          <div className={`rounded-lg flex items-center justify-center flex-shrink-0 ${compact ? 'w-5 h-5 sm:w-6 sm:h-6' : 'w-8 h-8'} ${isCollection ? 'bg-purple-500/20' : 'bg-blue-500/20'}`}>
-            <IconComponent size={compact ? 12 : 18} className={isCollection ? 'text-purple-400' : 'text-blue-400'} />
+          <div className={`rounded-lg flex items-center justify-center flex-shrink-0 ${compact ? 'w-5 h-5 sm:w-6 sm:h-6' : 'w-8 h-8'} bg-blue-500/20`}>
+            <IconComponent size={compact ? 12 : 18} className="text-blue-400" />
           </div>
           <div className="flex-1 min-w-0">
             {titleBlock && <h3 className={`font-semibold text-white truncate ${compact ? 'text-xs sm:text-sm' : 'text-lg'}`}>{titleBlock.data.text}</h3>}
-            {isCollection && linkedCount > 0 && (
-              <div className="text-xs text-purple-400">{linkedCount} objekt</div>
-            )}
           </div>
           {/* Favorite + Share buttons for cards without image */}
           {!imageBlock && (
@@ -216,13 +219,13 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
                   />
                 </button>
               )}
-              {isOwner && (
+              {isOwner && !compact && (
                 <button
                   onClick={handleShareClick}
                   className="p-1.5 rounded-full hover:bg-white/10 hover:scale-110 transition-all duration-200 flex-shrink-0"
                   title="Dela"
                 >
-                  <Share2 size={compact ? 14 : 16} className="text-gray-400 hover:text-blue-300" />
+                  <Share2 size={16} className="text-gray-400 hover:text-blue-300" />
                 </button>
               )}
               {isSharedWithMe && (

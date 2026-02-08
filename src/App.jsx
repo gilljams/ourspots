@@ -186,6 +186,11 @@ function App() {
     localStorage.setItem('activeCategory', activeCategory);
   }, [activeCategory]);
 
+  // Scroll to top when category changes to avoid white screen
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [activeCategory]);
+
   // Wake Lock för att hålla skärmen påslagen
   useEffect(() => {
     localStorage.setItem('keepScreenOn', keepScreenOn.toString());
@@ -1369,45 +1374,72 @@ function App() {
       }}
     >
       <header ref={headerRef} className="bg-gray-900/50 backdrop-blur-xl border-b border-white/10 sticky top-0 z-40" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
-        <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center" style={{ paddingLeft: 'max(1rem, env(safe-area-inset-left))', paddingRight: 'max(1rem, env(safe-area-inset-right))' }}>
-          <div className="flex items-center gap-3">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3" style={{ paddingLeft: 'max(1rem, env(safe-area-inset-left))', paddingRight: 'max(1rem, env(safe-area-inset-right))' }}>
+          {/* Left: Menu + Logo */}
+          <div className="flex items-center gap-2 flex-shrink-0">
             <button
               onClick={() => setShowMenu(true)}
-              className="w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-all"
+              className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-all"
               title="Meny"
             >
-              <Menu size={20} />
+              <Menu size={18} />
             </button>
-            <h1 className="text-2xl font-bold text-white">OurSpots</h1>
+            <h1 className="text-lg sm:text-xl font-bold text-white">OurSpots</h1>
             {pendingInvitations.length > 0 && (
               <button
                 onClick={() => setShowInvitations(!showInvitations)}
-                className="relative w-10 h-10 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 flex items-center justify-center text-blue-400 hover:text-blue-300 transition-all"
+                className="relative w-9 h-9 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 flex items-center justify-center text-blue-400 hover:text-blue-300 transition-all"
                 title="Inbjudningar"
               >
-                <Mail size={20} />
+                <Mail size={18} />
                 <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
                   {pendingInvitations.length}
                 </span>
               </button>
             )}
           </div>
-          <div>
-            {user ? (
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="text-right hidden sm:block">
-                  <div className="text-sm text-white">{user.displayName}</div>
-                  <div className="text-xs text-gray-400">{user.email}</div>
-                </div>
-                {user.photoURL && <img src={user.photoURL} alt="Profile" className="w-8 h-8 sm:w-10 h-10 rounded-full border border-white/10" />}
-                <button onClick={handleLogout} className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all" title="Logga ut">
-                  <LogOut size={18} />
+          
+          {/* Center: Search field */}
+          <div className="flex-1 min-w-0 max-w-md">
+            <div className="relative">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full h-9 bg-white/10 text-white text-sm placeholder:text-gray-500 rounded-full pl-9 pr-8 border border-white/10 focus:border-blue-400 focus:bg-white/15 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                placeholder="Sök..."
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-gray-300 transition-colors"
+                >
+                  <X size={12} />
                 </button>
+              )}
+            </div>
+          </div>
+          
+          {/* Right: User avatar or login */}
+          <div className="flex-shrink-0">
+            {user ? (
+              <div className="flex items-center gap-2">
+                <div className="text-right hidden sm:block">
+                  <div className="text-sm text-white truncate max-w-[120px]">{user.displayName}</div>
+                  <div className="text-xs text-gray-400 truncate max-w-[120px]">{user.email}</div>
+                </div>
+                {user.photoURL ? (
+                  <img src={user.photoURL} alt="Profile" className="w-9 h-9 rounded-full border border-white/10" />
+                ) : (
+                  <div className="w-9 h-9 rounded-full bg-blue-500/20 border border-white/10 flex items-center justify-center">
+                    <User size={16} className="text-blue-400" />
+                  </div>
+                )}
               </div>
             ) : (
-              <button onClick={handleLogin} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500 hover:bg-blue-600 text-white transition-all">
-                <LogIn size={18} />
-                <span>Logga in</span>
+              <button onClick={handleLogin} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-sm transition-all">
+                <LogIn size={16} />
+                <span className="hidden sm:inline">Logga in</span>
               </button>
             )}
           </div>
@@ -1561,42 +1593,10 @@ function App() {
               })}
             </div>
             
-            {/* Desktop search field */}
-            <div className="hidden lg:flex relative flex-shrink-0 w-64">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-white/10 text-white text-sm placeholder:text-gray-400 rounded-xl pl-9 pr-8 py-2 border border-white/10 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/30 transition-all"
-                placeholder="Sök..."
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-gray-300 transition-colors"
-                >
-                  <X size={12} />
-                </button>
-              )}
-            </div>
-            
-            {/* Compact cards toggle - desktop only */}
-            <button
-              onClick={() => {
-                const newValue = !compactCards;
-                setCompactCards(newValue);
-                localStorage.setItem('compactCards', newValue);
-              }}
-              className={`hidden lg:flex items-center gap-2 px-3 py-2 rounded-xl whitespace-nowrap transition-all text-sm font-medium flex-shrink-0 ${compactCards ? 'bg-blue-500 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20'}`}
-              title={compactCards ? 'Stora kort' : 'Kompakta kort'}
-            >
-              {compactCards ? <LayoutGrid size={16} /> : <LayoutList size={16} />}
-            </button>
-            
-            {/* Filter button - fixed position */}
+            {/* Filter button - round to distinguish from category pills */}
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-xl whitespace-nowrap transition-all text-sm font-medium flex-shrink-0 ${showFilters ? 'bg-blue-500 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20'}`}
+              className={`w-9 h-9 flex items-center justify-center rounded-full transition-all flex-shrink-0 ${showFilters ? 'bg-blue-500 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20'}`}
               title={showFilters ? 'Dölj filter' : 'Visa filter'}
             >
               <SlidersHorizontal size={16} />
@@ -1604,41 +1604,8 @@ function App() {
           </div>
           
           {showFilters && (
-            <div className="mt-3 space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
-              {/* Search + toggle - mobile only */}
-              <div className="flex gap-2 lg:hidden">
-                <div className="relative flex-1">
-                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full h-9 bg-white/10 text-white text-sm placeholder:text-gray-400 rounded-lg pl-9 pr-9 border border-white/10 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/30 transition-all"
-                    placeholder="Sök..."
-                  />
-                  {searchQuery && (
-                    <button
-                      onClick={() => setSearchQuery('')}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-gray-300 transition-colors"
-                    >
-                      <X size={12} />
-                    </button>
-                  )}
-                </div>
-                {/* Compact cards toggle */}
-                <button
-                  onClick={() => {
-                    const newValue = !compactCards;
-                    setCompactCards(newValue);
-                    localStorage.setItem('compactCards', newValue);
-                  }}
-                  className={`h-9 w-9 flex items-center justify-center rounded-lg transition-all ${compactCards ? 'bg-blue-500 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20'}`}
-                  title={compactCards ? 'Stora kort' : 'Kompakta kort'}
-                >
-                  {compactCards ? <LayoutGrid size={16} /> : <LayoutList size={16} />}
-                </button>
-              </div>
-              
-              {/* Row 2: Favorites, Mina | View filter pills */}
+            <div className="mt-3 p-3 bg-white/5 rounded-xl space-y-2.5 animate-in fade-in slide-in-from-top-1 duration-300 ease-out">
+              {/* Row 1: Favorites, Mina | View filter pills | Compact toggle */}
               <div className="flex items-center gap-1.5">
                 {user && (
                   <button
@@ -1657,36 +1624,47 @@ function App() {
                 {user && (
                   <button 
                     onClick={() => setShowOnlyOwned(!showOnlyOwned)}
-                    className={`h-8 flex items-center justify-center gap-1 px-2.5 rounded-lg transition-all text-sm font-medium ${showOnlyOwned ? 'bg-blue-500 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20'}`}
+                    className={`h-8 flex items-center justify-center gap-1 px-2.5 rounded-lg transition-all text-sm font-medium ${showOnlyOwned ? 'bg-emerald-600 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20'}`}
                   >
                     <User size={14} />
                     <span className="text-xs">Mina</span>
                   </button>
                 )}
                 
-                <div className="w-px h-5 bg-white/20 mx-1.5" />
-                
                 {/* Connected pill group for view filter */}
                 <div className="flex h-8 rounded-lg overflow-hidden border border-white/10">
                   <button
                     onClick={() => setViewFilter('all')}
-                    className={`px-2.5 transition-all text-xs font-medium border-r border-white/10 ${viewFilter === 'all' ? 'bg-blue-500 text-white' : 'bg-white/5 text-gray-300 hover:bg-white/10'}`}
+                    className={`px-2 transition-all text-xs font-medium border-r border-white/10 ${viewFilter === 'all' ? 'bg-emerald-600 text-white' : 'bg-white/5 text-gray-300 hover:bg-white/10'}`}
                   >
                     Alla
                   </button>
                   <button
                     onClick={() => setViewFilter('collections')}
-                    className={`px-2.5 transition-all text-xs font-medium border-r border-white/10 ${viewFilter === 'collections' ? 'bg-purple-500 text-white' : 'bg-white/5 text-gray-300 hover:bg-white/10'}`}
+                    className={`px-2 transition-all text-xs font-medium border-r border-white/10 ${viewFilter === 'collections' ? 'bg-emerald-600 text-white' : 'bg-white/5 text-gray-300 hover:bg-white/10'}`}
                   >
                     Samlingar
                   </button>
                   <button
                     onClick={() => setViewFilter('objects')}
-                    className={`px-2.5 transition-all text-xs font-medium ${viewFilter === 'objects' ? 'bg-blue-500 text-white' : 'bg-white/5 text-gray-300 hover:bg-white/10'}`}
+                    className={`px-2 transition-all text-xs font-medium ${viewFilter === 'objects' ? 'bg-emerald-600 text-white' : 'bg-white/5 text-gray-300 hover:bg-white/10'}`}
                   >
                     Objekt
                   </button>
                 </div>
+                
+                {/* Compact cards toggle - pushed to right */}
+                <button
+                  onClick={() => {
+                    const newValue = !compactCards;
+                    setCompactCards(newValue);
+                    localStorage.setItem('compactCards', newValue);
+                  }}
+                  className={`ml-auto h-8 w-8 flex items-center justify-center rounded-lg transition-all flex-shrink-0 ${compactCards ? 'bg-emerald-600 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20'}`}
+                  title={compactCards ? 'Stora kort' : 'Kompakta kort'}
+                >
+                  {compactCards ? <LayoutGrid size={14} /> : <LayoutList size={14} />}
+                </button>
               </div>
               
               {/* Row 3: Distance slider + Närmast */}
@@ -1700,7 +1678,7 @@ function App() {
                     step="1"
                     value={maxDistanceKm ?? 50}
                     onChange={(e) => setMaxDistanceKm(Number(e.target.value))}
-                    className="flex-1 h-1.5 accent-blue-500"
+                    className="flex-1 h-1.5 accent-emerald-500"
                   />
                   <span className="text-xs text-gray-300 w-14 text-right tabular-nums">
                     {maxDistanceKm ? `≤${maxDistanceKm} km` : 'Alla'}
@@ -1714,10 +1692,9 @@ function App() {
                       <X size={12} />
                     </button>
                   )}
-                  <div className="w-px h-5 bg-white/20 mx-1" />
                   <button 
                     onClick={() => setSortByDistance(!sortByDistance)}
-                    className={`h-8 flex items-center gap-1 px-2.5 rounded-lg transition-all text-xs font-medium ${sortByDistance ? 'bg-blue-500 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20'}`}
+                    className={`h-8 flex items-center gap-1 px-2.5 rounded-lg transition-all text-xs font-medium ${sortByDistance ? 'bg-emerald-600 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20'}`}
                   >
                     <ArrowUpDown size={12} />
                     <span>Närmast</span>
@@ -1731,8 +1708,8 @@ function App() {
       
       <main className="max-w-6xl mx-auto px-4 lg:max-w-7xl">
         {viewMode === 'list' ? (
-          <div className="py-6">
-            <div className={`grid ${compactCards ? 'grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6' : 'grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3'}`}>
+          <div className="pt-4 pb-8">
+            <div className={`grid ${compactCards ? 'grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6' : 'grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3'}`}>
               {displayObjects.map(obj => {
                 const childCount = objects.filter(o => o.parentId === obj.id).length;
                 const distance = getObjectDistance(obj);
@@ -2506,6 +2483,22 @@ function App() {
                 )}
                 </div>
             </div>
+            
+            {/* Footer with logout */}
+            {user && (
+              <div className="flex-shrink-0 p-4 border-t border-white/10">
+                <button
+                  onClick={() => {
+                    setShowMenu(false);
+                    handleLogout();
+                  }}
+                  className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-white/5 hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition-all"
+                >
+                  <LogOut size={18} />
+                  <span className="text-sm font-medium">Logga ut</span>
+                </button>
+              </div>
+            )}
           </div>
         </>
       )}

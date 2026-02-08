@@ -708,7 +708,8 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
   const IconComponent = isCollection 
     ? ClipboardList 
     : (category ? getIconComponent(category.icon) : (PREDEFINED_ICONS[object.type]?.icon || Home));
-  const categoryColor = isCollection ? '#A855F7' : (category?.color || '#3B82F6');
+  // Use consistent blue color for UI (category colors reserved for map pins)
+  const categoryColor = '#3B82F6';
   const isOwner = currentUser && object.ownerId === currentUser.uid;
   const isSharedWithMe = object.isSharedWithMe;
   const userEmailKey = currentUser?.email ? emailToKey(currentUser.email.toLowerCase()) : null;
