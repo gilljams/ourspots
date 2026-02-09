@@ -335,6 +335,17 @@ Mål: Enkelt sätt att dela och spåra utgifter inom en grupp (t.ex. resa, hush�
 - Publik vy för gäster eller externa användare
 - PWA möjlig för offline / haptics
 
+#### Demo/Hjälp-objekt (Planerad)
+Mål: Admin kan skapa exempelobjekt som visar dokumentation och funktionsdemos.
+- Admin markerar objekt som `isDemo: true` i Firebase
+- Firestore-regler tillåter läsning för alla inloggade: `allow read: if resource.data.isDemo == true`
+- Toggle i inställningar "Visa hjälp & exempel" (sparas i userDoc)
+- Kräver inloggning (ingen anonym åtkomst)
+- Demo-objekt visas med tydlig markering/badge
+- Admin ser samma toggle men har redigeringsrätt
+- Inga delningar behövs - centralt administrerat
+- Användare väljer själva om de vill se demo-innehåll
+
 9. ADMINISTRATIVA FUNKTIONER ✅ IMPLEMENTERAT
 
 ### Kategorihantering (Implementerat v1.1)
