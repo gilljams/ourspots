@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, ArrowUp, ArrowDown, FileText, CheckSquare, ClipboardList, Link2, Plus, ChevronDown, Table2, Trash2, GripVertical, Calendar, Phone, Mail, Globe, Timer, Check, Maximize2, RotateCcw, BarChart3, Type, Music, Wallet, Users, Trophy, Minus, MapPin, Edit2 } from 'lucide-react';
+import { X, ArrowUp, ArrowDown, FileText, CheckSquare, ClipboardList, Link2, Plus, ChevronDown, Table2, Trash2, GripVertical, Calendar, Phone, Mail, Globe, Timer, Check, Maximize2, RotateCcw, BarChart3, Type, Music, Wallet, Users, Trophy, Minus, MapPin, Edit2, Hash } from 'lucide-react';
 import { getIconComponent, LINK_ICONS, detectIconFromUrl } from '../utils/iconHelpers';
 import { TABLE_TEMPLATES } from './blocks';
-import { TableEditorModal } from './TableEditorModal';
 import { ListEditorModal } from './ListEditorModal';
+import { SimpleTableEditorModal } from './SimpleTableEditorModal';
 
 // Fullscreen text editor for mobile - iOS Notes-like experience
 function FullscreenTextEditor({ content, title, onSave, onCancel }) {
@@ -776,12 +776,17 @@ function LinksBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
 // Table block editor component
 function TableBlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }) {
   const [title, setTitle] = useState(block.title || '');
-  const [template, setTemplate] = useState(block.template || 'tasks');
+  const [template, setTemplate] = useState(block.template || 'table');
   const [rows, setRows] = useState(block.rows || []);
+  const [col2Type, setCol2Type] = useState(block.col2Type || 'text');
+  const [showCheckbox, setShowCheckbox] = useState(block.showCheckbox ?? true);
   const [isExpanded, setIsExpanded] = useState(false);
   const [defaultCollapsed, setDefaultCollapsed] = useState(block.defaultCollapsed ?? true);
   const [viewerEditable, setViewerEditable] = useState(block.viewerEditable ?? false);
   const [showTableEditor, setShowTableEditor] = useState(false);
+  
+  // Check if this is a legacy template (tasks, shopping, contacts)
+  const isLegacyTemplate = ['tasks', 'shopping', 'contacts'].includes(template);
   
   // Ref to store input elements for focusing
   const inputRefs = React.useRef({});
@@ -806,14 +811,16 @@ function TableBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
     }
   }, [focusTarget, rows]);
 
-  const syncToParent = (newTitle, newTemplate, newRows, newDefaultCollapsed = defaultCollapsed, newViewerEditable = viewerEditable) => {
+  const syncToParent = (newTitle, newTemplate, newRows, newDefaultCollapsed = defaultCollapsed, newViewerEditable = viewerEditable, newCol2Type = col2Type, newShowCheckbox = showCheckbox) => {
     onUpdate(block.id, { 
       title: newTitle, 
       template: newTemplate, 
       rows: newRows,
       columns: TABLE_TEMPLATES[newTemplate]?.columns || [],
       defaultCollapsed: newDefaultCollapsed,
-      viewerEditable: newViewerEditable
+      viewerEditable: newViewerEditable,
+      col2Type: newCol2Type,
+      showCheckbox: newShowCheckbox
     });
   };
 
@@ -1032,6 +1039,27 @@ function TableBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
             </button>
           </div>
 
+          {/* Show checkbox toggle */}
+          <div className="flex items-center justify-between py-2">
+            <span className="text-xs text-gray-400">Visa checkbox</span>
+            <button
+              type="button"
+              onClick={() => {
+                const newVal = !showCheckbox;
+                setShowCheckbox(newVal);
+                syncToParent(title, template, rows, defaultCollapsed, viewerEditable, col2Type, newVal);
+              }}
+              disabled={saving}
+              className={`relative w-10 h-5 rounded-full transition-colors ${
+                showCheckbox ? 'bg-green-500' : 'bg-gray-600'
+              }`}
+            >
+              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                showCheckbox ? 'translate-x-5' : 'translate-x-0.5'
+              }`} />
+            </button>
+          </div>
+
           {/* Viewer editable toggle */}
           <div className="flex items-center justify-between py-2">
             <span className="text-xs text-gray-400">Viewers får redigera</span>
@@ -1049,28 +1077,35 @@ function TableBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
             </button>
           </div>
 
-          {/* Template selector - hide when 'list' is selected */}
+          {/* Column 2 type selector - only for table templates (not list) */}
           {template !== 'list' && (
-            <div>
-              <label className="block text-xs text-gray-500 mb-2">Välj tabelltyp</label>
-              <div className="grid grid-cols-4 gap-2">
-                {Object.values(TABLE_TEMPLATES).filter(t => t.id !== 'list').map(t => {
-                  const TIcon = getIconComponent(t.icon);
-                  const isSelected = template === t.id;
+            <div className="py-2">
+              <label className="text-xs text-gray-400 mb-2 block">Kolumn 2-typ</label>
+              <div className="flex gap-2">
+                {[
+                  { id: 'text', label: 'Text', icon: Type },
+                  { id: 'tel', label: 'Telefon', icon: Phone },
+                  { id: 'url', label: 'Länk', icon: Link2 },
+                  { id: 'number', label: 'Nummer', icon: Hash }
+                ].map(type => {
+                  const TypeIcon = type.icon;
                   return (
                     <button
-                      key={t.id}
+                      key={type.id}
                       type="button"
-                      onClick={() => handleTemplateChange(t.id)}
+                      onClick={() => {
+                        setCol2Type(type.id);
+                        syncToParent(title, template, rows, defaultCollapsed, viewerEditable, type.id);
+                      }}
                       disabled={saving}
-                      className={`p-2 rounded-lg border transition-colors text-center ${
-                        isSelected 
-                          ? 'border-blue-500 bg-blue-500/20 text-blue-300' 
-                          : 'border-white/10 bg-white/5 text-gray-400 hover:border-white/20'
+                      className={`flex-1 py-2 px-3 rounded-lg text-xs flex items-center justify-center gap-1.5 transition-colors ${
+                        col2Type === type.id 
+                          ? 'bg-blue-500/20 text-blue-400 border border-blue-500/40' 
+                          : 'bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10'
                       }`}
                     >
-                      <TIcon size={16} className="mx-auto mb-1" />
-                      <div className="text-[10px] truncate">{t.name}</div>
+                      <TypeIcon size={14} />
+                      <span className="hidden sm:inline">{type.label}</span>
                     </button>
                   );
                 })}
@@ -1091,7 +1126,7 @@ function TableBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
         </div>
       )}
       
-      {/* Fullscreen table/list editor modal */}
+      {/* Fullscreen list editor modal */}
       {showTableEditor && template === 'list' && (
         <ListEditorModal
           rows={rows}
@@ -1104,15 +1139,39 @@ function TableBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
           onCancel={() => setShowTableEditor(false)}
         />
       )}
+      
+      {/* Fullscreen table editor modal - for all non-list templates */}
       {showTableEditor && template !== 'list' && (
-        <TableEditorModal
-          rows={rows}
-          columns={columns}
-          template={template}
-          title={title || currentTemplate?.name || 'Tabell'}
-          onSave={(newRows) => {
+        <SimpleTableEditorModal
+          rows={(() => {
+            // Convert legacy rows to new format if needed
+            return rows.map(row => {
+              if (row.col1 !== undefined) return row;
+              let col1 = '';
+              let col2 = '';
+              if (template === 'tasks') {
+                col1 = row.task || '';
+                col2 = row.who || '';
+              } else if (template === 'shopping') {
+                col1 = row.item || '';
+                col2 = row.qty?.toString() || '';
+              } else if (template === 'contacts') {
+                col1 = row.name || '';
+                col2 = row.phone || '';
+              } else {
+                col1 = row.item || row.task || row.name || '';
+                col2 = row.who || row.qty?.toString() || row.phone || '';
+              }
+              return { ...row, col1, col2, done: row.done || false };
+            });
+          })()}
+          title={title || 'Tabell'}
+          col2Type={col2Type}
+          onSave={(newRows, newCol2Type) => {
             setRows(newRows);
-            syncToParent(title, template, newRows);
+            setCol2Type(newCol2Type);
+            // Migrate to 'table' template when saving
+            syncToParent(title, 'table', newRows, defaultCollapsed, viewerEditable, newCol2Type);
             setShowTableEditor(false);
           }}
           onCancel={() => setShowTableEditor(false)}

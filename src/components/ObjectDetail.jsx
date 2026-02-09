@@ -12,8 +12,8 @@ import DeleteConfirmModal from './DeleteConfirmModal';
 import LeaderboardModal from './LeaderboardModal';
 import DistributionModal from './DistributionModal';
 import { FullscreenTextEditor } from './BlockEditor';
-import { TableEditorModal } from './TableEditorModal';
 import { ListEditorModal } from './ListEditorModal';
+import { SimpleTableEditorModal } from './SimpleTableEditorModal';
 import { TABLE_TEMPLATES } from './blocks';
 import { MapContainer, TileLayer, Marker, Tooltip, Popup, useMap, useMapEvents, Polyline } from 'react-leaflet';
 import L from 'leaflet';
@@ -1465,13 +1465,48 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                           } : undefined}
                           // Table block inline edit - for owners/editors OR when viewerEditable
                           onEditTable={(block.type === 'table' && (canEdit || block.data.viewerEditable)) ? () => {
-                            const template = TABLE_TEMPLATES[block.data.template] || TABLE_TEMPLATES.tasks;
+                            const template = TABLE_TEMPLATES[block.data.template] || TABLE_TEMPLATES.table;
+                            const legacyTemplate = block.data.template;
+                            
+                            // Convert legacy rows to new format (col1, col2)
+                            const convertedRows = (block.data.rows || []).map(row => {
+                              // If already has col1, it's in new format
+                              if (row.col1 !== undefined) return row;
+                              
+                              // Convert from legacy format
+                              let col1 = '';
+                              let col2 = '';
+                              
+                              if (legacyTemplate === 'tasks') {
+                                col1 = row.task || '';
+                                col2 = row.who || '';
+                              } else if (legacyTemplate === 'shopping') {
+                                col1 = row.item || '';
+                                col2 = row.qty?.toString() || '';
+                              } else if (legacyTemplate === 'contacts') {
+                                col1 = row.name || '';
+                                col2 = row.phone || '';
+                              } else {
+                                // Generic fallback
+                                col1 = row.item || row.task || row.name || '';
+                                col2 = row.who || row.qty?.toString() || row.phone || '';
+                              }
+                              
+                              return {
+                                ...row,
+                                col1,
+                                col2,
+                                done: row.done || false
+                              };
+                            });
+                            
                             setTableEditModalData({ 
                               blockIndex: actualBlockIndex, 
-                              rows: block.data.rows || [],
+                              rows: convertedRows,
                               columns: block.data.columns || template.columns,
-                              template: block.data.template || 'tasks',
-                              title: block.data.title || template.name
+                              template: block.data.template || 'table',
+                              title: block.data.title || template.name,
+                              col2Type: block.data.col2Type || 'text'
                             });
                           } : undefined}
                           // Scroll into view when expanding collapsible blocks
@@ -2444,19 +2479,20 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
         />
       )}
       {tableEditModalData && tableEditModalData.template !== 'list' && (
-        <TableEditorModal
+        <SimpleTableEditorModal
           rows={tableEditModalData.rows}
-          columns={tableEditModalData.columns}
-          template={tableEditModalData.template}
           title={tableEditModalData.title}
-          onSave={async (newRows) => {
+          col2Type={tableEditModalData.col2Type || 'text'}
+          onSave={async (newRows, newCol2Type) => {
             try {
               const updatedBlocks = [...object.blocks];
               updatedBlocks[tableEditModalData.blockIndex] = {
                 ...updatedBlocks[tableEditModalData.blockIndex],
                 data: { 
                   ...updatedBlocks[tableEditModalData.blockIndex].data, 
-                  rows: newRows 
+                  rows: newRows,
+                  col2Type: newCol2Type,
+                  template: 'table' // Migrate to new template
                 }
               };
               await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapPin, Map as MapIcon, X, Check, RotateCcw, ExternalLink, Calendar, Maximize2, Timer, Play, Pause, RotateCw, Vote, HelpCircle, Trophy, ChevronDown, Lock, Link, Plus, Wallet, ChevronRight, User, TriangleIcon, Edit2, Car, ClipboardList, Users, Minus, Copy, MessageCircle } from 'lucide-react';
+import { MapPin, Map as MapIcon, X, Check, RotateCcw, ExternalLink, Calendar, Maximize2, Timer, Play, Pause, RotateCw, Vote, HelpCircle, Trophy, ChevronDown, Lock, Link, Plus, Wallet, ChevronRight, User, TriangleIcon, Edit2, Car, ClipboardList, Users, Minus, Copy, MessageCircle, Phone } from 'lucide-react';
 import { getTransformedImageUrl, getFocalPointStyles } from '../../utils/imageUtils';
 import { getIconComponent } from '../../utils/iconHelpers';
 
@@ -798,6 +798,7 @@ export const LinksBlock = ({ data, onExpand }) => {
 
 // Table templates definition
 export const TABLE_TEMPLATES = {
+  // Simple list - 1 column + checkbox
   list: {
     id: 'list',
     name: 'Lista',
@@ -810,25 +811,27 @@ export const TABLE_TEMPLATES = {
       { id: 'item', label: 'Punkt', type: 'text', width: 'flex-1' }
     ]
   },
-  wishlist: {
-    id: 'wishlist',
-    name: 'Önskelista',
-    icon: 'Gift',
+  // Simple table - 2 columns + checkbox, col2Type determines second column type
+  table: {
+    id: 'table',
+    name: 'Tabell',
+    icon: 'Table2',
     showSum: false,
     useCollapse: true,
     columns: [
       { id: 'done', label: '', type: 'checkbox', width: 'w-8' },
-      { id: 'who', label: 'Vem', type: 'text', width: 'w-20' },
-      { id: 'item', label: 'Vad', type: 'text', width: 'flex-1' },
-      { id: 'from', label: 'Från', type: 'text', width: 'w-20' }
+      { id: 'col1', label: 'Text', type: 'text', width: 'flex-1' },
+      { id: 'col2', label: 'Värde', type: 'text', width: 'w-36' } // type determined by col2Type
     ]
   },
+  // Legacy templates for backward compatibility
   tasks: {
     id: 'tasks',
     name: 'Uppgifter',
     icon: 'ClipboardList',
     showSum: false,
     useCollapse: true,
+    legacy: true,
     columns: [
       { id: 'done', label: '', type: 'checkbox', width: 'w-8' },
       { id: 'task', label: 'Uppgift', type: 'text', width: 'flex-1' },
@@ -841,6 +844,7 @@ export const TABLE_TEMPLATES = {
     icon: 'ShoppingCart',
     showSum: false,
     useCollapse: true,
+    legacy: true,
     columns: [
       { id: 'done', label: '', type: 'checkbox', width: 'w-8' },
       { id: 'item', label: 'Vara', type: 'text', width: 'flex-1' },
@@ -853,6 +857,7 @@ export const TABLE_TEMPLATES = {
     icon: 'UserCircle',
     showSum: false,
     useCollapse: true,
+    legacy: true,
     columns: [
       { id: 'name', label: 'Namn', type: 'text', width: 'w-32' },
       { id: 'phone', label: 'Telefon', type: 'text', width: 'flex-1' }
@@ -904,7 +909,8 @@ export const TableBlock = ({ data, objectId, blockIndex, onUpdate, onExpand, onE
   const hasSums = Object.values(sums).some(s => s > 0);
 
   // Count completed checkboxes (excluding header rows)
-  const checkboxCol = columns.find(c => c.type === 'checkbox');
+  // Only show checkbox if showCheckbox is true (default true for backward compat)
+  const checkboxCol = (data.showCheckbox !== false) ? columns.find(c => c.type === 'checkbox') : null;
   const regularRows = rows.filter(r => !r.isHeader);
   const checkedCount = checkboxCol ? regularRows.filter(r => r[checkboxCol.id]).length : 0;
   const totalCount = regularRows.length;
@@ -921,43 +927,43 @@ export const TableBlock = ({ data, objectId, blockIndex, onUpdate, onExpand, onE
     // Determine icon color based on template
     const iconColorClass = {
       list: 'text-blue-400',
-      wishlist: 'text-pink-400',
+      table: 'text-amber-400',
       tasks: 'text-amber-400',
       shopping: 'text-green-400',
       contacts: 'text-cyan-400'
-    }[template.id] || 'text-blue-400';
+    }[template.id] || 'text-amber-400';
     
     const progressColorClass = {
       list: 'from-blue-500 to-blue-400',
-      wishlist: 'from-pink-500 to-pink-400',
+      table: 'from-amber-500 to-amber-400',
       tasks: 'from-amber-500 to-amber-400',
       shopping: 'from-green-500 to-green-400',
       contacts: 'from-cyan-500 to-cyan-400'
-    }[template.id] || 'from-blue-500 to-blue-400';
+    }[template.id] || 'from-amber-500 to-amber-400';
     
     const checkboxColorClass = {
       list: 'bg-blue-500 border-blue-500',
-      wishlist: 'bg-pink-500 border-pink-500',
+      table: 'bg-amber-500 border-amber-500',
       tasks: 'bg-amber-500 border-amber-500',
       shopping: 'bg-green-500 border-green-500',
       contacts: 'bg-cyan-500 border-cyan-500'
-    }[template.id] || 'bg-blue-500 border-blue-500';
+    }[template.id] || 'bg-amber-500 border-amber-500';
     
     const checkboxHoverClass = {
       list: 'hover:border-blue-400',
-      wishlist: 'hover:border-pink-400',
+      table: 'hover:border-amber-400',
       tasks: 'hover:border-amber-400',
       shopping: 'hover:border-green-400',
       contacts: 'hover:border-cyan-400'
-    }[template.id] || 'hover:border-blue-400';
+    }[template.id] || 'hover:border-amber-400';
     
     const headerColorClass = {
       list: 'text-blue-400',
-      wishlist: 'text-pink-400',
+      table: 'text-amber-400',
       tasks: 'text-amber-400',
       shopping: 'text-green-400',
       contacts: 'text-cyan-400'
-    }[template.id] || 'text-blue-400';
+    }[template.id] || 'text-amber-400';
 
     return (
       <div ref={blockRef} className="space-y-2">
@@ -1019,7 +1025,7 @@ export const TableBlock = ({ data, objectId, blockIndex, onUpdate, onExpand, onE
                       className="px-3 py-1.5 mt-2 first:mt-0"
                     >
                       <span className={`text-xs font-semibold ${headerColorClass} uppercase tracking-wider`}>
-                        {row.item || row.task || row.name || row.label || 'Rubrik'}
+                        {row.col1 || row.item || row.task || row.name || row.label || 'Rubrik'}
                       </span>
                     </div>
                   ) : (
@@ -1043,29 +1049,85 @@ export const TableBlock = ({ data, objectId, blockIndex, onUpdate, onExpand, onE
                       )}
                       
                       {/* Display columns */}
-                      {displayColumns.map((col, colIndex) => (
-                        <span 
-                          key={col.id}
-                          className={`text-sm ${col.width === 'flex-1' ? 'flex-1' : 'flex-shrink-0'} ${
-                            col.type === 'number' ? 'text-right tabular-nums w-12' : ''
-                          } ${
-                            checkboxCol && row[checkboxCol.id] ? 'text-gray-500 line-through' : 
-                            (colIndex === 0 ? 'text-gray-200' : 'text-gray-400')
-                          }`}
-                        >
-                          {col.id === 'phone' && row[col.id] ? (
+                      {displayColumns.map((col, colIndex) => {
+                        const value = row[col.id];
+                        const isChecked = checkboxCol && row[checkboxCol.id];
+                        // Build base class - apply actual width class if not flex-1
+                        // Override col2 width to always use w-36 (ignoring old saved w-28)
+                        const effectiveWidth = col.id === 'col2' ? 'w-36' : col.width;
+                        const widthClass = effectiveWidth === 'flex-1' ? 'flex-1' : `flex-shrink-0 ${effectiveWidth}`;
+                        const baseClass = `text-sm text-left ${widthClass} ${
+                          col.type === 'number' ? 'text-right tabular-nums' : ''
+                        } ${isChecked ? 'text-gray-500 line-through' : (colIndex === 0 ? 'text-gray-200' : 'text-gray-400')}`;
+                        
+                        // Handle col2 with col2Type
+                        if (col.id === 'col2' && data.col2Type && value) {
+                          if (data.col2Type === 'tel') {
+                            return (
+                              <a 
+                                key={col.id}
+                                href={`tel:${value.replace(/\s/g, '')}`}
+                                className={`${baseClass} flex items-center gap-1.5 text-blue-400 hover:text-blue-300`}
+                                onClick={e => e.stopPropagation()}
+                              >
+                                <Phone size={14} className="flex-shrink-0" />
+                                <span className={isChecked ? 'text-gray-500' : ''}>{value}</span>
+                              </a>
+                            );
+                          }
+                          if (data.col2Type === 'url') {
+                            // Handle www. prefix and http(s)
+                            let url = value;
+                            if (!value.startsWith('http')) {
+                              url = value.startsWith('www.') ? `https://${value}` : `https://${value}`;
+                            }
+                            // Truncate display text
+                            const displayText = value.length > 15 ? value.slice(0, 15) + '...' : value;
+                            return (
+                              <a 
+                                key={col.id}
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={`${baseClass} flex items-center gap-1.5 text-blue-400 hover:text-blue-300`}
+                                onClick={e => e.stopPropagation()}
+                              >
+                                <ExternalLink size={14} className="flex-shrink-0" />
+                                <span className={isChecked ? 'text-gray-500' : ''}>{displayText}</span>
+                              </a>
+                            );
+                          }
+                          if (data.col2Type === 'number') {
+                            return (
+                              <span key={col.id} className={`${baseClass} text-right tabular-nums w-16`}>
+                                {value}
+                              </span>
+                            );
+                          }
+                        }
+                        
+                        // Handle legacy phone column
+                        if (col.id === 'phone' && value) {
+                          return (
                             <a 
-                              href={`tel:${row[col.id].replace(/\s/g, '')}`}
-                              className="text-blue-400 hover:text-blue-300 underline"
+                              key={col.id}
+                              href={`tel:${value.replace(/\s/g, '')}`}
+                              className={`${baseClass} flex items-center gap-1.5 text-blue-400 hover:text-blue-300`}
                               onClick={e => e.stopPropagation()}
                             >
-                              {row[col.id]}
+                              <Phone size={14} className="flex-shrink-0" />
+                              <span className={isChecked ? 'text-gray-500' : ''}>{value}</span>
                             </a>
-                          ) : (
-                            row[col.id] || '–'
-                          )}
-                        </span>
-                      ))}
+                          );
+                        }
+                        
+                        // Default text rendering
+                        return (
+                          <span key={col.id} className={baseClass}>
+                            {value || '–'}
+                          </span>
+                        );
+                      })}
                     </div>
                   )
                 ))}

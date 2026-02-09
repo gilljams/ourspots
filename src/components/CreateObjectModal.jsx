@@ -96,7 +96,9 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             rows: b.data.rows || [],
             columns: b.data.columns || [],
             defaultCollapsed: b.data.defaultCollapsed || false,
-            viewerEditable: b.data.viewerEditable || false
+            viewerEditable: b.data.viewerEditable || false,
+            col2Type: b.data.col2Type || 'text',
+            showCheckbox: b.data.showCheckbox ?? true
           };
         }
         if (b.type === 'datetag') {
@@ -523,7 +525,9 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             columns: block.columns || [],
             rows: block.rows || [],
             defaultCollapsed: block.defaultCollapsed || false,
-            viewerEditable: block.viewerEditable || false
+            viewerEditable: block.viewerEditable || false,
+            col2Type: block.col2Type || 'text',
+            showCheckbox: block.showCheckbox ?? true
           } 
         });
       } else if (block.type === 'datetag') {
@@ -678,9 +682,11 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
       newBlock.links = [{ title: '', url: '', icon: 'Link' }];
     }
     if (type === 'table') {
-      newBlock.template = template || 'tasks';
+      newBlock.template = template || 'table';
       newBlock.rows = [];
       newBlock.columns = [];
+      newBlock.col2Type = 'text'; // Default to text for new tables
+      newBlock.showCheckbox = true; // Default to showing checkbox
     }
     if (type === 'datetag') {
       newBlock.tags = [];
