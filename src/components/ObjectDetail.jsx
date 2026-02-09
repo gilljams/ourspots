@@ -12,6 +12,9 @@ import DeleteConfirmModal from './DeleteConfirmModal';
 import LeaderboardModal from './LeaderboardModal';
 import DistributionModal from './DistributionModal';
 import { FullscreenTextEditor } from './BlockEditor';
+import { TableEditorModal } from './TableEditorModal';
+import { ListEditorModal } from './ListEditorModal';
+import { TABLE_TEMPLATES } from './blocks';
 import { MapContainer, TileLayer, Marker, Tooltip, Popup, useMap, useMapEvents, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import { createColoredIcon, createUserIcon } from '../utils/mapIcons';
@@ -680,6 +683,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
   });
   const [leaderboardModalData, setLeaderboardModalData] = useState(null); // { blockIndex, data }
   const [textEditModalData, setTextEditModalData] = useState(null); // { blockIndex, content, title }
+  const [tableEditModalData, setTableEditModalData] = useState(null); // { blockIndex, rows, columns, template, title }
   const [distributionModalData, setDistributionModalData] = useState(null); // { blockIndex, data }
   const [showCollectionMap, setShowCollectionMap] = useState(false); // For collection map modal
   const [showMultiLocationMap, setShowMultiLocationMap] = useState(false); // For multi-location objects map
@@ -1383,6 +1387,17 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                               blockIndex: actualBlockIndex, 
                               content: block.data.content || '', 
                               title: block.data.title || 'Anteckning' 
+                            });
+                          } : undefined}
+                          // Table block inline edit - for owners/editors
+                          onEditTable={block.type === 'table' && canEdit ? () => {
+                            const template = TABLE_TEMPLATES[block.data.template] || TABLE_TEMPLATES.tasks;
+                            setTableEditModalData({ 
+                              blockIndex: actualBlockIndex, 
+                              rows: block.data.rows || [],
+                              columns: block.data.columns || template.columns,
+                              template: block.data.template || 'tasks',
+                              title: block.data.title || template.name
                             });
                           } : undefined}
                           // Scroll into view when expanding collapsible blocks
@@ -2328,6 +2343,56 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
             }
           }}
           onCancel={() => setTextEditModalData(null)}
+        />
+      )}
+      {tableEditModalData && tableEditModalData.template === 'list' && (
+        <ListEditorModal
+          rows={tableEditModalData.rows}
+          title={tableEditModalData.title}
+          onSave={async (newRows) => {
+            try {
+              const updatedBlocks = [...object.blocks];
+              updatedBlocks[tableEditModalData.blockIndex] = {
+                ...updatedBlocks[tableEditModalData.blockIndex],
+                data: { 
+                  ...updatedBlocks[tableEditModalData.blockIndex].data, 
+                  rows: newRows 
+                }
+              };
+              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
+              setTableEditModalData(null);
+            } catch (err) {
+              console.error('Error saving list content:', err);
+              alert('Kunde inte spara listan');
+            }
+          }}
+          onCancel={() => setTableEditModalData(null)}
+        />
+      )}
+      {tableEditModalData && tableEditModalData.template !== 'list' && (
+        <TableEditorModal
+          rows={tableEditModalData.rows}
+          columns={tableEditModalData.columns}
+          template={tableEditModalData.template}
+          title={tableEditModalData.title}
+          onSave={async (newRows) => {
+            try {
+              const updatedBlocks = [...object.blocks];
+              updatedBlocks[tableEditModalData.blockIndex] = {
+                ...updatedBlocks[tableEditModalData.blockIndex],
+                data: { 
+                  ...updatedBlocks[tableEditModalData.blockIndex].data, 
+                  rows: newRows 
+                }
+              };
+              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
+              setTableEditModalData(null);
+            } catch (err) {
+              console.error('Error saving table content:', err);
+              alert('Kunde inte spara tabellen');
+            }
+          }}
+          onCancel={() => setTableEditModalData(null)}
         />
       )}
       {distributionModalData && (

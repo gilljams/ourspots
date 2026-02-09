@@ -1,8 +1,8 @@
 ========================
-OurSpots – Manifest / Blueprint (Updated Feb 2, 2026)
+OurSpots – Manifest / Blueprint (Updated Feb 9, 2026)
 ========================
 
-🚀 STATUS: v2.9.1 - Simplified Split Block + Firebase Hosting
+🚀 STATUS: v2.9.2 - New List Editor Modal + Simplified Block Editing
 
 1. VISION
 - Mobilfokuserad app med premium dark theme
@@ -48,6 +48,10 @@ OurSpots – Manifest / Blueprint (Updated Feb 2, 2026)
 - Block-ordning respekterar användarens sortering ✅ NY
 - iOS scroll-fix för inputfält i modaler ✅ NY
 - Fullscreen text editor för mobil (iOS Notes-liknande) ✅ NY v2.3
+- Ny ListEditorModal för enkla listor med drag & drop, Enter=ny rad, paste-funktion ✅ NY v2.9.2
+- Separerade Lista-modal (enkel) och Tabell-modal (avancerad) ✅ NY v2.9.2
+- Redigera-pennikon visas endast när block är expanderat ✅ NY v2.9.2
+- Tomma text/lista-block sparas som skelett för senare redigering ✅ NY v2.9.2
 - Grupperade blocktyper med "Fler"-knapp ✅ NY v2.3
 - Poll-block för gruppomröstningar (datum/helger) ✅ NY v2.4
 - Display name / nickname i profilinställningar ✅ NY v2.4

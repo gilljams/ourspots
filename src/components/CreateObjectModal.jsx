@@ -504,18 +504,17 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
           });
         }
       } else if (block.type === 'table') {
-        if (block.rows && block.rows.length > 0) {
-          blocks.push({ 
-            type: 'table', 
-            data: { 
-              title: (block.title || '').trim(), 
-              template: block.template || 'tasks',
-              columns: block.columns || [],
-              rows: block.rows,
-              defaultCollapsed: block.defaultCollapsed || false
-            } 
-          });
-        }
+        // Always save table/list blocks, even if empty (skeleton)
+        blocks.push({ 
+          type: 'table', 
+          data: { 
+            title: (block.title || '').trim(), 
+            template: block.template || 'tasks',
+            columns: block.columns || [],
+            rows: block.rows || [],
+            defaultCollapsed: block.defaultCollapsed || false
+          } 
+        });
       } else if (block.type === 'datetag') {
         if (block.tags && block.tags.length > 0) {
           blocks.push({ 
@@ -632,10 +631,16 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             uppercase: block.uppercase !== false
           } 
         });
-      } else if (block.content && block.content.trim()) {
-        if (block.type === 'text') {
-          blocks.push({ type: 'text', data: { title: (block.title || 'Anteckning').trim(), content: block.content.trim(), defaultCollapsed: block.defaultCollapsed || false } });
-        }
+      } else if (block.type === 'text') {
+        // Always save text blocks, even if empty (can be edited from view mode)
+        blocks.push({ 
+          type: 'text', 
+          data: { 
+            title: (block.title || 'Anteckning').trim(), 
+            content: (block.content || '').trim(), 
+            defaultCollapsed: block.defaultCollapsed || false 
+          } 
+        });
       }
     });
 

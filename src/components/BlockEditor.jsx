@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, ArrowUp, ArrowDown, FileText, CheckSquare, ClipboardList, Link2, Plus, ChevronDown, Table2, Trash2, GripVertical, Calendar, Phone, Mail, Globe, Timer, Check, Maximize2, RotateCcw, BarChart3, Type, Music, Wallet, Users, Trophy, Minus, MapPin } from 'lucide-react';
+import { X, ArrowUp, ArrowDown, FileText, CheckSquare, ClipboardList, Link2, Plus, ChevronDown, Table2, Trash2, GripVertical, Calendar, Phone, Mail, Globe, Timer, Check, Maximize2, RotateCcw, BarChart3, Type, Music, Wallet, Users, Trophy, Minus, MapPin, Edit2 } from 'lucide-react';
 import { getIconComponent, LINK_ICONS, detectIconFromUrl } from '../utils/iconHelpers';
 import { TABLE_TEMPLATES } from './blocks';
+import { TableEditorModal } from './TableEditorModal';
+import { ListEditorModal } from './ListEditorModal';
 
 // Fullscreen text editor for mobile - iOS Notes-like experience
 function FullscreenTextEditor({ content, title, onSave, onCancel }) {
@@ -775,6 +777,7 @@ function TableBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
   const [rows, setRows] = useState(block.rows || []);
   const [isExpanded, setIsExpanded] = useState(false);
   const [defaultCollapsed, setDefaultCollapsed] = useState(block.defaultCollapsed ?? false);
+  const [showTableEditor, setShowTableEditor] = useState(false);
   
   // Ref to store input elements for focusing
   const inputRefs = React.useRef({});
@@ -1045,180 +1048,45 @@ function TableBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
             </button>
           </div>
 
-          {/* Table rows editor */}
-          {editorColumns.length > 0 && (
-            <div className="space-y-2">
-              {/* Header - only show if there are columns to show */}
-              {editorColumns.length > 0 && !currentTemplate?.hideHeader && (
-                <div className="flex gap-1 text-xs text-gray-500 px-1">
-                  {editorColumns.map(col => (
-                    <div key={col.id} className={`${col.width} ${col.type === 'checkbox' ? 'text-center' : ''}`}>
-                      {col.label}
-                    </div>
-                  ))}
-                  <div className="w-20"></div>
-                </div>
-              )}
-
-              {/* Rows */}
-              {rows.map((row, rowIndex) => (
-                row.isHeader ? (
-                  // Header row editor - full width, distinct styling
-                  <div key={row.id} className="flex gap-1 items-center bg-amber-500/10 rounded-lg p-1">
-                    <input
-                      type="text"
-                      value={row.item || ''}
-                      onChange={(e) => updateCell(rowIndex, 'item', e.target.value)}
-                      onBlur={syncRowsOnBlur}
-                      onPaste={handlePaste}
-                      placeholder="Rubrik..."
-                      disabled={saving}
-                      className="flex-1 px-2 py-1.5 rounded bg-white/5 border border-white/10 text-amber-300 text-sm font-medium focus:outline-none focus:border-amber-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => moveRow(rowIndex, -1)}
-                      disabled={saving || rowIndex === 0}
-                      className="w-6 h-6 rounded bg-white/5 text-gray-500 hover:bg-white/10 flex items-center justify-center disabled:opacity-30"
-                    >
-                      <ArrowUp size={12} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => moveRow(rowIndex, 1)}
-                      disabled={saving || rowIndex === rows.length - 1}
-                      className="w-6 h-6 rounded bg-white/5 text-gray-500 hover:bg-white/10 flex items-center justify-center disabled:opacity-30"
-                    >
-                      <ArrowDown size={12} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => removeRow(rowIndex)}
-                      disabled={saving}
-                      className="w-6 h-6 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                ) : (
-                  // Regular row editor
-                  <div key={row.id} className="flex gap-1 items-center">
-                    {editorColumns.map(col => (
-                      <div key={col.id} className={col.width}>
-                          {col.type === 'checkbox' ? (
-                            <button
-                              type="button"
-                              onClick={() => toggleCheckbox(rowIndex, col.id)}
-                              className="w-full flex justify-center"
-                            >
-                              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
-                                row[col.id] ? 'bg-amber-500 border-amber-500' : 'border-gray-600 hover:border-amber-400'
-                              }`}>
-                                {row[col.id] && <Check size={12} className="text-white" />}
-                              </div>
-                            </button>
-                          ) : col.type === 'number' ? (
-                            <input
-                              ref={el => inputRefs.current[`${rowIndex}-${col.id}`] = el}
-                              type="text"
-                              inputMode="numeric"
-                              pattern="[0-9]*"
-                              value={row[col.id] || ''}
-                              onChange={(e) => updateCell(rowIndex, col.id, e.target.value)}
-                              onBlur={syncRowsOnBlur}
-                              onKeyDown={(e) => handleKeyDown(e, rowIndex, col.id)}
-                              disabled={saving}
-                              className="w-full px-2 py-1.5 rounded bg-white/5 border border-white/10 text-white text-base text-right focus:outline-none focus:border-amber-500"
-                            />
-                          ) : (
-                            <input
-                              ref={el => inputRefs.current[`${rowIndex}-${col.id}`] = el}
-                              type="text"
-                              value={row[col.id] || ''}
-                              onChange={(e) => updateCell(rowIndex, col.id, e.target.value)}
-                              onBlur={syncRowsOnBlur}
-                              onPaste={handlePaste}
-                              onKeyDown={(e) => handleKeyDown(e, rowIndex, col.id)}
-                              disabled={saving}
-                              className="w-full px-2 py-1.5 rounded bg-white/5 border border-white/10 text-white text-base focus:outline-none focus:border-amber-500"
-                            />
-                          )}
-                      </div>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() => moveRow(rowIndex, -1)}
-                      disabled={saving || rowIndex === 0}
-                      className="w-6 h-6 rounded bg-white/5 text-gray-500 hover:bg-white/10 flex items-center justify-center disabled:opacity-30"
-                    >
-                      <ArrowUp size={12} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => moveRow(rowIndex, 1)}
-                      disabled={saving || rowIndex === rows.length - 1}
-                      className="w-6 h-6 rounded bg-white/5 text-gray-500 hover:bg-white/10 flex items-center justify-center disabled:opacity-30"
-                    >
-                      <ArrowDown size={12} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => removeRow(rowIndex)}
-                      disabled={saving}
-                      className="w-6 h-6 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                )
-              ))}
-
-              {/* Add row buttons */}
-              <div className="flex gap-2 mt-2">
-                <button
-                  type="button"
-                  onClick={() => addRow(false)}
-                  disabled={saving}
-                  className="flex-1 px-3 py-2 rounded-lg border border-dashed border-white/20 text-gray-400 hover:border-amber-400 hover:text-amber-400 text-sm flex items-center justify-center gap-2 transition-colors"
-                >
-                  <Plus size={16} /> Rad
-                </button>
-                <button
-                  type="button"
-                  onClick={() => addRow(true)}
-                  disabled={saving}
-                  className="flex-1 px-3 py-2 rounded-lg border border-dashed border-white/20 text-gray-400 hover:border-amber-400 hover:text-amber-400 text-sm flex items-center justify-center gap-2 transition-colors"
-                  title="Lägg till en rubrikrad för att gruppera punkter"
-                >
-                  <Plus size={16} /> Rubrik
-                </button>
-              </div>
-              
-              {/* Reset checkboxes button - only show for templates with checkboxes */}
-              {columns.some(col => col.type === 'checkbox') && rows.some(row => !row.isHeader && row.checked) && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (window.confirm('Vill du avbocka alla checkboxar? Detta kan inte ångras.')) {
-                      const resetRows = rows.map(row => row.isHeader ? row : { ...row, checked: false });
-                      setRows(resetRows);
-                      syncToParent(title, template, resetRows);
-                    }
-                  }}
-                  disabled={saving}
-                  className="w-full py-2 text-sm text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 rounded-lg border border-amber-500/20 transition-colors"
-                >
-                  Avbocka alla ({rows.filter(r => !r.isHeader && r.checked).length} av {rows.filter(r => !r.isHeader).length})
-                </button>
-              )}
-              
-              {/* Hint */}
-              <p className="text-xs text-gray-600 text-center">
-                Tips: Enter = ny rad • Ctrl+V = klistra in flera
-              </p>
-            </div>
-          )}
+          {/* Open fullscreen editor button */}
+          <button
+            type="button"
+            onClick={() => setShowTableEditor(true)}
+            disabled={saving}
+            className="w-full py-3 text-sm text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg border border-blue-500/20 transition-colors flex items-center justify-center gap-2"
+          >
+            <Edit2 size={16} />
+            {template === 'list' ? 'Redigera listan' : 'Redigera tabellen'}
+          </button>
         </div>
+      )}
+      
+      {/* Fullscreen table/list editor modal */}
+      {showTableEditor && template === 'list' && (
+        <ListEditorModal
+          rows={rows}
+          title={title || 'Lista'}
+          onSave={(newRows) => {
+            setRows(newRows);
+            syncToParent(title, template, newRows);
+            setShowTableEditor(false);
+          }}
+          onCancel={() => setShowTableEditor(false)}
+        />
+      )}
+      {showTableEditor && template !== 'list' && (
+        <TableEditorModal
+          rows={rows}
+          columns={columns}
+          template={template}
+          title={title || currentTemplate?.name || 'Tabell'}
+          onSave={(newRows) => {
+            setRows(newRows);
+            syncToParent(title, template, newRows);
+            setShowTableEditor(false);
+          }}
+          onCancel={() => setShowTableEditor(false)}
+        />
       )}
     </div>
   );
