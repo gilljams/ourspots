@@ -310,8 +310,9 @@ Mål: Admin kan skapa exempelobjekt som visar dokumentation och funktionsdemos.
 - Användare väljer själva om de vill se demo-innehåll
 
 #### Framtida idéer
-- PWA-implementation (manifest.json, service worker, installbar)
-- Markdown editor för textfält (bullet lists, bold, bilder)
+- **Minigalleri** - Upp till 4 bilder per objekt i lägre upplösning, swipe/carousel-vy
+- **Omstrukturera "Lägg till block"** - Gruppera block-typer logiskt (Text & Anteckningar | Listor & Tabeller | Interaktiva | Media & Kontakt)
+- **"Min plats" / Parking Pin** - En personlig pin per användare som kan snabbsparas (överskrives vid ny). Perfekt för parkeringskoordinater med anteckning ("Plan 3") eller återsamlingsplats. Sparas i userDoc, visas på kartan med särskilt märke, navigeringslänk till Google Maps
 
 9. ADMINISTRATIVA FUNKTIONER ✅ IMPLEMENTERAT
 

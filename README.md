@@ -762,11 +762,12 @@ Detta är en varning från Firebase Auth + GitHub Pages. Kan ignoreras - påverk
 - [x] Delning mellan användare (viewer/editor-roller)
 - [x] Förenklad tabellhantering (Lista + Tabell med col2Type)
 - [ ] Demo/Hjälp-objekt (admin-skapade exempelobjekt)
-- [ ] Export/import av data (JSON backup)
+- [ ] Minigalleri (upp till 4 bilder per objekt)
+- [ ] Omstrukturera "Lägg till block" (logisk gruppering)
 
 ### Lång sikt (Q3-Q4 2026)
-- [ ] Mobil app (React Native eller PWA+)
-- [ ] Integration med externa tjänster
+- [ ] "Min plats" / Parking Pin (personlig snabbpin med anteckning)
+- [ ] Export/import av data (JSON backup)
 
 ## 🤝 Bidra
 
