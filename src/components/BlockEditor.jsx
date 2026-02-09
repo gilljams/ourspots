@@ -639,16 +639,19 @@ function LinksBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
       {isExpanded && (
         <div className="px-3 pb-3 space-y-3">
           {/* Optional title for the links block */}
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onBlur={() => syncToParent(title, links)}
-            onFocus={handleInputFocus}
-            placeholder="Rubrik (valfritt)"
-            disabled={saving}
-            className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-purple-500"
-          />
+          <div>
+            <label className="text-xs text-gray-400 mb-1 block">Titel</label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onBlur={() => syncToParent(title, links)}
+              onFocus={handleInputFocus}
+              placeholder="Rubrik (valfritt)"
+              disabled={saving}
+              className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-purple-500"
+            />
+          </div>
 
           {/* Links list */}
           <div className="space-y-2">
@@ -749,16 +752,16 @@ function LinksBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
           
           {/* Default collapsed toggle - only show if more than 1 link */}
           {links.length > 1 && (
-            <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/10">
-              <span className="text-sm text-gray-400">Ihopfälld som standard</span>
+            <div className="flex items-center justify-between py-2">
+              <span className="text-xs text-gray-400">Ihopfälld som standard</span>
               <button
                 type="button"
                 onClick={() => handleDefaultCollapsedChange(!defaultCollapsed)}
-                className={`relative w-10 h-6 rounded-full transition-colors ${
-                  defaultCollapsed ? 'bg-purple-500' : 'bg-gray-600'
+                className={`relative w-10 h-5 rounded-full transition-colors ${
+                  defaultCollapsed ? 'bg-blue-500' : 'bg-gray-600'
                 }`}
               >
-                <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
                   defaultCollapsed ? 'translate-x-5' : 'translate-x-0.5'
                 }`} />
               </button>
@@ -776,7 +779,7 @@ function TableBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
   const [template, setTemplate] = useState(block.template || 'tasks');
   const [rows, setRows] = useState(block.rows || []);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [defaultCollapsed, setDefaultCollapsed] = useState(block.defaultCollapsed ?? false);
+  const [defaultCollapsed, setDefaultCollapsed] = useState(block.defaultCollapsed ?? true);
   const [showTableEditor, setShowTableEditor] = useState(false);
   
   // Ref to store input elements for focusing
@@ -961,7 +964,7 @@ function TableBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
             size={16} 
             className={`text-gray-500 transition-transform flex-shrink-0 ${isExpanded ? '' : '-rotate-90'}`} 
           />
-          <Icon size={16} className="text-amber-400 flex-shrink-0" />
+          <Icon size={16} className="text-blue-400 flex-shrink-0" />
           <span className="text-sm font-medium text-gray-300 truncate">
             {title || currentTemplate?.name || 'Tabell'}
           </span>
@@ -988,15 +991,39 @@ function TableBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
       {isExpanded && (
         <div className="px-3 pb-3 space-y-3">
           {/* Title input */}
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onBlur={() => syncToParent(title, template, rows)}
-            placeholder="Rubrik (valfritt)"
-            disabled={saving}
-            className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-amber-500"
-          />
+          <div>
+            <label className="text-xs text-gray-400 mb-1 block">Titel</label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onBlur={() => syncToParent(title, template, rows)}
+              placeholder="Rubrik (valfritt)"
+              disabled={saving}
+              className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500"
+            />
+          </div>
+
+          {/* Default collapsed toggle */}
+          <div className="flex items-center justify-between py-2">
+            <span className="text-xs text-gray-400">Ihopfälld som standard</span>
+            <button
+              type="button"
+              onClick={() => {
+                const newValue = !defaultCollapsed;
+                setDefaultCollapsed(newValue);
+                syncToParent(title, template, rows, newValue);
+              }}
+              disabled={saving}
+              className={`relative w-10 h-5 rounded-full transition-colors ${
+                defaultCollapsed ? 'bg-blue-500' : 'bg-gray-600'
+              }`}
+            >
+              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                defaultCollapsed ? 'translate-x-5' : 'translate-x-0.5'
+              }`} />
+            </button>
+          </div>
 
           {/* Template selector - hide when 'list' is selected */}
           {template !== 'list' && (
@@ -1014,7 +1041,7 @@ function TableBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
                       disabled={saving}
                       className={`p-2 rounded-lg border transition-colors text-center ${
                         isSelected 
-                          ? 'border-amber-500 bg-amber-500/20 text-amber-300' 
+                          ? 'border-blue-500 bg-blue-500/20 text-blue-300' 
                           : 'border-white/10 bg-white/5 text-gray-400 hover:border-white/20'
                       }`}
                     >
@@ -1026,27 +1053,6 @@ function TableBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
               </div>
             </div>
           )}
-
-          {/* Default collapsed toggle */}
-          <div className="flex items-center justify-between py-2 px-1">
-            <span className="text-xs text-gray-400">Ihopfälld som standard</span>
-            <button
-              type="button"
-              onClick={() => {
-                const newValue = !defaultCollapsed;
-                setDefaultCollapsed(newValue);
-                syncToParent(title, template, rows, newValue);
-              }}
-              disabled={saving}
-              className={`relative w-10 h-5 rounded-full transition-colors ${
-                defaultCollapsed ? 'bg-amber-500' : 'bg-gray-600'
-              }`}
-            >
-              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
-                defaultCollapsed ? 'translate-x-5' : 'translate-x-0.5'
-              }`} />
-            </button>
-          </div>
 
           {/* Open fullscreen editor button */}
           <button
@@ -1172,7 +1178,7 @@ function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving, 
 
   const [title, setTitle] = useState(block.title);
   const [content, setContent] = useState(block.content);
-  const [defaultCollapsed, setDefaultCollapsed] = useState(block.defaultCollapsed ?? false);
+  const [defaultCollapsed, setDefaultCollapsed] = useState(block.defaultCollapsed ?? true);
   const [isFocused, setIsFocused] = useState(false);
   const [showFullscreenEditor, setShowFullscreenEditor] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -1268,12 +1274,9 @@ function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving, 
 
   // Summary for collapsed state
   const getSummary = () => {
-    if (title) return title;
-    if (content) {
-      const firstLine = content.split('\n')[0];
-      return firstLine.length > 40 ? firstLine.substring(0, 40) + '...' : firstLine;
-    }
-    return 'Ingen text';
+    if (!hasContent) return 'Ingen text';
+    const firstLine = content.split('\n')[0];
+    return firstLine.length > 30 ? firstLine.substring(0, 30) + '...' : firstLine;
   };
   
   return (
@@ -1291,9 +1294,9 @@ function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving, 
           />
           <FileText size={16} className="text-blue-400 flex-shrink-0" />
           <span className="text-sm font-medium text-gray-300 truncate">
-            Anteckning
+            {title || 'Anteckning'}
           </span>
-          {!isExpanded && (
+          {!isExpanded && hasContent && (
             <span className="text-xs text-gray-500 truncate ml-1">
               {getSummary()}
             </span>
@@ -1314,141 +1317,49 @@ function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving, 
       
       {/* Expandable content */}
       {isExpanded && (
-      <div className="p-3 pt-0 space-y-2">
-      <input
-        type="text"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        onBlur={syncTitle}
-        placeholder="Rubrik (valfritt)"
-        disabled={saving}
-        className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500"
-      />
-      {/* Markdown toolbar - only for text blocks, hidden on mobile (uses fullscreen editor) */}
-      {block.type === 'text' && !isMobile && (
-        <div className="flex gap-1">
-          <button
-            type="button"
-            onClick={() => insertMarkdown('**', '**', 'text')}
-            className="w-8 h-8 rounded bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center font-bold text-sm transition-colors"
-            title="Fetstil (**text**)"
-          >
-            B
-          </button>
-          <button
-            type="button"
-            onClick={() => insertMarkdown('*', '*', 'text')}
-            className="w-8 h-8 rounded bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center italic text-sm transition-colors"
-            title="Kursiv (*text*)"
-          >
-            I
-          </button>
-          <button
-            type="button"
-            onClick={() => insertMarkdown('# ', '', 'Rubrik')}
-            className="w-8 h-8 rounded bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center text-sm transition-colors"
-            title="Rubrik (# Rubrik)"
-          >
-            H
-          </button>
-          <button
-            type="button"
-            onClick={() => insertMarkdown('> ', '', 'citat')}
-            className="w-8 h-8 rounded bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center text-sm transition-colors"
-            title="Citat (> citat)"
-          >
-            "
-          </button>
-          <button
-            type="button"
-            onClick={() => insertMarkdown('- ', '', 'punkt')}
-            className="w-8 h-8 rounded bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center text-sm transition-colors"
-            title="Punktlista (- punkt)"
-          >
-            •
-          </button>
-          <button
-            type="button"
-            onClick={() => insertMarkdown('1. ', '', 'punkt')}
-            className="w-8 h-8 rounded bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center text-sm transition-colors"
-            title="Numrerad lista (1. punkt)"
-          >
-            1.
-          </button>
-          <button
-            type="button"
-            onClick={insertLink}
-            className="w-8 h-8 rounded bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition-colors"
-            title="Länk ([text](url))"
-          >
-            <Link2 size={14} />
-          </button>
-          <button
-            type="button"
-            onClick={() => insertMarkdown('```\n', '\n```', 'kod')}
-            className="w-8 h-8 rounded bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center font-mono text-xs transition-colors"
-            title="Kodblock (```kod```)"
-          >
-            {'</>'}
-          </button>
-          {/* Fullscreen button on mobile */}
-          {isMobile && (
+        <div className="px-3 pb-3 space-y-3">
+          {/* Title input */}
+          <div>
+            <label className="text-xs text-gray-400 mb-1 block">Titel</label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onBlur={syncTitle}
+              placeholder="Rubrik (valfritt)"
+              disabled={saving}
+              className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500"
+            />
+          </div>
+          
+          {/* Default collapsed toggle */}
+          <div className="flex items-center justify-between py-2">
+            <span className="text-xs text-gray-400">Ihopfälld som standard</span>
             <button
               type="button"
-              onClick={() => setShowFullscreenEditor(true)}
-              className="w-8 h-8 rounded bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition-colors ml-auto"
-              title="Redigera i helskärm"
+              onClick={() => handleDefaultCollapsedChange(!defaultCollapsed)}
+              disabled={saving}
+              className={`relative w-10 h-5 rounded-full transition-colors ${
+                defaultCollapsed ? 'bg-blue-500' : 'bg-gray-600'
+              }`}
             >
-              <Maximize2 size={14} />
+              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                defaultCollapsed ? 'translate-x-5' : 'translate-x-0.5'
+              }`} />
             </button>
-          )}
-        </div>
-      )}
-      <div className="relative">
-        <textarea
-          ref={textareaRef}
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          onClick={handleTextareaClick}
-          onFocus={() => !isMobile && setIsFocused(true)}
-          onBlur={syncContent}
-          placeholder={block.type === 'text' ? (isMobile ? 'Tryck för att redigera...' : 'Skriv text här...') : 'En per rad'}
-          rows={isFocused ? 8 : 3}
-          disabled={saving}
-          readOnly={isMobile && block.type === 'text'}
-          className={`w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-none transition-all duration-200 ${isMobile && block.type === 'text' ? 'cursor-pointer' : ''}`}
-        />
-        {hasContent && !isMobile && (
+          </div>
+
+          {/* Open fullscreen editor button */}
           <button
             type="button"
-            onClick={handleClear}
+            onClick={() => setShowFullscreenEditor(true)}
             disabled={saving}
-            className="absolute bottom-2 right-2 px-2 py-1 rounded bg-white/10 text-gray-400 hover:bg-red-500/20 hover:text-red-400 text-xs flex items-center gap-1 transition-colors"
-            title="Rensa innehåll"
+            className="w-full py-3 text-sm text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg border border-blue-500/20 transition-colors flex items-center justify-center gap-2"
           >
-            <Trash2 size={12} /> Rensa
-          </button>
-        )}
-      </div>
-      
-      {/* Default collapsed toggle - only for text blocks */}
-      {block.type === 'text' && (
-        <div className="flex items-center justify-between pt-3 border-t border-white/10">
-          <span className="text-sm text-gray-400">Ihopfälld som standard</span>
-          <button
-            type="button"
-            onClick={() => handleDefaultCollapsedChange(!defaultCollapsed)}
-            className={`relative w-10 h-6 rounded-full transition-colors ${
-              defaultCollapsed ? 'bg-blue-500' : 'bg-gray-600'
-            }`}
-          >
-            <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-              defaultCollapsed ? 'translate-x-5' : 'translate-x-0.5'
-            }`} />
+            <Edit2 size={16} />
+            Redigera texten
           </button>
         </div>
-      )}
-      </div>
       )}
       
       {/* Fullscreen editor modal */}
@@ -1686,9 +1597,9 @@ function DateTagBlockEditor({ block, onUpdate, onRemove, onMove, index, total, s
               type="button"
               onClick={() => setShowAddMenu(true)}
               disabled={saving}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-dashed border-white/20 text-gray-400 hover:bg-white/10 hover:text-gray-300 text-sm w-full justify-center"
+              className="w-full py-3 text-sm text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg border border-blue-500/20 transition-colors flex items-center justify-center gap-2"
             >
-              <Plus size={14} />
+              <Plus size={16} />
               Lägg till datum
             </button>
           ) : (
@@ -2105,15 +2016,18 @@ function PollBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
           </div>
           
           {/* Poll title */}
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onBlur={() => syncToParent(title, options)}
-            placeholder={pollType === 'ranked' ? "Fråga (t.ex. 'Bästa pizzerian?')" : "Fråga (t.ex. 'När passar helgen?')"}
-            disabled={saving}
-            className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-indigo-500"
-          />
+          <div>
+            <label className="text-xs text-gray-400 mb-1 block">Fråga</label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onBlur={() => syncToParent(title, options)}
+              placeholder={pollType === 'ranked' ? "Fråga (t.ex. 'Bästa pizzerian?')" : "Fråga (t.ex. 'När passar helgen?')"}
+              disabled={saving}
+              className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+            />
+          </div>
 
           {/* Options list */}
           {options.length > 0 && (
@@ -2220,39 +2134,33 @@ function PollBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
           </div>
 
           {/* Allow suggestions toggle */}
-          <div className="flex items-center justify-between pt-3 border-t border-white/5">
-            <div>
-              <span className="text-sm text-white">Tillåt förslag</span>
-              <p className="text-xs text-gray-500">Viewers kan lägga till alternativ</p>
-            </div>
+          <div className="flex items-center justify-between py-2">
+            <span className="text-xs text-gray-400">Tillåt förslag</span>
             <button
               type="button"
               onClick={() => handleAllowSuggestionsChange(!allowSuggestions)}
-              className={`w-12 h-6 rounded-full transition-colors relative ${
-                allowSuggestions ? 'bg-indigo-500' : 'bg-white/20'
+              className={`relative w-10 h-5 rounded-full transition-colors ${
+                allowSuggestions ? 'bg-blue-500' : 'bg-gray-600'
               }`}
             >
-              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${
-                allowSuggestions ? 'left-7' : 'left-1'
+              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                allowSuggestions ? 'translate-x-5' : 'translate-x-0.5'
               }`} />
             </button>
           </div>
 
           {/* Default collapsed toggle */}
-          <div className="flex items-center justify-between pt-3 border-t border-white/5">
-            <div>
-              <span className="text-sm text-white">Ihopfälld som standard</span>
-              <p className="text-xs text-gray-500">I visningsläge</p>
-            </div>
+          <div className="flex items-center justify-between py-2">
+            <span className="text-xs text-gray-400">Ihopfälld som standard</span>
             <button
               type="button"
               onClick={() => handleDefaultCollapsedChange(!defaultCollapsed)}
-              className={`w-12 h-6 rounded-full transition-colors relative ${
-                defaultCollapsed ? 'bg-indigo-500' : 'bg-white/20'
+              className={`relative w-10 h-5 rounded-full transition-colors ${
+                defaultCollapsed ? 'bg-blue-500' : 'bg-gray-600'
               }`}
             >
-              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${
-                defaultCollapsed ? 'left-7' : 'left-1'
+              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                defaultCollapsed ? 'translate-x-5' : 'translate-x-0.5'
               }`} />
             </button>
           </div>
@@ -2791,43 +2699,40 @@ function SplitBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
 
           {/* Reopen / Reset buttons */}
           {(closed || participants.some(p => (parseFloat(p.paid) || 0) > 0)) && (
-            <div className="flex gap-2 pt-3 border-t border-white/5">
+            <div className="space-y-2 pt-3 border-t border-white/5">
               {closed && (
                 <button
                   type="button"
                   onClick={handleReopenSplit}
-                  className="flex-1 py-2 text-sm text-amber-500 hover:bg-amber-500/10 rounded-lg flex items-center justify-center gap-1"
+                  className="w-full py-3 text-sm text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 rounded-lg border border-amber-500/20 transition-colors flex items-center justify-center gap-2"
                 >
-                  <RotateCcw size={12} />
+                  <RotateCcw size={16} />
                   Öppna igen
                 </button>
               )}
               <button
                 type="button"
                 onClick={handleResetAmounts}
-                className="flex-1 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-lg flex items-center justify-center gap-1"
+                className="w-full py-3 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg border border-red-500/20 transition-colors flex items-center justify-center gap-2"
               >
-                <Trash2 size={12} />
+                <Trash2 size={16} />
                 Nollställ belopp
               </button>
             </div>
           )}
 
           {/* Default collapsed toggle */}
-          <div className="flex items-center justify-between pt-3 border-t border-white/5">
-            <div>
-              <span className="text-sm text-white">Ihopfälld som standard</span>
-              <p className="text-xs text-gray-500">I visningsläge</p>
-            </div>
+          <div className="flex items-center justify-between py-2">
+            <span className="text-xs text-gray-400">Ihopfälld som standard</span>
             <button
               type="button"
               onClick={() => handleDefaultCollapsedChange(!defaultCollapsed)}
-              className={`w-12 h-6 rounded-full transition-colors relative ${
-                defaultCollapsed ? 'bg-green-500' : 'bg-white/20'
+              className={`relative w-10 h-5 rounded-full transition-colors ${
+                defaultCollapsed ? 'bg-blue-500' : 'bg-gray-600'
               }`}
             >
-              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${
-                defaultCollapsed ? 'left-7' : 'left-1'
+              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                defaultCollapsed ? 'translate-x-5' : 'translate-x-0.5'
               }`} />
             </button>
           </div>
@@ -3200,31 +3105,31 @@ function LeaderboardBlockEditor({ block, onUpdate, onRemove, onMove, index, tota
           )}
 
           {/* Default collapsed toggle */}
-          <div className="flex items-center justify-between pt-2 border-t border-white/5">
-            <span className="text-xs text-gray-400">Visa ihopfälld</span>
+          <div className="flex items-center justify-between py-2">
+            <span className="text-xs text-gray-400">Ihopfälld som standard</span>
             <button
               type="button"
               onClick={() => handleDefaultCollapsedChange(!defaultCollapsed)}
-              className={`w-12 h-6 rounded-full transition-colors relative ${
-                defaultCollapsed ? 'bg-blue-500' : 'bg-white/20'
+              className={`relative w-10 h-5 rounded-full transition-colors ${
+                defaultCollapsed ? 'bg-blue-500' : 'bg-gray-600'
               }`}
             >
-              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${
-                defaultCollapsed ? 'left-7' : 'left-1'
+              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                defaultCollapsed ? 'translate-x-5' : 'translate-x-0.5'
               }`} />
             </button>
           </div>
 
           {/* Reopen / Reset buttons */}
           {(status === 'finished' || roundCount > 0) && (
-            <div className="flex gap-2 pt-3 border-t border-white/5">
+            <div className="space-y-2 pt-3 border-t border-white/5">
               {status === 'finished' && (
                 <button
                   type="button"
                   onClick={handleReopenLeaderboard}
-                  className="flex-1 py-2 text-sm text-blue-500 hover:bg-blue-500/10 rounded-lg flex items-center justify-center gap-1"
+                  className="w-full py-3 text-sm text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg border border-blue-500/20 transition-colors flex items-center justify-center gap-2"
                 >
-                  <RotateCcw size={12} />
+                  <RotateCcw size={16} />
                   Återöppna
                 </button>
               )}
@@ -3232,9 +3137,9 @@ function LeaderboardBlockEditor({ block, onUpdate, onRemove, onMove, index, tota
                 <button
                   type="button"
                   onClick={handleResetScores}
-                  className="flex-1 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-lg flex items-center justify-center gap-1"
+                  className="w-full py-3 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg border border-red-500/20 transition-colors flex items-center justify-center gap-2"
                 >
-                  <Trash2 size={12} />
+                  <Trash2 size={16} />
                   Nollställ
                 </button>
               )}
@@ -3424,15 +3329,20 @@ function DistributionBlockEditor({ block, onUpdate, onRemove, onMove, index, tot
           </div>
           
           {/* Default collapsed toggle */}
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={defaultCollapsed}
-              onChange={(e) => handleDefaultCollapsedChange(e.target.checked)}
-              className="w-4 h-4 rounded border-white/20 bg-white/5 text-blue-500 focus:ring-blue-500 focus:ring-offset-0"
-            />
-            <span className="text-sm text-gray-400">Ihopfälld som standard</span>
-          </label>
+          <div className="flex items-center justify-between py-2">
+            <span className="text-xs text-gray-400">Ihopfälld som standard</span>
+            <button
+              type="button"
+              onClick={() => handleDefaultCollapsedChange(!defaultCollapsed)}
+              className={`relative w-10 h-5 rounded-full transition-colors ${
+                defaultCollapsed ? 'bg-blue-500' : 'bg-gray-600'
+              }`}
+            >
+              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                defaultCollapsed ? 'translate-x-5' : 'translate-x-0.5'
+              }`} />
+            </button>
+          </div>
           
           {/* Reset slots button */}
           {(block.slots || []).length > 0 && (
@@ -3443,8 +3353,9 @@ function DistributionBlockEditor({ block, onUpdate, onRemove, onMove, index, tot
                   syncToParent({ slots: [] });
                 }
               }}
-              className="w-full py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg border border-red-500/20 transition-colors"
+              className="w-full py-3 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg border border-red-500/20 transition-colors flex items-center justify-center gap-2"
             >
+              <Trash2 size={16} />
               Nollställ {block.preset === 'carpool' ? 'bilar' : 'uppgifter'} ({(block.slots || []).length})
             </button>
           )}
