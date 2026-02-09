@@ -749,16 +749,20 @@ Detta är en varning från Firebase Auth + GitHub Pages. Kan ignoreras - påverk
 
 ### Kort sikt (Q1 2026)
 - [x] Quick Capture (Svampknapp) för offline GPS-plockning ✅ v1.2
-- [ ] Ratings-block (1-5 stjärnor)
 - [x] Kontaktinfo-block
 - [x] Länk-block
+- [x] Timer-block med nedräkning
+- [x] Poll/omröstnings-block
+- [x] Leaderboard-block
+- [x] Split/delad ekonomi-block
+- [x] Distribution-block
 
 ### Medellång sikt (Q2 2026)
 - [x] Lager/samlingar för resor och projekt
 - [x] Delning mellan användare (viewer/editor-roller)
-- [ ] roller / bundles av behörigheter
+- [x] Förenklad tabellhantering (Lista + Tabell med col2Type)
+- [ ] Demo/Hjälp-objekt (admin-skapade exempelobjekt)
 - [ ] Export/import av data (JSON backup)
-- [ ] Statistik och rapporter
 
 ### Lång sikt (Q3-Q4 2026)
 - [ ] Mobil app (React Native eller PWA+)
@@ -786,6 +790,6 @@ Projektägare: Joakim
 
 ---
 
-**Senast uppdaterad:** 2026-02-03  
-**Version:** 1.5 (Custom Domain & Infrastructure)  
+**Senast uppdaterad:** 2026-02-09  
+**Version:** 2.9.4 (Simplified Table System)  
 **Status:** ✅ Live på [ourspots.se](https://ourspots.se)

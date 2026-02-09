@@ -290,50 +290,13 @@ Default block sets per typ/kategori (för enkelhet):
 - ✅ Filtrera objekt baserat på ownerId
 - ✅ Ej inloggade ser inga objekt
 - ✅ Inloggade ser bara sina egna objekt
-
-### Kvarstående (v1.5)
-- 🔄 Fixa block-rendering i PublicObjectView (text/todo-block visas inte)
-- 🔄 Hämta objekt delade MED användaren (shares query)
-- 🔄 Firestore Security Rules uppdatering:
-  ```javascript
-  // Owner access
-  allow read: if resource.data.ownerId == request.auth.uid
-  
-  // Shared access (viewer/editor)
-  allow read: if request.auth != null && 
-              resource.data.shares[request.auth.token.email].role in ['viewer', 'editor']
-  
-  // Public shared access
-  allow read: if resource.data.isPublicShared == true
-  
-  // Editor can update
-  allow update: if resource.data.shares[request.auth.token.email].role == 'editor'
-  ```
-
-### Planerade förbättringar (v2.1+)
-- Email → UID mapping för snabbare queries
-- Badges på objektkort för delad status
-- Markdown editor för textfält (bullet lists, bold, bilder)
-- PWA-implementation (manifest.json, service worker, installbar)
+- ✅ Block-rendering i PublicObjectView fungerar
+- ✅ Hämta objekt delade MED användaren (shares query)
+- ✅ Firestore Security Rules implementerat
+- ✅ Badges på objektkort för delad status
+- ✅ Delad ekonomi / Split-block (implementerat v2.9)
 
 ### ROADMAP / TODO
-
-#### Delad Ekonomi Block (Planerad v2.5)
-Mål: Enkelt sätt att dela och spåra utgifter inom en grupp (t.ex. resa, hushåll).
-- Expense-block med: belopp, betalare, deltagare, beskrivning
-- Automatisk beräkning: vem är skyldig vem
-- Stöd för olika valutor (SEK, EUR, USD)
-- Integration med Poll-deltagare (samma shares-system)
-- "Splitta lika" eller manuell fördelning
-- Historik med datum
-- Sammanfattningsvy: totalt spenderat, per person
-- Möjlig Swish-integration (öppna Swish med förifyllt belopp)
-- Export till CSV/PDF för bokföring
-
-#### Andra planerade features
-- Lager/samlingar för resor/projekt
-- Publik vy för gäster eller externa användare
-- PWA möjlig för offline / haptics
 
 #### Demo/Hjälp-objekt (Planerad)
 Mål: Admin kan skapa exempelobjekt som visar dokumentation och funktionsdemos.
@@ -345,6 +308,10 @@ Mål: Admin kan skapa exempelobjekt som visar dokumentation och funktionsdemos.
 - Admin ser samma toggle men har redigeringsrätt
 - Inga delningar behövs - centralt administrerat
 - Användare väljer själva om de vill se demo-innehåll
+
+#### Framtida idéer
+- PWA-implementation (manifest.json, service worker, installbar)
+- Markdown editor för textfält (bullet lists, bold, bilder)
 
 9. ADMINISTRATIVA FUNKTIONER ✅ IMPLEMENTERAT
 
