@@ -780,6 +780,7 @@ function TableBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
   const [rows, setRows] = useState(block.rows || []);
   const [isExpanded, setIsExpanded] = useState(false);
   const [defaultCollapsed, setDefaultCollapsed] = useState(block.defaultCollapsed ?? true);
+  const [viewerEditable, setViewerEditable] = useState(block.viewerEditable ?? false);
   const [showTableEditor, setShowTableEditor] = useState(false);
   
   // Ref to store input elements for focusing
@@ -805,14 +806,20 @@ function TableBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
     }
   }, [focusTarget, rows]);
 
-  const syncToParent = (newTitle, newTemplate, newRows, newDefaultCollapsed = defaultCollapsed) => {
+  const syncToParent = (newTitle, newTemplate, newRows, newDefaultCollapsed = defaultCollapsed, newViewerEditable = viewerEditable) => {
     onUpdate(block.id, { 
       title: newTitle, 
       template: newTemplate, 
       rows: newRows,
       columns: TABLE_TEMPLATES[newTemplate]?.columns || [],
-      defaultCollapsed: newDefaultCollapsed
+      defaultCollapsed: newDefaultCollapsed,
+      viewerEditable: newViewerEditable
     });
+  };
+
+  const handleViewerEditableChange = (newValue) => {
+    setViewerEditable(newValue);
+    syncToParent(title, template, rows, defaultCollapsed, newValue);
   };
 
   const handleTemplateChange = (newTemplate) => {
@@ -1025,6 +1032,23 @@ function TableBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
             </button>
           </div>
 
+          {/* Viewer editable toggle */}
+          <div className="flex items-center justify-between py-2">
+            <span className="text-xs text-gray-400">Viewers får redigera</span>
+            <button
+              type="button"
+              onClick={() => handleViewerEditableChange(!viewerEditable)}
+              disabled={saving}
+              className={`relative w-10 h-5 rounded-full transition-colors ${
+                viewerEditable ? 'bg-green-500' : 'bg-gray-600'
+              }`}
+            >
+              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                viewerEditable ? 'translate-x-5' : 'translate-x-0.5'
+              }`} />
+            </button>
+          </div>
+
           {/* Template selector - hide when 'list' is selected */}
           {template !== 'list' && (
             <div>
@@ -1179,6 +1203,7 @@ function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving, 
   const [title, setTitle] = useState(block.title);
   const [content, setContent] = useState(block.content);
   const [defaultCollapsed, setDefaultCollapsed] = useState(block.defaultCollapsed ?? true);
+  const [viewerEditable, setViewerEditable] = useState(block.viewerEditable ?? false);
   const [isFocused, setIsFocused] = useState(false);
   const [showFullscreenEditor, setShowFullscreenEditor] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -1193,27 +1218,35 @@ function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving, 
   const titleRef = React.useRef(title);
   const contentRef = React.useRef(content);
   const defaultCollapsedRef = React.useRef(defaultCollapsed);
+  const viewerEditableRef = React.useRef(viewerEditable);
   titleRef.current = title;
   contentRef.current = content;
   defaultCollapsedRef.current = defaultCollapsed;
+  viewerEditableRef.current = viewerEditable;
   
-  const syncTitle = () => onUpdate(block.id, { title: titleRef.current, defaultCollapsed: defaultCollapsedRef.current });
+  const syncTitle = () => onUpdate(block.id, { title: titleRef.current, defaultCollapsed: defaultCollapsedRef.current, viewerEditable: viewerEditableRef.current });
   const syncContent = () => {
     setIsFocused(false);
-    onUpdate(block.id, { content: contentRef.current, defaultCollapsed: defaultCollapsedRef.current });
+    onUpdate(block.id, { content: contentRef.current, defaultCollapsed: defaultCollapsedRef.current, viewerEditable: viewerEditableRef.current });
   };
   
   const handleDefaultCollapsedChange = (newValue) => {
     setDefaultCollapsed(newValue);
     defaultCollapsedRef.current = newValue;
-    onUpdate(block.id, { defaultCollapsed: newValue });
+    onUpdate(block.id, { defaultCollapsed: newValue, viewerEditable: viewerEditableRef.current });
+  };
+  
+  const handleViewerEditableChange = (newValue) => {
+    setViewerEditable(newValue);
+    viewerEditableRef.current = newValue;
+    onUpdate(block.id, { defaultCollapsed: defaultCollapsedRef.current, viewerEditable: newValue });
   };
   
   // Handle fullscreen editor save
   const handleFullscreenSave = (newContent) => {
     setContent(newContent);
     contentRef.current = newContent;
-    onUpdate(block.id, { content: newContent, defaultCollapsed: defaultCollapsedRef.current });
+    onUpdate(block.id, { content: newContent, defaultCollapsed: defaultCollapsedRef.current, viewerEditable: viewerEditableRef.current });
     setShowFullscreenEditor(false);
   };
   
@@ -1345,6 +1378,23 @@ function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving, 
             >
               <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
                 defaultCollapsed ? 'translate-x-5' : 'translate-x-0.5'
+              }`} />
+            </button>
+          </div>
+
+          {/* Viewer editable toggle */}
+          <div className="flex items-center justify-between py-2">
+            <span className="text-xs text-gray-400">Viewers får redigera</span>
+            <button
+              type="button"
+              onClick={() => handleViewerEditableChange(!viewerEditable)}
+              disabled={saving}
+              className={`relative w-10 h-5 rounded-full transition-colors ${
+                viewerEditable ? 'bg-green-500' : 'bg-gray-600'
+              }`}
+            >
+              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                viewerEditable ? 'translate-x-5' : 'translate-x-0.5'
               }`} />
             </button>
           </div>

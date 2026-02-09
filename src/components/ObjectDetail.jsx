@@ -1290,6 +1290,18 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                               console.error('Error closing poll:', err);
                             }
                           } : undefined}
+                          onResetPoll={block.type === 'poll' && canEdit ? async () => {
+                            try {
+                              const updatedBlocks = [...object.blocks];
+                              updatedBlocks[actualBlockIndex] = {
+                                ...updatedBlocks[actualBlockIndex],
+                                data: { ...updatedBlocks[actualBlockIndex].data, votes: {} }
+                              };
+                              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
+                            } catch (err) {
+                              console.error('Error resetting poll:', err);
+                            }
+                          } : undefined}
                           onAddOption={block.type === 'poll' && block.data?.allowSuggestions ? async (label, addedBy, url) => {
                             try {
                               const updatedBlocks = [...object.blocks];
@@ -1375,22 +1387,84 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                               console.error('Error closing split:', err);
                             }
                           } : undefined}
+                          onResetSplit={block.type === 'split' && canEdit ? async () => {
+                            try {
+                              const updatedBlocks = [...object.blocks];
+                              const currentParticipants = updatedBlocks[actualBlockIndex].data.participants || [];
+                              const resetParticipants = currentParticipants.map(p => ({ ...p, paid: 0 }));
+                              updatedBlocks[actualBlockIndex] = {
+                                ...updatedBlocks[actualBlockIndex],
+                                data: { 
+                                  ...updatedBlocks[actualBlockIndex].data, 
+                                  participants: resetParticipants,
+                                  closed: false 
+                                }
+                              };
+                              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
+                            } catch (err) {
+                              console.error('Error resetting split:', err);
+                            }
+                          } : undefined}
                           // Leaderboard-specific props
                           onOpenModal={block.type === 'leaderboard' ? () => {
                             setLeaderboardModalData({ blockIndex: actualBlockIndex, data: block.data });
                           } : block.type === 'distribution' ? () => {
                             setDistributionModalData({ blockIndex: actualBlockIndex, data: block.data });
                           } : undefined}
-                          // Text block inline edit - for owners/editors
-                          onEditContent={block.type === 'text' && canEdit ? () => {
+                          onCloseLeaderboard={block.type === 'leaderboard' && canEdit ? async () => {
+                            try {
+                              const updatedBlocks = [...object.blocks];
+                              updatedBlocks[actualBlockIndex] = {
+                                ...updatedBlocks[actualBlockIndex],
+                                data: { ...updatedBlocks[actualBlockIndex].data, status: 'finished' }
+                              };
+                              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
+                            } catch (err) {
+                              console.error('Error closing leaderboard:', err);
+                            }
+                          } : undefined}
+                          onResetLeaderboard={block.type === 'leaderboard' && canEdit ? async () => {
+                            try {
+                              const updatedBlocks = [...object.blocks];
+                              updatedBlocks[actualBlockIndex] = {
+                                ...updatedBlocks[actualBlockIndex],
+                                data: { 
+                                  ...updatedBlocks[actualBlockIndex].data, 
+                                  scores: {}, 
+                                  roundCount: 0,
+                                  status: 'active'
+                                }
+                              };
+                              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
+                            } catch (err) {
+                              console.error('Error resetting leaderboard:', err);
+                            }
+                          } : undefined}
+                          onResetDistribution={block.type === 'distribution' && canEdit ? async () => {
+                            try {
+                              const updatedBlocks = [...object.blocks];
+                              updatedBlocks[actualBlockIndex] = {
+                                ...updatedBlocks[actualBlockIndex],
+                                data: { 
+                                  ...updatedBlocks[actualBlockIndex].data, 
+                                  slots: [] 
+                                }
+                              };
+                              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
+                            } catch (err) {
+                              console.error('Error resetting distribution:', err);
+                            }
+                          } : undefined}
+                          // Text block inline edit - for owners/editors OR when viewerEditable
+                          onEditContent={(block.type === 'text' && (canEdit || block.data.viewerEditable)) ? () => {
                             setTextEditModalData({ 
                               blockIndex: actualBlockIndex, 
                               content: block.data.content || '', 
                               title: block.data.title || 'Anteckning' 
                             });
                           } : undefined}
-                          // Table block inline edit - for owners/editors
-                          onEditTable={block.type === 'table' && canEdit ? () => {
+                          // Table block inline edit - for owners/editors OR when viewerEditable
+                          onEditTable={(block.type === 'table' && (canEdit || block.data.viewerEditable)) ? () => {
                             const template = TABLE_TEMPLATES[block.data.template] || TABLE_TEMPLATES.tasks;
                             setTableEditModalData({ 
                               blockIndex: actualBlockIndex, 
@@ -1988,7 +2062,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                           {collections && collections.length > 0 && (
                             <button 
                               onClick={() => setShowCollectionPicker(true)} 
-                              className="flex-1 h-9 flex items-center justify-center gap-1.5 px-2 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400 hover:bg-purple-500/20 hover:text-purple-200 transition-all text-xs"
+                              className="flex-1 h-9 flex items-center justify-center gap-1.5 px-2 rounded-lg bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-white transition-all text-xs"
                               title="Länka utan att flytta objektet"
                             >
                               <Link2 size={13} />

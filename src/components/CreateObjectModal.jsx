@@ -14,15 +14,23 @@ import MapPicker from './MapPicker';
 import FocalPointPicker from './FocalPointPicker';
 import BlockEditor, { DateTagBlockEditor, TimerBlockEditor, PollBlockEditor, AudioBlockEditor, SplitBlockEditor, LeaderboardBlockEditor, DistributionBlockEditor, SectionBlockEditor } from './BlockEditor';
 
-function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, saving, availableParents, defaultParentId, userLocation, categories, preciseGPS, isAdmin, currentUser, currentUserDisplayName, hasChildren }) {
+function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, saving, availableParents, defaultParentId, userLocation, categories, preciseGPS, isAdmin, currentUser, currentUserDisplayName, hasChildren, defaultCategory }) {
   // ========== STATE ==========
   const isEdit = !!editObject;
   const isDuplicate = !!duplicateFromObject;
   const sourceObject = editObject || duplicateFromObject; // Use either for initial data
   
-  const defaultType = defaultParentId 
-    ? (availableParents.find(p => p.id === defaultParentId)?.type || categories[0]?.id || 'property') 
-    : (categories[0]?.id || 'property');
+  // Determine default type: source object > default category prop > parent type > first category
+  const getDefaultType = () => {
+    if (sourceObject?.type) return sourceObject.type;
+    if (defaultCategory && categories.some(c => c.id === defaultCategory)) return defaultCategory;
+    if (defaultParentId) {
+      const parent = availableParents.find(p => p.id === defaultParentId);
+      if (parent?.type) return parent.type;
+    }
+    return categories[0]?.id || 'property';
+  };
+  const defaultType = getDefaultType();
 
   // Form state
   const [selectedType, setSelectedType] = useState(sourceObject?.type || defaultType);
@@ -87,7 +95,8 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             template: b.data.template || 'tasks',
             rows: b.data.rows || [],
             columns: b.data.columns || [],
-            defaultCollapsed: b.data.defaultCollapsed || false
+            defaultCollapsed: b.data.defaultCollapsed || false,
+            viewerEditable: b.data.viewerEditable || false
           };
         }
         if (b.type === 'datetag') {
@@ -191,7 +200,8 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
           type: b.type,
           title: b.data.title || '',
           content: b.data.content || '',
-          defaultCollapsed: b.data.defaultCollapsed || false
+          defaultCollapsed: b.data.defaultCollapsed || false,
+          viewerEditable: b.data.viewerEditable || false
         };
       });
     
@@ -512,7 +522,8 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             template: block.template || 'tasks',
             columns: block.columns || [],
             rows: block.rows || [],
-            defaultCollapsed: block.defaultCollapsed || false
+            defaultCollapsed: block.defaultCollapsed || false,
+            viewerEditable: block.viewerEditable || false
           } 
         });
       } else if (block.type === 'datetag') {
@@ -638,7 +649,8 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
           data: { 
             title: (block.title || 'Anteckning').trim(), 
             content: (block.content || '').trim(), 
-            defaultCollapsed: block.defaultCollapsed || false 
+            defaultCollapsed: block.defaultCollapsed || false,
+            viewerEditable: block.viewerEditable || false
           } 
         });
       }

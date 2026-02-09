@@ -72,10 +72,15 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
     };
   }, []);
   
-  // Focus newly added row
+  // Focus newly added row and scroll it into view
   useEffect(() => {
     if (lastAddedRef.current && inputRefs.current[lastAddedRef.current]) {
-      inputRefs.current[lastAddedRef.current].focus();
+      const input = inputRefs.current[lastAddedRef.current];
+      input.focus();
+      // Wait a bit for keyboard to open, then scroll input into view
+      setTimeout(() => {
+        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
       lastAddedRef.current = null;
     }
   }, [rows]);
@@ -88,11 +93,6 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
     };
     setRows([...rows, newRow]);
     lastAddedRef.current = newRow.id;
-    
-    // Scroll to bottom
-    setTimeout(() => {
-      listRef.current?.scrollTo({ top: 99999, behavior: 'smooth' });
-    }, 50);
   };
   
   const addRowAfter = (afterId) => {

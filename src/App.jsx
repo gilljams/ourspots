@@ -1842,79 +1842,82 @@ function App() {
         )}
       </main>
 
+      {/* FAB container - constrained to max-w-6xl like main content */}
       {user && (
-        <>
-          {/* Hide + button and map toggle when any modal is open */}
-          {!selectedObject && !showCreateModal && !showCategoryAdmin && !showObjectsAdmin && !showShareModal && (
-            <>
-              <button 
-                onClick={() => { setEditingObject(null); setShowCreateModal(true); }} 
-                className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-2xl shadow-xl shadow-blue-500/30 flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 z-[1200]"
-                title="Skapa nytt objekt"
-              >
-                <Plus size={26} strokeWidth={2.5} />
-              </button>
-              {/* Back to object button - shows when we navigated to map from ObjectDetail */}
-              {viewMode === 'map' && returnToObjectId && (
+        <div className="fixed inset-x-0 bottom-0 pointer-events-none z-[1200]">
+          <div className="max-w-6xl mx-auto relative px-4">
+            {/* Hide + button and map toggle when any modal is open */}
+            {!selectedObject && !showCreateModal && !showCategoryAdmin && !showObjectsAdmin && !showShareModal && (
+              <>
+                <button 
+                  onClick={() => { setEditingObject(null); setShowCreateModal(true); }} 
+                  className="absolute bottom-6 right-0 w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-2xl shadow-xl shadow-blue-500/30 flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 pointer-events-auto"
+                  title="Skapa nytt objekt"
+                >
+                  <Plus size={26} strokeWidth={2.5} />
+                </button>
+                {/* Back to object button - shows when we navigated to map from ObjectDetail */}
+                {viewMode === 'map' && returnToObjectId && (
+                  <button
+                    onClick={() => {
+                      const obj = objects.find(o => o.id === returnToObjectId);
+                      if (obj) {
+                        setSelectedObject(obj);
+                      }
+                      setViewMode('list'); // Go back to list view
+                      setMapCenter(null);
+                      setReturnToObjectId(null);
+                    }}
+                    className="absolute bottom-24 right-0 w-14 h-14 bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-400 hover:to-purple-500 backdrop-blur-sm rounded-2xl shadow-xl shadow-purple-500/30 flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 pointer-events-auto"
+                    title="Tillbaka till objekt"
+                  >
+                    <ArrowLeft size={22} />
+                  </button>
+                )}
                 <button
                   onClick={() => {
-                    const obj = objects.find(o => o.id === returnToObjectId);
-                    if (obj) {
-                      setSelectedObject(obj);
+                    const newMode = viewMode === 'list' ? 'map' : 'list';
+                    setViewMode(newMode);
+                    setReturnToObjectId(null); // Clear return state when manually toggling
+                    if (newMode === 'map') {
+                      window.scrollTo(0, 0);
+                    } else {
+                      // Clear mapCenter when leaving map view so next open focuses on user location
+                      setMapCenter(null);
                     }
-                    setViewMode('list'); // Go back to list view
-                    setMapCenter(null);
-                    setReturnToObjectId(null);
                   }}
-                  className="fixed bottom-24 right-6 w-14 h-14 bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-400 hover:to-purple-500 backdrop-blur-sm rounded-2xl shadow-xl shadow-purple-500/30 flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 z-[1200]"
-                  title="Tillbaka till objekt"
+                  className={`absolute right-0 w-14 h-14 bg-gray-800/90 hover:bg-gray-700 backdrop-blur-sm rounded-2xl shadow-xl flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 border border-white/10 pointer-events-auto ${
+                    viewMode === 'map' && returnToObjectId ? 'bottom-[10.5rem]' : 'bottom-24'
+                  }`}
+                  title={viewMode === 'list' ? 'Visa karta' : 'Visa lista'}
                 >
-                  <ArrowLeft size={22} />
+                  {viewMode === 'list' ? <MapIcon size={22} /> : <List size={22} />}
                 </button>
-              )}
+              </>
+            )}
+            {/* Quick capture mushroom button - always visible, moves to bottom when other buttons hidden */}
+            {showQuickCapture && (
               <button
-                onClick={() => {
-                  const newMode = viewMode === 'list' ? 'map' : 'list';
-                  setViewMode(newMode);
-                  setReturnToObjectId(null); // Clear return state when manually toggling
-                  if (newMode === 'map') {
-                    window.scrollTo(0, 0);
-                  } else {
-                    // Clear mapCenter when leaving map view so next open focuses on user location
-                    setMapCenter(null);
-                  }
-                }}
-                className={`fixed right-6 w-14 h-14 bg-gray-800/90 hover:bg-gray-700 backdrop-blur-sm rounded-2xl shadow-xl flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 z-[1200] border border-white/10 ${
-                  viewMode === 'map' && returnToObjectId ? 'bottom-[10.5rem]' : 'bottom-24'
+                onClick={handleQuickCapture}
+                className={`absolute right-0 w-14 h-14 bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 rounded-2xl shadow-xl shadow-orange-500/30 flex items-center justify-center text-white hover:scale-105 active:scale-95 transition-all duration-300 pointer-events-auto ${
+                  (selectedObject || showCreateModal || showCategoryAdmin || showObjectsAdmin || showShareModal) 
+                    ? 'bottom-6' 
+                    : viewMode === 'map' && returnToObjectId 
+                      ? 'bottom-[15rem]' 
+                      : 'bottom-[10.5rem]'
                 }`}
-                title={viewMode === 'list' ? 'Visa karta' : 'Visa lista'}
+                title="Snabbpinna GPS-position"
               >
-                {viewMode === 'list' ? <MapIcon size={22} /> : <List size={22} />}
+                <Target size={22} />
+                {captures.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                    {captures.length}
+                  </span>
+                )}
               </button>
-            </>
-          )}
-          {/* Quick capture mushroom button - always visible, moves to bottom when other buttons hidden */}
-          {showQuickCapture && (
-            <button
-              onClick={handleQuickCapture}
-              className={`fixed right-6 w-14 h-14 bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 rounded-2xl shadow-xl shadow-orange-500/30 flex items-center justify-center text-white hover:scale-105 active:scale-95 z-[1200] transition-all duration-300 ${
-                (selectedObject || showCreateModal || showCategoryAdmin || showObjectsAdmin || showShareModal) 
-                  ? 'bottom-6' 
-                  : viewMode === 'map' && returnToObjectId 
-                    ? 'bottom-[15rem]' 
-                    : 'bottom-[10.5rem]'
-              }`}
-              title="Snabbpinna GPS-position"
-            >
-              <Target size={22} />
-              {captures.length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                  {captures.length}
-                </span>
-              )}
-            </button>
-          )}
-        </>
+            )}
+          </div>
+        </div>
       )}
 
       {/* Lazy-loaded modals wrapped in Suspense */}
@@ -2114,6 +2117,7 @@ function App() {
             currentUser={user}
             currentUserDisplayName={displayName}
             hasChildren={editingObject?.id ? objects.some(o => o.parentId === editingObject.id) : false}
+            defaultCategory={activeCategory !== 'all' && activeCategory !== 'favorites' ? activeCategory : null}
           />
         )}
 

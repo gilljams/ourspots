@@ -568,7 +568,7 @@ export const SectionBlock = ({ data }) => {
   );
 };
 
-export const TextBlock = ({ data, onExpand, canEdit, onEditContent }) => {
+export const TextBlock = ({ data, onExpand, onEditContent }) => {
   const [isCollapsed, setIsCollapsed] = useState(data.defaultCollapsed ?? true);
   const blockRef = useRef(null);
   const title = data.title || 'Anteckning';
@@ -620,8 +620,8 @@ export const TextBlock = ({ data, onExpand, canEdit, onEditContent }) => {
             </span>
           </div>
         </button>
-        {/* Edit button - only show when expanded */}
-        {!isCollapsed && canEdit && onEditContent && (
+        {/* Edit button - only show when expanded and edit handler is provided */}
+        {!isCollapsed && onEditContent && (
           <button
             onClick={handleEditClick}
             className="w-8 h-8 rounded-lg bg-white/5 hover:bg-blue-500/20 flex items-center justify-center text-gray-400 hover:text-blue-400 transition-all"
@@ -1518,12 +1518,13 @@ export const TimerBlock = ({ data }) => {
 };
 
 // Poll block - allows viewers to vote
-export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayName = '', onClosePoll, canEdit = false, onAddOption, onRemoveOption, onExpand }) => {
+export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayName = '', onClosePoll, onResetPoll, canEdit = false, onAddOption, onRemoveOption, onExpand }) => {
   const [isCollapsed, setIsCollapsed] = useState(data.defaultCollapsed ?? false);
   const [showDetails, setShowDetails] = useState(false);
   const [newSuggestion, setNewSuggestion] = useState('');
   const [newSuggestionUrl, setNewSuggestionUrl] = useState('');
   const [showSuggestionInput, setShowSuggestionInput] = useState(false);
+  const [showEditMode, setShowEditMode] = useState(false);
   const blockRef = useRef(null);
   const options = data.options || [];
   const votes = data.votes || {};
@@ -1813,38 +1814,89 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
   
   const participants = getParticipants();
   
+  // Calculate vote count for reset
+  const voteCount = Object.keys(votes).length;
+  
   return (
     <div ref={blockRef} className="space-y-2">
       {/* Collapsible header */}
-      <button
-        onClick={handleToggleCollapse}
-        className="w-full flex items-center gap-2.5 py-2 group touch-manipulation"
-      >
-        <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
-          <ChevronDown 
-            size={16} 
-            className={`text-gray-400 group-hover:text-white transition-all ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} 
-          />
-        </div>
-        <div className="flex items-center gap-2.5 flex-1 min-w-0">
-          <Vote size={16} className="text-gray-400 flex-shrink-0" />
-          <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors truncate">
-            {title}
-          </span>
-        </div>
-        {isClosed ? (
-          <span className="text-xs px-2 py-1 rounded-md bg-white/5 text-gray-500 flex items-center gap-1.5">
-            <Lock size={10} />
-            Avslutad
-          </span>
-        ) : (
-          <span className="text-xs text-gray-500 tabular-nums">{participants.length} röster</span>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={handleToggleCollapse}
+          className="flex-1 flex items-center gap-2.5 py-2 group touch-manipulation"
+        >
+          <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
+            <ChevronDown 
+              size={16} 
+              className={`text-gray-400 group-hover:text-white transition-all ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} 
+            />
+          </div>
+          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+            <Vote size={16} className="text-gray-400 flex-shrink-0" />
+            <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors truncate">
+              {title}
+            </span>
+          </div>
+          {isClosed ? (
+            <span className="text-xs px-2 py-1 rounded-md bg-white/5 text-gray-500 flex items-center gap-1.5">
+              <Lock size={10} />
+              Avslutad
+            </span>
+          ) : (
+            <span className="text-xs text-gray-500 tabular-nums">{participants.length} röster</span>
+          )}
+        </button>
+        {/* Edit mode toggle - only for editors when expanded */}
+        {!isCollapsed && canEdit && (
+          <button
+            onClick={() => setShowEditMode(!showEditMode)}
+            className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
+              showEditMode ? 'bg-amber-500/20 text-amber-400' : 'bg-white/5 text-gray-400 hover:bg-white/10'
+            }`}
+            title="Redigera"
+          >
+            <Edit2 size={14} />
+          </button>
         )}
-      </button>
+      </div>
       
       {/* Collapsible content */}
       {!isCollapsed && (
         <div className="space-y-2">
+          {/* Edit mode panel */}
+          {showEditMode && canEdit && (
+            <div className="flex gap-2 p-2 bg-white/5 rounded-lg border border-white/10">
+              {!isClosed && onClosePoll && (
+                <button
+                  onClick={() => {
+                    if (window.confirm('Vill du avsluta omröstningen? Ingen kan rösta efteråt.')) {
+                      onClosePoll();
+                      setShowEditMode(false);
+                    }
+                  }}
+                  className="flex-1 py-1.5 text-xs text-amber-400 hover:bg-amber-500/20 rounded flex items-center justify-center gap-1"
+                >
+                  <Lock size={12} />
+                  Avsluta
+                </button>
+              )}
+              {voteCount > 0 && onResetPoll && (
+                <button
+                  onClick={() => {
+                    if (window.confirm('Vill du nollställa alla röster? Detta kan inte ångras.')) {
+                      onResetPoll();
+                      setShowEditMode(false);
+                    }
+                  }}
+                  className="flex-1 py-1.5 text-xs text-red-400 hover:bg-red-500/20 rounded flex items-center justify-center gap-1"
+                >
+                  <RotateCcw size={12} />
+                  Nollställ ({voteCount})
+                </button>
+              )}
+            </div>
+          )}
+          
           {/* Options with voting */}
           {pollType === 'ranked' ? (
             // Ranked poll view
@@ -2078,15 +2130,15 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
                   ) : (
                     <span className="text-xs text-gray-500">Ingen har röstat än</span>
                   )}
-              
-                  {/* Add suggestion button */}
+                  {/* Föreslå button - inline with toggle */}
                   {allowSuggestions && !isClosed && currentUserKey && onAddOption && (
                     <button
                       onClick={() => setShowSuggestionInput(true)}
-                      className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                      className="py-1.5 px-3 text-sm text-blue-400 hover:bg-white/5 rounded-lg flex items-center gap-1 transition-colors border border-white/10"
                     >
-                      <Plus size={12} />
+                      <Plus size={14} />
                       Föreslå
+                      <ChevronRight size={14} />
                     </button>
                   )}
                 </>
@@ -2099,19 +2151,6 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
               )}
               {currentUserKey && isPendingShare && !isClosed && (
                 <span className="text-xs text-amber-500 italic">Acceptera delningen för att rösta</span>
-              )}
-              {canEdit && !isClosed && onClosePoll && (
-                <button
-                  onClick={() => {
-                    if (window.confirm('Vill du avsluta omröstningen? Ingen kan rösta efteråt.')) {
-                      onClosePoll();
-                    }
-                  }}
-                  className="text-xs text-amber-500 hover:text-amber-400 flex items-center gap-1"
-                >
-                  <Lock size={10} />
-                  Avsluta
-                </button>
               )}
             </div>
           </div>
@@ -2273,10 +2312,11 @@ export const AudioBlock = ({ data }) => {
 };
 
 // Split Block - expense sharing for trips etc.
-export const SplitBlock = ({ data, currentUser, shares = {}, canEdit = false, onUpdateAmount, onCloseSplit, onExpand }) => {
+export const SplitBlock = ({ data, currentUser, shares = {}, canEdit = false, onUpdateAmount, onCloseSplit, onResetSplit, onExpand }) => {
   const [isCollapsed, setIsCollapsed] = useState(data.defaultCollapsed ?? true);
   const [myAmount, setMyAmount] = useState('');
   const [hasEdited, setHasEdited] = useState(false);
+  const [showEditMode, setShowEditMode] = useState(false);
   const blockRef = useRef(null);
   
   const title = data.title || 'Splitt';
@@ -2416,40 +2456,88 @@ export const SplitBlock = ({ data, currentUser, shares = {}, canEdit = false, on
   return (
     <div ref={blockRef} className="space-y-2">
       {/* Collapsible header */}
-      <button
-        onClick={handleToggleCollapse}
-        className="w-full flex items-center gap-2.5 py-2 group touch-manipulation"
-      >
-        <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
-          <ChevronDown 
-            size={16} 
-            className={`text-gray-400 group-hover:text-white transition-all ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} 
-          />
-        </div>
-        <div className="flex items-center gap-2.5 flex-1 min-w-0">
-          <Wallet size={16} className="text-gray-400 flex-shrink-0" />
-          <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors truncate">
-            {title}
-          </span>
-        </div>
-        {isClosed ? (
-          <span className="text-xs px-2 py-1 rounded-md bg-white/5 text-gray-500 flex items-center gap-1.5">
-            <Lock size={10} />
-            Avslutad
-          </span>
-        ) : (
-          <div className="flex items-center gap-2">
-            {totalPaid > 0 && (
-              <span className="text-xs text-gray-400">{formatAmount(totalPaid)} {currency}</span>
-            )}
-            <span className="text-xs text-gray-500 tabular-nums">{paidCount}/{participants.length}</span>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={handleToggleCollapse}
+          className="flex-1 flex items-center gap-2.5 py-2 group touch-manipulation"
+        >
+          <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
+            <ChevronDown 
+              size={16} 
+              className={`text-gray-400 group-hover:text-white transition-all ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} 
+            />
           </div>
+          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+            <Wallet size={16} className="text-gray-400 flex-shrink-0" />
+            <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors truncate">
+              {title}
+            </span>
+          </div>
+          {isClosed ? (
+            <span className="text-xs px-2 py-1 rounded-md bg-white/5 text-gray-500 flex items-center gap-1.5">
+              <Lock size={10} />
+              Avslutad
+            </span>
+          ) : (
+            <div className="flex items-center gap-2">
+              {totalPaid > 0 && (
+                <span className="text-xs text-gray-400">{formatAmount(totalPaid)} {currency}</span>
+              )}
+              <span className="text-xs text-gray-500 tabular-nums">{paidCount}/{participants.length}</span>
+            </div>
+          )}
+        </button>
+        {/* Edit mode toggle - only for editors when expanded */}
+        {!isCollapsed && canEdit && (
+          <button
+            onClick={() => setShowEditMode(!showEditMode)}
+            className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
+              showEditMode ? 'bg-amber-500/20 text-amber-400' : 'bg-white/5 text-gray-400 hover:bg-white/10'
+            }`}
+            title="Redigera"
+          >
+            <Edit2 size={14} />
+          </button>
         )}
-      </button>
+      </div>
       
       {/* Collapsible content */}
       {!isCollapsed && (
         <div className="bg-white/[0.03] rounded-xl p-4 space-y-4">
+          {/* Edit mode panel */}
+          {showEditMode && canEdit && (
+            <div className="flex gap-2 p-2 bg-white/5 rounded-lg border border-white/10 -mt-2">
+              {!isClosed && onCloseSplit && totalPaid > 0 && (
+                <button
+                  onClick={() => {
+                    if (window.confirm('Vill du avsluta splitten? Inga ändringar kan göras efteråt.')) {
+                      onCloseSplit();
+                      setShowEditMode(false);
+                    }
+                  }}
+                  className="flex-1 py-1.5 text-xs text-amber-400 hover:bg-amber-500/20 rounded flex items-center justify-center gap-1"
+                >
+                  <Lock size={12} />
+                  Avsluta & visa swish
+                </button>
+              )}
+              {totalPaid > 0 && onResetSplit && (
+                <button
+                  onClick={() => {
+                    if (window.confirm('Vill du nollställa alla belopp? Detta kan inte ångras.')) {
+                      onResetSplit();
+                      setShowEditMode(false);
+                    }
+                  }}
+                  className="flex-1 py-1.5 text-xs text-red-400 hover:bg-red-500/20 rounded flex items-center justify-center gap-1"
+                >
+                  <RotateCcw size={12} />
+                  Nollställ
+                </button>
+              )}
+            </div>
+          )}
+          
           {/* My input section - only if I'm a participant and not closed */}
           {myParticipant && !isClosed && onUpdateAmount && (
             <div className="space-y-1.5">
@@ -2569,23 +2657,6 @@ export const SplitBlock = ({ data, currentUser, shares = {}, canEdit = false, on
           )}
         </div>
       )}
-      
-      {/* Close button for editor */}
-      {canEdit && !isClosed && onCloseSplit && totalPaid > 0 && (
-        <div className="pt-2 border-t border-white/10">
-          <button
-            onClick={() => {
-              if (window.confirm('Vill du avsluta splitten? Inga ändringar kan göras efteråt.')) {
-                onCloseSplit();
-              }
-            }}
-            className="w-full py-2 text-sm text-amber-500 hover:bg-amber-500/10 rounded-lg flex items-center justify-center gap-1"
-          >
-            <Lock size={12} />
-            Avsluta & visa swish
-          </button>
-        </div>
-      )}
         </div>
       )}
     </div>
@@ -2593,8 +2664,9 @@ export const SplitBlock = ({ data, currentUser, shares = {}, canEdit = false, on
 };
 
 // Leaderboard Block - ranking/competition display
-export const LeaderboardBlock = ({ data, currentUser, shares = {}, canEdit = false, onOpenModal, onExpand }) => {
+export const LeaderboardBlock = ({ data, currentUser, shares = {}, canEdit = false, onOpenModal, onCloseLeaderboard, onResetLeaderboard, onExpand }) => {
   const [isCollapsed, setIsCollapsed] = useState(data.defaultCollapsed ?? true);
+  const [showEditMode, setShowEditMode] = useState(false);
   const blockRef = useRef(null);
   
   const title = data.title || 'Leaderboard';
@@ -2672,35 +2744,83 @@ export const LeaderboardBlock = ({ data, currentUser, shares = {}, canEdit = fal
   return (
     <div ref={blockRef} className="space-y-2">
       {/* Collapsible header */}
-      <button
-        onClick={handleToggleCollapse}
-        className="w-full flex items-center gap-2.5 py-2 group touch-manipulation"
-      >
-        <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
-          <ChevronDown 
-            size={16} 
-            className={`text-gray-400 group-hover:text-white transition-all ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} 
-          />
-        </div>
-        <div className="flex items-center gap-2.5 flex-1 min-w-0">
-          <Trophy size={16} className="text-gray-400 flex-shrink-0" />
-          <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors truncate">
-            {title}
-          </span>
-        </div>
-        {status === 'finished' ? (
-          <span className="text-xs px-2 py-1 rounded-md bg-white/5 text-gray-500 flex items-center gap-1.5">
-            <Lock size={10} />
-            Avslutad
-          </span>
-        ) : (
-          <span className="text-xs text-gray-500 tabular-nums">{participants.length} deltagare</span>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={handleToggleCollapse}
+          className="flex-1 flex items-center gap-2.5 py-2 group touch-manipulation"
+        >
+          <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
+            <ChevronDown 
+              size={16} 
+              className={`text-gray-400 group-hover:text-white transition-all ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} 
+            />
+          </div>
+          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+            <Trophy size={16} className="text-gray-400 flex-shrink-0" />
+            <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors truncate">
+              {title}
+            </span>
+          </div>
+          {status === 'finished' ? (
+            <span className="text-xs px-2 py-1 rounded-md bg-white/5 text-gray-500 flex items-center gap-1.5">
+              <Lock size={10} />
+              Avslutad
+            </span>
+          ) : (
+            <span className="text-xs text-gray-500 tabular-nums">{participants.length} deltagare</span>
+          )}
+        </button>
+        {/* Edit mode toggle - only for editors when expanded */}
+        {!isCollapsed && canEdit && (
+          <button
+            onClick={() => setShowEditMode(!showEditMode)}
+            className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
+              showEditMode ? 'bg-amber-500/20 text-amber-400' : 'bg-white/5 text-gray-400 hover:bg-white/10'
+            }`}
+            title="Redigera"
+          >
+            <Edit2 size={14} />
+          </button>
         )}
-      </button>
+      </div>
       
       {/* Collapsible content */}
       {!isCollapsed && (
         <div className="bg-white/[0.03] rounded-xl p-4 space-y-3">
+          {/* Edit mode panel */}
+          {showEditMode && canEdit && (
+            <div className="flex gap-2 p-2 bg-white/5 rounded-lg border border-white/10 -mt-1">
+              {status !== 'finished' && onCloseLeaderboard && (
+                <button
+                  onClick={() => {
+                    if (window.confirm('Vill du avsluta leaderboarden?')) {
+                      onCloseLeaderboard();
+                      setShowEditMode(false);
+                    }
+                  }}
+                  className="flex-1 py-1.5 text-xs text-amber-400 hover:bg-amber-500/20 rounded flex items-center justify-center gap-1"
+                >
+                  <Lock size={12} />
+                  Avsluta
+                </button>
+              )}
+              {roundCount > 0 && onResetLeaderboard && (
+                <button
+                  onClick={() => {
+                    if (window.confirm('Vill du nollställa alla poäng? Detta kan inte ångras.')) {
+                      onResetLeaderboard();
+                      setShowEditMode(false);
+                    }
+                  }}
+                  className="flex-1 py-1.5 text-xs text-red-400 hover:bg-red-500/20 rounded flex items-center justify-center gap-1"
+                >
+                  <RotateCcw size={12} />
+                  Nollställ
+                </button>
+              )}
+            </div>
+          )}
+          
           {/* Top 3 preview + current user if outside top 3 */}
           {hasScores ? (
             <div className="space-y-1">
@@ -2775,9 +2895,9 @@ export const LeaderboardBlock = ({ data, currentUser, shares = {}, canEdit = fal
           {onOpenModal && (
             <button
               onClick={onOpenModal}
-              className="w-full py-2 text-sm text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg flex items-center justify-center gap-1 transition-colors"
+              className="w-full py-2.5 text-sm text-blue-400 hover:bg-white/5 rounded-lg flex items-center justify-center gap-1.5 transition-colors border border-white/10"
             >
-              Visa hela leaderboarden
+              Visa leaderboard
               <ChevronRight size={14} />
             </button>
           )}
@@ -2832,9 +2952,11 @@ export const DistributionBlock = ({
   shares = {}, 
   canEdit = false, 
   onOpenModal,
+  onResetDistribution,
   onExpand 
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(data.defaultCollapsed ?? true);
+  const [showEditMode, setShowEditMode] = useState(false);
   const blockRef = useRef(null);
   
   const preset = DISTRIBUTION_PRESETS[data.preset] || DISTRIBUTION_PRESETS.carpool;
@@ -3004,28 +3126,60 @@ export const DistributionBlock = ({
   return (
     <div ref={blockRef} className="space-y-2">
       {/* Collapsible header */}
-      <button
-        onClick={handleToggleCollapse}
-        className="w-full flex items-center gap-2.5 py-2 group touch-manipulation"
-      >
-        <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
-          <ChevronDown 
-            size={16} 
-            className={`text-gray-400 group-hover:text-white transition-all ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} 
-          />
-        </div>
-        <div className="flex items-center gap-2.5 flex-1 min-w-0">
-          <PresetIcon size={16} className="text-gray-400 flex-shrink-0" />
-          <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors truncate">
-            {title}
-          </span>
-        </div>
-        <span className="text-xs text-gray-500 tabular-nums">{totalAssigned} {preset.assigneeLabel}</span>
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={handleToggleCollapse}
+          className="flex-1 flex items-center gap-2.5 py-2 group touch-manipulation"
+        >
+          <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
+            <ChevronDown 
+              size={16} 
+              className={`text-gray-400 group-hover:text-white transition-all ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} 
+            />
+          </div>
+          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+            <PresetIcon size={16} className="text-gray-400 flex-shrink-0" />
+            <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors truncate">
+              {title}
+            </span>
+          </div>
+          <span className="text-xs text-gray-500 tabular-nums">{totalAssigned} {preset.assigneeLabel}</span>
+        </button>
+        {/* Edit mode toggle - only for editors when expanded */}
+        {!isCollapsed && canEdit && (
+          <button
+          onClick={() => setShowEditMode(!showEditMode)}
+          className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
+            showEditMode ? 'bg-amber-500/20 text-amber-400' : 'bg-white/5 text-gray-400 hover:bg-white/10'
+          }`}
+          title="Redigera"
+        >
+          <Edit2 size={14} />
+        </button>
+      )}
+      </div>
       
       {/* Expanded content */}
       {!isCollapsed && (
         <div className="bg-white/[0.03] rounded-xl p-4 space-y-3">
+          {/* Edit mode panel */}
+          {showEditMode && canEdit && slots.length > 0 && onResetDistribution && (
+            <div className="flex gap-2 p-2 bg-white/5 rounded-lg border border-white/10 -mt-1">
+              <button
+                onClick={() => {
+                  if (window.confirm(`Vill du nollställa alla ${data.preset === 'carpool' ? 'bilar' : 'uppgifter'}? Detta kan inte ångras.`)) {
+                    onResetDistribution();
+                    setShowEditMode(false);
+                  }
+                }}
+                className="flex-1 py-1.5 text-xs text-red-400 hover:bg-red-500/20 rounded flex items-center justify-center gap-1"
+              >
+                <RotateCcw size={12} />
+                Nollställ
+              </button>
+            </div>
+          )}
+          
           {/* Slots list */}
           {slots.map((slot, index) => {
             const spotsLeft = getSpotsLeft(slot);
