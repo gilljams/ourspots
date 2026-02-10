@@ -70,6 +70,7 @@ service cloud.firestore {
       // Update: Owner, Editor role (accepted), or Admin
       // Also allow shared users to update their own share status (accept/decline) or leave sharing
       // Also allow any accepted share user to update blocks (checklist/todo)
+      // Also allow any logged-in user to update blocks on demo objects (interactive demo)
       allow update: if request.auth != null && (
                        request.auth.uid == resource.data.ownerId ||  // Owner
                        isAdmin() ||                                   // Admin
@@ -80,6 +81,10 @@ service cloud.firestore {
                           .hasOnly(['shares', 'sharedWithEmails', 'acceptedShareEmails', 'editorEmails'])) ||
                        // Allow any accepted shared user to update blocks and updatedAt (checklist/todo)
                        (hasAcceptedShareAccess(resource.data) &&
+                        request.resource.data.diff(resource.data).affectedKeys()
+                          .hasOnly(['blocks', 'updatedAt'])) ||
+                       // Allow any logged-in user to update blocks on demo objects (interactive demo)
+                       (resource.data.isDemo == true &&
                         request.resource.data.diff(resource.data).affectedKeys()
                           .hasOnly(['blocks', 'updatedAt']))
                      );
