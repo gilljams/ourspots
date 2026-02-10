@@ -15,7 +15,7 @@ OurSpots är en platsbaserad app (primärt för mobil) med dark theme som låter
 - Organisera i lager (parent/child) och kategorier
 - Se objekt på karta med avstånd och navigation
 
-## 🏗️ Nuvarande Status (v1.8 - Kantarellknappen & Offline-säkerhet)
+## 🏗️ Nuvarande Status (v2.9.5 - Demo/Hjälp-objekt)
 
 ### ✅ Implementerat
 
@@ -48,6 +48,13 @@ Alla expanderbara block följer samma mönster:
   - **PollBlock** - Omröstningar med flerval (grön tema)
   - **SplitBlock** - Ekonomisk splitt mellan deltagare (grön tema)
   - **LeaderboardBlock** - Tävlingsresultat med rundor och ranking (blå/guld tema)
+  - **DistributionBlock** - Dela upp ansvar/roller (lila tema)
+
+#### Demo/Hjälp-objekt
+- **Demo-läge** - Admin skapar exempelobjekt för dokumentation
+- **Interaktiv demo** - Användare deltar som "Anna" och kan testa funktioner
+- **Demo-användare** - Anna, Erik, Lisa, Johan, Maria tillgängliga i block-editorn
+- **Skrivskyddat för admin** - Skyddar demo-data från oavsiktlig redigering
   - **DistributionBlock** - Samåkning och uppgiftstilldelning (blå tema)
 - **Övriga blocktyper:**
   - **SectionBlock** - Visuell separator med rubrik (blå linje, versaler/gemener)

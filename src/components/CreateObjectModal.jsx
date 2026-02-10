@@ -14,7 +14,16 @@ import MapPicker from './MapPicker';
 import FocalPointPicker from './FocalPointPicker';
 import BlockEditor, { DateTagBlockEditor, TimerBlockEditor, PollBlockEditor, AudioBlockEditor, SplitBlockEditor, LeaderboardBlockEditor, DistributionBlockEditor, SectionBlockEditor } from './BlockEditor';
 
-function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, saving, availableParents, defaultParentId, userLocation, categories, preciseGPS, isAdmin, currentUser, currentUserDisplayName, hasChildren, defaultCategory }) {
+// Demo users available when in demo mode for realistic examples
+const DEMO_USERS = {
+  'anna_DOT_demo_DOT_se': { email: 'anna.demo.se', displayName: 'Anna', status: 'accepted', role: 'editor' },
+  'erik_DOT_demo_DOT_se': { email: 'erik.demo.se', displayName: 'Erik', status: 'accepted', role: 'viewer' },
+  'lisa_DOT_demo_DOT_se': { email: 'lisa.demo.se', displayName: 'Lisa', status: 'accepted', role: 'viewer' },
+  'johan_DOT_demo_DOT_se': { email: 'johan.demo.se', displayName: 'Johan', status: 'accepted', role: 'viewer' },
+  'maria_DOT_demo_DOT_se': { email: 'maria.demo.se', displayName: 'Maria', status: 'accepted', role: 'viewer' },
+};
+
+function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, saving, availableParents, defaultParentId, userLocation, categories, preciseGPS, isAdmin, currentUser, currentUserDisplayName, hasChildren, defaultCategory, isDemoMode }) {
   // ========== STATE ==========
   const isEdit = !!editObject;
   const isDuplicate = !!duplicateFromObject;
@@ -263,6 +272,12 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
     
     return {};
   }, [sourceObject?.shares, parentId, availableParents]);
+  
+  // Add demo users when in demo mode
+  const effectiveSharesWithDemo = useMemo(() => {
+    if (!isDemoMode) return effectiveShares;
+    return { ...effectiveShares, ...DEMO_USERS };
+  }, [effectiveShares, isDemoMode]);
   const customBlocksRef = useRef(customBlocks);
   customBlocksRef.current = customBlocks;
   
@@ -1175,7 +1190,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   index={index}
                   total={customBlocks.length}
                   saving={saving}
-                  shares={effectiveShares}
+                  shares={effectiveSharesWithDemo}
                   currentUser={currentUser}
                   currentUserDisplayName={currentUserDisplayName}
                 />
@@ -1189,7 +1204,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   index={index}
                   total={customBlocks.length}
                   saving={saving}
-                  shares={effectiveShares}
+                  shares={effectiveSharesWithDemo}
                   currentUser={currentUser}
                   currentUserDisplayName={currentUserDisplayName}
                 />
@@ -1203,7 +1218,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   index={index}
                   total={customBlocks.length}
                   saving={saving}
-                  shares={effectiveShares}
+                  shares={effectiveSharesWithDemo}
                   currentUser={currentUser}
                   currentUserDisplayName={currentUserDisplayName}
                 />

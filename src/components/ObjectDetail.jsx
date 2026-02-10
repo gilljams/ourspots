@@ -827,10 +827,22 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
   const categoryColor = '#3B82F6';
   const isOwner = currentUser && object.ownerId === currentUser.uid;
   const isSharedWithMe = object.isSharedWithMe;
+  const isDemoObject = object.isDemoObject || object.isDemo;
+  
+  // Demo user identity: non-admins become "Anna" when viewing demo objects
+  const demoUserIdentity = isDemoObject && !isAdmin ? {
+    uid: 'demo_anna',
+    email: 'anna.demo.se',
+    displayName: 'Anna'
+  } : null;
+  const effectiveUser = demoUserIdentity || currentUser;
+  const effectiveDisplayName = demoUserIdentity ? 'Anna' : userDisplayName;
+  
   const userEmailKey = currentUser?.email ? emailToKey(currentUser.email.toLowerCase()) : null;
   const myShareRole = isSharedWithMe && userEmailKey ? object.shares?.[userEmailKey]?.role : null;
-  const canEdit = isOwner || isAdmin || myShareRole === 'editor';
-  const canManage = isOwner || isAdmin;
+  // Demo objects are read-only for everyone except admins
+  const canEdit = isDemoObject ? isAdmin : (isOwner || isAdmin || myShareRole === 'editor');
+  const canManage = isDemoObject ? isAdmin : (isOwner || isAdmin);
   // For UI purposes: show "Delning" only for viewers (readers), editors see "Hantera objekt"
   const showAsSharedView = !isOwner && !isAdmin && isSharedWithMe && myShareRole !== 'editor';
   
@@ -1068,6 +1080,11 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                       Admin
                     </span>
                   )}
+                  {isDemoObject && (
+                    <span className="text-xs bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded flex items-center gap-1">
+                      Demo
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -1166,7 +1183,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                         data={primaryLocationBlock.data}
                         objectId={object.id}
                         blockIndex={primaryBlockIndex}
-                        onUpdate={onBlockUpdate}
+                        onUpdate={isDemoObject && !isAdmin ? undefined : onBlockUpdate}
                         inherited={false}
                         canDelete={false}
                         positionNumber={null}
@@ -1241,7 +1258,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                           data={block.data} 
                           objectId={object.id} 
                           blockIndex={actualBlockIndex} 
-                          onUpdate={onBlockUpdate} 
+                          onUpdate={isDemoObject && !isAdmin ? undefined : onBlockUpdate} 
                           inherited={block.inherited}
                           canDelete={canDeleteLocation}
                           onDelete={handleDeleteBlock}
@@ -1261,9 +1278,9 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                           // Image block: animation props
                           isPlaying={block.type === 'image' && audioIsDiscrete ? isAudioPlaying : false}
                           animation={block.type === 'image' ? audioAnimation : 'none'}
-                          // Poll-specific props
-                          currentUser={currentUser}
-                          userDisplayName={userDisplayName}
+                          // Poll-specific props (use effectiveUser for demo identity)
+                          currentUser={effectiveUser}
+                          userDisplayName={effectiveDisplayName}
                           shares={object.shares || {}}
                           canEdit={canEdit}
                           onVote={block.type === 'poll' ? async (newVotes) => {
@@ -1328,8 +1345,8 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                             try {
                               const updatedBlocks = [...object.blocks];
                               const currentOptions = updatedBlocks[actualBlockIndex].data.options || [];
-                              // Only allow removing if user added this option - use same format as PollBlock
-                              const userKey = currentUser?.email ? currentUser.email.replace(/\./g, '_DOT_') : null;
+                              // Only allow removing if user added this option (use effectiveUser for demo identity)
+                              const userKey = effectiveUser?.email ? effectiveUser.email.replace(/\./g, '_DOT_') : null;
                               const optionToRemove = currentOptions.find(o => o.id === optionId);
                               if (!optionToRemove || optionToRemove.addedBy !== userKey) {
                                 console.error('Cannot remove option: not owner');
@@ -1352,8 +1369,8 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                             try {
                               const updatedBlocks = [...object.blocks];
                               const currentParticipants = updatedBlocks[actualBlockIndex].data.participants || [];
-                              // Only allow updating own amount
-                              const userEmail = currentUser?.email?.toLowerCase();
+                              // Only allow updating own amount (use effectiveUser for demo identity)
+                              const userEmail = effectiveUser?.email?.toLowerCase();
                               if (participantEmail.toLowerCase() !== userEmail) {
                                 console.error('Cannot update amount: not own participant');
                                 return;

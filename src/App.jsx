@@ -143,6 +143,10 @@ function App() {
     const saved = localStorage.getItem('preciseGPS');
     return saved === 'true'; // Default false (snabb GPS)
   });
+  const [showDemoObjects, setShowDemoObjects] = useState(() => {
+    const saved = localStorage.getItem('showDemoObjects');
+    return saved === 'true'; // Default false
+  });
   // Menu section collapse states with localStorage
   const [menuAdminExpanded, setMenuAdminExpanded] = useState(() => {
     const saved = localStorage.getItem('menuAdminExpanded');
@@ -469,6 +473,38 @@ function App() {
     const userEmail = user.email?.toLowerCase();
     const objectsRef = collection(db, 'objects');
     
+    // Demo mode: only show objects with isDemo == true
+    if (showDemoObjects) {
+      const demoQuery = query(objectsRef, where('isDemo', '==', true));
+      
+      const unsubDemo = onSnapshot(demoQuery, (snap) => {
+        if (isCancelled) return;
+        const demoObjects = snap.docs.map(d => ({ 
+          id: d.id, 
+          ...d.data(), 
+          isDemoObject: true // Mark as demo (read-only for non-admins)
+        }));
+        setObjects(demoObjects);
+        setLoading(false);
+        
+        setSelectedObject(prev => {
+          if (!prev?.id) return prev;
+          const updated = demoObjects.find(obj => obj.id === prev.id);
+          return updated || null; // Reset if demo object no longer exists
+        });
+      }, (error) => {
+        console.error('Error loading demo objects:', error);
+        if (isCancelled) return;
+        setLoading(false);
+      });
+      
+      return () => {
+        isCancelled = true;
+        unsubDemo();
+      };
+    }
+    
+    // Normal mode: owned + shared objects
     // Query 1: Objects where user is owner
     const ownedQuery = query(objectsRef, where('ownerId', '==', user.uid));
     
@@ -486,10 +522,11 @@ function App() {
       if (!ownedLoaded || !sharedLoaded || isCancelled) return;
       
       // Combine and dedupe (owned objects take precedence)
+      // Filter out demo objects in normal mode
       const ownedIds = new Set(ownedObjects.map(o => o.id));
       const combined = [
-        ...ownedObjects,
-        ...sharedObjects.filter(o => !ownedIds.has(o.id)).map(o => ({ ...o, isSharedWithMe: true }))
+        ...ownedObjects.filter(o => !o.isDemo),
+        ...sharedObjects.filter(o => !ownedIds.has(o.id) && !o.isDemo).map(o => ({ ...o, isSharedWithMe: true }))
       ];
       
       setObjects(combined);
@@ -539,7 +576,7 @@ function App() {
       unsubOwned();
       unsubShared();
     };
-  }, [user]);
+  }, [user, showDemoObjects]);
 
   // Fetch categories once at startup (they rarely change)
   useEffect(() => {
@@ -1220,7 +1257,9 @@ function App() {
           linkedObjectIds: objectData.linkedObjectIds || [],
           linkedUrls: objectData.linkedUrls || [],
           linkedOrder: objectData.linkedOrder || [],
-          whatsappGroupUrl: objectData.whatsappGroupUrl || null
+          whatsappGroupUrl: objectData.whatsappGroupUrl || null,
+          // Demo objects: auto-create as demo when admin is in demo mode
+          ...(isAdmin && showDemoObjects ? { isDemo: true } : {})
           // Note: linkedObjectNotes is NOT copied - it contains time-specific info
         };
         
@@ -1479,6 +1518,28 @@ function App() {
           </div>
         </div>
       </header>
+      
+      {/* Demo mode banner */}
+      {showDemoObjects && (
+        <div className="bg-purple-600/90 backdrop-blur-sm border-b border-purple-400/30 z-30">
+          <div className="max-w-6xl mx-auto px-3 py-1.5 flex items-center justify-between gap-2" style={{ paddingLeft: 'max(0.75rem, env(safe-area-inset-left))', paddingRight: 'max(0.75rem, env(safe-area-inset-right))' }}>
+            <div className="flex items-center gap-1.5 text-white text-xs">
+              <Eye size={14} className="flex-shrink-0" />
+              <span><span className="font-medium">Demo</span> {isAdmin ? '(admin-läge)' : '– du deltar som "Anna"'}</span>
+            </div>
+            <button
+              onClick={() => {
+                setShowDemoObjects(false);
+                localStorage.setItem('showDemoObjects', 'false');
+              }}
+              className="flex items-center gap-1 px-2 py-1 rounded-md bg-white/20 hover:bg-white/30 text-white text-xs font-medium transition-colors flex-shrink-0"
+            >
+              <X size={12} />
+              Avsluta
+            </button>
+          </div>
+        </div>
+      )}
       
       {/* Invitations dropdown */}
       {showInvitations && pendingInvitations.length > 0 && (
@@ -2118,6 +2179,7 @@ function App() {
             currentUserDisplayName={displayName}
             hasChildren={editingObject?.id ? objects.some(o => o.parentId === editingObject.id) : false}
             defaultCategory={activeCategory !== 'all' && activeCategory !== 'favorites' ? activeCategory : null}
+            isDemoMode={showDemoObjects}
           />
         )}
 
@@ -2431,6 +2493,35 @@ function App() {
                     {preciseGPS && (
                       <div className="mt-2 text-xs text-green-400 flex items-center gap-1">
                         <Check size={12} className="flex-shrink-0" /> Väntar tills GPS är ±10m eller max 15 sek
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-white/5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-white">Visa demoexempel</div>
+                        <div className="text-xs text-gray-400 mt-0.5">Se exempel på hur OurSpots kan användas</div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          const newValue = !showDemoObjects;
+                          setShowDemoObjects(newValue);
+                          localStorage.setItem('showDemoObjects', String(newValue));
+                        }}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          showDemoObjects ? 'bg-purple-500' : 'bg-gray-600'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            showDemoObjects ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                    {showDemoObjects && (
+                      <div className="mt-2 text-xs text-purple-400 flex items-center gap-1">
+                        <Check size={12} className="flex-shrink-0" /> Visar endast demoexempel (skrivskyddat)
                       </div>
                     )}
                   </div>

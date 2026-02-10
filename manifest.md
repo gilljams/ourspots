@@ -1,8 +1,8 @@
 ========================
-OurSpots – Manifest / Blueprint (Updated Feb 9, 2026)
+OurSpots – Manifest / Blueprint (Updated Feb 10, 2026)
 ========================
 
-🚀 STATUS: v2.9.2 - New List Editor Modal + Simplified Block Editing
+🚀 STATUS: v2.9.5 - Demo/Help Objects Feature
 
 1. VISION
 - Mobilfokuserad app med premium dark theme
@@ -28,6 +28,7 @@ OurSpots – Manifest / Blueprint (Updated Feb 9, 2026)
 - Kategorihantering för administratörer ✅
 - Admin objekthantering (redigera/radera alla objekt) ✅
 - Admin användarhantering (lista, blockera, admin-roller) ✅ NY
+- Demo-objekt för hjälp och dokumentation (admin-skapade, skrivskyddade) ✅ NY v2.9.5
 - Kartintegration med position och avstånd ✅
 - Egen positionsmarkör (användarikon) på karta ✅
 - Dark theme + glassmorphism + accentfärger ✅
@@ -298,16 +299,22 @@ Default block sets per typ/kategori (för enkelhet):
 
 ### ROADMAP / TODO
 
-#### Demo/Hjälp-objekt (Planerad)
+#### Demo/Hjälp-objekt ✅ IMPLEMENTERAT v2.9.4
 Mål: Admin kan skapa exempelobjekt som visar dokumentation och funktionsdemos.
-- Admin markerar objekt som `isDemo: true` i Firebase
-- Firestore-regler tillåter läsning för alla inloggade: `allow read: if resource.data.isDemo == true`
-- Toggle i inställningar "Visa hjälp & exempel" (sparas i userDoc)
-- Kräver inloggning (ingen anonym åtkomst)
-- Demo-objekt visas med tydlig markering/badge
-- Admin ser samma toggle men har redigeringsrätt
-- Inga delningar behövs - centralt administrerat
-- Användare väljer själva om de vill se demo-innehåll
+- ✅ Admin skapar objekt i demo-läge → blir automatiskt demo-objekt
+- ✅ Demo-objekt filtreras bort i normalt läge (syns inte för någon)
+- ✅ Firestore-regler tillåter läsning för alla inloggade: `allow read: if resource.data.isDemo == true`
+- ✅ Toggle i inställningar "Visa demoexempel" (sparas i localStorage)
+- ✅ Kräver inloggning (ingen anonym åtkomst)
+- ✅ Demo-objekt visas med lila "Demo"-badge
+- ✅ Demo-läge = hård filtrering (visar ENDAST demo-objekt)
+- ✅ Lila banner i demo-läge med snabb avsluta-knapp
+- ✅ **Interaktiv demo**: Icke-admins deltar som "Anna" i demo-objekt
+  - Kan rösta i polls
+  - Kan lägga in belopp i splits (om Anna är deltagare)
+  - Kan föreslå alternativ i polls
+- ✅ Demo-användare i block-editorn: Anna, Erik, Lisa, Johan, Maria
+- ✅ Admin ser "(admin-läge)" i bannern, användare ser "du deltar som Anna"
 
 #### Framtida idéer
 - **Minigalleri** - Upp till 4 bilder per objekt i lägre upplösning, swipe/carousel-vy
