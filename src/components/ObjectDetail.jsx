@@ -1183,7 +1183,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                         data={primaryLocationBlock.data}
                         objectId={object.id}
                         blockIndex={primaryBlockIndex}
-                        onUpdate={isDemoObject && !isAdmin ? undefined : onBlockUpdate}
+                        onUpdate={onBlockUpdate}
                         inherited={false}
                         canDelete={false}
                         positionNumber={null}
@@ -1258,7 +1258,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                           data={block.data} 
                           objectId={object.id} 
                           blockIndex={actualBlockIndex} 
-                          onUpdate={isDemoObject && !isAdmin ? undefined : onBlockUpdate} 
+                          onUpdate={onBlockUpdate} 
                           inherited={block.inherited}
                           canDelete={canDeleteLocation}
                           onDelete={handleDeleteBlock}
