@@ -463,3 +463,345 @@ input, textarea, select {
     transform: scale(1.05) translate(0.5%, -0.5%);
   }
 }
+
+/* ==========================================
+   CYKEL ANIMATION - UTÖKAD VERSION
+   Loop 2 + Filmslut med strålkastare
+   ========================================== */
+
+/* Andra loopen av cykelanimationen */
+.animation-plupp-loop2 {
+  animation: plupp-ride-loop2 7s ease-in-out forwards !important;
+}
+
+@keyframes plupp-ride-loop2 {
+  /* Fas 1: Glid in från vänster, liten */
+  0% {
+    left: -80px;
+    top: 50%;
+    transform: translateY(-50%) scale(0.5) scaleX(1);
+    opacity: 0;
+  }
+  /* Fade in och börja växa */
+  8% {
+    left: 5%;
+    top: 50%;
+    transform: translateY(-50%) scale(0.6) scaleX(1);
+    opacity: 1;
+  }
+  /* Närma sig mitten, fortsätt växa */
+  20% {
+    left: 40%;
+    top: 50%;
+    transform: translateY(-50%) scale(1.1) scaleX(1);
+    opacity: 1;
+  }
+  /* Pausa i mitten, maxstorlek */
+  28% {
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%) scale(1.35) scaleX(1);
+    opacity: 1;
+  }
+  /* Håll kvar i mitten */
+  38% {
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%) scale(1.3) scaleX(1);
+    opacity: 1;
+  }
+  /* Wobble */
+  40% {
+    left: 48%;
+    top: 50%;
+    transform: translate(-50%, -50%) scale(1.28) rotate(-3deg) scaleX(1);
+    opacity: 1;
+  }
+  42% {
+    left: 52%;
+    top: 50%;
+    transform: translate(-50%, -50%) scale(1.28) rotate(3deg) scaleX(1);
+    opacity: 1;
+  }
+  /* Åka ut åt höger */
+  50% {
+    left: 70%;
+    top: 50%;
+    transform: translateY(-50%) scale(0.7) scaleX(1);
+    opacity: 1;
+  }
+  54% {
+    left: 105%;
+    top: 50%;
+    transform: translateY(-50%) scale(0.4) scaleX(1);
+    opacity: 1;
+  }
+  /* Paus utanför bilden - gömd */
+  55% {
+    left: 110%;
+    top: 50%;
+    transform: translateY(-50%) scale(0.4) scaleX(-1);
+    opacity: 0;
+  }
+  60% {
+    left: 110%;
+    top: 50%;
+    transform: translateY(-50%) scale(0.4) scaleX(-1);
+    opacity: 0;
+  }
+  /* Fas 2: Spegelvänd, snabb return från höger uppåt */
+  62% {
+    left: 105%;
+    top: 70%;
+    transform: translateY(-50%) scale(0.5) scaleX(-1);
+    opacity: 1;
+  }
+  /* Snabb diagonal uppåt åt vänster, växer */
+  72% {
+    left: 50%;
+    top: 45%;
+    transform: translateY(-50%) scale(1.0) scaleX(-1);
+    opacity: 1;
+  }
+  /* Fortsätter diagonalt uppåt vänster, ännu större */
+  82% {
+    left: 15%;
+    top: 25%;
+    transform: translateY(-50%) scale(1.4) scaleX(-1);
+    opacity: 1;
+  }
+  /* Accelerera ut åt vänster uppåt */
+  92% {
+    left: -15%;
+    top: 10%;
+    transform: translateY(-50%) scale(1.6) scaleX(-1);
+    opacity: 1;
+  }
+  100% {
+    left: -30%;
+    top: 0%;
+    transform: translateY(-50%) scale(1.8) scaleX(-1);
+    opacity: 0;
+  }
+}
+
+/* ==========================================
+   FILMSLUT-SEKVENS
+   ========================================== */
+
+.film-ending-container {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 30;
+}
+
+/* Fade till svart som slutet av en film */
+.film-fade-to-black {
+  position: absolute;
+  inset: 0;
+  background: black;
+  animation: fade-to-black 10s ease-out forwards;
+}
+
+@keyframes fade-to-black {
+  0% { opacity: 0; }
+  15% { opacity: 0.95; }
+  70% { opacity: 0.95; }
+  85% { opacity: 0.7; }
+  100% { opacity: 0; }
+}
+
+/* "... och nu" text */
+.film-ending-text-container {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 31;
+}
+
+.film-ending-text {
+  font-size: 28px;
+  font-weight: 300;
+  font-style: italic;
+  letter-spacing: 6px;
+  color: white;
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+  animation: film-text-reveal 10s ease-out forwards;
+  opacity: 0;
+}
+
+@keyframes film-text-reveal {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+    letter-spacing: 12px;
+  }
+  10% {
+    opacity: 1;
+    transform: translateY(0);
+    letter-spacing: 6px;
+  }
+  35% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* ==========================================
+   JAMES BOND STRÅLKASTARE
+   ========================================== */
+
+.spotlight-container {
+  position: absolute;
+  inset: 0;
+  z-index: 32;
+  overflow: hidden;
+}
+
+.spotlight-beam {
+  position: absolute;
+  width: 150%;
+  height: 150%;
+  top: -50%;
+  left: -50%;
+  background: 
+    radial-gradient(
+      ellipse 15% 25% at 75% 80%,
+      rgba(255, 255, 255, 0.9) 0%,
+      rgba(255, 255, 255, 0.6) 20%,
+      rgba(255, 255, 255, 0.2) 40%,
+      transparent 60%
+    );
+  animation: spotlight-search 8s ease-in-out forwards;
+  transform-origin: center center;
+}
+
+@keyframes spotlight-search {
+  /* Börja utanför bild */
+  0% {
+    opacity: 0;
+    transform: rotate(-30deg) translate(-20%, -20%);
+  }
+  /* Sök från vänster */
+  10% {
+    opacity: 1;
+    transform: rotate(-20deg) translate(-10%, 0%);
+  }
+  /* Sök runt */
+  20% {
+    opacity: 1;
+    transform: rotate(5deg) translate(5%, 5%);
+  }
+  /* Hitta cykeln i nedre högra hörnet - stannar här! */
+  35% {
+    opacity: 1;
+    transform: rotate(0deg) translate(0%, 0%);
+  }
+  /* Håll kvar på cykeln medan den avslöjas */
+  60% {
+    opacity: 1;
+    transform: rotate(0deg) translate(0%, 0%);
+  }
+  /* Börja fade ut */
+  80% {
+    opacity: 0.4;
+    transform: rotate(0deg) translate(0%, 0%);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(0deg) translate(0%, 0%);
+  }
+}
+
+/* ==========================================
+   PARKERAD CYKEL AVSLÖJAD
+   ========================================== */
+
+.parked-bike-container {
+  position: absolute;
+  bottom: 10%;
+  right: 10%;
+  z-index: 33;
+  animation: parked-bike-reveal 8s ease-out forwards;
+}
+
+/* Vit cirkel som omsluter bilden - samma stil som cykel-animationen */
+.parked-bike-circle {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 6px 30px rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: parked-bike-pulse 0.5s ease-in-out 3s 3;
+}
+
+.parked-bike-img {
+  width: 85px;
+  height: 85px;
+  object-fit: contain;
+  border-radius: 50%;
+}
+
+/* Pulserings-animation */
+@keyframes parked-bike-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 6px 30px rgba(0,0,0,0.5), 0 0 0 0 rgba(255, 255, 255, 0.6);
+  }
+  50% {
+    transform: scale(1.08);
+    box-shadow: 0 6px 30px rgba(0,0,0,0.5), 0 0 25px 10px rgba(255, 255, 255, 0.4);
+  }
+}
+
+@keyframes parked-bike-reveal {
+  /* Helt gömd - väntar på strålkastaren */
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  /* Fortfarande gömd medan strålkastaren söker */
+  25% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  /* Strålkastaren hittar cykeln - avslöjande! */
+  35% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+  /* Studsar tillbaka till normal storlek */
+  45% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  /* Synlig och stabil */
+  70% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  /* Börja tona ner tillsammans med svarta bakgrunden */
+  85% {
+    opacity: 0.7;
+    transform: scale(0.98);
+  }
+  /* Fade ut mjukt */
+  100% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}

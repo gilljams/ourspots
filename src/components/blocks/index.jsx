@@ -170,7 +170,9 @@ export const ImageBlock = ({ data, isPlaying = false, animation = 'none' }) => {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [animationActive, setAnimationActive] = useState(false);
   const [animationKey, setAnimationKey] = useState(0);
-  const [showZanettiText, setShowZanettiText] = useState(false);
+  const [showSecondLoop, setShowSecondLoop] = useState(false);
+  const [showFilmEnding, setShowFilmEnding] = useState(false);
+  const [showParkedBike, setShowParkedBike] = useState(false);
   const focalStyles = getFocalPointStyles(data.focalPoint);
   
   // Get optimized full image URL - max 1600px wide for good mobile quality without being huge
@@ -184,30 +186,53 @@ export const ImageBlock = ({ data, isPlaying = false, animation = 'none' }) => {
     if (isPlaying && animation !== 'none' && !animationActive) {
       setAnimationKey(prev => prev + 1); // Reset animation
       setAnimationActive(true);
-      setShowZanettiText(false);
+      setShowSecondLoop(false);
+      setShowFilmEnding(false);
+      setShowParkedBike(false);
     } else if (!isPlaying && animationActive) {
       // Fade out animation smoothly
       setAnimationActive(false);
-      setShowZanettiText(false);
+      setShowSecondLoop(false);
+      setShowFilmEnding(false);
+      setShowParkedBike(false);
     }
   }, [isPlaying, animation, animationActive]);
   
-  // Separat useEffect för Zanetti-text timer
+  // Utökad cykelanimation: andra loop vid 7s, filmslut vid 14s
   useEffect(() => {
-    let showTimer;
-    let hideTimer;
+    let secondLoopTimer;
+    let filmEndingTimer;
+    let parkedBikeTimer;
+    let resetTimer;
+    
     if (animationActive && animation === 'cykel') {
-      showTimer = setTimeout(() => {
-        setShowZanettiText(true);
+      // Starta andra loopen efter 7 sekunder
+      secondLoopTimer = setTimeout(() => {
+        setShowSecondLoop(true);
       }, 7000);
-      // Göm texten efter 3 sekunder
-      hideTimer = setTimeout(() => {
-        setShowZanettiText(false);
-      }, 10000);
+      
+      // Starta filmslut-sekvensen efter 14 sekunder
+      filmEndingTimer = setTimeout(() => {
+        setShowFilmEnding(true);
+      }, 14000);
+      
+      // Visa den parkerade cykeln efter 16 sekunder (2s efter fade to black)
+      parkedBikeTimer = setTimeout(() => {
+        setShowParkedBike(true);
+      }, 16000);
+      
+      // Återställ efter hela animationen (ca 24 sekunder)
+      resetTimer = setTimeout(() => {
+        setShowFilmEnding(false);
+        setShowParkedBike(false);
+      }, 24000);
     }
+    
     return () => {
-      if (showTimer) clearTimeout(showTimer);
-      if (hideTimer) clearTimeout(hideTimer);
+      if (secondLoopTimer) clearTimeout(secondLoopTimer);
+      if (filmEndingTimer) clearTimeout(filmEndingTimer);
+      if (parkedBikeTimer) clearTimeout(parkedBikeTimer);
+      if (resetTimer) clearTimeout(resetTimer);
     };
   }, [animationActive, animation]);
   
@@ -250,14 +275,48 @@ export const ImageBlock = ({ data, isPlaying = false, animation = 'none' }) => {
           </div>
         )}
         
-        {/* Zanetti text för cykel-animation */}
-        {showZanettiText && animation === 'cykel' && (
-          <>
-            <div className="italian-flag-wave" />
-            <div className="zanetti-text-container">
-              <span className="zanetti-text">Han är Zanetti</span>
+        {/* Andra cykel-loop */}
+        {showSecondLoop && animationActive && animation === 'cykel' && (
+          <div className="animation-plupp-container">
+            <div className="animation-plupp animation-plupp-loop2">
+              <img 
+                src="/media/cykel.png" 
+                alt="" 
+                className="animation-plupp-img"
+              />
             </div>
-          </>
+          </div>
+        )}
+        
+        {/* Filmslut-sekvens med fade till svart och strålkastare */}
+        {showFilmEnding && animation === 'cykel' && (
+          <div className="film-ending-container">
+            {/* Fade till svart */}
+            <div className="film-fade-to-black" />
+            
+            {/* "... och nu" text */}
+            <div className="film-ending-text-container">
+              <span className="film-ending-text">... och nu</span>
+            </div>
+            
+            {/* Strålkastare och parkerad cykel */}
+            {showParkedBike && (
+              <>
+                <div className="spotlight-container">
+                  <div className="spotlight-beam" />
+                </div>
+                <div className="parked-bike-container">
+                  <div className="parked-bike-circle">
+                    <img 
+                      src="/media/cykel_parkerad.png" 
+                      alt="" 
+                      className="parked-bike-img"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         )}
         
         <button
