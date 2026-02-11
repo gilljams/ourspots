@@ -321,7 +321,7 @@ function MapView({ objects, onSelectObject, currentUser, userLocation, categorie
     );
     
     return (
-      <div className="absolute top-4 left-4 z-[1000] bg-gray-900/90 backdrop-blur text-white px-3 py-2 rounded-lg shadow-lg flex items-center gap-3">
+      <div className="absolute top-4 left-16 z-[1000] bg-gray-900/90 backdrop-blur text-white px-3 py-2 rounded-lg shadow-lg flex items-center gap-3">
         <div>
           <div className="text-xs text-gray-400">Till {navigationTarget.name}</div>
           <div className="text-lg font-bold text-emerald-400">{formatDistance(distance)}</div>

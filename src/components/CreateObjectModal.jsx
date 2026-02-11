@@ -579,8 +579,8 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
           });
         }
       } else if (block.type === 'poll') {
-        // Save poll block if any options exist
-        if (block.options && block.options.length > 0) {
+        // Save poll block if any options exist OR allowSuggestions is enabled
+        if ((block.options && block.options.length > 0) || block.allowSuggestions) {
           blocks.push({ 
             type: 'poll', 
             data: { 
@@ -785,6 +785,14 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
       return items;
     });
     setFormTouched(true);
+    
+    // Scroll the moved block into view after React re-renders
+    setTimeout(() => {
+      const blockEl = document.querySelector(`[data-block-id="${id}"]`);
+      if (blockEl) {
+        blockEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }, 50);
   };
 
   // ========== RENDER ==========
@@ -1136,9 +1144,9 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                 : 0;
               
               return (
-              block.type === 'datetag' ? (
+              <div key={block.id} data-block-id={block.id}>
+              {block.type === 'datetag' ? (
                 <DateTagBlockEditor
-                  key={block.id}
                   block={block}
                   onUpdate={updateCustomBlock}
                   onRemove={removeCustomBlock}
@@ -1149,7 +1157,6 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                 />
               ) : block.type === 'timer' ? (
                 <TimerBlockEditor
-                  key={block.id}
                   block={block}
                   onUpdate={updateCustomBlock}
                   onRemove={removeCustomBlock}
@@ -1160,7 +1167,6 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                 />
               ) : block.type === 'poll' ? (
                 <PollBlockEditor
-                  key={block.id}
                   block={block}
                   onUpdate={updateCustomBlock}
                   onRemove={removeCustomBlock}
@@ -1171,7 +1177,6 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                 />
               ) : block.type === 'audio' ? (
                 <AudioBlockEditor
-                  key={block.id}
                   block={block}
                   onUpdate={updateCustomBlock}
                   onRemove={removeCustomBlock}
@@ -1182,7 +1187,6 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                 />
               ) : block.type === 'split' ? (
                 <SplitBlockEditor
-                  key={block.id}
                   block={block}
                   onUpdate={updateCustomBlock}
                   onRemove={removeCustomBlock}
@@ -1196,7 +1200,6 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                 />
               ) : block.type === 'leaderboard' ? (
                 <LeaderboardBlockEditor
-                  key={block.id}
                   block={block}
                   onUpdate={updateCustomBlock}
                   onRemove={removeCustomBlock}
@@ -1210,7 +1213,6 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                 />
               ) : block.type === 'distribution' ? (
                 <DistributionBlockEditor
-                  key={block.id}
                   block={block}
                   onUpdate={updateCustomBlock}
                   onRemove={removeCustomBlock}
@@ -1224,7 +1226,6 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                 />
               ) : block.type === 'section' ? (
                 <SectionBlockEditor
-                  key={block.id}
                   block={block}
                   onUpdate={updateCustomBlock}
                   onRemove={removeCustomBlock}
@@ -1235,7 +1236,6 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                 />
               ) : (
                 <BlockEditor
-                  key={block.id}
                   block={block}
                   onUpdate={updateCustomBlock}
                   onRemove={removeCustomBlock}
@@ -1245,7 +1245,8 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   saving={saving}
                   locationIndexOffset={locationIndexOffset}
                 />
-              )
+              )}
+              </div>
             );})}
 
             {/* Add block buttons */}

@@ -1,8 +1,8 @@
 ========================
-OurSpots – Manifest / Blueprint (Updated Feb 10, 2026)
+OurSpots – Manifest / Blueprint (Updated Feb 11, 2026)
 ========================
 
-🚀 STATUS: v2.9.5 - Demo/Help Objects Feature
+🚀 STATUS: v2.9.6 - UX Polish & Onboarding
 
 1. VISION
 - Mobilfokuserad app med premium dark theme
@@ -29,6 +29,13 @@ OurSpots – Manifest / Blueprint (Updated Feb 10, 2026)
 - Admin objekthantering (redigera/radera alla objekt) ✅
 - Admin användarhantering (lista, blockera, admin-roller) ✅ NY
 - Demo-objekt för hjälp och dokumentation (admin-skapade, skrivskyddade) ✅ NY v2.9.5
+- Demo-bar placerad överst i header (ovanför logo) ✅ NY v2.9.6
+- Demo-läge rensar "Mina"/"Favoriter"-filter automatiskt ✅ NY v2.9.6
+- Onboarding-skärm för nya användare utan objekt ✅ NY v2.9.6
+- "Byt konto"-funktion i meny (prompt: select_account) ✅ NY v2.9.6
+- FAB-knappar med spacing från högerkant (right-2) ✅ NY v2.9.6
+- Poll/Timer-editor med "+ Lägg till"-knapp istället för tomma rader ✅ NY v2.9.6
+- Auto-scroll när block flyttas upp/ner i editor ✅ NY v2.9.6
 - Kartintegration med position och avstånd ✅
 - Egen positionsmarkör (användarikon) på karta ✅
 - Dark theme + glassmorphism + accentfärger ✅

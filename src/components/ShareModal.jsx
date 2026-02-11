@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Share2, X, Mail, Loader, UserPlus, UserMinus, Users, Clock, Check, CornerDownRight, XCircle, Eye, Edit3, Pause, Play, Ban, Link2, ClipboardList } from 'lucide-react';
+import { Share2, X, Mail, Loader, UserPlus, UserMinus, Users, Clock, Check, CornerDownRight, XCircle, Eye, Edit3, Pause, Play, Ban, Link2, ClipboardList, Trash2 } from 'lucide-react';
 import { doc, updateDoc, onSnapshot, Timestamp, deleteField, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from '../firebase';
 import { emailToKey, keyToEmail } from '../utils/iconHelpers';
@@ -11,6 +11,8 @@ function ShareModal({ object, onClose, currentUserEmail, allObjects = [], shared
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [shares, setShares] = useState(object.shares || {});
+  const [purgeConfirm, setPurgeConfirm] = useState(null); // { key, email } or null
+  const [purging, setPurging] = useState(false);
   
   // Get all descendants using ancestorIds for fast O(n) lookup, or fallback to recursive
   const allDescendants = useMemo(() => {
@@ -240,6 +242,77 @@ function ShareModal({ object, onClose, currentUserEmail, allObjects = [], shared
     } catch (err) {
       console.error('Error removing share:', err);
       alert('Kunde inte ta bort delningen');
+    }
+  };
+
+  // Purge user data from all blocks (polls, distributions, splits)
+  const handlePurgeUserData = async (emailKey, email) => {
+    setPurging(true);
+    try {
+      const blocks = object.blocks || [];
+      let purgedBlocks = [...blocks];
+      let changesMade = false;
+      
+      purgedBlocks = purgedBlocks.map(block => {
+        const newBlock = { ...block, data: { ...block.data } };
+        
+        // Poll block - remove votes
+        if (block.type === 'poll' && block.data?.votes?.[emailKey]) {
+          const newVotes = { ...block.data.votes };
+          delete newVotes[emailKey];
+          newBlock.data.votes = newVotes;
+          changesMade = true;
+        }
+        
+        // Split block - remove participant
+        if (block.type === 'split' && block.data?.participants) {
+          const emailLower = email.toLowerCase();
+          const filtered = block.data.participants.filter(
+            p => p.email?.toLowerCase() !== emailLower
+          );
+          if (filtered.length !== block.data.participants.length) {
+            newBlock.data.participants = filtered;
+            changesMade = true;
+          }
+        }
+        
+        // Distribution block - remove from slots
+        if (block.type === 'distribution' && block.data?.slots) {
+          const newSlots = block.data.slots.map(slot => {
+            const newSlot = { ...slot };
+            if (slot.assignees?.includes(emailKey)) {
+              newSlot.assignees = slot.assignees.filter(a => a !== emailKey);
+              changesMade = true;
+            }
+            if (slot.assigneeDetails?.[emailKey]) {
+              newSlot.assigneeDetails = { ...slot.assigneeDetails };
+              delete newSlot.assigneeDetails[emailKey];
+              changesMade = true;
+            }
+            return newSlot;
+          });
+          newBlock.data.slots = newSlots;
+        }
+        
+        // Leaderboard - we keep scores but could mark as inactive
+        // (Keeping as-is per requirements)
+        
+        return newBlock;
+      });
+      
+      if (changesMade) {
+        await updateDoc(doc(db, 'objects', object.id), {
+          blocks: purgedBlocks,
+          updatedAt: Timestamp.now()
+        });
+      }
+      
+      setPurgeConfirm(null);
+    } catch (err) {
+      console.error('Error purging user data:', err);
+      alert('Kunde inte rensa data');
+    } finally {
+      setPurging(false);
     }
   };
 
@@ -581,6 +654,14 @@ function ShareModal({ object, onClose, currentUserEmail, allObjects = [], shared
                         {share.paused ? <Play size={16} /> : <Pause size={16} />}
                       </button>
                     )}
+                    {/* Purge data button */}
+                    <button
+                      onClick={() => setPurgeConfirm({ key: share.key, email: share.email })}
+                      className="p-2 rounded-lg hover:bg-amber-500/20 text-gray-400 hover:text-amber-400 transition-colors"
+                      title="Rensa data (röster, bokningar etc.)"
+                    >
+                      <Trash2 size={16} />
+                    </button>
                     {/* Remove/Exclude button */}
                     {share.status === 'inherited' ? (
                       <button
@@ -655,6 +736,41 @@ function ShareModal({ object, onClose, currentUserEmail, allObjects = [], shared
           )}
         </div>
       </div>
+      
+      {/* Purge confirmation dialog */}
+      {purgeConfirm && (
+        <div className="absolute inset-0 bg-black/80 flex items-center justify-center p-4 z-20">
+          <div className="bg-gray-900 rounded-2xl p-5 max-w-sm w-full border border-white/10">
+            <h3 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
+              <Trash2 size={18} className="text-amber-400" />
+              Rensa data
+            </h3>
+            <p className="text-gray-400 text-sm mb-4">
+              Är du säker på att du vill rensa all data för <span className="text-white font-medium">{purgeConfirm.email}</span>?
+            </p>
+            <p className="text-gray-500 text-xs mb-4">
+              Detta tar bort: röster i omröstningar, platser i bilar/distribution, och belopp i splittar. Leaderboard-poäng behålls.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setPurgeConfirm(null)}
+                disabled={purging}
+                className="flex-1 py-2.5 rounded-xl bg-white/5 text-gray-300 hover:bg-white/10 text-sm font-medium disabled:opacity-50"
+              >
+                Avbryt
+              </button>
+              <button
+                onClick={() => handlePurgeUserData(purgeConfirm.key, purgeConfirm.email)}
+                disabled={purging}
+                className="flex-1 py-2.5 rounded-xl bg-amber-500 text-white hover:bg-amber-400 text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {purging ? <Loader size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                Rensa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

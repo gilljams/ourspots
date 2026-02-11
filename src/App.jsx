@@ -5,7 +5,7 @@ import {
   Map as MapIcon, List, ChevronDown, ArrowUp, ArrowDown, ArrowLeft, Search, Settings,
   Target, Lightbulb, SlidersHorizontal, Menu, Filter, Share2, UserPlus, UserMinus, Users, Mail, User,
   FileText, MapPin, Home, RotateCcw, Star, Navigation, Eye, Edit3, AlertTriangle, Trophy,
-  LayoutGrid, LayoutList, ArrowUpDown
+  LayoutGrid, LayoutList, ArrowUpDown, Sparkles
 } from 'lucide-react';
 
 // Version for cache-busting visual indicator (remove in production)
@@ -59,7 +59,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { db, auth, googleProvider } from './firebase';
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, Timestamp, getDoc, getDocs, setDoc, deleteField, query, where, arrayUnion, arrayRemove } from 'firebase/firestore';
-import { signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from 'firebase/auth';
+import { signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, GoogleAuthProvider } from 'firebase/auth';
 
 // Fix Leaflet default marker icon issue with bundlers
 delete L.Icon.Default.prototype._getIconUrl;
@@ -431,7 +431,7 @@ function App() {
     updateHeaderHeight();
     window.addEventListener('resize', updateHeaderHeight);
     return () => window.removeEventListener('resize', updateHeaderHeight);
-  }, []);
+  }, [showDemoObjects]); // Recalculate when demo bar appears/disappears
 
   // Warn before refresh/close when offline (prevents losing app access in the forest)
   useEffect(() => {
@@ -835,6 +835,20 @@ function App() {
     try {
       await signOut(auth);
     } catch (err) {}
+  };
+
+  const handleSwitchAccount = async () => {
+    try {
+      // Create a new provider with prompt to force account selection
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      await signInWithPopup(auth, provider);
+    } catch (err) {
+      if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
+        console.error('Switch account error:', err);
+        alert('Kunde inte byta konto. Försök igen!');
+      }
+    }
   };
 
   const handleToggleFavorite = async (objectId) => {
@@ -1445,6 +1459,27 @@ function App() {
       }}
     >
       <header ref={headerRef} className="bg-gray-900/50 backdrop-blur-xl border-b border-white/10 sticky top-0 z-40" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+        {/* Demo mode banner - at top of header */}
+        {showDemoObjects && (
+          <div className="bg-purple-600/90 border-b border-purple-400/30">
+            <div className="max-w-6xl mx-auto px-3 py-1.5 flex items-center justify-between gap-2" style={{ paddingLeft: 'max(0.75rem, env(safe-area-inset-left))', paddingRight: 'max(0.75rem, env(safe-area-inset-right))' }}>
+              <div className="flex items-center gap-1.5 text-white text-xs">
+                <Eye size={14} className="flex-shrink-0" />
+                <span><span className="font-medium">Demo</span> {isAdmin ? '(admin-läge)' : '– du deltar som "Anna"'}</span>
+              </div>
+              <button
+                onClick={() => {
+                  setShowDemoObjects(false);
+                  localStorage.setItem('showDemoObjects', 'false');
+                }}
+                className="flex items-center gap-1 px-2 py-1 rounded-md bg-white/20 hover:bg-white/30 text-white text-xs font-medium transition-colors flex-shrink-0"
+              >
+                <X size={12} />
+                Avsluta
+              </button>
+            </div>
+          </div>
+        )}
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3" style={{ paddingLeft: 'max(1rem, env(safe-area-inset-left))', paddingRight: 'max(1rem, env(safe-area-inset-right))' }}>
           {/* Left: Menu + Logo */}
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -1518,28 +1553,6 @@ function App() {
           </div>
         </div>
       </header>
-      
-      {/* Demo mode banner */}
-      {showDemoObjects && (
-        <div className="bg-purple-600/90 backdrop-blur-sm border-b border-purple-400/30 z-30">
-          <div className="max-w-6xl mx-auto px-3 py-1.5 flex items-center justify-between gap-2" style={{ paddingLeft: 'max(0.75rem, env(safe-area-inset-left))', paddingRight: 'max(0.75rem, env(safe-area-inset-right))' }}>
-            <div className="flex items-center gap-1.5 text-white text-xs">
-              <Eye size={14} className="flex-shrink-0" />
-              <span><span className="font-medium">Demo</span> {isAdmin ? '(admin-läge)' : '– du deltar som "Anna"'}</span>
-            </div>
-            <button
-              onClick={() => {
-                setShowDemoObjects(false);
-                localStorage.setItem('showDemoObjects', 'false');
-              }}
-              className="flex items-center gap-1 px-2 py-1 rounded-md bg-white/20 hover:bg-white/30 text-white text-xs font-medium transition-colors flex-shrink-0"
-            >
-              <X size={12} />
-              Avsluta
-            </button>
-          </div>
-        </div>
-      )}
       
       {/* Invitations dropdown */}
       {showInvitations && pendingInvitations.length > 0 && (
@@ -1866,18 +1879,55 @@ function App() {
               })}
             </div>
             {displayObjects.length === 0 && (
-              <div className="text-center py-20">
-                <div className="w-20 h-20 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-4">
-                  <MapPin size={32} className="text-gray-600" />
-                </div>
-                <p className="text-gray-400 text-lg font-medium">
-                  {showFavoritesOnly ? 'Inga favoriter ännu' : 'Inga objekt hittades'}
-                </p>
-                <p className="text-gray-600 text-sm mt-2 max-w-xs mx-auto">
-                  {!user ? 'Logga in för att skapa objekt!' : 
-                   showFavoritesOnly ? 'Markera objekt med stjärnan för att lägga till favoriter' :
-                   'Tryck på + knappen för att skapa ditt första objekt'}
-                </p>
+              <div className="text-center py-12 pt-8">
+                {/* Onboarding for logged in users with no objects */}
+                {user && !showFavoritesOnly && !showDemoObjects && objects.filter(o => o.ownerId === user.uid).length === 0 ? (
+                  <div className="max-w-sm mx-auto px-4">
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center mx-auto mb-5">
+                      <Sparkles size={28} className="text-blue-400" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white mb-2">Välkommen till OurSpots</h3>
+                    <p className="text-gray-400 text-sm mb-5 leading-relaxed">
+                      Skapa objekt med valfritt innehåll – text, listor, platser, bilder. 
+                      Dela med vänner. Bara fantasin sätter gränser.
+                    </p>
+                    <div className="flex gap-2 justify-center">
+                      <button
+                        onClick={() => {
+                          setShowDemoObjects(true);
+                          setShowOnlyOwned(false);
+                          setShowFavoritesOnly(false);
+                          localStorage.setItem('showDemoObjects', 'true');
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-purple-500/20 border border-purple-500/30 text-purple-300 hover:bg-purple-500/30 transition-all text-sm"
+                      >
+                        <Eye size={16} />
+                        <span>Se demo</span>
+                      </button>
+                      <button
+                        onClick={() => { setEditingObject(null); setShowCreateModal(true); }}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all text-sm"
+                      >
+                        <Plus size={16} />
+                        <span>Skapa objekt</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="w-20 h-20 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-4">
+                      <MapPin size={32} className="text-gray-600" />
+                    </div>
+                    <p className="text-gray-400 text-lg font-medium">
+                      {showFavoritesOnly ? 'Inga favoriter ännu' : 'Inga objekt hittades'}
+                    </p>
+                    <p className="text-gray-600 text-sm mt-2 max-w-xs mx-auto">
+                      {!user ? 'Logga in för att skapa objekt!' : 
+                       showFavoritesOnly ? 'Markera objekt med stjärnan för att lägga till favoriter' :
+                       'Tryck på + knappen för att skapa ditt första objekt'}
+                    </p>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -1907,16 +1957,19 @@ function App() {
       {user && (
         <div className="fixed inset-x-0 bottom-0 pointer-events-none z-[1200]">
           <div className="max-w-6xl mx-auto relative px-4">
-            {/* Hide + button and map toggle when any modal is open */}
+            {/* Hide buttons when modals are open */}
             {!selectedObject && !showCreateModal && !showCategoryAdmin && !showObjectsAdmin && !showShareModal && (
               <>
-                <button 
-                  onClick={() => { setEditingObject(null); setShowCreateModal(true); }} 
-                  className="absolute bottom-6 right-0 w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-2xl shadow-xl shadow-blue-500/30 flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 pointer-events-auto"
-                  title="Skapa nytt objekt"
-                >
-                  <Plus size={26} strokeWidth={2.5} />
-                </button>
+                {/* + button - also hidden in demo mode for non-admins */}
+                {!(showDemoObjects && !isAdmin) && (
+                  <button 
+                    onClick={() => { setEditingObject(null); setShowCreateModal(true); }} 
+                    className="absolute bottom-6 right-2 w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-2xl shadow-xl shadow-blue-500/30 flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 pointer-events-auto"
+                    title="Skapa nytt objekt"
+                  >
+                    <Plus size={26} strokeWidth={2.5} />
+                  </button>
+                )}
                 {/* Back to object button - shows when we navigated to map from ObjectDetail */}
                 {viewMode === 'map' && returnToObjectId && (
                   <button
@@ -1929,7 +1982,7 @@ function App() {
                       setMapCenter(null);
                       setReturnToObjectId(null);
                     }}
-                    className="absolute bottom-24 right-0 w-14 h-14 bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-400 hover:to-purple-500 backdrop-blur-sm rounded-2xl shadow-xl shadow-purple-500/30 flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 pointer-events-auto"
+                    className="absolute bottom-24 right-2 w-14 h-14 bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-400 hover:to-purple-500 backdrop-blur-sm rounded-2xl shadow-xl shadow-purple-500/30 flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 pointer-events-auto"
                     title="Tillbaka till objekt"
                   >
                     <ArrowLeft size={22} />
@@ -1947,7 +2000,7 @@ function App() {
                       setMapCenter(null);
                     }
                   }}
-                  className={`absolute right-0 w-14 h-14 bg-gray-800/90 hover:bg-gray-700 backdrop-blur-sm rounded-2xl shadow-xl flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 border border-white/10 pointer-events-auto ${
+                  className={`absolute right-2 w-14 h-14 bg-gray-800/90 hover:bg-gray-700 backdrop-blur-sm rounded-2xl shadow-xl flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 border border-white/10 pointer-events-auto ${
                     viewMode === 'map' && returnToObjectId ? 'bottom-[10.5rem]' : 'bottom-24'
                   }`}
                   title={viewMode === 'list' ? 'Visa karta' : 'Visa lista'}
@@ -1960,7 +2013,7 @@ function App() {
             {showQuickCapture && (
               <button
                 onClick={handleQuickCapture}
-                className={`absolute right-0 w-14 h-14 bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 rounded-2xl shadow-xl shadow-orange-500/30 flex items-center justify-center text-white hover:scale-105 active:scale-95 transition-all duration-300 pointer-events-auto ${
+                className={`absolute right-2 w-14 h-14 bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 rounded-2xl shadow-xl shadow-orange-500/30 flex items-center justify-center text-white hover:scale-105 active:scale-95 transition-all duration-300 pointer-events-auto ${
                   (selectedObject || showCreateModal || showCategoryAdmin || showObjectsAdmin || showShareModal) 
                     ? 'bottom-6' 
                     : viewMode === 'map' && returnToObjectId 
@@ -2506,6 +2559,11 @@ function App() {
                         onClick={() => {
                           const newValue = !showDemoObjects;
                           setShowDemoObjects(newValue);
+                          if (newValue) {
+                            // Clear filters that don't make sense in demo mode
+                            setShowOnlyOwned(false);
+                            setShowFavoritesOnly(false);
+                          }
                           localStorage.setItem('showDemoObjects', String(newValue));
                         }}
                         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
@@ -2615,7 +2673,17 @@ function App() {
             
             {/* Footer with logout */}
             {user && (
-              <div className="flex-shrink-0 p-4 border-t border-white/10">
+              <div className="flex-shrink-0 p-4 border-t border-white/10 space-y-2">
+                <button
+                  onClick={() => {
+                    setShowMenu(false);
+                    handleSwitchAccount();
+                  }}
+                  className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-white/5 hover:bg-blue-500/20 text-gray-400 hover:text-blue-400 transition-all"
+                >
+                  <Users size={18} />
+                  <span className="text-sm font-medium">Byt konto</span>
+                </button>
                 <button
                   onClick={() => {
                     setShowMenu(false);

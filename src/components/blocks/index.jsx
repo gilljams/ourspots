@@ -1866,7 +1866,8 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
     );
   };
   
-  if (options.length === 0) {
+  // Only show empty state if no options AND suggestions are not allowed
+  if (options.length === 0 && !allowSuggestions) {
     return (
       <div className="text-gray-500 text-sm py-2">
         Inga alternativ har lagts till än.
@@ -1985,7 +1986,7 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
                     <div className="flex-1 min-w-0">
                       {option.url ? (
                         <a 
-                          href={option.url} 
+                          href={option.url.startsWith('http') ? option.url : `https://${option.url}`} 
                           target="_blank" 
                           rel="noopener noreferrer"
                           className={`text-sm truncate flex items-center gap-1.5 hover:underline ${isWinner ? 'text-amber-100 font-medium' : 'text-blue-400'}`}
@@ -2106,104 +2107,115 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
             </div>
           )}
           
-          {/* Footer with toggle, add suggestion, close button - all on one row */}
-          <div className="flex items-center justify-between pt-2 flex-wrap gap-2">
-            <div className="flex items-center gap-3 flex-1">
-              {/* Add suggestion - expanded mode takes full width */}
-              {allowSuggestions && !isClosed && currentUserKey && onAddOption && showSuggestionInput ? (
-                <div className="flex items-center gap-1 w-full">
-                  <input
-                    type="text"
-                    value={newSuggestion}
-                    onChange={(e) => setNewSuggestion(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && newSuggestion.trim()) {
-                        const finalUrl = newSuggestionUrl.trim();
-                        const processedUrl = finalUrl && !finalUrl.match(/^https?:\/\//) 
-                          ? `https://${finalUrl.replace(/^www\./, 'www.')}` 
-                          : finalUrl;
-                        onAddOption(newSuggestion.trim(), currentUserKey, pollType === 'ranked' ? processedUrl : null);
-                        setNewSuggestion('');
-                        setNewSuggestionUrl('');
-                        setShowSuggestionInput(false);
-                      } else if (e.key === 'Escape') {
-                        setNewSuggestion('');
-                        setNewSuggestionUrl('');
-                        setShowSuggestionInput(false);
-                      }
-                    }}
-                    placeholder="Förslag..."
-                    className={`${pollType === 'ranked' ? 'w-2/5' : 'flex-1'} min-w-0 px-2 py-1.5 text-sm bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-blue-500 text-white placeholder-gray-500`}
-                    autoFocus
-                  />
-                  {pollType === 'ranked' && (
-                    <input
-                      type="text"
-                      value={newSuggestionUrl}
-                      onChange={(e) => setNewSuggestionUrl(e.target.value)}
-                      placeholder="www..."
-                      className="w-2/5 min-w-0 px-2 py-1.5 text-sm bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-blue-500 text-white placeholder-gray-500"
-                    />
-                  )}
-                  <button
-                    onClick={() => {
-                      if (newSuggestion.trim()) {
-                        const finalUrl = newSuggestionUrl.trim();
-                        const processedUrl = finalUrl && !finalUrl.match(/^https?:\/\//) 
-                          ? `https://${finalUrl.replace(/^www\./, 'www.')}` 
-                          : finalUrl;
-                        onAddOption(newSuggestion.trim(), currentUserKey, pollType === 'ranked' ? processedUrl : null);
-                        setNewSuggestion('');
-                        setNewSuggestionUrl('');
-                        setShowSuggestionInput(false);
-                      }
-                    }}
-                    disabled={!newSuggestion.trim()}
-                    className="w-[10%] aspect-square flex-shrink-0 flex items-center justify-center text-green-400 hover:bg-green-500/20 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    title="Lägg till"
-                  >
-                    <Check size={16} />
-                  </button>
-                  <button
-                    onClick={() => {
+          {/* Suggestion input - separate section above footer */}
+          {allowSuggestions && !isClosed && currentUserKey && onAddOption && showSuggestionInput && (
+            <div className="space-y-2 p-3 bg-white/5 rounded-lg border border-white/10">
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={newSuggestion}
+                  onChange={(e) => setNewSuggestion(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newSuggestion.trim()) {
+                      const finalUrl = newSuggestionUrl.trim();
+                      const processedUrl = finalUrl && !finalUrl.match(/^https?:\/\//) 
+                        ? `https://${finalUrl.replace(/^www\./, 'www.')}` 
+                        : finalUrl;
+                      onAddOption(newSuggestion.trim(), currentUserKey, pollType === 'ranked' ? processedUrl : null);
                       setNewSuggestion('');
                       setNewSuggestionUrl('');
                       setShowSuggestionInput(false);
-                    }}
-                    className="w-[10%] aspect-square flex-shrink-0 flex items-center justify-center text-gray-400 hover:bg-white/10 rounded-lg transition-colors"
-                    title="Avbryt"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
+                    } else if (e.key === 'Escape') {
+                      setNewSuggestion('');
+                      setNewSuggestionUrl('');
+                      setShowSuggestionInput(false);
+                    }
+                  }}
+                  placeholder={pollType === 'ranked' ? "Nytt alternativ" : "Nytt förslag"}
+                  className="flex-1 min-w-0 px-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-blue-500 text-white placeholder-gray-500"
+                  autoFocus
+                />
+                <button
+                  onClick={() => {
+                    if (newSuggestion.trim()) {
+                      const finalUrl = newSuggestionUrl.trim();
+                      const processedUrl = finalUrl && !finalUrl.match(/^https?:\/\//) 
+                        ? `https://${finalUrl.replace(/^www\./, 'www.')}` 
+                        : finalUrl;
+                      onAddOption(newSuggestion.trim(), currentUserKey, pollType === 'ranked' ? processedUrl : null);
+                      setNewSuggestion('');
+                      setNewSuggestionUrl('');
+                      setShowSuggestionInput(false);
+                    }
+                  }}
+                  disabled={!newSuggestion.trim()}
+                  className="w-8 h-8 flex-shrink-0 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                  title="Lägg till"
+                >
+                  <Plus size={16} />
+                </button>
+                <button
+                  onClick={() => {
+                    setNewSuggestion('');
+                    setNewSuggestionUrl('');
+                    setShowSuggestionInput(false);
+                  }}
+                  className="w-8 h-8 flex-shrink-0 rounded-lg bg-white/5 text-gray-400 hover:bg-white/10 transition-colors flex items-center justify-center"
+                  title="Avbryt"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+              {pollType === 'ranked' && (
+                <input
+                  type="text"
+                  value={newSuggestionUrl}
+                  onChange={(e) => setNewSuggestionUrl(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newSuggestion.trim()) {
+                      const finalUrl = newSuggestionUrl.trim();
+                      const processedUrl = finalUrl && !finalUrl.match(/^https?:\/\//) 
+                        ? `https://${finalUrl.replace(/^www\./, 'www.')}` 
+                        : finalUrl;
+                      onAddOption(newSuggestion.trim(), currentUserKey, pollType === 'ranked' ? processedUrl : null);
+                      setNewSuggestion('');
+                      setNewSuggestionUrl('');
+                      setShowSuggestionInput(false);
+                    }
+                  }}
+                  placeholder="www.example.com"
+                  className="w-full px-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-blue-500 text-blue-400 placeholder-gray-500"
+                />
+              )}
+            </div>
+          )}
+          
+          {/* Footer with toggle, add suggestion button, info text */}
+          <div className="flex items-center justify-between pt-2 flex-wrap gap-2">
+            <div className="flex items-center gap-3 flex-1">
+              {/* Show names toggle - compact switch */}
+              {participants.length > 0 || (pollType === 'ranked' && Object.keys(votes).length > 0) ? (
+                <button
+                  onClick={() => setShowDetails(!showDetails)}
+                  className={`relative w-12 h-6 rounded-full transition-colors ${showDetails ? 'bg-blue-500/30' : 'bg-white/10'}`}
+                  title={showDetails ? 'Kompakt vy' : 'Visa namn'}
+                >
+                  <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform flex items-center justify-center ${showDetails ? 'translate-x-7' : 'translate-x-1'}`}>
+                    {showDetails ? <Users size={10} className="text-blue-600" /> : <Vote size={10} className="text-gray-600" />}
+                  </div>
+                </button>
               ) : (
-                <>
-                  {/* Show names toggle - compact switch */}
-                  {participants.length > 0 || (pollType === 'ranked' && Object.keys(votes).length > 0) ? (
-                    <button
-                      onClick={() => setShowDetails(!showDetails)}
-                      className={`relative w-12 h-6 rounded-full transition-colors ${showDetails ? 'bg-blue-500/30' : 'bg-white/10'}`}
-                      title={showDetails ? 'Kompakt vy' : 'Visa namn'}
-                    >
-                      <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform flex items-center justify-center ${showDetails ? 'translate-x-7' : 'translate-x-1'}`}>
-                        {showDetails ? <Users size={10} className="text-blue-600" /> : <Vote size={10} className="text-gray-600" />}
-                      </div>
-                    </button>
-                  ) : (
-                    <span className="text-xs text-gray-500">Ingen har röstat än</span>
-                  )}
-                  {/* Föreslå button - inline with toggle */}
-                  {allowSuggestions && !isClosed && currentUserKey && onAddOption && (
-                    <button
-                      onClick={() => setShowSuggestionInput(true)}
-                      className="py-1.5 px-3 text-sm text-blue-400 hover:bg-white/5 rounded-lg flex items-center gap-1 transition-colors border border-white/10"
-                    >
-                      <Plus size={14} />
-                      Föreslå
-                      <ChevronRight size={14} />
-                    </button>
-                  )}
-                </>
+                <span className="text-xs text-gray-500">Ingen har röstat än</span>
+              )}
+              {/* Föreslå button - only when input not visible */}
+              {allowSuggestions && !isClosed && currentUserKey && onAddOption && !showSuggestionInput && (
+                <button
+                  onClick={() => setShowSuggestionInput(true)}
+                  className="py-1.5 px-3 text-sm text-blue-400 hover:bg-blue-500/10 rounded-lg flex items-center gap-1.5 transition-colors border border-blue-500/20"
+                >
+                  <Plus size={14} />
+                  Föreslå
+                </button>
               )}
             </div>
             

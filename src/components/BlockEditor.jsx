@@ -1782,10 +1782,7 @@ function DateTagBlockEditor({ block, onUpdate, onRemove, onMove, index, total, s
 // Timer block editor component
 function TimerBlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }) {
   const [timers, setTimers] = useState(block.timers || []);
-  const [newLabel, setNewLabel] = useState('');
-  const [newDuration, setNewDuration] = useState('');
   const [isExpanded, setIsExpanded] = useState(false);
-  const containerRef = React.useRef(null);
 
   // Sync timers state when block changes (e.g., after move)
   React.useEffect(() => {
@@ -1797,22 +1794,53 @@ function TimerBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
   };
 
   const addTimer = () => {
-    // Support both . and , as decimal separator
-    const normalizedDuration = newDuration.replace(',', '.');
-    const duration = parseFloat(normalizedDuration);
-    if (!newLabel.trim() || isNaN(duration) || duration <= 0) return;
-    
-    const updated = [...timers, { label: newLabel.trim(), duration }];
+    const newTimer = { label: '', duration: 5 };
+    const updated = [...timers, newTimer];
     setTimers(updated);
     syncToParent(updated);
-    setNewLabel('');
-    setNewDuration('');
+    
+    // Focus on the new timer's label input
+    setTimeout(() => {
+      const inputs = document.querySelectorAll('[data-timer-label]');
+      const lastInput = inputs[inputs.length - 1];
+      if (lastInput) lastInput.focus();
+    }, 10);
+  };
+
+  const updateTimer = (timerIndex, updates) => {
+    const updated = timers.map((t, i) => i === timerIndex ? { ...t, ...updates } : t);
+    setTimers(updated);
+  };
+
+  const syncTimer = () => {
+    syncToParent(timers);
   };
 
   const removeTimer = (timerIndex) => {
     const updated = timers.filter((_, i) => i !== timerIndex);
     setTimers(updated);
     syncToParent(updated);
+  };
+
+  const handleTimerKeyDown = (e, timerIndex, field) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    
+    const isLastTimer = timerIndex === timers.length - 1;
+    
+    if (field === 'label') {
+      // Go to duration field
+      const durationInput = document.querySelectorAll('[data-timer-duration]')[timerIndex];
+      if (durationInput) durationInput.focus();
+    } else if (field === 'duration') {
+      // Go to next timer or add new
+      if (isLastTimer) {
+        addTimer();
+      } else {
+        const nextLabel = document.querySelectorAll('[data-timer-label]')[timerIndex + 1];
+        if (nextLabel) nextLabel.focus();
+      }
+    }
   };
 
   return (
@@ -1828,7 +1856,7 @@ function TimerBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
             size={16} 
             className={`text-gray-500 transition-transform flex-shrink-0 ${isExpanded ? '' : '-rotate-90'}`} 
           />
-          <Timer size={16} className="text-orange-400 flex-shrink-0" />
+          <Timer size={16} className="text-blue-400 flex-shrink-0" />
           <span className="text-sm font-medium text-gray-300 truncate">
             Timers
           </span>
@@ -1852,57 +1880,65 @@ function TimerBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
       {/* Expandable content */}
       {isExpanded && (
         <div className="px-3 pb-3 space-y-3">
-          {/* Existing timers */}
+          {/* Timers list - inline editable */}
           {timers.length > 0 && (
             <div className="space-y-2">
               {timers.map((timer, i) => (
-                <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-white/5">
-                  <Timer size={14} className="text-orange-400 flex-shrink-0" />
-                  <span className="flex-1 text-sm text-white truncate">{timer.label}</span>
-                  <span className="text-sm text-gray-400">{timer.duration % 1 === 0 ? timer.duration : timer.duration.toFixed(1)} min</span>
+                <div key={i} className="flex items-center gap-2">
+                  <span className="text-gray-500 text-sm w-5">{i + 1}.</span>
+                  <input
+                    type="text"
+                    data-timer-label
+                    value={timer.label}
+                    onChange={(e) => updateTimer(i, { label: e.target.value })}
+                    onBlur={syncTimer}
+                    onKeyDown={(e) => handleTimerKeyDown(e, i, 'label')}
+                    placeholder="Namn"
+                    disabled={saving}
+                    className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                  />
+                  <input
+                    type="text"
+                    data-timer-duration
+                    inputMode="decimal"
+                    value={timer.duration}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(',', '.');
+                      const num = parseFloat(val);
+                      if (!isNaN(num) && num > 0) {
+                        updateTimer(i, { duration: num });
+                      } else if (val === '' || val === '0') {
+                        updateTimer(i, { duration: 0 });
+                      }
+                    }}
+                    onBlur={syncTimer}
+                    onKeyDown={(e) => handleTimerKeyDown(e, i, 'duration')}
+                    placeholder="Min"
+                    disabled={saving}
+                    className="w-16 flex-shrink-0 px-2 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500 text-center"
+                  />
                   <button
                     type="button"
                     onClick={() => removeTimer(i)}
-                    className="w-6 h-6 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center"
+                    className="w-8 h-8 flex-shrink-0 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center"
                   >
-                    <X size={12} />
+                    <X size={14} />
                   </button>
                 </div>
               ))}
             </div>
           )}
 
-          {/* Add new timer */}
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={newLabel}
-              onChange={(e) => setNewLabel(e.target.value)}
-              placeholder="Namn"
-              disabled={saving}
-              autoComplete="off"
-              autoCorrect="off"
-              className="w-0 flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-orange-500"
-            />
-            <input
-              type="text"
-              inputMode="decimal"
-              value={newDuration}
-              onChange={(e) => setNewDuration(e.target.value)}
-              placeholder="Min"
-              disabled={saving}
-              autoComplete="off"
-              className="w-16 flex-shrink-0 px-2 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-orange-500 text-center"
-            />
-            <button
-              type="button"
-              onClick={addTimer}
-              disabled={saving || !newLabel.trim() || !newDuration}
-              className="w-10 h-10 flex-shrink-0 rounded-lg bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 disabled:opacity-50 transition-colors flex items-center justify-center"
-            >
-              <Plus size={18} />
-            </button>
-          </div>
+          {/* Add timer button */}
+          <button
+            type="button"
+            onClick={addTimer}
+            disabled={saving}
+            className="py-1.5 px-3 text-sm text-blue-400 hover:bg-blue-500/10 rounded-lg flex items-center gap-1.5 transition-colors border border-blue-500/20"
+          >
+            <Plus size={14} />
+            Lägg till timer
+          </button>
         </div>
       )}
     </div>
@@ -1916,8 +1952,6 @@ function PollBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
   const [options, setOptions] = useState(block.options || []);
   const [allowSuggestions, setAllowSuggestions] = useState(block.allowSuggestions || false);
   const [defaultCollapsed, setDefaultCollapsed] = useState(block.defaultCollapsed ?? false);
-  const [newOption, setNewOption] = useState('');
-  const [newOptionUrl, setNewOptionUrl] = useState('');
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Use refs to always have latest values
@@ -1965,21 +1999,18 @@ function PollBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
   const voteCount = Object.keys(block.votes || {}).length;
 
   const addOption = () => {
-    if (!newOption.trim()) return;
     const newOpt = {
       id: Math.random().toString(36).substr(2, 9),
-      label: newOption.trim(),
-      ...(pollType === 'ranked' && newOptionUrl.trim() ? { url: newOptionUrl.trim() } : {})
+      label: '',
+      ...(pollType === 'ranked' ? { url: '' } : {})
     };
     const newOptions = [...options, newOpt];
     setOptions(newOptions);
-    setNewOption('');
-    setNewOptionUrl('');
     syncToParent(title, newOptions);
     
-    // Focus back on new option input after adding
+    // Focus on the new option's label input
     setTimeout(() => {
-      const input = document.querySelector('[data-poll-new-option]');
+      const input = document.querySelector(`[data-poll-label="${newOpt.id}"]`);
       if (input) input.focus();
     }, 10);
   };
@@ -1999,10 +2030,9 @@ function PollBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
         const urlInput = document.querySelector(`[data-poll-url="${optionId}"]`);
         if (urlInput) urlInput.focus();
       } else if (field === 'url') {
-        // Go to next option's label, or focus new option input
+        // Go to next option's label, or add new option
         if (isLastOption) {
-          const newInput = document.querySelector('[data-poll-new-option]');
-          if (newInput) newInput.focus();
+          addOption();
         } else {
           const nextLabel = document.querySelector(`[data-poll-label="${options[optionIndex + 1].id}"]`);
           if (nextLabel) nextLabel.focus();
@@ -2011,35 +2041,11 @@ function PollBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
     } else {
       // For date polls: label -> next label (or add new)
       if (isLastOption) {
-        const newInput = document.querySelector('[data-poll-new-option]');
-        if (newInput) newInput.focus();
+        addOption();
       } else {
         const nextLabel = document.querySelector(`[data-poll-label="${options[optionIndex + 1].id}"]`);
         if (nextLabel) nextLabel.focus();
       }
-    }
-  };
-  
-  const handleNewOptionKeyDown = (e) => {
-    if (e.key !== 'Enter') return;
-    e.preventDefault();
-    
-    if (pollType === 'ranked' && newOption.trim()) {
-      // Go to URL field first
-      const urlInput = document.querySelector('[data-poll-new-url]');
-      if (urlInput) urlInput.focus();
-    } else if (newOption.trim()) {
-      // Add option and stay on new option input
-      addOption();
-    }
-  };
-  
-  const handleNewUrlKeyDown = (e) => {
-    if (e.key !== 'Enter') return;
-    e.preventDefault();
-    
-    if (newOption.trim()) {
-      addOption();
     }
   };
 
@@ -2074,7 +2080,7 @@ function PollBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
             size={16} 
             className={`text-gray-500 transition-transform flex-shrink-0 ${isExpanded ? '' : '-rotate-90'}`} 
           />
-          <BarChart3 size={16} className="text-indigo-400 flex-shrink-0" />
+          <BarChart3 size={16} className="text-blue-400 flex-shrink-0" />
           <span className="text-sm font-medium text-gray-300 truncate">
             {title || 'Omröstning'}
           </span>
@@ -2105,7 +2111,7 @@ function PollBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
               onClick={() => handlePollTypeChange('date')}
               className={`flex-1 px-3 py-2 rounded-lg text-sm transition-colors ${
                 pollType === 'date' 
-                  ? 'bg-indigo-500/20 text-indigo-400 ring-1 ring-indigo-500/50' 
+                  ? 'bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/50' 
                   : 'bg-white/5 text-gray-400 hover:bg-white/10'
               }`}
             >
@@ -2116,7 +2122,7 @@ function PollBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
               onClick={() => handlePollTypeChange('ranked')}
               className={`flex-1 px-3 py-2 rounded-lg text-sm transition-colors ${
                 pollType === 'ranked' 
-                  ? 'bg-indigo-500/20 text-indigo-400 ring-1 ring-indigo-500/50' 
+                  ? 'bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/50' 
                   : 'bg-white/5 text-gray-400 hover:bg-white/10'
               }`}
             >
@@ -2134,7 +2140,7 @@ function PollBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
               onBlur={() => syncToParent(title, options)}
               placeholder={pollType === 'ranked' ? "Fråga (t.ex. 'Bästa pizzerian?')" : "Fråga (t.ex. 'När passar helgen?')"}
               disabled={saving}
-              className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+              className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500"
             />
           </div>
 
@@ -2142,9 +2148,9 @@ function PollBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
           {options.length > 0 && (
             <div className="space-y-2">
               {options.map((option, i) => (
-                <div key={option.id} className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-gray-500 text-sm w-5">{i + 1}.</span>
+                <div key={option.id} className="flex items-start gap-2">
+                  <span className="text-gray-500 text-sm w-5 pt-2.5">{i + 1}.</span>
+                  <div className="flex-1 space-y-1">
                     <input
                       type="text"
                       data-poll-label={option.id}
@@ -2152,76 +2158,54 @@ function PollBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
                       onChange={(e) => updateOption(option.id, { label: e.target.value })}
                       onBlur={syncOption}
                       onKeyDown={(e) => handleOptionKeyDown(e, option.id, 'label')}
+                      placeholder={pollType === 'ranked' ? "Alternativ (t.ex. 'Pizzeria X')" : "Alternativ (t.ex. '1-3 maj')"}
                       disabled={saving}
-                      className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base focus:outline-none focus:border-indigo-500"
+                      className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500"
                     />
-                    <button
-                      type="button"
-                      onClick={() => removeOption(option.id)}
-                      className="w-8 h-8 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center"
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
-                  {/* URL field for ranked polls */}
-                  {pollType === 'ranked' && (
-                    <div className="flex items-center gap-2 ml-7">
+                    {/* URL field for ranked polls */}
+                    {pollType === 'ranked' && (
                       <input
-                        type="url"
+                        type="text"
                         data-poll-url={option.id}
                         value={option.url || ''}
                         onChange={(e) => updateOption(option.id, { url: e.target.value })}
                         onBlur={syncOption}
                         onKeyDown={(e) => handleOptionKeyDown(e, option.id, 'url')}
-                        placeholder="Länk (valfritt)"
+                        placeholder="www.example.com"
                         disabled={saving}
-                        className="flex-1 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-blue-400 text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+                        className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-blue-400 text-base placeholder-gray-500 focus:outline-none focus:border-blue-500"
                       />
-                    </div>
-                  )}
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeOption(option.id)}
+                    className="w-8 h-8 mt-1 flex-shrink-0 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center"
+                  >
+                    <X size={14} />
+                  </button>
                 </div>
               ))}
             </div>
           )}
 
-          {/* Add new option */}
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-gray-500 text-sm w-5">{options.length + 1}.</span>
-              <input
-                type="text"
-                data-poll-new-option
-                value={newOption}
-                onChange={(e) => setNewOption(e.target.value)}
-                onKeyDown={handleNewOptionKeyDown}
-                placeholder={pollType === 'ranked' ? "Nytt alternativ (t.ex. 'Pizzeria X')" : "Nytt alternativ (t.ex. '1-3 maj')"}
-                disabled={saving}
-                className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-indigo-500"
-              />
-              <button
-                type="button"
-                onClick={addOption}
-                disabled={saving || !newOption.trim()}
-                className="w-8 h-8 flex-shrink-0 rounded-lg bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30 disabled:opacity-50 transition-colors flex items-center justify-center"
-              >
-                <Plus size={18} />
-              </button>
-            </div>
-            {/* URL field for new option in ranked polls */}
-            {pollType === 'ranked' && (
-              <div className="flex items-center gap-2 ml-7">
-                <input
-                  type="url"
-                  data-poll-new-url
-                  value={newOptionUrl}
-                  onChange={(e) => setNewOptionUrl(e.target.value)}
-                  onKeyDown={handleNewUrlKeyDown}
-                  placeholder="Länk (valfritt)"
-                  disabled={saving}
-                  className="flex-1 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-blue-400 text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500"
-                />
-              </div>
+          {/* Add option button */}
+          <div>
+            {options.length === 0 && allowSuggestions && (
+              <p className="text-xs text-emerald-400/80 flex items-center gap-1.5 mb-2">
+                <span className="text-emerald-400">✓</span>
+                Deltagare kan föreslå egna alternativ
+              </p>
             )}
+            <button
+              type="button"
+              onClick={addOption}
+              disabled={saving}
+              className="py-1.5 px-3 text-sm text-blue-400 hover:bg-blue-500/10 rounded-lg flex items-center gap-1.5 transition-colors border border-blue-500/20"
+            >
+              <Plus size={14} />
+              Lägg till alternativ
+            </button>
           </div>
 
           {/* Instructions + Reset button */}

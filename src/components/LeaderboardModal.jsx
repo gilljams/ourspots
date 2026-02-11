@@ -1,5 +1,263 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, ChevronLeft, ChevronRight, Play, Pause, Edit3, Save, Plus, User, Trophy, Trash2, Lock, Unlock } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Play, Pause, Edit3, Save, Plus, User, Trophy, Trash2, Lock, Unlock, BarChart2, ChevronDown } from 'lucide-react';
+
+// Stacked bar chart comparing user vs average
+const ComparisonChart = ({ scores, participants, roundCount, currentUserEmail, sortOrder }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  // High-contrast blue palette - curated for visual distinction
+  const roundColors = [
+    '#93C5FD', // light blue (blue-300)
+    '#3B82F6', // primary blue (blue-500)
+    '#1D4ED8', // deep blue (blue-700)
+    '#1E3A8A', // dark navy (blue-900)
+    '#60A5FA', // sky blue (blue-400)
+    '#2563EB', // royal blue (blue-600)
+    '#1E40AF', // navy (blue-800)
+    '#BFDBFE', // pale blue (blue-200)
+  ];
+  
+  const getColor = (index) => roundColors[index % roundColors.length];
+  
+  // Calculate user and average scores per round
+  const userScores = [];
+  const avgScores = [];
+  let userTotal = 0;
+  let avgTotal = 0;
+  
+  for (let r = 0; r < roundCount; r++) {
+    // User score for this round
+    const userScore = scores[currentUserEmail]?.[r] || 0;
+    userScores.push(userScore);
+    userTotal += userScore;
+    
+    // Average score for this round
+    let roundSum = 0;
+    let roundCount_ = 0;
+    participants.forEach(p => {
+      const score = scores[p.email]?.[r] || 0;
+      roundSum += score;
+      roundCount_++;
+    });
+    const avgScore = roundCount_ > 0 ? roundSum / roundCount_ : 0;
+    avgScores.push(avgScore);
+    avgTotal += avgScore;
+  }
+  
+  // Find max to scale bars
+  const maxTotal = Math.max(userTotal, avgTotal, 1);
+  
+  // Check if user is participating
+  const userParticipant = participants.find(p => p.email?.toLowerCase() === currentUserEmail);
+  if (!userParticipant || roundCount === 0) return null;
+  
+  // SVG dimensions
+  const svgWidth = 280;
+  const svgHeight = 130;
+  const barWidth = 52;
+  const barSpacing = 48;
+  const startX = 64;
+  const maxBarHeight = 85;
+  const bottomY = 105;
+  const segmentGap = 1; // Subtle gap between segments
+  const cornerRadius = 6; // Rounded top corners
+  
+  // Build stacked bars with rounded top
+  const buildStackedBar = (values, x, label, total, isUser) => {
+    const segments = [];
+    let currentY = bottomY;
+    const barHeight = (total / maxTotal) * maxBarHeight;
+    
+    // Filter out zero values and calculate positions
+    const nonZeroValues = values.map((v, i) => ({ value: v, index: i })).filter(v => v.value > 0);
+    
+    nonZeroValues.forEach((item, arrayIdx) => {
+      const segmentHeight = (item.value / total) * barHeight - segmentGap;
+      currentY -= segmentHeight + segmentGap;
+      const isTopSegment = arrayIdx === nonZeroValues.length - 1;
+      
+      if (isTopSegment) {
+        // Rounded top corners only on topmost segment
+        segments.push(
+          <path
+            key={item.index}
+            d={`
+              M ${x} ${currentY + cornerRadius}
+              Q ${x} ${currentY} ${x + cornerRadius} ${currentY}
+              L ${x + barWidth - cornerRadius} ${currentY}
+              Q ${x + barWidth} ${currentY} ${x + barWidth} ${currentY + cornerRadius}
+              L ${x + barWidth} ${currentY + segmentHeight}
+              L ${x} ${currentY + segmentHeight}
+              Z
+            `}
+            fill={getColor(item.index)}
+            className="transition-all duration-500"
+          />
+        );
+      } else {
+        segments.push(
+          <rect
+            key={item.index}
+            x={x}
+            y={currentY}
+            width={barWidth}
+            height={segmentHeight}
+            fill={getColor(item.index)}
+            className="transition-all duration-500"
+          />
+        );
+      }
+    });
+    
+    // Subtle highlight overlay on the bar
+    const highlightGradientId = `highlight-${isUser ? 'user' : 'avg'}`;
+    
+    return (
+      <g key={label}>
+        {/* Gradient definition for subtle sheen */}
+        <defs>
+          <linearGradient id={highlightGradientId} x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="rgba(255,255,255,0.08)" />
+            <stop offset="50%" stopColor="rgba(255,255,255,0)" />
+            <stop offset="100%" stopColor="rgba(0,0,0,0.05)" />
+          </linearGradient>
+        </defs>
+        
+        {/* Bar segments */}
+        {segments}
+        
+        {/* Subtle sheen overlay */}
+        <rect
+          x={x}
+          y={bottomY - barHeight}
+          width={barWidth}
+          height={barHeight}
+          fill={`url(#${highlightGradientId})`}
+          rx={cornerRadius}
+          pointerEvents="none"
+        />
+        
+        {/* Label below bar */}
+        <text
+          x={x + barWidth / 2}
+          y={bottomY + 16}
+          textAnchor="middle"
+          className="fill-gray-400"
+          style={{ fontSize: '11px', fontWeight: 500, letterSpacing: '0.02em' }}
+        >
+          {label}
+        </text>
+        
+        {/* Total above bar */}
+        <text
+          x={x + barWidth / 2}
+          y={bottomY - barHeight - 8}
+          textAnchor="middle"
+          className="fill-gray-200"
+          style={{ fontSize: '13px', fontWeight: 600 }}
+        >
+          {Math.round(total)}
+        </text>
+      </g>
+    );
+  };
+  
+  return (
+    <div className="border-t border-white/10">
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full flex items-center gap-2 px-4 py-3 text-left hover:bg-white/5 transition-colors"
+      >
+        <BarChart2 size={14} className="text-gray-500" />
+        <span className="text-sm text-gray-400 flex-1">Jämförelse</span>
+        <ChevronDown 
+          size={14} 
+          className={`text-gray-500 transition-transform ${isExpanded ? 'rotate-0' : '-rotate-90'}`} 
+        />
+      </button>
+      
+      {isExpanded && (
+        <div className="px-4 pb-4">
+          <svg width="100%" viewBox={`0 0 ${svgWidth} ${svgHeight + 20}`} className="max-w-[300px] mx-auto">
+            {/* Subtle grid line */}
+            <line 
+              x1={startX - 8} 
+              y1={bottomY} 
+              x2={startX + 2 * barWidth + barSpacing + 8} 
+              y2={bottomY} 
+              stroke="rgba(255,255,255,0.08)" 
+              strokeWidth="1"
+            />
+            
+            {/* Bars */}
+            {buildStackedBar(userScores, startX, 'Du', userTotal, true)}
+            {buildStackedBar(avgScores, startX + barWidth + barSpacing, 'Snitt', avgTotal, false)}
+          </svg>
+          
+          {/* Legend - pill style */}
+          <div className="flex flex-wrap gap-2 justify-center mt-3">
+            {Array.from({ length: roundCount }).map((_, idx) => (
+              <div 
+                key={idx} 
+                className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white/5"
+              >
+                <div 
+                  className="w-2 h-2 rounded-full" 
+                  style={{ backgroundColor: getColor(idx) }}
+                />
+                <span className="text-[10px] text-gray-400 font-medium">R{idx + 1}</span>
+              </div>
+            ))}
+          </div>
+          
+          {/* Statistics row */}
+          {(() => {
+            const diff = userTotal - avgTotal;
+            const diffSign = diff >= 0 ? '+' : '';
+            const diffColor = diff >= 0 ? 'text-emerald-400' : 'text-rose-400';
+            
+            // Find best and worst rounds
+            let bestRound = { index: 0, score: userScores[0] || 0 };
+            let worstRound = { index: 0, score: userScores[0] || 0 };
+            
+            userScores.forEach((score, idx) => {
+              if (score > bestRound.score) bestRound = { index: idx, score };
+              if (score < worstRound.score) worstRound = { index: idx, score };
+            });
+            
+            return (
+              <div className="mt-4 pt-3 border-t border-white/5 space-y-2">
+                {/* Diff vs average */}
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-gray-500">Vs snitt</span>
+                  <span className={`text-sm font-semibold tabular-nums ${diffColor}`}>
+                    {diffSign}{diff.toFixed(1)}p
+                  </span>
+                </div>
+                
+                {/* Best & worst round */}
+                {roundCount > 1 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500">Bäst / Sämst</span>
+                    <div className="flex items-center gap-3 text-sm tabular-nums">
+                      <span className="text-emerald-400">
+                        R{bestRound.index + 1} <span className="text-gray-500">({bestRound.score}p)</span>
+                      </span>
+                      <span className="text-gray-600">/</span>
+                      <span className="text-rose-400">
+                        R{worstRound.index + 1} <span className="text-gray-500">({worstRound.score}p)</span>
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+        </div>
+      )}
+    </div>
+  );
+};
 
 // Triangle up/down icons for rank change
 const TriangleUp = ({ className }) => (
@@ -777,6 +1035,17 @@ export default function LeaderboardModal({
           </div>
         )}
       </div>
+      
+      {/* Comparison chart - only show when not editing and has rounds */}
+      {!isEditing && roundCount > 0 && (
+        <ComparisonChart
+          scores={scores}
+          participants={participants}
+          roundCount={roundCount}
+          currentUserEmail={currentUserEmail}
+          sortOrder={sortOrder}
+        />
+      )}
       
       {/* Footer - Edit mode actions */}
       {isEditing && (
