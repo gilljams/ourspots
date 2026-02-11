@@ -2349,7 +2349,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
       {leaderboardModalData && (
         <LeaderboardModal
           data={leaderboardModalData.data}
-          currentUser={currentUser}
+          currentUser={effectiveUser}
           shares={object.shares || {}}
           canEdit={canEdit}
           onClose={() => setLeaderboardModalData(null)}
@@ -2537,7 +2537,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
       {distributionModalData && (
         <DistributionModal
           data={object.blocks[distributionModalData.blockIndex]?.data || distributionModalData.data}
-          currentUser={currentUser}
+          currentUser={effectiveUser}
           shares={object.shares || {}}
           canEdit={canEdit}
           onClose={() => setDistributionModalData(null)}
@@ -2548,7 +2548,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
               
               // If user needs to leave another slot first, remove them
               if (leaveSlotId) {
-                const currentUserKey = currentUser?.email?.replace(/\./g, '_DOT_');
+                const currentUserKey = effectiveUser?.email?.replace(/\./g, '_DOT_');
                 currentSlots = currentSlots.map(slot => {
                   if (slot.id === leaveSlotId) {
                     return { ...slot, assignees: (slot.assignees || []).filter(key => key !== currentUserKey) };
