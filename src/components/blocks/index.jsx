@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapPin, Map as MapIcon, X, Check, RotateCcw, ExternalLink, Calendar, Maximize2, Timer, Play, Pause, RotateCw, Vote, HelpCircle, Trophy, ChevronDown, Lock, Link, Plus, Wallet, ChevronRight, User, TriangleIcon, Edit2, Car, ClipboardList, Users, Minus, Copy, MessageCircle, Phone } from 'lucide-react';
+import { MapPin, Map as MapIcon, X, Check, RotateCcw, ExternalLink, Calendar, Maximize2, Timer, Play, Pause, RotateCw, Vote, HelpCircle, Trophy, ChevronDown, Lock, Link, Plus, Wallet, ChevronRight, User, TriangleIcon, Edit2, Car, ClipboardList, Users, Minus, Copy, MessageCircle, Phone, Target } from 'lucide-react';
 import { getTransformedImageUrl, getFocalPointStyles } from '../../utils/imageUtils';
 import { getIconComponent } from '../../utils/iconHelpers';
 
@@ -2802,14 +2802,18 @@ export const LeaderboardBlock = ({ data, currentUser, shares = {}, canEdit = fal
   const [showEditMode, setShowEditMode] = useState(false);
   const blockRef = useRef(null);
   
-  const title = data.title || 'Leaderboard';
+  const title = data.title || (data.competitionType === 'longestdrive' ? 'Longest Drive' : 'Leaderboard');
+  const displayTitle = title;
   const participants = data.participants || [];
   const roundCount = data.roundCount || 0;
   const scores = data.scores || {};
+  const shots = data.shots || {}; // For longest drive: { [email]: { [roundIndex]: { distance, fairway, position } } }
   const status = data.status || 'active';
-  const sortOrder = data.sortOrder || 'desc'; // 'desc' = higher is better
+  const sortOrder = data.sortOrder || 'desc'; // 'desc' = higher/longer is better
   const mode = data.mode || 'single'; // 'single' or 'team'
+  const competitionType = data.competitionType || 'score'; // 'score' or 'longestdrive'
   const isTeamMode = mode === 'team';
+  const isLongestDrive = competitionType === 'longestdrive';
   
   const currentUserEmail = currentUser?.email?.toLowerCase();
   
@@ -2831,14 +2835,68 @@ export const LeaderboardBlock = ({ data, currentUser, shares = {}, canEdit = fal
     }
   };
   
-  // Calculate total score for a participant
+  // Calculate total score for a participant (for score mode)
   const getTotalScore = (email) => {
     const participantScores = scores[email] || {};
     return Object.values(participantScores).reduce((sum, score) => sum + (score || 0), 0);
   };
   
-  // Get ranked participants (sorted by total score)
+  // Get best drive for a participant (for longestdrive mode)
+  const getBestDrive = (email) => {
+    const participantShots = shots[email] || {};
+    let bestDistance = 0;
+    let bestRound = null;
+    let isFairway = true;
+    
+    Object.entries(participantShots).forEach(([roundIdx, shot]) => {
+      if (shot.fairway && shot.distance > bestDistance) {
+        bestDistance = shot.distance;
+        bestRound = parseInt(roundIdx);
+        isFairway = shot.fairway;
+      }
+    });
+    
+    // If no fairway shots, get best overall but mark as DQ
+    if (bestDistance === 0) {
+      Object.entries(participantShots).forEach(([roundIdx, shot]) => {
+        if (shot.distance > bestDistance) {
+          bestDistance = shot.distance;
+          bestRound = parseInt(roundIdx);
+          isFairway = shot.fairway;
+        }
+      });
+    }
+    
+    return { distance: bestDistance, round: bestRound, fairway: isFairway };
+  };
+  
+  // Get ranked participants (sorted by total score or best drive)
   const getRankedParticipants = () => {
+    if (isLongestDrive) {
+      const qualified = [];
+      const disqualified = [];
+      
+      participants.forEach(p => {
+        const best = getBestDrive(p.email);
+        const pData = { ...p, distance: best.distance, fairway: best.fairway, bestRound: best.round };
+        if (best.fairway && best.distance > 0) {
+          qualified.push(pData);
+        } else if (best.distance > 0) {
+          disqualified.push(pData);
+        } else {
+          // No shots yet
+          disqualified.push({ ...pData, distance: 0, fairway: true });
+        }
+      });
+      
+      // Sort qualified by distance (highest first)
+      qualified.sort((a, b) => b.distance - a.distance);
+      // DQ players shown after qualified
+      disqualified.sort((a, b) => b.distance - a.distance);
+      
+      return [...qualified, ...disqualified];
+    }
+    
     return participants
       .map(p => ({
         ...p,
@@ -2848,12 +2906,17 @@ export const LeaderboardBlock = ({ data, currentUser, shares = {}, canEdit = fal
   };
   
   const rankedParticipants = getRankedParticipants();
-  const top3 = rankedParticipants.slice(0, 3);
-  const hasScores = rankedParticipants.some(p => p.total > 0);
+  const top3 = rankedParticipants.filter(p => isLongestDrive ? p.fairway : true).slice(0, 3);
+  const hasScores = isLongestDrive 
+    ? rankedParticipants.some(p => p.distance > 0)
+    : rankedParticipants.some(p => p.total > 0);
   
-  // Find current user's rank if not in top 3
-  const currentUserRank = rankedParticipants.findIndex(p => p.email?.toLowerCase() === currentUserEmail) + 1;
-  const currentUserData = currentUserRank > 3 ? rankedParticipants[currentUserRank - 1] : null;
+  // Find current user's rank if not in top 3 (only counting qualified for longestdrive)
+  const qualifiedParticipants = isLongestDrive 
+    ? rankedParticipants.filter(p => p.fairway && p.distance > 0)
+    : rankedParticipants;
+  const currentUserRank = qualifiedParticipants.findIndex(p => p.email?.toLowerCase() === currentUserEmail) + 1;
+  const currentUserData = currentUserRank > 3 ? qualifiedParticipants[currentUserRank - 1] : null;
   
   // Medal/rank icons as SVG triangles
   const RankIcon = ({ rank }) => {
@@ -2868,7 +2931,7 @@ export const LeaderboardBlock = ({ data, currentUser, shares = {}, canEdit = fal
       <div className="bg-white/[0.03] rounded-xl p-4">
         <div className="flex items-center gap-2 text-gray-400">
           <Trophy size={18} className="text-amber-400" />
-          <span className="text-sm">{title} – inga deltagare tillagda än</span>
+          <span className="text-sm">{displayTitle} – inga deltagare tillagda än</span>
         </div>
       </div>
     );
@@ -2889,9 +2952,13 @@ export const LeaderboardBlock = ({ data, currentUser, shares = {}, canEdit = fal
             />
           </div>
           <div className="flex items-center gap-2.5 flex-1 min-w-0">
-            <Trophy size={16} className="text-gray-400 flex-shrink-0" />
+            {isLongestDrive ? (
+              <Target size={16} className="text-gray-400 flex-shrink-0" />
+            ) : (
+              <Trophy size={16} className="text-gray-400 flex-shrink-0" />
+            )}
             <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors truncate">
-              {title}
+              {displayTitle}
             </span>
           </div>
           {status === 'finished' ? (
@@ -2960,10 +3027,12 @@ export const LeaderboardBlock = ({ data, currentUser, shares = {}, canEdit = fal
               {top3.map((participant, idx) => {
                 const rank = idx + 1;
                 const isCurrentUser = participant.email?.toLowerCase() === currentUserEmail;
+                const isDQ = isLongestDrive && !participant.fairway;
                 return (
                   <div 
                     key={participant.email}
                     className={`flex items-center gap-3 py-1.5 px-2 rounded-lg ${
+                      isDQ ? 'opacity-50' :
                       isCurrentUser ? 'bg-blue-500/10 ring-1 ring-blue-500/30' : ''
                     }`}
                   >
@@ -2982,12 +3051,47 @@ export const LeaderboardBlock = ({ data, currentUser, shares = {}, canEdit = fal
                       {participant.name || participant.email?.split('@')[0]}
                       {isCurrentUser && ' (du)'}
                     </span>
-                    <span className="text-sm font-medium text-gray-400 tabular-nums">
-                      {participant.total}p
-                    </span>
+                    {isLongestDrive ? (
+                      <span className={`text-sm font-medium tabular-nums ${isDQ ? 'text-red-400' : 'text-green-400'}`}>
+                        {participant.distance > 0 ? `${participant.distance}m` : '–'}
+                        {isDQ && ' DQ'}
+                      </span>
+                    ) : (
+                      <span className="text-sm font-medium text-gray-400 tabular-nums">
+                        {participant.total}p
+                      </span>
+                    )}
                   </div>
                 );
               })}
+              
+              {/* Show DQ players if longest drive mode */}
+              {isLongestDrive && rankedParticipants.filter(p => !p.fairway && p.distance > 0).length > 0 && (
+                <>
+                  <div className="text-xs text-gray-600 text-center py-0.5">– DQ –</div>
+                  {rankedParticipants.filter(p => !p.fairway && p.distance > 0).slice(0, 2).map((participant, idx) => {
+                    const isCurrentUser = participant.email?.toLowerCase() === currentUserEmail;
+                    return (
+                      <div 
+                        key={participant.email}
+                        className="flex items-center gap-3 py-1.5 px-2 rounded-lg opacity-50"
+                      >
+                        <span className="text-xs text-red-400 w-3.5">DQ</span>
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 bg-red-500/20">
+                          <User size={12} className="text-red-400" />
+                        </div>
+                        <span className={`text-sm flex-1 truncate text-gray-500`}>
+                          {participant.name || participant.email?.split('@')[0]}
+                          {isCurrentUser && ' (du)'}
+                        </span>
+                        <span className="text-sm font-medium text-red-400/70 tabular-nums">
+                          {participant.distance}m
+                        </span>
+                      </div>
+                    );
+                  })}
+                </>
+              )}
               
               {/* Show current user if outside top 3 */}
               {currentUserData && (
@@ -3005,22 +3109,28 @@ export const LeaderboardBlock = ({ data, currentUser, shares = {}, canEdit = fal
                     <span className="text-sm flex-1 truncate text-blue-300 font-medium">
                       {currentUserData.name || currentUserData.email?.split('@')[0]} (du)
                     </span>
-                    <span className="text-sm font-medium text-gray-400 tabular-nums">
-                      {currentUserData.total}p
-                    </span>
+                    {isLongestDrive ? (
+                      <span className="text-sm font-medium text-green-400 tabular-nums">
+                        {currentUserData.distance > 0 ? `${currentUserData.distance}m` : '–'}
+                      </span>
+                    ) : (
+                      <span className="text-sm font-medium text-gray-400 tabular-nums">
+                        {currentUserData.total}p
+                      </span>
+                    )}
                   </div>
                 </>
               )}
               
-              {rankedParticipants.length > 3 && !currentUserData && (
+              {qualifiedParticipants.length > 3 && !currentUserData && (
                 <div className="text-xs text-gray-500 pl-2 pt-1">
-                  +{rankedParticipants.length - 3} till...
+                  +{qualifiedParticipants.length - 3} till...
                 </div>
               )}
             </div>
           ) : (
             <div className="text-sm text-gray-500 text-center py-2">
-              Inga poäng registrerade än
+              {isLongestDrive ? 'Inga drives registrerade än' : 'Inga poäng registrerade än'}
             </div>
           )}
           
@@ -3030,7 +3140,7 @@ export const LeaderboardBlock = ({ data, currentUser, shares = {}, canEdit = fal
               onClick={onOpenModal}
               className="w-full py-2.5 text-sm text-blue-400 hover:bg-white/5 rounded-lg flex items-center justify-center gap-1.5 transition-colors border border-white/10"
             >
-              Visa leaderboard
+              {isLongestDrive ? 'Öppna tävling' : 'Visa leaderboard'}
               <ChevronRight size={14} />
             </button>
           )}

@@ -2126,6 +2126,7 @@ function App() {
             userDisplayName={displayName}
             userLocation={userLocation}
             showQuickCapture={showQuickCapture}
+            preciseGPS={preciseGPS}
             allObjects={objects} 
             onNavigate={(obj) => {
               setNavigationHistory(prev => [...prev, selectedObject]);

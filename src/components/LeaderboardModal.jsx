@@ -1,5 +1,41 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, ChevronLeft, ChevronRight, Play, Pause, Edit3, Save, Plus, User, Trophy, Trash2, Lock, Unlock, BarChart2, ChevronDown } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Play, Pause, Edit3, Save, Plus, User, Trophy, Trash2, Lock, Unlock, BarChart2, ChevronDown, MapPin, Target, Check, Crosshair, Map as MapIcon } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, Polyline, Tooltip, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import { useGPSCapture, calculateDistance } from '../utils/useGPSCapture';
+
+// Custom marker icons for longest drive
+const createTeeIcon = () => L.divIcon({
+  className: 'custom-tee-icon',
+  html: `<div style="background: #22c55e; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2">
+      <path d="M12 2L12 14M8 14H16L14 22H10L8 14Z"/>
+    </svg>
+  </div>`,
+  iconSize: [24, 24],
+  iconAnchor: [12, 12]
+});
+
+const createBallIcon = (fairway, isCurrentUser) => L.divIcon({
+  className: 'custom-ball-icon',
+  html: `<div style="background: ${fairway ? (isCurrentUser ? '#3b82f6' : '#22c55e') : '#ef4444'}; width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
+  iconSize: [16, 16],
+  iconAnchor: [8, 8]
+});
+
+// Component to auto-fit map bounds
+const FitBoundsComponent = ({ points }) => {
+  const map = useMap();
+  
+  useEffect(() => {
+    if (points.length > 1) {
+      const bounds = L.latLngBounds(points);
+      map.fitBounds(bounds, { padding: [50, 50] });
+    }
+  }, [map, points]);
+  
+  return null;
+};
 
 // Stacked bar chart comparing user vs average
 const ComparisonChart = ({ scores, participants, roundCount, currentUserEmail, sortOrder }) => {
@@ -324,9 +360,12 @@ export default function LeaderboardModal({
   canEdit = false, 
   onClose, 
   onUpdateScores,
+  onUpdateShots,
+  onUpdateRounds,
   onAddRound,
   onDeleteRound,
-  onToggleStatus
+  onToggleStatus,
+  preciseGPS = true
 }) {
   const [currentRound, setCurrentRound] = useState(() => {
     // Start at last round if there are rounds, otherwise 0
@@ -341,17 +380,31 @@ export default function LeaderboardModal({
   const [rowOffsets, setRowOffsets] = useState({}); // For FLIP animation
   const [showDeleteRoundConfirm, setShowDeleteRoundConfirm] = useState(false);
   const [viewMode, setViewMode] = useState('single'); // 'single' or 'team' - for team mode display toggle
+  
+  // Longest drive specific state
+  const [ldTab, setLdTab] = useState('results'); // 'results', 'capture', 'map'
+  const [capturingFor, setCapturingFor] = useState(null); // 'tee' or participant email
+  const [showMap, setShowMap] = useState(false);
+  const [ldStatsExpanded, setLdStatsExpanded] = useState(false); // Stats collapsed by default
+  
   const playIntervalRef = useRef(null);
   const inputRefs = useRef({});
   const rowRefs = useRef({});
+  
+  // GPS capture hook - same settings as object pinning (10m threshold, 15s timeout)
+  const gpsCapture = useGPSCapture({ preciseGPS, accuracyThreshold: 10, timeout: 15000 });
   
   const title = data.title || 'Leaderboard';
   const participants = data.participants || [];
   const roundCount = data.roundCount || 0;
   const scores = data.scores || {};
+  const shots = data.shots || {}; // Longest drive shots: { [email]: { [roundIndex]: { distance, fairway, position } } }
+  const rounds = data.rounds || []; // Round metadata: [{ holeNumber?, teePosition: { lat, lng, accuracy }? }]
   const status = data.status || 'active';
   const sortOrder = data.sortOrder || 'desc';
   const mode = data.mode || 'single'; // Competition mode: 'single' or 'team'
+  const competitionType = data.competitionType || 'score'; // 'score' or 'longestdrive'
+  const isLongestDrive = competitionType === 'longestdrive';
   const teams = data.teams || [
     { id: 1, name: 'Lag 1' },
     { id: 2, name: 'Lag 2' }
@@ -642,6 +695,227 @@ export default function LeaderboardModal({
     }
   };
 
+  // ========== LONGEST DRIVE HANDLERS ==========
+  
+  // Get current round's tee position
+  const getCurrentTeePosition = () => {
+    return rounds[currentRound]?.teePosition || null;
+  };
+  
+  // Get current round's hole number
+  const getCurrentHoleNumber = () => {
+    return rounds[currentRound]?.holeNumber || null;
+  };
+  
+  // Get participant's shot for current round
+  const getParticipantShot = (email) => {
+    return shots[email]?.[currentRound] || null;
+  };
+  
+  // Update hole number for current round
+  const handleSetHoleNumber = (holeNum) => {
+    if (!onUpdateRounds) return;
+    const newRounds = [...rounds];
+    if (!newRounds[currentRound]) {
+      newRounds[currentRound] = {};
+    }
+    newRounds[currentRound] = {
+      ...newRounds[currentRound],
+      holeNumber: holeNum ? parseInt(holeNum) : null
+    };
+    onUpdateRounds(newRounds);
+  };
+  
+  // Capture tee position
+  const handleCaptureTee = async () => {
+    if (!onUpdateRounds) return;
+    setCapturingFor('tee');
+    
+    try {
+      const pos = await gpsCapture.capture();
+      const newRounds = [...rounds];
+      if (!newRounds[currentRound]) {
+        newRounds[currentRound] = {};
+      }
+      newRounds[currentRound] = {
+        ...newRounds[currentRound],
+        teePosition: { lat: pos.lat, lng: pos.lng, accuracy: pos.accuracy }
+      };
+      onUpdateRounds(newRounds);
+    } catch (err) {
+      console.error('Failed to capture tee position:', err);
+      alert(err.message);
+    } finally {
+      setCapturingFor(null);
+    }
+  };
+  
+  // Capture ball position for a participant
+  // Editors can capture anyone's ball, viewers only their own
+  const handleCaptureBall = async (email) => {
+    console.log('[handleCaptureBall] Starting for:', email);
+    console.log('[handleCaptureBall] onUpdateShots:', !!onUpdateShots);
+    console.log('[handleCaptureBall] currentRound:', currentRound);
+    console.log('[handleCaptureBall] rounds:', rounds);
+    console.log('[handleCaptureBall] shots:', shots);
+    
+    // Permission check: editors can do all, viewers only their own
+    const targetEmail = email?.toLowerCase();
+    if (!canEdit && targetEmail !== currentUserEmail) {
+      console.warn('Viewers can only capture their own ball position');
+      return;
+    }
+    
+    if (!onUpdateShots) {
+      console.error('onUpdateShots is not defined');
+      alert('Fel: onUpdateShots saknas');
+      return;
+    }
+    const tee = getCurrentTeePosition();
+    console.log('[handleCaptureBall] teePosition:', tee);
+    
+    if (!tee) {
+      alert('Sätt tee-position först!');
+      return;
+    }
+    
+    // Cancel any previous capture in progress
+    if (gpsCapture.isCapturing) {
+      console.log('[handleCaptureBall] Cancelling previous capture');
+      gpsCapture.cancel();
+      // Wait a tick for state to clear
+      await new Promise(r => setTimeout(r, 100));
+    }
+    
+    setCapturingFor(email);
+    
+    try {
+      console.log('[handleCaptureBall] Starting GPS capture...');
+      const pos = await gpsCapture.capture();
+      console.log('[handleCaptureBall] Got position:', pos);
+      
+      const distance = calculateDistance(tee.lat, tee.lng, pos.lat, pos.lng);
+      console.log('[handleCaptureBall] Calculated distance:', distance);
+      
+      const newShots = { ...shots };
+      if (!newShots[email]) {
+        newShots[email] = {};
+      }
+      newShots[email][currentRound] = {
+        ...newShots[email]?.[currentRound],
+        position: { lat: pos.lat, lng: pos.lng, accuracy: pos.accuracy },
+        distance,
+        fairway: newShots[email]?.[currentRound]?.fairway ?? true
+      };
+      
+      console.log('[handleCaptureBall] Calling onUpdateShots with:', newShots);
+      await onUpdateShots(newShots);
+      console.log('[handleCaptureBall] Success!');
+    } catch (err) {
+      console.error('[handleCaptureBall] Failed:', err);
+      alert('Fel vid positionshämtning: ' + err.message);
+    } finally {
+      setCapturingFor(null);
+    }
+  };
+  
+  // Toggle fairway status for a participant
+  // Editors can toggle anyone, viewers can only toggle their own
+  const handleToggleFairway = (email) => {
+    if (!onUpdateShots) return;
+    
+    // Permission check: editors can do all, viewers only their own
+    const targetEmail = email?.toLowerCase();
+    if (!canEdit && targetEmail !== currentUserEmail) {
+      console.warn('Viewers can only toggle their own fairway status');
+      return;
+    }
+    
+    const newShots = { ...shots };
+    if (!newShots[email]) {
+      newShots[email] = {};
+    }
+    if (!newShots[email][currentRound]) {
+      newShots[email][currentRound] = { fairway: true };
+    }
+    newShots[email][currentRound] = {
+      ...newShots[email][currentRound],
+      fairway: !newShots[email][currentRound].fairway
+    };
+    onUpdateShots(newShots);
+  };
+  
+  // Get ranked participants for longest drive (current round)
+  const getLongestDriveRanking = () => {
+    const qualified = [];
+    const disqualified = [];
+    
+    participants.forEach(p => {
+      const shot = getParticipantShot(p.email);
+      if (shot?.distance > 0) {
+        if (shot.fairway) {
+          qualified.push({ ...p, ...shot });
+        } else {
+          disqualified.push({ ...p, ...shot });
+        }
+      } else {
+        // No shot yet
+        qualified.push({ ...p, distance: 0, fairway: true, position: null });
+      }
+    });
+    
+    // Sort by distance descending
+    qualified.sort((a, b) => (b.distance || 0) - (a.distance || 0));
+    disqualified.sort((a, b) => (b.distance || 0) - (a.distance || 0));
+    
+    return { qualified, disqualified };
+  };
+
+  // Calculate longest drive statistics for current round
+  const getLongestDriveStats = () => {
+    const { qualified, disqualified } = getLongestDriveRanking();
+    const allWithDistance = [...qualified, ...disqualified].filter(p => p.distance > 0);
+    
+    if (allWithDistance.length === 0) {
+      return null;
+    }
+    
+    // Calculate stats
+    const distances = allWithDistance.map(p => p.distance);
+    const totalDistance = distances.reduce((sum, d) => sum + d, 0);
+    const avgDistance = Math.round(totalDistance / distances.length);
+    const maxDistance = Math.max(...distances);
+    const minDistance = Math.min(...distances);
+    
+    // Find longest drive holder (fairway only)
+    const longestDrive = qualified.find(p => p.distance === maxDistance && p.fairway);
+    
+    // Fairway percentage
+    const fairwayHits = qualified.filter(p => p.distance > 0 && p.fairway).length;
+    const totalShots = allWithDistance.length;
+    const fairwayPct = Math.round((fairwayHits / totalShots) * 100);
+    
+    // Current user stats
+    const currentUserShot = allWithDistance.find(p => p.email?.toLowerCase() === currentUserEmail);
+    const userDiffFromAvg = currentUserShot ? currentUserShot.distance - avgDistance : null;
+    const userRank = currentUserShot && currentUserShot.fairway
+      ? qualified.findIndex(p => p.email?.toLowerCase() === currentUserEmail) + 1
+      : null;
+    
+    return {
+      avgDistance,
+      maxDistance,
+      minDistance,
+      longestDrive,
+      fairwayPct,
+      fairwayHits,
+      totalShots,
+      userDiffFromAvg,
+      userRank,
+      participantsWithShots: allWithDistance.length
+    };
+  };
+
   // Rank display component
   const RankDisplay = ({ rank, isTied }) => {
     if (rank === 1) return (
@@ -682,8 +956,12 @@ export default function LeaderboardModal({
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-gray-900/50">
         <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-          <Trophy size={20} className="text-amber-400" />
-          {isEditing ? 'Redigera poäng' : title}
+          {isLongestDrive ? (
+            <Target size={20} className="text-green-400" />
+          ) : (
+            <Trophy size={20} className="text-amber-400" />
+          )}
+          {isEditing ? 'Redigera poäng' : (isLongestDrive ? 'Longest Drive' : 'Poäng')}
         </h2>
         <div className="flex items-center gap-2">
           {/* View toggle for team mode (only when not editing) */}
@@ -775,7 +1053,11 @@ export default function LeaderboardModal({
                 <ChevronLeft size={16} />
               </button>
               <span className="text-sm text-gray-300 min-w-[100px] text-center">
-                {roundCount > 0 ? `Runda ${currentRound + 1} av ${roundCount}` : 'Inga rundor'}
+                {`Runda ${currentRound + 1}${roundCount > 1 ? ` av ${roundCount}` : ''}${
+                  isLongestDrive && rounds[currentRound]?.holeNumber 
+                    ? ` (Hål ${rounds[currentRound].holeNumber})` 
+                    : ''
+                }`}
               </span>
               <button
                 onClick={() => animateRowChange(Math.min(roundCount - 1, currentRound + 1))}
@@ -845,11 +1127,453 @@ export default function LeaderboardModal({
         )}
       </div>
       
+      {/* Longest Drive tabs - only in longestdrive mode */}
+      {isLongestDrive && !isEditing && (
+        <div className="px-4 py-2 border-b border-white/10 bg-gray-900/20">
+          <div className="flex rounded-lg overflow-hidden border border-white/10 bg-white/5">
+            <button
+              onClick={() => setLdTab('results')}
+              className={`flex-1 px-3 py-2 text-xs font-medium transition-colors flex items-center justify-center gap-1.5 ${
+                ldTab === 'results'
+                  ? 'bg-green-500/20 text-green-400'
+                  : 'text-gray-500 hover:text-gray-300'
+              }`}
+            >
+              <Trophy size={14} />
+              Resultat
+            </button>
+            <button
+              onClick={() => setLdTab('capture')}
+              className={`flex-1 px-3 py-2 text-xs font-medium transition-colors flex items-center justify-center gap-1.5 ${
+                ldTab === 'capture'
+                  ? 'bg-green-500/20 text-green-400'
+                  : 'text-gray-500 hover:text-gray-300'
+              }`}
+            >
+              <Crosshair size={14} />
+              Registrera
+            </button>
+            <button
+              onClick={() => setLdTab('map')}
+              className={`flex-1 px-3 py-2 text-xs font-medium transition-colors flex items-center justify-center gap-1.5 ${
+                ldTab === 'map'
+                  ? 'bg-green-500/20 text-green-400'
+                  : 'text-gray-500 hover:text-gray-300'
+              }`}
+            >
+              <MapIcon size={14} />
+              Karta
+            </button>
+          </div>
+        </div>
+      )}
+      
       {/* Table content */}
       <div className="flex-1 overflow-y-auto">
         {participants.length === 0 ? (
           <div className="flex items-center justify-center h-full text-gray-500">
             Inga deltagare tillagda än
+          </div>
+        ) : isLongestDrive ? (
+          /* Longest Drive Mode */
+          <div className="p-4">
+            {ldTab === 'results' && (
+              /* Results tab - ranking by distance */
+              <div className="space-y-3">
+                {(() => {
+                  const { qualified, disqualified } = getLongestDriveRanking();
+                  const teePos = getCurrentTeePosition();
+                  
+                  return (
+                    <>
+                      {!teePos && roundCount > 0 && (
+                        <div className="text-center py-4 text-gray-500 text-sm">
+                          <MapPin size={24} className="mx-auto mb-2 text-gray-600" />
+                          Tee-position ej satt för denna runda
+                        </div>
+                      )}
+                      
+                      {/* Qualified players */}
+                      <div className="space-y-1">
+                        {qualified.map((p, idx) => {
+                          const rank = p.distance > 0 ? idx + 1 : null;
+                          const isCurrentUser = p.email?.toLowerCase() === currentUserEmail;
+                          return (
+                            <div 
+                              key={p.email}
+                              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl ${
+                                isCurrentUser 
+                                  ? 'bg-blue-500/15 ring-1 ring-blue-500/40' 
+                                  : 'bg-white/[0.03]'
+                              }`}
+                            >
+                              <div className="w-6 flex justify-center">
+                                {rank === 1 && <Trophy size={16} className="text-amber-400" />}
+                                {rank === 2 && <Trophy size={16} className="text-gray-300" />}
+                                {rank === 3 && <Trophy size={16} className="text-orange-600" />}
+                                {rank > 3 && <span className="text-sm text-gray-500">{rank}</span>}
+                                {!rank && <span className="text-sm text-gray-600">–</span>}
+                              </div>
+                              <Avatar 
+                                name={p.name} 
+                                email={p.email} 
+                                isCurrentUser={isCurrentUser}
+                              />
+                              <span className={`flex-1 text-sm truncate ${
+                                isCurrentUser ? 'text-blue-300 font-medium' : 'text-gray-300'
+                              }`}>
+                                {p.name || p.email?.split('@')[0]}
+                                {isCurrentUser && ' (du)'}
+                              </span>
+                              <span className={`text-sm font-medium tabular-nums ${
+                                p.distance > 0 ? 'text-green-400' : 'text-gray-600'
+                              }`}>
+                                {p.distance > 0 ? `${p.distance}m` : '–'}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      
+                      {/* DQ players */}
+                      {disqualified.length > 0 && (
+                        <>
+                          <div className="text-xs text-gray-600 text-center py-2 flex items-center gap-2 justify-center">
+                            <div className="flex-1 h-px bg-white/10" />
+                            <span>DISKVALIFICERADE</span>
+                            <div className="flex-1 h-px bg-white/10" />
+                          </div>
+                          <div className="space-y-1 opacity-60">
+                            {disqualified.map((p) => {
+                              const isCurrentUser = p.email?.toLowerCase() === currentUserEmail;
+                              return (
+                                <div 
+                                  key={p.email}
+                                  className="flex items-center gap-3 px-3 py-2 rounded-xl bg-red-500/5"
+                                >
+                                  <div className="w-6 flex justify-center">
+                                    <span className="text-xs text-red-400 font-medium">DQ</span>
+                                  </div>
+                                  <Avatar 
+                                    name={p.name} 
+                                    email={p.email} 
+                                    isCurrentUser={isCurrentUser}
+                                  />
+                                  <span className={`flex-1 text-sm truncate text-gray-500`}>
+                                    {p.name || p.email?.split('@')[0]}
+                                  </span>
+                                  <span className="text-sm font-medium tabular-nums text-red-400/70">
+                                    {p.distance}m
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+            
+            {ldTab === 'capture' && (
+              /* Capture tab - GPS registration */
+              <div className="space-y-4">
+                {/* Hole number + Tee position section - only for editors */}
+                {canEdit && (
+                <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                  {/* Hole number input */}
+                  <div className="flex items-center gap-3 mb-4 pb-3 border-b border-white/10">
+                    <span className="text-sm text-gray-400">Hål</span>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min="1"
+                      max="18"
+                      value={getCurrentHoleNumber() || ''}
+                      onChange={(e) => handleSetHoleNumber(e.target.value)}
+                      placeholder="#"
+                      className="w-16 px-3 py-2 text-center text-sm bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-green-500 text-white placeholder-gray-600"
+                    />
+                  </div>
+                  
+                  {/* Tee position */}
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Target size={16} className="text-green-400" />
+                      <span className="text-sm font-medium text-white">Tee-position</span>
+                    </div>
+                    {getCurrentTeePosition() && (
+                      <span className="text-xs text-gray-500">
+                        ±{getCurrentTeePosition().accuracy}m
+                      </span>
+                    )}
+                  </div>
+                  
+                  {getCurrentTeePosition() ? (
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs text-gray-400">
+                        {getCurrentTeePosition().lat.toFixed(6)}, {getCurrentTeePosition().lng.toFixed(6)}
+                      </div>
+                      <button
+                        onClick={handleCaptureTee}
+                        disabled={capturingFor !== null}
+                        className="px-3 py-1.5 text-xs rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 disabled:opacity-50"
+                      >
+                        {capturingFor === 'tee' ? (
+                          <span className="flex items-center gap-1">
+                            <span className="animate-pulse">●</span>
+                            {gpsCapture.accuracy ? `±${gpsCapture.accuracy}m` : 'Söker...'}
+                          </span>
+                        ) : 'Uppdatera'}
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleCaptureTee}
+                      disabled={capturingFor !== null}
+                      className="w-full py-3 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {capturingFor === 'tee' ? (
+                        <>
+                          <span className="animate-pulse">●</span>
+                          {gpsCapture.accuracy ? `Söker... ±${gpsCapture.accuracy}m` : 'Hämtar GPS...'}
+                        </>
+                      ) : (
+                        <>
+                          <Crosshair size={16} />
+                          Sätt tee-position
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+                )}
+                
+                {/* Show tee info for non-editors */}
+                {!canEdit && getCurrentTeePosition() && (
+                  <div className="bg-white/5 rounded-xl p-3 border border-white/10">
+                    <div className="flex items-center gap-2 text-sm text-gray-400">
+                      <MapPin size={14} className="text-green-400" />
+                      <span>Tee-position satt{getCurrentHoleNumber() ? ` (hål ${getCurrentHoleNumber()})` : ''}</span>
+                      {getCurrentTeePosition()?.accuracy && (
+                        <span className="text-xs text-gray-500">±{getCurrentTeePosition().accuracy}m</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+                
+                {!getCurrentTeePosition() && (
+                  <div className="bg-blue-500/10 rounded-xl p-3 border border-blue-500/30 text-sm text-blue-400 text-center">
+                    Tee-position måste sättas av en redaktör innan slag kan registreras
+                  </div>
+                )}
+                
+                {/* Player shots section */}
+                <div className="space-y-2">
+                  <div className="text-xs text-gray-500 uppercase px-1">Spelarnas slag</div>
+                  {participants.map((p) => {
+                    const shot = getParticipantShot(p.email);
+                    const isCurrentUser = p.email?.toLowerCase() === currentUserEmail;
+                    const isCapturing = capturingFor === p.email;
+                    // Editors can capture all balls, viewers can only capture their own
+                    const canCapture = canEdit || isCurrentUser;
+                    
+                    return (
+                      <div 
+                        key={p.email}
+                        className={`rounded-xl p-3 border ${
+                          isCurrentUser 
+                            ? 'bg-blue-500/10 border-blue-500/30' 
+                            : 'bg-white/[0.03] border-white/10'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 mb-2">
+                          <Avatar 
+                            name={p.name} 
+                            email={p.email} 
+                            size="sm"
+                            isCurrentUser={isCurrentUser}
+                          />
+                          <span className={`flex-1 text-sm truncate ${
+                            isCurrentUser ? 'text-blue-300' : 'text-gray-300'
+                          }`}>
+                            {p.name || p.email?.split('@')[0]}
+                          </span>
+                          {shot?.position ? (
+                            <div className="text-right">
+                              <span className={`text-lg font-bold tabular-nums ${
+                                shot.fairway ? 'text-green-400' : 'text-red-400'
+                              }`}>
+                                {shot.distance != null ? `${shot.distance}m` : '?'}
+                              </span>
+                              {shot.position?.accuracy && (
+                                <div className="text-[10px] text-gray-500">±{shot.position.accuracy}m</div>
+                              )}
+                            </div>
+                          ) : null}
+                        </div>
+                        
+                        {canCapture ? (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleCaptureBall(p.email)}
+                            disabled={(capturingFor !== null && capturingFor !== p.email) || !getCurrentTeePosition()}
+                            className={`flex-1 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 ${
+                              shot?.position
+                                ? 'bg-white/5 text-gray-400 hover:bg-white/10'
+                                : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                            } disabled:opacity-50`}
+                          >
+                            {isCapturing ? (
+                              <>
+                                <span className="animate-pulse">●</span>
+                                {gpsCapture.accuracy ? `±${gpsCapture.accuracy}m` : 'Söker...'}
+                              </>
+                            ) : shot?.position ? (
+                              <>
+                                <MapPin size={14} />
+                                Uppdatera position
+                              </>
+                            ) : (
+                              <>
+                                <Crosshair size={14} />
+                                Markera boll
+                              </>
+                            )}
+                          </button>
+                          
+                          {shot?.position && (canEdit || isCurrentUser) && (
+                            <button
+                              onClick={() => handleToggleFairway(p.email)}
+                              className="flex items-center rounded-lg overflow-hidden border border-white/10"
+                            >
+                              <span className={`px-2.5 py-2 text-xs font-medium transition-colors ${
+                                shot.fairway
+                                  ? 'bg-green-500/30 text-green-400'
+                                  : 'bg-white/5 text-gray-500'
+                              }`}>
+                                ✓ Fairway
+                              </span>
+                              <span className={`px-2.5 py-2 text-xs font-medium transition-colors ${
+                                !shot.fairway
+                                  ? 'bg-red-500/30 text-red-400'
+                                  : 'bg-white/5 text-gray-500'
+                              }`}>
+                                ✗ Miss
+                              </span>
+                            </button>
+                          )}
+                        </div>
+                        ) : (
+                          /* Non-editable row for other participants when viewer */
+                          shot?.position && (
+                            <div className={`text-xs text-center py-1.5 rounded-lg ${
+                              shot.fairway ? 'text-green-400/70 bg-green-500/10' : 'text-red-400/70 bg-red-500/10'
+                            }`}>
+                              {shot.fairway ? '✓ Fairway' : '✗ Miss'}
+                            </div>
+                          )
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            
+            {ldTab === 'map' && (
+              /* Map tab - visual overview */
+              <div className="space-y-3">
+                {(() => {
+                  const teePos = getCurrentTeePosition();
+                  const { qualified, disqualified } = getLongestDriveRanking();
+                  const allShots = [...qualified, ...disqualified].filter(p => p.position);
+                  
+                  if (!teePos) {
+                    return (
+                      <div className="flex items-center justify-center h-64 text-gray-500">
+                        <div className="text-center">
+                          <MapIcon size={24} className="mx-auto mb-2 text-gray-600" />
+                          <div>Sätt tee-position för att visa karta</div>
+                        </div>
+                      </div>
+                    );
+                  }
+                  
+                  // Calculate bounds to fit all markers
+                  const allPoints = [
+                    [teePos.lat, teePos.lng],
+                    ...allShots.map(s => [s.position.lat, s.position.lng])
+                  ];
+                  
+                  return (
+                    <div className="h-[50vh] rounded-xl overflow-hidden border border-white/10">
+                      <MapContainer
+                        center={[teePos.lat, teePos.lng]}
+                        zoom={17}
+                        style={{ height: '100%', width: '100%' }}
+                        className="z-0"
+                      >
+                        <TileLayer
+                          attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+                          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                        />
+                        
+                        {/* Tee marker */}
+                        <Marker 
+                          position={[teePos.lat, teePos.lng]} 
+                          icon={createTeeIcon()}
+                        >
+                          <Tooltip permanent direction="top" offset={[0, -12]}>
+                            Tee
+                          </Tooltip>
+                        </Marker>
+                        
+                        {/* Ball markers and lines */}
+                        {allShots.map((p) => {
+                          const isCurrentUser = p.email?.toLowerCase() === currentUserEmail;
+                          return (
+                            <React.Fragment key={p.email}>
+                              {/* Line from tee to ball */}
+                              <Polyline
+                                positions={[
+                                  [teePos.lat, teePos.lng],
+                                  [p.position.lat, p.position.lng]
+                                ]}
+                                color={p.fairway ? '#22c55e' : '#ef4444'}
+                                weight={2}
+                                opacity={0.6}
+                                dashArray={p.fairway ? undefined : '5, 5'}
+                              />
+                              
+                              {/* Ball marker */}
+                              <Marker 
+                                position={[p.position.lat, p.position.lng]}
+                                icon={createBallIcon(p.fairway, isCurrentUser)}
+                              >
+                                <Tooltip permanent direction="top" offset={[0, -8]}>
+                                  <span className={p.fairway ? '' : 'text-red-400'}>
+                                    {p.name?.split(' ')[0] || p.email?.split('@')[0]} · {p.distance}m
+                                    {!p.fairway && ' (DQ)'}
+                                  </span>
+                                </Tooltip>
+                              </Marker>
+                            </React.Fragment>
+                          );
+                        })}
+                        
+                        {/* Auto-fit bounds */}
+                        {allPoints.length > 1 && (
+                          <FitBoundsComponent points={allPoints} />
+                        )}
+                      </MapContainer>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
           </div>
         ) : isEditing ? (
           /* Edit mode */
@@ -1036,8 +1760,8 @@ export default function LeaderboardModal({
         )}
       </div>
       
-      {/* Comparison chart - only show when not editing and has rounds */}
-      {!isEditing && roundCount > 0 && (
+      {/* Comparison chart - only show when not editing and has rounds (score mode) */}
+      {!isEditing && roundCount > 0 && !isLongestDrive && (
         <ComparisonChart
           scores={scores}
           participants={participants}
@@ -1046,6 +1770,76 @@ export default function LeaderboardModal({
           sortOrder={sortOrder}
         />
       )}
+      
+      {/* Longest drive statistics - only show for longest drive mode with shots */}
+      {isLongestDrive && ldTab === 'results' && (() => {
+        const stats = getLongestDriveStats();
+        if (!stats) return null;
+        
+        return (
+          <div className="border-t border-white/10">
+            <button
+              onClick={() => setLdStatsExpanded(!ldStatsExpanded)}
+              className="w-full flex items-center gap-2 px-4 py-3 text-left hover:bg-white/5 transition-colors"
+            >
+              <BarChart2 size={14} className="text-gray-500" />
+              <span className="text-sm text-gray-400 flex-1">Statistik</span>
+              <ChevronDown 
+                size={14} 
+                className={`text-gray-500 transition-transform ${ldStatsExpanded ? 'rotate-0' : '-rotate-90'}`} 
+              />
+            </button>
+            
+            {ldStatsExpanded && (
+              <div className="px-4 pb-4">
+                {/* Stats grid */}
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Average distance */}
+                  <div className="bg-white/[0.03] rounded-xl p-3">
+                    <div className="text-xs text-gray-500 mb-1">Snitt</div>
+                    <div className="text-lg font-bold text-white tabular-nums">{stats.avgDistance}m</div>
+                  </div>
+                  
+                  {/* Longest drive */}
+                  <div className="bg-white/[0.03] rounded-xl p-3">
+                    <div className="text-xs text-gray-500 mb-1">Längst</div>
+                    <div className="text-lg font-bold text-green-400 tabular-nums">{stats.maxDistance}m</div>
+                    {stats.longestDrive && (
+                      <div className="text-xs text-gray-500 truncate">
+                        {stats.longestDrive.name || stats.longestDrive.email?.split('@')[0]}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Fairway percentage */}
+                  <div className="bg-white/[0.03] rounded-xl p-3">
+                    <div className="text-xs text-gray-500 mb-1">Fairway-träff</div>
+                    <div className="text-lg font-bold text-white tabular-nums">{stats.fairwayPct}%</div>
+                    <div className="text-xs text-gray-500">{stats.fairwayHits} av {stats.totalShots}</div>
+                  </div>
+                  
+                  {/* User comparison */}
+                  {stats.userDiffFromAvg !== null && (
+                    <div className="bg-blue-500/10 rounded-xl p-3 ring-1 ring-blue-500/20">
+                      <div className="text-xs text-blue-400/70 mb-1">Du vs snitt</div>
+                      <div className={`text-lg font-bold tabular-nums ${
+                        stats.userDiffFromAvg >= 0 ? 'text-green-400' : 'text-red-400'
+                      }`}>
+                        {stats.userDiffFromAvg >= 0 ? '+' : ''}{stats.userDiffFromAvg}m
+                      </div>
+                      {stats.userRank && (
+                        <div className="text-xs text-blue-400/70">
+                          Placering: {stats.userRank} av {stats.participantsWithShots}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
       
       {/* Footer - Edit mode actions */}
       {isEditing && (

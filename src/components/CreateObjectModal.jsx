@@ -177,10 +177,13 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             type: 'leaderboard',
             title: b.data.title || '',
             mode: b.data.mode || 'single',
+            competitionType: b.data.competitionType || 'score',
             teams: b.data.teams || [{ id: 1, name: 'Lag 1' }, { id: 2, name: 'Lag 2' }],
             participants: isDuplicate ? [] : (b.data.participants || []), // Clear participants when duplicating
             roundCount: isDuplicate ? 0 : (b.data.roundCount || 0),
             scores: isDuplicate ? {} : (b.data.scores || {}), // Clear scores when duplicating
+            shots: isDuplicate ? {} : (b.data.shots || {}), // Clear shots when duplicating
+            rounds: isDuplicate ? [] : (b.data.rounds || []), // Clear rounds when duplicating
             status: isDuplicate ? 'active' : (b.data.status || 'active'),
             sortOrder: b.data.sortOrder || 'desc',
             defaultCollapsed: b.data.defaultCollapsed ?? true
@@ -622,18 +625,22 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
           });
         }
       } else if (block.type === 'leaderboard') {
-        // Save leaderboard block
+        // Save leaderboard block - use competitionType-based default title
+        const defaultTitle = (block.competitionType || 'score') === 'longestdrive' ? 'Longest Drive' : 'Leaderboard';
         blocks.push({ 
           type: 'leaderboard', 
           data: { 
-            title: (block.title || 'Leaderboard').trim(),
+            title: (block.title || defaultTitle).trim(),
             participants: block.participants || [],
             roundCount: block.roundCount || 0,
             scores: block.scores || {},
+            shots: block.shots || {},
+            rounds: block.rounds || [],
             status: block.status || 'active',
             sortOrder: block.sortOrder || 'desc',
             defaultCollapsed: block.defaultCollapsed ?? true,
             mode: block.mode || 'single',
+            competitionType: block.competitionType || 'score',
             teams: block.teams || [
               { id: 1, name: 'Lag 1' },
               { id: 2, name: 'Lag 2' }
@@ -737,9 +744,13 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
       newBlock.participants = [];
       newBlock.roundCount = 0;
       newBlock.scores = {};
+      newBlock.shots = {};
+      newBlock.rounds = [];
       newBlock.status = 'active';
       newBlock.sortOrder = 'desc';
       newBlock.defaultCollapsed = true;
+      newBlock.mode = 'single';
+      newBlock.competitionType = 'score';
     }
     if (type === 'distribution') {
       // template can be 'carpool' or 'tasks'
@@ -1310,7 +1321,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                     <Wallet size={16} className="text-green-400" /> Splitt
                   </button>
                   <button type="button" onClick={() => addCustomBlock('leaderboard')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
-                    <Trophy size={16} className="text-blue-400" /> Leaderboard
+                    <Trophy size={16} className="text-blue-400" /> Golf
                   </button>
                   <button type="button" onClick={() => addCustomBlock('section')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
                     <Minus size={16} className="text-blue-400" /> Sektion

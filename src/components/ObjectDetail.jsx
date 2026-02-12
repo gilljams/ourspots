@@ -664,7 +664,7 @@ function clearPendingLocations(objectId) {
   }
 }
 
-function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockUpdate, currentUser, userDisplayName, userLocation, showQuickCapture, allObjects, onNavigate, onGoBack, previousObject, categories, isAdmin, onShowOnMap, onShare, onLeaveShare, collections, onAddToCollection, onRemoveFromCollection, onUpdateLinkedNote, onAddLinkedUrl, onUpdateLinkedUrl, onRemoveLinkedUrl, onReorderLinked }) {
+function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockUpdate, currentUser, userDisplayName, userLocation, showQuickCapture, allObjects, onNavigate, onGoBack, previousObject, categories, isAdmin, onShowOnMap, onShare, onLeaveShare, collections, onAddToCollection, onRemoveFromCollection, onUpdateLinkedNote, onAddLinkedUrl, onUpdateLinkedUrl, onRemoveLinkedUrl, onReorderLinked, preciseGPS = true }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showManageSection, setShowManageSection] = useState(false);
   const [showCollectionPicker, setShowCollectionPicker] = useState(false);
@@ -2414,12 +2414,29 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                 newScores[email] = participantScores;
               });
               
+              // Also handle shots (for longest drive)
+              const newShots = { ...blockData.shots };
+              Object.keys(newShots).forEach(email => {
+                const participantShots = { ...newShots[email] };
+                for (let i = roundIndex; i < currentRoundCount - 1; i++) {
+                  participantShots[i] = participantShots[i + 1];
+                }
+                delete participantShots[currentRoundCount - 1];
+                newShots[email] = participantShots;
+              });
+              
+              // Also handle rounds metadata
+              const newRounds = [...(blockData.rounds || [])];
+              newRounds.splice(roundIndex, 1);
+              
               updatedBlocks[leaderboardModalData.blockIndex] = {
                 ...updatedBlocks[leaderboardModalData.blockIndex],
                 data: { 
                   ...blockData, 
                   roundCount: currentRoundCount - 1,
-                  scores: newScores
+                  scores: newScores,
+                  shots: newShots,
+                  rounds: newRounds
                 }
               };
               
@@ -2430,7 +2447,9 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                 data: { 
                   ...prev.data, 
                   roundCount: currentRoundCount - 1,
-                  scores: newScores
+                  scores: newScores,
+                  shots: newShots,
+                  rounds: newRounds
                 }
               }));
             } catch (err) {
@@ -2457,6 +2476,52 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
               console.error('Error toggling status:', err);
             }
           }}
+          onUpdateShots={async (newShots) => {
+            console.log('[ObjectDetail] onUpdateShots called with:', newShots);
+            try {
+              const updatedBlocks = [...object.blocks];
+              updatedBlocks[leaderboardModalData.blockIndex] = {
+                ...updatedBlocks[leaderboardModalData.blockIndex],
+                data: { 
+                  ...updatedBlocks[leaderboardModalData.blockIndex].data, 
+                  shots: newShots 
+                }
+              };
+              console.log('[ObjectDetail] Updating Firestore...');
+              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
+              console.log('[ObjectDetail] Firestore updated, updating local state...');
+              // Update local state
+              setLeaderboardModalData(prev => ({
+                ...prev,
+                data: { ...prev.data, shots: newShots }
+              }));
+              console.log('[ObjectDetail] onUpdateShots complete');
+            } catch (err) {
+              console.error('Error updating shots:', err);
+              alert('Fel vid sparande: ' + err.message);
+            }
+          }}
+          onUpdateRounds={async (newRounds) => {
+            try {
+              const updatedBlocks = [...object.blocks];
+              updatedBlocks[leaderboardModalData.blockIndex] = {
+                ...updatedBlocks[leaderboardModalData.blockIndex],
+                data: { 
+                  ...updatedBlocks[leaderboardModalData.blockIndex].data, 
+                  rounds: newRounds 
+                }
+              };
+              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
+              // Update local state
+              setLeaderboardModalData(prev => ({
+                ...prev,
+                data: { ...prev.data, rounds: newRounds }
+              }));
+            } catch (err) {
+              console.error('Error updating rounds:', err);
+            }
+          }}
+          preciseGPS={preciseGPS}
         />
       )}
       {textEditModalData && (

@@ -1,8 +1,8 @@
 ========================
-OurSpots – Manifest / Blueprint (Updated Feb 11, 2026)
+OurSpots – Manifest / Blueprint (Updated Feb 13, 2026)
 ========================
 
-🚀 STATUS: v2.9.6 - UX Polish & Onboarding
+🚀 STATUS: v2.9.7 - Golf Block & Longest Drive
 
 1. VISION
 - Mobilfokuserad app med premium dark theme
@@ -114,6 +114,12 @@ OurSpots – Manifest / Blueprint (Updated Feb 11, 2026)
 - Firebase Hosting deployment (alternativ till GitHub Pages) ✅ NY v2.9.1
 - GitHub Actions workflow för automatisk deploy ✅ NY v2.9.1
 - API-nyckel säkerhetsrestriktioner (website + API) ✅ NY v2.9.1
+- Golf-block med två lägen: Leaderboard (poäng) och Longest Drive (GPS) ✅ NY v2.9.7
+- Longest Drive: GPS-baserad längdmätning med Haversine-formel ✅ NY v2.9.7
+- Fairway/Miss toggle för varje slag ✅ NY v2.9.7
+- Kartvy med Leaflet: tee-markör, bollpositioner, färgkodning ✅ NY v2.9.7
+- Statistik-sektion med snitt, längst, fairway-%, jämförelse ✅ NY v2.9.7
+- Precis GPS-inställning från burger-meny påverkar golf ✅ NY v2.9.7
 
 2. KATEGORI-SYSTEM
 - Dynamiska kategorier lagrade i Firebase ✅
@@ -174,6 +180,13 @@ Block:
 - type: "poll", title, pollType ("date"|"ranked"), options[{id, label, url?, addedBy?}], votes{emailKey: {displayName, votes: {optionId: "yes"|"no"|"maybe" | 1|2|3}}}, closed?, allowSuggestions? ✅ UPPDATERAD v2.8
 - type: "audio", title, url, discrete? (diskret = play vid plats, annars full spelare) ✅ NY v2.8
 - type: "split", title, model ("individual"|"family"), participants[{email, name, weight, adults?, children?}], expenses[{id, amount, description?, paidBy, addedBy, addedAt}], closed?, defaultCollapsed? ✅ NY v2.9
+- type: "leaderboard", title, competitionType ("score"|"longestdrive"), sortOrder ("highest"|"lowest"), participants[], scores{}, rounds[], shots{}, allowSelfScore?, defaultCollapsed? ✅ NY v2.9.7
+  - Score-läge: Poängbaserad tävling med rundor och jämförelsediagram
+  - Longest Drive-läge: GPS-baserad längdmätning med fairway-tracking
+  - GPS-fångst för tee och boll med live noggrannhetsvisning
+  - Kartvy med tee-markör, bollpositioner och avstånd
+  - Statistik: snitt, längst, fairway-%, user ranking
+  - Samma GPS-inställningar som objektpinning (10m/15s)
 - Modulära block kan adderas senare
 
 Category: ✅ IMPLEMENTERAT
@@ -871,3 +884,37 @@ src/
 - ✅ Kopiera-knapp bredvid "Lägg till barn"
 - ✅ Rensa-knapp för text/checklista/todo-block
 - ✅ Expanderande textarea (3→8 rader vid fokus)
+
+15. CHANGELOG v2.9.7 - Golf Block (Feb 13, 2026)
+
+### Golf-block (Leaderboard/Longest Drive)
+- ✅ Nytt blocktyp "Golf" med två format:
+  - Score (Leaderboard): Poängbaserad tävling med rundor
+  - Longest Drive: GPS-baserad längdmätning
+- ✅ Leaderboard-läge:
+  - Deltagarlista med poäng per runda
+  - Total-kolumn och ranking
+  - Jämförelsediagram (Du vs Snitt) med staplar
+  - Sorteras högst/lägst baserat på inställning
+- ✅ Longest Drive-läge:
+  - Tre flikar: Resultat, Fånga, Karta
+  - GPS-fångst för tee-position (ägare/editor)
+  - GPS-fångst för bollposition (alla deltagare)
+  - Fairway/Miss toggle per slag
+  - Avstånd beräknas med Haversine-formel
+  - Hålnummer per runda (valfritt)
+- ✅ Kartvy (Leaflet):
+  - Tee-markör (grön)
+  - Bollpositioner färgkodade (grön=fairway, röd=miss, blå=egen)
+  - Linjer från tee till varje boll
+  - Avstånd i tooltip
+- ✅ Statistik-sektion (collapsible):
+  - Genomsnittlig distans
+  - Längsta drive med namn
+  - Fairway-träffprocent
+  - "Du vs snitt" jämförelse med ranking
+- ✅ GPS-integration:
+  - Använder samma inställningar som objektpinning (10m/15s)
+  - Precis GPS-toggle från burger-meny påverkar golf
+  - Live noggrannhetsvisning under fångst
+  - Kan uppdatera position genom att trycka igen

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, ArrowUp, ArrowDown, FileText, CheckSquare, ClipboardList, Link2, Plus, ChevronDown, Table2, Trash2, GripVertical, Calendar, Phone, Mail, Globe, Timer, Check, Maximize2, RotateCcw, BarChart3, Type, Music, Wallet, Users, Trophy, Minus, MapPin, Edit2, Hash } from 'lucide-react';
+import { X, ArrowUp, ArrowDown, FileText, CheckSquare, ClipboardList, Link2, Plus, ChevronDown, Table2, Trash2, GripVertical, Calendar, Phone, Mail, Globe, Timer, Check, Maximize2, RotateCcw, BarChart3, Type, Music, Wallet, Users, Trophy, Minus, MapPin, Edit2, Hash, Target } from 'lucide-react';
 import { getIconComponent, LINK_ICONS, detectIconFromUrl } from '../utils/iconHelpers';
 import { TABLE_TEMPLATES } from './blocks';
 import { ListEditorModal } from './ListEditorModal';
@@ -2838,12 +2838,14 @@ function SplitBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
 // Leaderboard Block Editor - competition/ranking configuration
 function LeaderboardBlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving, shares = {}, currentUser, currentUserDisplayName }) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [title, setTitle] = useState(block.title || 'Leaderboard');
+  const getDefaultTitle = (type) => type === 'longestdrive' ? 'Longest Drive' : 'Leaderboard';
+  const [title, setTitle] = useState(block.title || getDefaultTitle(block.competitionType));
   const [participants, setParticipants] = useState(block.participants || []);
   const [roundCount, setRoundCount] = useState(block.roundCount || 0);
   const [defaultCollapsed, setDefaultCollapsed] = useState(block.defaultCollapsed ?? true);
   const [status, setStatus] = useState(block.status || 'active');
   const [mode, setMode] = useState(block.mode || 'single'); // 'single' or 'team'
+  const [competitionType, setCompetitionType] = useState(block.competitionType || 'score'); // 'score' or 'longestdrive'
   const [teams, setTeams] = useState(block.teams || [
     { id: 1, name: 'Lag 1' },
     { id: 2, name: 'Lag 2' }
@@ -2852,17 +2854,19 @@ function LeaderboardBlockEditor({ block, onUpdate, onRemove, onMove, index, tota
 
   // Sync with block changes
   useEffect(() => {
-    setTitle(block.title || 'Leaderboard');
+    const defaultTitle = getDefaultTitle(block.competitionType);
+    setTitle(block.title || defaultTitle);
     setParticipants(block.participants || []);
     setRoundCount(block.roundCount || 0);
     setDefaultCollapsed(block.defaultCollapsed ?? true);
     setStatus(block.status || 'active');
     setMode(block.mode || 'single');
+    setCompetitionType(block.competitionType || 'score');
     setTeams(block.teams || [
       { id: 1, name: 'Lag 1' },
       { id: 2, name: 'Lag 2' }
     ]);
-  }, [block.id, block.title, block.participants, block.roundCount, block.defaultCollapsed, block.status, block.mode, block.teams]);
+  }, [block.id, block.title, block.participants, block.roundCount, block.defaultCollapsed, block.status, block.mode, block.competitionType, block.teams]);
 
   const syncToParent = (updates) => {
     onUpdate(block.id, {
@@ -2870,10 +2874,13 @@ function LeaderboardBlockEditor({ block, onUpdate, onRemove, onMove, index, tota
       participants,
       roundCount,
       scores: block.scores || {},
+      shots: block.shots || {},
+      rounds: block.rounds || [],
       defaultCollapsed,
       status,
       sortOrder: block.sortOrder || 'desc',
       mode,
+      competitionType,
       teams,
       ...updates
     });
@@ -2995,9 +3002,13 @@ function LeaderboardBlockEditor({ block, onUpdate, onRemove, onMove, index, tota
             size={16} 
             className={`text-gray-500 transition-transform flex-shrink-0 ${isExpanded ? '' : '-rotate-90'}`} 
           />
-          <Trophy size={16} className="text-blue-400 flex-shrink-0" />
+          {competitionType === 'longestdrive' ? (
+            <Target size={16} className="text-green-400 flex-shrink-0" />
+          ) : (
+            <Trophy size={16} className="text-blue-400 flex-shrink-0" />
+          )}
           <span className="text-sm font-medium text-gray-300 truncate">
-            {title || 'Leaderboard'}
+            Golf – {competitionType === 'longestdrive' ? 'Longest Drive' : 'Leaderboard'}
           </span>
           {participants.length > 0 && (
             <span className="text-xs text-gray-500 flex-shrink-0">({participants.length} deltagare)</span>
@@ -3019,19 +3030,51 @@ function LeaderboardBlockEditor({ block, onUpdate, onRemove, onMove, index, tota
       {/* Expandable content */}
       {isExpanded && (
         <div className="p-3 space-y-4">
-          {/* Title */}
+          {/* Competition type toggle: Score / Longest Drive */}
           <div>
-            <label className="text-xs text-gray-400 mb-1 block">Titel</label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => handleTitleChange(e.target.value)}
-              className="w-full px-3 py-2 text-sm bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-blue-500 text-white placeholder-gray-500"
-              placeholder="T.ex. Golfhelg 2026"
-            />
+            <label className="text-xs text-gray-400 mb-2 block">Format</label>
+            <div className="flex rounded-lg overflow-hidden border border-white/10">
+              <button
+                type="button"
+                onClick={() => {
+                  setCompetitionType('score');
+                  setTitle('Leaderboard');
+                  syncToParent({ competitionType: 'score', title: 'Leaderboard' });
+                }}
+                className={`flex-1 px-3 py-2 text-xs font-medium transition-colors ${
+                  competitionType === 'score'
+                    ? 'bg-blue-500/20 text-blue-400'
+                    : 'bg-white/5 text-gray-500 hover:text-gray-300'
+                }`}
+              >
+                Poäng
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setCompetitionType('longestdrive');
+                  setTitle('Longest Drive');
+                  syncToParent({ competitionType: 'longestdrive', title: 'Longest Drive' });
+                }}
+                className={`flex-1 px-3 py-2 text-xs font-medium transition-colors ${
+                  competitionType === 'longestdrive'
+                    ? 'bg-green-500/20 text-green-400'
+                    : 'bg-white/5 text-gray-500 hover:text-gray-300'
+                }`}
+              >
+                Längsta Drive
+              </button>
+            </div>
+            {competitionType === 'longestdrive' && (
+              <p className="text-xs text-gray-500 mt-2">
+                Mät drive-längd med GPS. Tee-position + bollposition per spelare.
+              </p>
+            )}
           </div>
 
-          {/* Mode toggle: Singel / Lag */}
+          {/* Mode toggle: Singel / Lag (only for score mode) */}
+          {competitionType === 'score' && (
+          <>
           <div>
             <label className="text-xs text-gray-400 mb-2 block">Tävlingstyp</label>
             <div className="flex rounded-lg overflow-hidden border border-white/10">
@@ -3187,6 +3230,43 @@ function LeaderboardBlockEditor({ block, onUpdate, onRemove, onMove, index, tota
                   </div>
                 )}
               </div>
+            </div>
+          )}
+          </>
+          )}
+
+          {/* Longest Drive mode: Participants (simpler selection) */}
+          {competitionType === 'longestdrive' && (
+            <div>
+              <label className="text-xs text-gray-400 mb-2 block">
+                Deltagare
+              </label>
+              
+              {availableUsers.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {availableUsers.map((user, idx) => {
+                    const isSelected = participants.some(p => p.email?.toLowerCase() === user.email);
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => toggleParticipant(user.email, user.name)}
+                        className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
+                          isSelected
+                            ? 'bg-green-500/20 border-green-500/50 text-green-400'
+                            : 'bg-white/5 border-white/10 text-gray-500 hover:text-gray-300 hover:bg-white/10'
+                        }`}
+                      >
+                        {user.name}{user.isOwner ? ' (jag)' : ''}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-xs text-gray-500 italic">
+                  Dela objektet med andra för att lägga till deltagare
+                </div>
+              )}
             </div>
           )}
 
