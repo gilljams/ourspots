@@ -78,6 +78,9 @@ function App() {
   const [objects, setObjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [toast, setToastInternal] = useState(null); // { message, type: 'success' | 'error' | 'info', key }
+  // Wrapper to add unique key for proper timer reset on repeated toasts
+  const setToast = (value) => setToastInternal(value ? { ...value, key: Date.now() } : null);
   const [selectedObject, setSelectedObject] = useState(null);
   const [navigationHistory, setNavigationHistory] = useState([]); // Stack of previously viewed objects
   const [activeCategory, setActiveCategory] = useState(() => {
@@ -104,6 +107,8 @@ function App() {
     return saved === 'true';
   });
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchExpanded, setSearchExpanded] = useState(false);
+  const searchInputRef = useRef(null);
   const [maxDistanceKm, setMaxDistanceKm] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
   const [viewFilter, setViewFilter] = useState('all'); // 'all' | 'collections' | 'objects'
@@ -139,6 +144,8 @@ function App() {
   const [quickCaptureObjectId, setQuickCaptureObjectId] = useState(() => {
     return localStorage.getItem('quickCaptureObjectId') || '';
   });
+  const [showQuickCaptureObjectPicker, setShowQuickCaptureObjectPicker] = useState(false);
+  const [quickCaptureSearchQuery, setQuickCaptureSearchQuery] = useState('');
   const [preciseGPS, setPreciseGPS] = useState(() => {
     const saved = localStorage.getItem('preciseGPS');
     return saved === 'true'; // Default false (snabb GPS)
@@ -217,6 +224,14 @@ function App() {
   useEffect(() => {
     localStorage.setItem('activeCategory', activeCategory);
   }, [activeCategory]);
+
+  // Auto-dismiss toast after 3 seconds (key ensures timer resets on repeated toasts)
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToastInternal(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast?.key]);
 
   // Scroll to top when category changes to avoid white screen
   useEffect(() => {
@@ -358,7 +373,7 @@ function App() {
             
             // Check if user is blocked
             if (userData?.blocked) {
-              alert('Ditt konto har blivit blockerat. Kontakta administratören.');
+              setToast({ message: 'Ditt konto har blivit blockerat. Kontakta administratören.', type: 'error' });
               await signOut(auth);
               return;
             }
@@ -826,7 +841,7 @@ function App() {
     } catch (err) {
       if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
         console.error('Login error:', err);
-        alert('Kunde inte logga in. Försök igen!');
+        setToast({ message: 'Kunde inte logga in. Försök igen!', type: 'error' });
       }
     }
   };
@@ -846,7 +861,7 @@ function App() {
     } catch (err) {
       if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
         console.error('Switch account error:', err);
-        alert('Kunde inte byta konto. Försök igen!');
+        setToast({ message: 'Kunde inte byta konto. Försök igen!', type: 'error' });
       }
     }
   };
@@ -875,7 +890,7 @@ function App() {
   // Quick capture functions
   const handleQuickCapture = async () => {
     if (!userLocation) {
-      alert('Ingen GPS-position! Vänta tills GPS har hittats.');
+      setToast({ message: 'Ingen GPS-position! Vänta tills GPS har hittats.', type: 'error' });
       return;
     }
 
@@ -897,15 +912,15 @@ function App() {
             blocks: updatedBlocks
           });
           const objectName = targetObject.blocks?.find(b => b.type === 'title')?.data?.text || 'objektet';
-          alert(`Position tillagd till "${objectName}"!`);
+          setToast({ message: `Position tillagd till "${objectName}"!`, type: 'success' });
           return;
         } catch (err) {
           console.error('Error adding location:', err);
-          alert('Kunde inte lägga till position');
+          setToast({ message: 'Kunde inte lägga till position', type: 'error' });
           return;
         }
       } else {
-        alert('Valt objekt finns inte längre. Välj ett nytt i inställningar.');
+        setToast({ message: 'Valt objekt finns inte längre. Välj ett nytt i inställningar.', type: 'error' });
         return;
       }
     }
@@ -924,7 +939,7 @@ function App() {
     localStorage.setItem('ourspots_captures', JSON.stringify(newCaptures));
     
     // Visual feedback
-    alert('Position sparad! (' + newCaptures.length + ' st)');
+    setToast({ message: `Position sparad! (${newCaptures.length} st)`, type: 'success' });
   };
 
   const handleDeleteCapture = (captureId) => {
@@ -966,7 +981,7 @@ function App() {
 
   const handleSaveObject = async (objectData, editId) => {
     if (!user) {
-      alert('Du måste vara inloggad!');
+      setToast({ message: 'Du måste vara inloggad!', type: 'error' });
       return;
     }
     
@@ -977,9 +992,9 @@ function App() {
       
       if (ownedObjectsCount >= limit) {
         if (!userApproved) {
-          alert(`Du har nått gränsen på ${limit} objekt. Kontakta en administratör för att få ditt konto godkänt och utökat.`);
+          setToast({ message: `Du har nått gränsen på ${limit} objekt. Kontakta en administratör för att få ditt konto godkänt och utökat.`, type: 'error' });
         } else {
-          alert(`Du har nått din gräns på ${limit} objekt.`);
+          setToast({ message: `Du har nått din gräns på ${limit} objekt.`, type: 'error' });
         }
         return;
       }
@@ -1319,7 +1334,7 @@ function App() {
       }
     } catch (err) {
       console.error('Save error:', err);
-      alert(err.message === 'Timeout' ? 'Sparningen tog för lång tid. Försök igen.' : 'Kunde inte spara!');
+      setToast({ message: err.message === 'Timeout' ? 'Sparningen tog för lång tid. Försök igen.' : 'Kunde inte spara!', type: 'error' });
     } finally {
       setSaving(false);
     }
@@ -1353,7 +1368,7 @@ function App() {
       ]);
     } catch (err) {
       console.error('Error deleting objects:', err);
-      alert('Kunde inte ta bort!');
+      setToast({ message: 'Kunde inte ta bort!', type: 'error' });
     }
   };
 
@@ -1398,13 +1413,13 @@ function App() {
       setSelectedObject(null);
     } catch (err) {
       console.error('Error leaving share:', err);
-      alert('Kunde inte lämna delningen!');
+      setToast({ message: 'Kunde inte lämna delningen!', type: 'error' });
     }
   };
 
   const handleEdit = (obj) => {
     if (!user) {
-      alert('Du måste vara inloggad för att redigera!');
+      setToast({ message: 'Du måste vara inloggad för att redigera!', type: 'error' });
       return;
     }
     
@@ -1415,7 +1430,7 @@ function App() {
     const canEditObj = isOwner || isAdmin || shareRole === 'editor';
     
     if (obj.id && !canEditObj) {
-      alert('Du har inte behörighet att redigera detta objekt!');
+      setToast({ message: 'Du har inte behörighet att redigera detta objekt!', type: 'error' });
       return;
     }
     if (obj.parentId) {
@@ -1428,7 +1443,7 @@ function App() {
 
   const handleDuplicate = (obj) => {
     if (!user) {
-      alert('Du måste vara inloggad för att kopiera!');
+      setToast({ message: 'Du måste vara inloggad för att kopiera!', type: 'error' });
       return;
     }
     setDuplicatingObject(obj);
@@ -1458,6 +1473,26 @@ function App() {
                            linear-gradient(to bottom right, #06070c, #0b1220, #06070c)`
       }}
     >
+      {/* Toast notification */}
+      {toast && (
+        <div 
+          key={toast.key}
+          className={`fixed top-4 left-1/2 -translate-x-1/2 z-[9999] px-4 py-3 rounded-xl shadow-lg backdrop-blur-sm flex items-center gap-3 transition-all ${
+            toast.type === 'success' ? 'bg-green-500/90 text-white' :
+            toast.type === 'error' ? 'bg-red-500/90 text-white' :
+            'bg-gray-800/90 text-white border border-white/10'
+          }`}
+          style={{ 
+            marginTop: 'env(safe-area-inset-top)',
+            animation: 'toast-slide-in 0.3s ease-out'
+          }}
+          onClick={() => setToast(null)}
+        >
+          {toast.type === 'success' && <Check size={18} />}
+          {toast.type === 'error' && <AlertTriangle size={18} />}
+          <span className="text-sm font-medium">{toast.message}</span>
+        </div>
+      )}
       <header ref={headerRef} className="bg-gray-900/50 backdrop-blur-xl border-b border-white/10 sticky top-0 z-40" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         {/* Demo mode banner - at top of header */}
         {showDemoObjects && (
@@ -1507,21 +1542,45 @@ function App() {
           
           {/* Right side: Search + User */}
           <div className="flex-1 flex items-center justify-end gap-3">
-          <div className="min-w-0 max-w-md w-full sm:w-auto sm:min-w-[200px] lg:min-w-[280px]">
-            <div className="relative">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-              <input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-9 bg-white/10 text-white text-sm placeholder:text-gray-500 rounded-full pl-9 pr-8 border border-white/10 focus:border-blue-400 focus:bg-white/15 focus:ring-2 focus:ring-blue-500/20 transition-all"
-                placeholder="Sök..."
-              />
-              {searchQuery && (
+          <div className="relative flex items-center justify-end">
+            {/* Expandable search */}
+            <div className={`flex items-center transition-all duration-300 ease-out ${
+              searchExpanded || searchQuery ? 'w-full max-w-md' : 'w-9'
+            }`}>
+              {(searchExpanded || searchQuery) ? (
+                <div className="relative w-full">
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                  <input
+                    ref={searchInputRef}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onBlur={() => {
+                      if (!searchQuery) setSearchExpanded(false);
+                    }}
+                    className="w-full h-9 bg-white/10 text-white text-sm placeholder:text-gray-500 rounded-full pl-9 pr-8 border border-white/10 focus:border-blue-400 focus:bg-white/15 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    placeholder="Sök..."
+                    autoFocus
+                  />
+                  <button
+                    onClick={() => {
+                      setSearchQuery('');
+                      setSearchExpanded(false);
+                    }}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-gray-300 transition-colors"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              ) : (
                 <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-gray-300 transition-colors"
+                  onClick={() => {
+                    setSearchExpanded(true);
+                    setTimeout(() => searchInputRef.current?.focus(), 50);
+                  }}
+                  className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/15 flex items-center justify-center text-gray-400 hover:text-white border border-white/10 transition-all"
+                  title="Sök"
                 >
-                  <X size={12} />
+                  <Search size={16} />
                 </button>
               )}
             </div>
@@ -1617,7 +1676,7 @@ function App() {
                             if (pendingInvitations.length === 1) setShowInvitations(false);
                           } catch (err) {
                             console.error('Error accepting invitation:', err);
-                            alert('Kunde inte acceptera');
+                            setToast({ message: 'Kunde inte acceptera', type: 'error' });
                           }
                         }}
                         className="px-2.5 py-1.5 rounded-lg bg-green-500/20 text-green-300 text-xs font-medium hover:bg-green-500/30 transition-colors flex items-center justify-center"
@@ -1656,7 +1715,7 @@ function App() {
                             if (pendingInvitations.length === 1) setShowInvitations(false);
                           } catch (err) {
                             console.error('Error declining invitation:', err);
-                            alert('Kunde inte neka');
+                            setToast({ message: 'Kunde inte neka', type: 'error' });
                           }
                         }}
                         className="px-2.5 py-1.5 rounded-lg bg-red-500/20 text-red-300 text-xs font-medium hover:bg-red-500/30 transition-colors flex items-center justify-center"
@@ -1880,8 +1939,27 @@ function App() {
             </div>
             {displayObjects.length === 0 && (
               <div className="text-center py-12 pt-8">
-                {/* Onboarding for logged in users with no objects */}
-                {user && !showFavoritesOnly && !showDemoObjects && objects.filter(o => o.ownerId === user.uid).length === 0 ? (
+                {/* Search with category filter - suggest expanding search */}
+                {searchTerm && activeCategory !== 'all' && activeCategory !== 'favorites' ? (
+                  <div className="max-w-sm mx-auto px-4">
+                    <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-4">
+                      <Search size={28} className="text-gray-500" />
+                    </div>
+                    <p className="text-gray-400 text-lg font-medium mb-1">
+                      Inga träffar för "{searchTerm}"
+                    </p>
+                    <p className="text-gray-500 text-sm mb-4">
+                      i kategorin {categories.find(c => c.id === activeCategory)?.label || activeCategory}
+                    </p>
+                    <button
+                      onClick={() => setActiveCategory('all')}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 transition-all text-sm"
+                    >
+                      <Filter size={16} />
+                      Sök i alla kategorier
+                    </button>
+                  </div>
+                ) : user && !showFavoritesOnly && !showDemoObjects && objects.filter(o => o.ownerId === user.uid).length === 0 ? (
                   <div className="max-w-sm mx-auto px-4">
                     <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center mx-auto mb-5">
                       <Sparkles size={28} className="text-blue-400" />
@@ -2075,14 +2153,14 @@ function App() {
               try {
                 // Prevent circular linking (adding collection to itself)
                 if (objectId === collectionId) {
-                  alert('En samlingsvy kan inte länka till sig själv');
+                  setToast({ message: 'En samlingsvy kan inte länka till sig själv', type: 'error' });
                   return;
                 }
                 const collection = objects.find(o => o.id === collectionId);
                 if (!collection) return;
                 const currentLinked = collection.linkedObjectIds || [];
                 if (currentLinked.includes(objectId)) {
-                  alert('Objektet finns redan i samlingsvyn');
+                  setToast({ message: 'Objektet finns redan i samlingsvyn', type: 'info' });
                   return;
                 }
                 // Add to both linkedObjectIds and linkedOrder
@@ -2093,10 +2171,10 @@ function App() {
                   updatedAt: Timestamp.now()
                 });
                 const collectionTitle = collection.blocks?.find(b => b.type === 'title')?.data?.text || 'samlingsvyn';
-                alert(`Tillagt i "${collectionTitle}"!`);
+                setToast({ message: `Tillagt i "${collectionTitle}"!`, type: 'success' });
               } catch (err) {
                 console.error('Error adding to collection:', err);
-                alert('Kunde inte lägga till i samlingsvyn');
+                setToast({ message: 'Kunde inte lägga till i samlingsvyn', type: 'error' });
               }
             }}
             onRemoveFromCollection={async (collectionId, objectId) => {
@@ -2112,7 +2190,7 @@ function App() {
                 });
               } catch (err) {
                 console.error('Error removing from collection:', err);
-                alert('Kunde inte ta bort från samlingsvyn');
+                setToast({ message: 'Kunde inte ta bort från samlingsvyn', type: 'error' });
               }
             }}
             onUpdateLinkedNote={async (collectionId, linkedObjectId, note) => {
@@ -2153,7 +2231,7 @@ function App() {
                 });
               } catch (err) {
                 console.error('Error adding linked URL:', err);
-                alert('Kunde inte lägga till länken');
+                setToast({ message: 'Kunde inte lägga till länken', type: 'error' });
               }
             }}
             onUpdateLinkedUrl={async (collectionId, urlId, urlData) => {
@@ -2519,7 +2597,7 @@ function App() {
                       </div>
                     )}
                     {keepScreenOn && 'wakeLock' in navigator && (
-                      <div className="mt-2 text-xs text-green-400 flex items-center gap-1">
+                      <div className="mt-2 text-xs text-blue-400 flex items-center gap-1">
                         <Check size={12} className="flex-shrink-0" /> Aktiv - skärmen ska förbli påslagen
                       </div>
                     )}
@@ -2528,12 +2606,12 @@ function App() {
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
                         <div className="text-sm font-medium text-white">Precis GPS</div>
-                        <div className="text-xs text-gray-400 mt-0.5">Väntar på bättre position (bra utomhus)</div>
+                        <div className="text-xs text-gray-400 mt-0.5">Väntar på bättre GPS-signal</div>
                       </div>
                       <button
                         onClick={() => setPreciseGPS(!preciseGPS)}
                         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                          preciseGPS ? 'bg-green-500' : 'bg-gray-600'
+                          preciseGPS ? 'bg-blue-500' : 'bg-gray-600'
                         }`}
                       >
                         <span
@@ -2544,7 +2622,7 @@ function App() {
                       </button>
                     </div>
                     {preciseGPS && (
-                      <div className="mt-2 text-xs text-green-400 flex items-center gap-1">
+                      <div className="mt-2 text-xs text-blue-400 flex items-center gap-1">
                         <Check size={12} className="flex-shrink-0" /> Väntar tills GPS är ±10m eller max 15 sek
                       </div>
                     )}
@@ -2553,7 +2631,7 @@ function App() {
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
                         <div className="text-sm font-medium text-white">Visa demoexempel</div>
-                        <div className="text-xs text-gray-400 mt-0.5">Se exempel på hur OurSpots kan användas</div>
+                        <div className="text-xs text-gray-400 mt-0.5">Se exempel på användning</div>
                       </div>
                       <button
                         onClick={() => {
@@ -2567,7 +2645,7 @@ function App() {
                           localStorage.setItem('showDemoObjects', String(newValue));
                         }}
                         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                          showDemoObjects ? 'bg-purple-500' : 'bg-gray-600'
+                          showDemoObjects ? 'bg-blue-500' : 'bg-gray-600'
                         }`}
                       >
                         <span
@@ -2578,7 +2656,7 @@ function App() {
                       </button>
                     </div>
                     {showDemoObjects && (
-                      <div className="mt-2 text-xs text-purple-400 flex items-center gap-1">
+                      <div className="mt-2 text-xs text-blue-400 flex items-center gap-1">
                         <Check size={12} className="flex-shrink-0" /> Visar endast demoexempel (skrivskyddat)
                       </div>
                     )}
@@ -2629,26 +2707,22 @@ function App() {
                           <div className="text-sm font-medium text-white">Går till objekt</div>
                           <div className="text-xs text-gray-400 mt-0.5">Lägg till positioner direkt</div>
                         </div>
-                        <select
-                          value={quickCaptureObjectId}
-                          onChange={(e) => setQuickCaptureObjectId(e.target.value)}
-                          className="w-full bg-gray-800 border border-white/10 rounded-lg px-3 py-2 text-white text-sm appearance-none"
-                          style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}
+                        <button
+                          onClick={() => {
+                            setQuickCaptureSearchQuery('');
+                            setShowQuickCaptureObjectPicker(true);
+                          }}
+                          className="w-full flex items-center justify-between bg-gray-800 border border-white/10 rounded-lg px-3 py-2 text-sm hover:border-orange-500/50 transition-colors"
                         >
-                          <option value="">Ingen (spara i lista)</option>
-                          {objects && user && objects
-                            .filter(obj => obj.ownerId === user.uid)
-                            .map(obj => ({
-                              ...obj,
-                              displayName: obj.blocks?.find(b => b.type === 'title')?.data?.text || 'Namnlöst objekt'
-                            }))
-                            .sort((a, b) => a.displayName.localeCompare(b.displayName))
-                            .map(obj => (
-                              <option key={obj.id} value={obj.id}>
-                                {obj.displayName}
-                              </option>
-                            ))}
-                        </select>
+                          {quickCaptureObjectId ? (
+                            <span className="text-white truncate">
+                              {objects?.find(o => o.id === quickCaptureObjectId)?.blocks?.find(b => b.type === 'title')?.data?.text || 'Namnlöst objekt'}
+                            </span>
+                          ) : (
+                            <span className="text-gray-500">Ingen (spara i lista)</span>
+                          )}
+                          <ChevronDown size={16} className="text-gray-400 flex-shrink-0" />
+                        </button>
                       </div>
                       <button
                         onClick={() => { setShowMenu(false); setShowCaptures(true); }}
@@ -2673,31 +2747,185 @@ function App() {
             
             {/* Footer with logout */}
             {user && (
-              <div className="flex-shrink-0 p-4 border-t border-white/10 space-y-2">
-                <button
-                  onClick={() => {
-                    setShowMenu(false);
-                    handleSwitchAccount();
-                  }}
-                  className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-white/5 hover:bg-blue-500/20 text-gray-400 hover:text-blue-400 transition-all"
-                >
-                  <Users size={18} />
-                  <span className="text-sm font-medium">Byt konto</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setShowMenu(false);
-                    handleLogout();
-                  }}
-                  className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-white/5 hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition-all"
-                >
-                  <LogOut size={18} />
-                  <span className="text-sm font-medium">Logga ut</span>
-                </button>
+              <div className="flex-shrink-0 p-4 border-t border-white/10">
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      setShowMenu(false);
+                      handleSwitchAccount();
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 p-3 rounded-xl bg-white/5 hover:bg-blue-500/20 text-gray-400 hover:text-blue-400 transition-all"
+                  >
+                    <Users size={18} />
+                    <span className="text-sm font-medium">Byt konto</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowMenu(false);
+                      handleLogout();
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 p-3 rounded-xl bg-white/5 hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition-all"
+                  >
+                    <LogOut size={18} />
+                    <span className="text-sm font-medium">Logga ut</span>
+                  </button>
+                </div>
               </div>
             )}
           </div>
         </>
+      )}
+      
+      {/* Quick Capture Object Picker Modal */}
+      {showQuickCaptureObjectPicker && (
+        <div 
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[2100] flex items-center justify-center p-4"
+          onClick={() => setShowQuickCaptureObjectPicker(false)}
+        >
+          <div 
+            className="bg-gray-900 rounded-xl border border-white/10 w-full max-w-md overflow-hidden flex flex-col max-h-[80vh]"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between flex-shrink-0">
+              <div className="flex items-center gap-2">
+                <Target size={18} className="text-orange-400" />
+                <h3 className="font-medium text-white">Välj objekt</h3>
+              </div>
+              <button 
+                onClick={() => setShowQuickCaptureObjectPicker(false)}
+                className="p-1 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            {/* Search field */}
+            <div className="px-3 py-2 border-b border-white/5 flex-shrink-0">
+              <div className="relative">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                <input
+                  type="text"
+                  value={quickCaptureSearchQuery}
+                  onChange={e => setQuickCaptureSearchQuery(e.target.value)}
+                  placeholder="Sök objekt..."
+                  className="w-full pl-9 pr-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-orange-500"
+                  autoFocus
+                />
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-2">
+              {/* Option for no object */}
+              <button
+                onClick={() => {
+                  setQuickCaptureObjectId('');
+                  setShowQuickCaptureObjectPicker(false);
+                }}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all ${
+                  !quickCaptureObjectId ? 'bg-orange-500/20 text-orange-400' : 'hover:bg-white/10 text-gray-300 hover:text-white'
+                }`}
+              >
+                <div className="w-8 h-8 rounded bg-white/10 flex items-center justify-center flex-shrink-0">
+                  <List size={14} className="text-gray-400" />
+                </div>
+                <span className="flex-1 text-sm">Ingen (spara i lista)</span>
+                {!quickCaptureObjectId && <Check size={16} className="text-orange-400" />}
+              </button>
+              
+              {(() => {
+                // Filter objects owned by user
+                const availableObjects = objects?.filter(obj => obj.ownerId === user?.uid) || [];
+                
+                // Apply search filter
+                const searchLower = quickCaptureSearchQuery.toLowerCase().trim();
+                const filteredObjects = searchLower 
+                  ? availableObjects.filter(obj => {
+                      const title = obj.blocks?.find(b => b.type === 'title')?.data?.text || '';
+                      return title.toLowerCase().includes(searchLower);
+                    })
+                  : availableObjects;
+                
+                // Group by category
+                const grouped = {};
+                filteredObjects.forEach(obj => {
+                  const catId = obj.type || 'other';
+                  if (!grouped[catId]) grouped[catId] = [];
+                  grouped[catId].push(obj);
+                });
+                
+                const categoryIds = Object.keys(grouped).sort((a, b) => {
+                  const catA = categories?.find(c => c.id === a);
+                  const catB = categories?.find(c => c.id === b);
+                  return (catA?.label || a).localeCompare(catB?.label || b);
+                });
+                
+                if (categoryIds.length === 0 && searchLower) {
+                  return (
+                    <div className="text-center py-8 text-gray-500 text-sm">
+                      Inga objekt matchar sökningen
+                    </div>
+                  );
+                }
+                
+                return categoryIds.map(catId => {
+                  const category = categories?.find(c => c.id === catId);
+                  const CategoryIcon = category ? getIconComponent(category.icon) : (PREDEFINED_ICONS[catId]?.icon || Home);
+                  const categoryLabel = category?.label || PREDEFINED_ICONS[catId]?.label || catId;
+                  const objectsInCategory = grouped[catId].sort((a, b) => {
+                    const titleA = a.blocks?.find(bl => bl.type === 'title')?.data?.text || '';
+                    const titleB = b.blocks?.find(bl => bl.type === 'title')?.data?.text || '';
+                    return titleA.localeCompare(titleB);
+                  });
+                  
+                  return (
+                    <div key={catId} className="mb-3">
+                      <div className="flex items-center gap-2 px-2 py-1.5 text-xs font-medium text-gray-400 uppercase tracking-wide">
+                        <CategoryIcon size={12} />
+                        {categoryLabel} ({objectsInCategory.length})
+                      </div>
+                      <div className="space-y-0.5">
+                        {objectsInCategory.map(obj => {
+                          const objTitle = obj.blocks?.find(b => b.type === 'title')?.data?.text || 'Namnlöst';
+                          const objImage = obj.blocks?.find(b => b.type === 'image');
+                          const ObjIcon = category ? getIconComponent(category.icon) : (PREDEFINED_ICONS[obj.type]?.icon || Home);
+                          const isSelected = quickCaptureObjectId === obj.id;
+                          
+                          return (
+                            <button
+                              key={obj.id}
+                              onClick={() => {
+                                setQuickCaptureObjectId(obj.id);
+                                setShowQuickCaptureObjectPicker(false);
+                              }}
+                              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all ${
+                                isSelected ? 'bg-orange-500/20 text-orange-400' : 'hover:bg-white/10 text-gray-300 hover:text-white'
+                              }`}
+                            >
+                              {objImage ? (
+                                <div className="w-8 h-8 rounded overflow-hidden flex-shrink-0">
+                                  <img 
+                                    src={getTransformedImageUrl(objImage.data.url, objImage.data.focalPoint ? 'custom' : objImage.data.focalPoint, 64, 64, objImage.data.focalPoint)} 
+                                    alt="" 
+                                    className="w-full h-full object-cover"
+                                    style={getFocalPointStyles(objImage.data.focalPoint)}
+                                  />
+                                </div>
+                              ) : (
+                                <div className="w-8 h-8 rounded bg-white/10 flex items-center justify-center flex-shrink-0">
+                                  <ObjIcon size={14} className="text-gray-400" />
+                                </div>
+                              )}
+                              <span className="flex-1 truncate text-sm">{objTitle}</span>
+                              {isSelected && <Check size={16} className="text-orange-400" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

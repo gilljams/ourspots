@@ -15,7 +15,7 @@ OurSpots är en platsbaserad app (primärt för mobil) med dark theme som låter
 - Organisera i lager (parent/child) och kategorier
 - Se objekt på karta med avstånd och navigation
 
-## 🏗️ Nuvarande Status (v2.9.5 - Demo/Hjälp-objekt)
+## 🏗️ Nuvarande Status (v2.9.6 - UX & Toast)
 
 ### ✅ Implementerat
 
@@ -594,6 +594,24 @@ Detta är en varning från Firebase Auth + GitHub Pages. Kan ignoreras - påverk
 - [ ] Content Security Policy headers
 
 ## 📝 Changelog
+
+### v2.9.6 - UX-finputsning & Toast-notifikationer (2026-02-12)
+- 📣 **Toast-notifikationer** - Ersatt alla blockerande `alert()` med moderna toasts
+  - Glider in uppifrån, försvinner automatiskt efter 3 sek
+  - Grön (success), röd (error), grå (info)
+  - Klicka för att stänga direkt
+  - Smart hantering vid snabba klick - ersätter och återställer timer
+- 🔍 **Expanderbar sökning** - Sökfältet är nu en kompakt rund knapp som expanderar åt vänster
+  - Renare header på mobil
+  - Kollapsar tillbaka vid blur (om inget sökterme)
+- 🔎 **Smart sökfiltrering** - Vid 0 träffar med kategori vald visas:
+  - "Inga träffar för 'X' i kategorin Y"
+  - Knapp: "Sök i alla kategorier" för snabb utvidgning
+- 🎯 **Förbättrad objektväljare för snabbpinning** - Modal med sök och kategorier istället för dropdown
+- 🎨 **Settings-finputsning:**
+  - Kortare stödtexter (en rad)
+  - Enhetligt blått tema på toggles (snabbpinning behåller orange)
+  - "Byt konto" och "Logga ut" på samma rad
 
 ### v1.8 - Kantarellknappen & Offline-säkerhet (2026-02-07)
 - 🍄 **Kantarellknappen i multi-location modal** - Orange GPS-knapp direkt i kartan för snabb pinning
