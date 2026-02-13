@@ -7,6 +7,7 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { getIconComponent, PREDEFINED_ICONS, emailToKey } from '../utils/iconHelpers';
 import { getTransformedImageUrl, getFocalPointStyles } from '../utils/imageUtils';
+import { getObjectDistance, formatDistance } from '../utils/geoUtils';
 import { blockComponents } from './blocks';
 import DeleteConfirmModal from './DeleteConfirmModal';
 import LeaderboardModal from './LeaderboardModal';
@@ -1497,7 +1498,29 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                             const template = TABLE_TEMPLATES[block.data.template] || TABLE_TEMPLATES.table;
                             const legacyTemplate = block.data.template;
                             
-                            // Convert legacy rows to new format (col1, col2)
+                            // For list template, normalize rows so 'item' field is populated
+                            // (previous code may have saved to 'col1' instead)
+                            if (legacyTemplate === 'list') {
+                              const normalizedRows = (block.data.rows || []).map(row => {
+                                // Ensure item field has the correct value
+                                const itemValue = row.item || row.col1 || row.task || row.name || '';
+                                return {
+                                  ...row,
+                                  item: itemValue
+                                };
+                              });
+                              setTableEditModalData({ 
+                                blockIndex: actualBlockIndex, 
+                                rows: normalizedRows,
+                                columns: block.data.columns || template.columns,
+                                template: 'list',
+                                title: block.data.title || template.name,
+                                col2Type: block.data.col2Type || 'text'
+                              });
+                              return;
+                            }
+                            
+                            // Convert legacy rows to new format (col1, col2) for table templates
                             const convertedRows = (block.data.rows || []).map(row => {
                               // If already has col1, it's in new format
                               if (row.col1 !== undefined) return row;
@@ -1686,7 +1709,6 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                           )}
                           <div className="flex-1 min-w-0">
                             <div className="text-xs font-medium text-white truncate">{childTitle?.data?.text || 'Namnlöst'}</div>
-                            <div className="text-xs text-gray-400 leading-tight">{PREDEFINED_ICONS[child.type]?.label}</div>
                           </div>
                         </button>
                       );
@@ -1800,6 +1822,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                       const LinkedIcon = linkedCategory ? getIconComponent(linkedCategory.icon) : (PREDEFINED_ICONS[linked.type]?.icon || Home);
                       const linkedNote = object.linkedObjectNotes?.[linked.id] || '';
                       const isEditingThis = editingNoteId === linked.id;
+                      const linkedDistance = getObjectDistance(linked, userLocation);
                       
                       return (
                         <div key={`obj_${linked.id}`} className="flex items-center gap-1">
@@ -1847,7 +1870,13 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                               {linkedNote && !isEditingThis && (
                                 <div className="text-xs text-purple-300 truncate">{linkedNote}</div>
                               )}
+                              {linkedDistance !== undefined && !linkedNote && (
+                                <div className="text-xs text-gray-500">{formatDistance(linkedDistance)}</div>
+                              )}
                             </div>
+                            {linkedDistance !== undefined && (linkedNote || isEditingThis) && (
+                              <div className="text-xs text-gray-500 flex-shrink-0">{formatDistance(linkedDistance)}</div>
+                            )}
                           </button>
                           {/* Note edit button/field - only in edit mode */}
                           {canManage && linkedEditMode && onUpdateLinkedNote && (
@@ -2554,12 +2583,19 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
           title={tableEditModalData.title}
           onSave={async (newRows) => {
             try {
+              // Clean rows: only keep item, done, isHeader (remove any legacy col1/col2 fields)
+              const cleanedRows = newRows.map(row => {
+                const cleanRow = { item: row.item || '' };
+                if (row.isHeader) cleanRow.isHeader = true;
+                if (row.done) cleanRow.done = true;
+                return cleanRow;
+              });
               const updatedBlocks = [...object.blocks];
               updatedBlocks[tableEditModalData.blockIndex] = {
                 ...updatedBlocks[tableEditModalData.blockIndex],
                 data: { 
                   ...updatedBlocks[tableEditModalData.blockIndex].data, 
-                  rows: newRows 
+                  rows: cleanedRows 
                 }
               };
               await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });

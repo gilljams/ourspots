@@ -2,7 +2,7 @@
 OurSpots – Manifest / Blueprint (Updated Feb 13, 2026)
 ========================
 
-🚀 STATUS: v2.9.7 - Golf Block & Longest Drive
+🚀 STATUS: v2.9.8 - Multi-select i Tabeller
 
 1. VISION
 - Mobilfokuserad app med premium dark theme
@@ -57,6 +57,8 @@ OurSpots – Manifest / Blueprint (Updated Feb 13, 2026)
 - iOS scroll-fix för inputfält i modaler ✅ NY
 - Fullscreen text editor för mobil (iOS Notes-liknande) ✅ NY v2.3
 - Ny ListEditorModal för enkla listor med drag & drop, Enter=ny rad, paste-funktion ✅ NY v2.9.2
+- Multi-select i list/tabell-editor: markera flera rader och flytta som block ✅ NY v2.9.8
+- Utils-dropdown (⋮) med Klistra in & Välj flera ✅ NY v2.9.8
 - Separerade Lista-modal (enkel) och Tabell-modal (avancerad) ✅ NY v2.9.2
 - Redigera-pennikon visas endast när block är expanderat ✅ NY v2.9.2
 - Tomma text/lista-block sparas som skelett för senare redigering ✅ NY v2.9.2
@@ -918,3 +920,21 @@ src/
   - Precis GPS-toggle från burger-meny påverkar golf
   - Live noggrannhetsvisning under fångst
   - Kan uppdatera position genom att trycka igen
+
+16. CHANGELOG v2.9.8 - Multi-select i Tabeller (Feb 13, 2026)
+
+### Multi-select för list/tabell-editor
+- ✅ Utils-dropdown (⋮-knappen) ersätter separat paste-knapp
+  - "Klistra in" - samma funktion som tidigare
+  - "Välj flera" - aktiverar select mode
+- ✅ Select mode:
+  - Checkboxar visas framför varje rad
+  - Valda rader får blå bakgrund
+  - Knappen lyser blått när aktivt
+  - "Avsluta val" avmarkerar och stänger läget
+- ✅ Multi-select drag:
+  - Markera flera rader med checkboxarna
+  - Dra på valfri markerad rad
+  - Alla markerade flyttas som block (behåller inbördes ordning)
+  - Fungerar med touch-drag och desktop drag&drop
+- ✅ Implementerat i både ListEditorModal och SimpleTableEditorModal

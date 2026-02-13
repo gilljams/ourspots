@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Plus, Check, Trash2, GripVertical, Heading, ClipboardPaste } from 'lucide-react';
+import { X, Plus, Check, Trash2, GripVertical, Heading, ClipboardPaste, MoreVertical, CheckSquare, Square } from 'lucide-react';
 
 // Simple list editor modal - optimized for mobile with single-column lists
 export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) {
@@ -13,6 +13,9 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
   const [viewportOffset, setViewportOffset] = useState(0);
   const [draggedId, setDraggedId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [showUtilsMenu, setShowUtilsMenu] = useState(false);
   const scrollYRef = useRef(0);
   const listRef = useRef(null);
   const inputRefs = useRef({});
@@ -154,6 +157,18 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
     setDragOverId(null);
   };
   
+  const toggleSelection = (rowId) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(rowId)) {
+        next.delete(rowId);
+      } else {
+        next.add(rowId);
+      }
+      return next;
+    });
+  };
+  
   const handleDrop = (e, targetId) => {
     e.preventDefault();
     if (!draggedId || draggedId === targetId) {
@@ -162,14 +177,36 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
       return;
     }
     
-    const draggedIdx = rows.findIndex(r => r.id === draggedId);
     const targetIdx = rows.findIndex(r => r.id === targetId);
     
-    const newRows = [...rows];
-    const [removed] = newRows.splice(draggedIdx, 1);
-    newRows.splice(targetIdx, 0, removed);
+    // Check if we're in select mode and have selected items
+    if (selectMode && selectedIds.size > 0 && selectedIds.has(draggedId)) {
+      // Move all selected rows to the target position
+      const selectedRows = rows.filter(r => selectedIds.has(r.id));
+      const remainingRows = rows.filter(r => !selectedIds.has(r.id));
+      
+      // Find target index in remaining rows
+      const targetRow = rows[targetIdx];
+      let insertIdx = remainingRows.findIndex(r => r.id === targetRow?.id);
+      if (insertIdx === -1) insertIdx = remainingRows.length;
+      
+      // Insert selected rows at target position
+      const newRows = [
+        ...remainingRows.slice(0, insertIdx),
+        ...selectedRows,
+        ...remainingRows.slice(insertIdx)
+      ];
+      
+      setRows(newRows);
+    } else {
+      // Single row move (original behavior)
+      const draggedIdx = rows.findIndex(r => r.id === draggedId);
+      const newRows = [...rows];
+      const [removed] = newRows.splice(draggedIdx, 1);
+      newRows.splice(targetIdx, 0, removed);
+      setRows(newRows);
+    }
     
-    setRows(newRows);
     setDraggedId(null);
     setDragOverId(null);
   };
@@ -218,21 +255,42 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
   
   const handleTouchEnd = useCallback(() => {
     if (touchDragId && dragOverId) {
-      const draggedIdx = rows.findIndex(r => r.id === touchDragId);
       const targetIdx = rows.findIndex(r => r.id === dragOverId);
       
-      const newRows = [...rows];
-      const [removed] = newRows.splice(draggedIdx, 1);
-      newRows.splice(targetIdx, 0, removed);
-      
-      setRows(newRows);
+      // Check if we're in select mode and have selected items
+      if (selectMode && selectedIds.size > 0 && selectedIds.has(touchDragId)) {
+        // Move all selected rows to the target position
+        const selectedRows = rows.filter(r => selectedIds.has(r.id));
+        const remainingRows = rows.filter(r => !selectedIds.has(r.id));
+        
+        // Find target index in remaining rows
+        const targetRow = rows[targetIdx];
+        let insertIdx = remainingRows.findIndex(r => r.id === targetRow?.id);
+        if (insertIdx === -1) insertIdx = remainingRows.length;
+        
+        // Insert selected rows at target position
+        const newRows = [
+          ...remainingRows.slice(0, insertIdx),
+          ...selectedRows,
+          ...remainingRows.slice(insertIdx)
+        ];
+        
+        setRows(newRows);
+      } else {
+        // Single row move (original behavior)
+        const draggedIdx = rows.findIndex(r => r.id === touchDragId);
+        const newRows = [...rows];
+        const [removed] = newRows.splice(draggedIdx, 1);
+        newRows.splice(targetIdx, 0, removed);
+        setRows(newRows);
+      }
     }
     
     setTouchDragId(null);
     setTouchY(0);
     setDragOverId(null);
     touchRowRef.current = null;
-  }, [touchDragId, dragOverId, rows]);
+  }, [touchDragId, dragOverId, rows, selectMode, selectedIds]);
   
   useEffect(() => {
     if (touchDragId) {
@@ -327,15 +385,53 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
               Rubrik
             </button>
             
-            {/* Paste button */}
-            <button
-              type="button"
-              onClick={handlePaste}
-              className="h-9 w-9 rounded-lg bg-slate-700/50 text-slate-400 hover:bg-slate-600/50 hover:text-white flex items-center justify-center transition-colors"
-              title="Klistra in från urklipp"
-            >
-              <ClipboardPaste size={16} />
-            </button>
+            {/* Utils dropdown */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowUtilsMenu(!showUtilsMenu)}
+                className={`h-9 w-9 rounded-lg ${selectMode ? 'bg-blue-600 text-white' : 'bg-slate-700/50 text-slate-400 hover:bg-slate-600/50 hover:text-white'} flex items-center justify-center transition-colors`}
+                title="Verktyg"
+              >
+                <MoreVertical size={16} />
+              </button>
+              
+              {showUtilsMenu && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-[2001]" 
+                    onClick={() => setShowUtilsMenu(false)}
+                  />
+                  <div className="absolute right-0 top-full mt-1 w-44 bg-slate-700 rounded-lg shadow-xl border border-white/10 py-1 z-[2002]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handlePaste();
+                        setShowUtilsMenu(false);
+                      }}
+                      className="w-full px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-600/50 flex items-center gap-2"
+                    >
+                      <ClipboardPaste size={14} />
+                      Klistra in
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectMode(!selectMode);
+                        if (selectMode) {
+                          setSelectedIds(new Set());
+                        }
+                        setShowUtilsMenu(false);
+                      }}
+                      className="w-full px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-600/50 flex items-center gap-2"
+                    >
+                      <CheckSquare size={14} />
+                      {selectMode ? 'Avsluta val' : 'Välj flera'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
             
             <button
               type="button"
@@ -379,12 +475,27 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
                     dragOverId === row.id ? 'bg-blue-500/10 border-t-2 border-blue-500' : ''
                   } ${
                     touchDragId === row.id ? 'opacity-50 scale-105' : ''
+                  } ${
+                    selectMode && selectedIds.has(row.id) ? 'bg-blue-500/20' : ''
                   }`}
                   style={touchDragId === row.id ? { transform: `translateY(${touchY}px)` } : {}}
                 >
                   {row.isHeader ? (
                     // Header row
                     <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-blue-500/5">
+                      {selectMode && (
+                        <button
+                          type="button"
+                          onClick={() => toggleSelection(row.id)}
+                          className="text-slate-400 hover:text-blue-400 transition-colors"
+                        >
+                          {selectedIds.has(row.id) ? (
+                            <CheckSquare size={18} className="text-blue-400" />
+                          ) : (
+                            <Square size={18} />
+                          )}
+                        </button>
+                      )}
                       <div
                         className="text-slate-500 cursor-grab active:cursor-grabbing touch-none"
                         onTouchStart={(e) => handleTouchStart(e, row.id)}
@@ -411,6 +522,19 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
                   ) : (
                     // Regular row
                     <div className="flex-1 flex items-center gap-2 px-3 py-2.5">
+                      {selectMode && (
+                        <button
+                          type="button"
+                          onClick={() => toggleSelection(row.id)}
+                          className="text-slate-400 hover:text-blue-400 transition-colors"
+                        >
+                          {selectedIds.has(row.id) ? (
+                            <CheckSquare size={18} className="text-blue-400" />
+                          ) : (
+                            <Square size={18} />
+                          )}
+                        </button>
+                      )}
                       <div
                         className="text-slate-600 cursor-grab active:cursor-grabbing touch-none"
                         onTouchStart={(e) => handleTouchStart(e, row.id)}
