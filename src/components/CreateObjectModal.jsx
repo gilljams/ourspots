@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   X, Plus, Upload, Loader, Navigation, ChevronDown, ChevronUp,
-  Map as MapIcon, FileText, CheckSquare, ClipboardList, Link2, Table2, Image as ImageIcon, Calendar, Phone, Timer, BarChart3, Folder, MapPin, Music, Wallet, Trophy, Car, Users, Minus, MessageCircle 
+  Map as MapIcon, FileText, CheckSquare, ClipboardList, Link2, Table2, Image as ImageIcon, Calendar, Phone, Timer, BarChart3, Folder, MapPin, Music, Wallet, Trophy, Car, Users, Minus, MessageCircle, Swords, Zap 
 } from 'lucide-react';
 import { 
   CLOUDINARY_CLOUD_NAME, 
@@ -12,7 +12,7 @@ import {
 import { getIconComponent } from '../utils/iconHelpers';
 import MapPicker from './MapPicker';
 import FocalPointPicker from './FocalPointPicker';
-import BlockEditor, { DateTagBlockEditor, TimerBlockEditor, PollBlockEditor, AudioBlockEditor, SplitBlockEditor, LeaderboardBlockEditor, DistributionBlockEditor, SectionBlockEditor } from './BlockEditor';
+import BlockEditor, { DateTagBlockEditor, TimerBlockEditor, PollBlockEditor, AudioBlockEditor, SplitBlockEditor, LeaderboardBlockEditor, DistributionBlockEditor, SectionBlockEditor, TiebreakerBlockEditor } from './BlockEditor';
 
 // Demo users available when in demo mode for realistic examples
 const DEMO_USERS = {
@@ -85,7 +85,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
       }));
     
     const otherBlocks = sourceObject.blocks
-      .filter(b => ['text', 'links', 'table', 'datetag', 'contact', 'timer', 'poll', 'audio', 'split', 'leaderboard', 'distribution', 'section'].includes(b.type))
+      .filter(b => ['text', 'links', 'table', 'datetag', 'contact', 'timer', 'poll', 'audio', 'split', 'leaderboard', 'distribution', 'section', 'tiebreaker'].includes(b.type))
       .map(b => {
         if (b.type === 'links') {
           return {
@@ -206,6 +206,18 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             type: 'section',
             title: b.data.title || 'Sektion',
             uppercase: b.data.uppercase !== false
+          };
+        }
+        if (b.type === 'tiebreaker') {
+          return {
+            id: Math.random().toString(36).substr(2, 9),
+            type: 'tiebreaker',
+            title: b.data.title || 'Tiebreaker',
+            bestOf: b.data.bestOf || 3,
+            defaultCollapsed: b.data.defaultCollapsed ?? false,
+            activeMatch: isDuplicate ? null : b.data.activeMatch,
+            challenges: isDuplicate ? {} : (b.data.challenges || {}),
+            matchHistory: isDuplicate ? [] : (b.data.matchHistory || [])
           };
         }
         // Text blocks
@@ -668,6 +680,19 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             uppercase: block.uppercase !== false
           } 
         });
+      } else if (block.type === 'tiebreaker') {
+        // Save tiebreaker block
+        blocks.push({ 
+          type: 'tiebreaker', 
+          data: { 
+            title: (block.title || 'Tiebreaker').trim(),
+            bestOf: block.bestOf || 3,
+            defaultCollapsed: block.defaultCollapsed ?? false,
+            activeMatch: null,
+            challenges: {},
+            matchHistory: block.matchHistory || []
+          } 
+        });
       } else if (block.type === 'text') {
         // Always save text blocks, even if empty (can be edited from view mode)
         blocks.push({ 
@@ -709,6 +734,10 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
       newBlock.columns = [];
       newBlock.col2Type = 'text'; // Default to text for new tables
       newBlock.showCheckbox = true; // Default to showing checkbox
+      // Fusebox defaults to collapsed
+      if (template === 'fusebox') {
+        newBlock.defaultCollapsed = true;
+      }
     }
     if (type === 'datetag') {
       newBlock.tags = [];
@@ -762,6 +791,14 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
     if (type === 'section') {
       newBlock.title = 'Sektion';
       newBlock.uppercase = true;
+    }
+    if (type === 'tiebreaker') {
+      newBlock.title = 'Tiebreaker';
+      newBlock.bestOf = 3;
+      newBlock.defaultCollapsed = false;
+      newBlock.activeMatch = null;
+      newBlock.challenges = {};
+      newBlock.matchHistory = [];
     }
     setCustomBlocks(prev => [...prev, newBlock]);
     setFormTouched(true);
@@ -1245,6 +1282,16 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   total={customBlocks.length}
                   saving={saving}
                 />
+              ) : block.type === 'tiebreaker' ? (
+                <TiebreakerBlockEditor
+                  block={block}
+                  onUpdate={updateCustomBlock}
+                  onRemove={removeCustomBlock}
+                  onMove={moveCustomBlock}
+                  index={index}
+                  total={customBlocks.length}
+                  saving={saving}
+                />
               ) : (
                 <BlockEditor
                   block={block}
@@ -1308,6 +1355,9 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   <button type="button" onClick={() => addCustomBlock('table')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
                     <Table2 size={16} className="text-amber-400" /> Tabell
                   </button>
+                  <button type="button" onClick={() => addCustomBlock('table', 'fusebox')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
+                    <Zap size={16} className="text-yellow-400" /> Proppskåp
+                  </button>
                   <button type="button" onClick={() => addCustomBlock('datetag')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
                     <Calendar size={16} className="text-cyan-400" /> Datum
                   </button>
@@ -1331,6 +1381,9 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   </button>
                   <button type="button" onClick={() => addCustomBlock('distribution', 'tasks')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
                     <Users size={16} className="text-blue-400" /> Uppgiftstilldelning
+                  </button>
+                  <button type="button" onClick={() => addCustomBlock('tiebreaker')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
+                    <Swords size={16} className="text-purple-400" /> Tiebreaker
                   </button>
                   {isAdmin && (
                     <button type="button" onClick={() => addCustomBlock('audio')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">

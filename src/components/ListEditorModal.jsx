@@ -1,5 +1,83 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Plus, Check, Trash2, GripVertical, Heading, ClipboardPaste, MoreVertical, CheckSquare, Square } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback, forwardRef } from 'react';
+import { X, Plus, Check, Trash2, GripVertical, Heading, ClipboardPaste, MoreVertical, CheckSquare, Square, RotateCcw, ListX } from 'lucide-react';
+
+// Expandable input - shows textarea when focused if text is long
+const ExpandableInput = forwardRef(({ value, onChange, onKeyDown, placeholder, className, isHeader }, ref) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const textareaRef = useRef(null);
+  const LONG_TEXT_THRESHOLD = 40;
+  
+  const isLongText = (value || '').length > LONG_TEXT_THRESHOLD;
+  const showTextarea = isExpanded && isLongText;
+  
+  // Sync refs
+  useEffect(() => {
+    if (ref) {
+      ref.current = showTextarea ? textareaRef.current : ref.current;
+    }
+  }, [showTextarea, ref]);
+  
+  const handleFocus = () => {
+    setIsExpanded(true);
+  };
+  
+  const handleBlur = () => {
+    setIsExpanded(false);
+  };
+  
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      onKeyDown(e);
+    } else if (e.key === 'Backspace') {
+      onKeyDown(e);
+    }
+  };
+  
+  // Auto-resize textarea
+  const adjustTextareaHeight = (textarea) => {
+    if (textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = Math.min(textarea.scrollHeight, 150) + 'px';
+    }
+  };
+  
+  if (showTextarea) {
+    return (
+      <textarea
+        ref={(el) => {
+          textareaRef.current = el;
+          if (ref) ref.current = el;
+          if (el) adjustTextareaHeight(el);
+        }}
+        value={value || ''}
+        onChange={(e) => {
+          onChange(e);
+          adjustTextareaHeight(e.target);
+        }}
+        onKeyDown={handleKeyDown}
+        onBlur={handleBlur}
+        placeholder={placeholder}
+        rows={2}
+        className={`${className} resize-none min-h-[40px]`}
+        autoFocus
+      />
+    );
+  }
+  
+  return (
+    <input
+      ref={ref}
+      type="text"
+      value={value || ''}
+      onChange={onChange}
+      onKeyDown={onKeyDown}
+      onFocus={handleFocus}
+      placeholder={placeholder}
+      className={className}
+    />
+  );
+});
 
 // Simple list editor modal - optimized for mobile with single-column lists
 export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) {
@@ -428,6 +506,33 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
                       <CheckSquare size={14} />
                       {selectMode ? 'Avsluta val' : 'Välj flera'}
                     </button>
+                    <div className="border-t border-white/10 my-1" />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (window.confirm('Vill du rensa alla ibockningar?')) {
+                          setRows(rows.map(r => r.isHeader ? r : { ...r, done: false }));
+                        }
+                        setShowUtilsMenu(false);
+                      }}
+                      className="w-full px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-600/50 flex items-center gap-2"
+                    >
+                      <RotateCcw size={14} />
+                      Rensa ibockningar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (window.confirm('Vill du ta bort alla rader från listan?')) {
+                          setRows([]);
+                        }
+                        setShowUtilsMenu(false);
+                      }}
+                      className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-red-500/10 flex items-center gap-2"
+                    >
+                      <ListX size={14} />
+                      Rensa listan
+                    </button>
                   </div>
                 </>
               )}
@@ -541,9 +646,8 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
                       >
                         <GripVertical size={16} />
                       </div>
-                      <input
+                      <ExpandableInput
                         ref={el => inputRefs.current[row.id] = el}
-                        type="text"
                         value={row.item || ''}
                         onChange={(e) => updateRow(row.id, e.target.value)}
                         onKeyDown={(e) => handleKeyDown(e, row.id)}

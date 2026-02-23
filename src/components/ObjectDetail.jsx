@@ -14,7 +14,7 @@ import LeaderboardModal from './LeaderboardModal';
 import DistributionModal from './DistributionModal';
 import { FullscreenTextEditor } from './BlockEditor';
 import { ListEditorModal } from './ListEditorModal';
-import { SimpleTableEditorModal } from './SimpleTableEditorModal';
+import { SimpleTableEditorModal, MultiColumnTableEditorModal } from './SimpleTableEditorModal';
 import { TABLE_TEMPLATES } from './blocks';
 import { MapContainer, TileLayer, Marker, Tooltip, Popup, useMap, useMapEvents, Polyline } from 'react-leaflet';
 import L from 'leaflet';
@@ -1295,6 +1295,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                           currentUser={effectiveUser}
                           userDisplayName={effectiveDisplayName}
                           shares={object.shares || {}}
+                          objectOwner={{ uid: object.ownerId, email: object.ownerEmail, displayName: object.ownerName }}
                           canEdit={canEdit}
                           onVote={block.type === 'poll' ? async (newVotes) => {
                             try {
@@ -1485,6 +1486,19 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                               console.error('Error resetting distribution:', err);
                             }
                           } : undefined}
+                          // Tiebreaker-specific update callback
+                          onUpdateTiebreaker={block.type === 'tiebreaker' ? async (newData) => {
+                            try {
+                              const updatedBlocks = [...object.blocks];
+                              updatedBlocks[actualBlockIndex] = {
+                                ...updatedBlocks[actualBlockIndex],
+                                data: { ...updatedBlocks[actualBlockIndex].data, ...newData }
+                              };
+                              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
+                            } catch (err) {
+                              console.error('Error updating tiebreaker:', err);
+                            }
+                          } : undefined}
                           // Text block inline edit - for owners/editors OR when viewerEditable
                           onEditContent={(block.type === 'text' && (canEdit || block.data.viewerEditable)) ? () => {
                             setTextEditModalData({ 
@@ -1516,6 +1530,18 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                                 template: 'list',
                                 title: block.data.title || template.name,
                                 col2Type: block.data.col2Type || 'text'
+                              });
+                              return;
+                            }
+                            
+                            // For fusebox template, use rows directly (num, description, amps)
+                            if (legacyTemplate === 'fusebox') {
+                              setTableEditModalData({ 
+                                blockIndex: actualBlockIndex, 
+                                rows: block.data.rows || [],
+                                columns: template.columns,
+                                template: 'fusebox',
+                                title: block.data.title || template.name
                               });
                               return;
                             }
@@ -2608,10 +2634,39 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
           onCancel={() => setTableEditModalData(null)}
         />
       )}
-      {tableEditModalData && tableEditModalData.template !== 'list' && (
+      {tableEditModalData && tableEditModalData.template === 'fusebox' && (
+        <MultiColumnTableEditorModal
+          rows={tableEditModalData.rows}
+          title={tableEditModalData.title}
+          columns={tableEditModalData.columns}
+          useCollapse={TABLE_TEMPLATES[tableEditModalData.template]?.useCollapse}
+          onSave={async (newRows) => {
+            try {
+              const updatedBlocks = [...object.blocks];
+              updatedBlocks[tableEditModalData.blockIndex] = {
+                ...updatedBlocks[tableEditModalData.blockIndex],
+                data: { 
+                  ...updatedBlocks[tableEditModalData.blockIndex].data, 
+                  rows: newRows,
+                  template: tableEditModalData.template
+                }
+              };
+              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
+              setTableEditModalData(null);
+            } catch (err) {
+              console.error('Error saving table content:', err);
+              alert('Kunde inte spara tabellen');
+            }
+          }}
+          onCancel={() => setTableEditModalData(null)}
+        />
+      )}
+      {tableEditModalData && tableEditModalData.template !== 'list' && tableEditModalData.template !== 'fusebox' && (
         <SimpleTableEditorModal
           rows={tableEditModalData.rows}
           title={tableEditModalData.title}
+          columns={tableEditModalData.columns}
+          template={tableEditModalData.template}
           col2Type={tableEditModalData.col2Type || 'text'}
           onSave={async (newRows, newCol2Type) => {
             try {
@@ -2622,7 +2677,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                   ...updatedBlocks[tableEditModalData.blockIndex].data, 
                   rows: newRows,
                   col2Type: newCol2Type,
-                  template: 'table' // Migrate to new template
+                  template: tableEditModalData.template || 'table' // Preserve template type
                 }
               };
               await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });

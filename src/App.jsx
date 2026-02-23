@@ -5,7 +5,7 @@ import {
   Map as MapIcon, List, ChevronDown, ArrowUp, ArrowDown, ArrowLeft, Search, Settings,
   Target, Lightbulb, SlidersHorizontal, Menu, Filter, Share2, UserPlus, UserMinus, Users, Mail, User,
   FileText, MapPin, Home, RotateCcw, Star, Navigation, Eye, Edit3, AlertTriangle, Trophy,
-  LayoutGrid, LayoutList, ArrowUpDown, Sparkles
+  LayoutGrid, LayoutList, ArrowUpDown, Sparkles, Swords
 } from 'lucide-react';
 
 // Version for cache-busting visual indicator (remove in production)
@@ -35,6 +35,7 @@ import MapView from './components/MapView';
 
 // Lazy load modals and heavy components for better initial load performance
 const ShareModal = lazy(() => import('./components/ShareModal'));
+const ContactsModal = lazy(() => import('./components/ContactsModal'));
 const DeleteConfirmModal = lazy(() => import('./components/DeleteConfirmModal'));
 const FocalPointPicker = lazy(() => import('./components/FocalPointPicker'));
 const ObjectDetail = lazy(() => import('./components/ObjectDetail'));
@@ -122,8 +123,10 @@ function App() {
   const [showObjectsAdmin, setShowObjectsAdmin] = useState(false);
   const [showUsersAdmin, setShowUsersAdmin] = useState(false);
   const [showProfileSettings, setShowProfileSettings] = useState(false);
+  const [showContacts, setShowContacts] = useState(false);
   const [displayName, setDisplayName] = useState('');
   const [sharedContacts, setSharedContacts] = useState([]);
+  const [favoriteContacts, setFavoriteContacts] = useState([]);
   const [captures, setCaptures] = useState(() => {
     try {
       const saved = localStorage.getItem('ourspots_captures');
@@ -384,6 +387,7 @@ function App() {
             const userFavorites = userData?.favorites || [];
             const userDisplayName = userData?.displayName || '';
             const userSharedContacts = userData?.sharedContacts || [];
+            const userFavoriteContacts = userData?.favoriteContacts || [];
             const userApprovedFlag = userData?.approved === true || adminFlag; // Admins are always approved
 
             setIsAdmin(adminFlag);
@@ -391,6 +395,7 @@ function App() {
             setFavorites(userFavorites);
             setDisplayName(userDisplayName);
             setSharedContacts(userSharedContacts);
+            setFavoriteContacts(userFavoriteContacts);
           } else {
             if (!isMountedRef.current) return;
 
@@ -402,6 +407,7 @@ function App() {
               favorites: [],
               displayName: '',
               sharedContacts: [],
+              favoriteContacts: [],
               createdAt: Timestamp.now()
             });
             if (!isMountedRef.current) return;
@@ -410,6 +416,7 @@ function App() {
             setFavorites([]);
             setDisplayName('');
             setSharedContacts([]);
+            setFavoriteContacts([]);
           }
         } catch (err) {
           console.error('Error fetching user doc:', err);
@@ -424,6 +431,7 @@ function App() {
         setFavorites([]);
         setDisplayName('');
         setSharedContacts([]);
+        setFavoriteContacts([]);
       }
     });
     return () => {
@@ -752,6 +760,39 @@ function App() {
       })
     : [];
   
+  // Get pending tiebreaker challenges (objects with tiebreaker blocks that have challenges to me)
+  // Note: Current implementation starts matches directly, so this catches any legacy challenges
+  const pendingTiebreakerChallenges = user ? objects.flatMap(obj => {
+    if (!obj.blocks) return [];
+    return obj.blocks
+      .map((block, blockIndex) => ({ block, blockIndex, obj }))
+      .filter(({ block }) => block.type === 'tiebreaker' && block.data?.challenges && !block.data?.activeMatch)
+      .flatMap(({ block, blockIndex, obj }) => {
+        const challenges = block.data.challenges || {};
+        const now = Date.now();
+        return Object.entries(challenges)
+          .filter(([_, challenge]) => {
+            if (challenge.status !== 'pending') return false;
+            // Ignore challenges older than 5 minutes
+            const createdAt = challenge.createdAt?.toMillis?.() || challenge.createdAt || 0;
+            if (createdAt && (now - createdAt) > 5 * 60 * 1000) return false;
+            // Check if challenge is to me (by uid, email key, or email)
+            const toUid = challenge.to?.uid;
+            const toEmail = challenge.to?.email?.toLowerCase();
+            return toUid === user.uid || 
+                   toUid === userEmailKey ||
+                   (toEmail && toEmail === userEmailLower);
+          })
+          .map(([challengeId, challenge]) => ({
+            challengeId,
+            challenge,
+            objectId: obj.id,
+            objectName: obj.name,
+            blockIndex,
+            fromName: challenge.from?.name || 'Någon'
+          }));
+      });
+  }) : [];
 
   
   // Apply category filter
@@ -1493,7 +1534,36 @@ function App() {
           <span className="text-sm font-medium">{toast.message}</span>
         </div>
       )}
-      <header ref={headerRef} className="bg-gray-900/50 backdrop-blur-xl border-b border-white/10 sticky top-0 z-40" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+      {/* Tiebreaker challenge banner - fixed at top when not viewing the object */}
+      {pendingTiebreakerChallenges.length > 0 && selectedObject?.id !== pendingTiebreakerChallenges[0].objectId && (
+        <div 
+          className="fixed top-0 left-0 right-0 z-[100] bg-blue-600/95 backdrop-blur-sm border-b border-blue-400/30 cursor-pointer"
+          style={{ paddingTop: 'env(safe-area-inset-top)' }}
+          onClick={() => {
+            const challenge = pendingTiebreakerChallenges[0];
+            const obj = objects.find(o => o.id === challenge.objectId);
+            if (obj) setSelectedObject(obj);
+          }}
+        >
+          <div className="max-w-6xl mx-auto px-3 py-2.5 flex items-center justify-between gap-3" style={{ paddingLeft: 'max(0.75rem, env(safe-area-inset-left))', paddingRight: 'max(0.75rem, env(safe-area-inset-right))' }}>
+            <div className="flex items-center gap-2 text-white text-sm min-w-0">
+              <Swords size={18} className="flex-shrink-0 animate-pulse" />
+              <span className="truncate">
+                <span className="font-semibold">{pendingTiebreakerChallenges[0].fromName}</span> utmanar dig!
+              </span>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <span className="text-white/70 text-xs hidden sm:inline truncate max-w-[120px]">
+                {pendingTiebreakerChallenges[0].objectName}
+              </span>
+              <span className="px-2.5 py-1 rounded-lg bg-white/20 text-white text-xs font-medium">
+                Gå till match →
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+      <header ref={headerRef} className={`bg-gray-900/50 backdrop-blur-xl border-b border-white/10 sticky top-0 z-40 ${pendingTiebreakerChallenges.length > 0 && selectedObject?.id !== pendingTiebreakerChallenges[0].objectId ? 'mt-[52px]' : ''}`} style={{ paddingTop: 'env(safe-area-inset-top)' }}>
         {/* Demo mode banner - at top of header */}
         {showDemoObjects && (
           <div className="bg-purple-600/90 border-b border-purple-400/30">
@@ -2322,6 +2392,7 @@ function App() {
             currentUserEmail={user?.email?.toLowerCase()}
             allObjects={objects}
             sharedContacts={sharedContacts}
+            favoriteContacts={favoriteContacts}
             onAddContact={async (email) => {
               const newContacts = [...sharedContacts.filter(c => c !== email), email].slice(-20); // Keep last 20
               setSharedContacts(newContacts);
@@ -2329,6 +2400,45 @@ function App() {
                 await updateDoc(doc(db, 'users', user.uid), { sharedContacts: newContacts });
               } catch (err) {
                 console.error('Error saving contact:', err);
+              }
+            }}
+            onToggleFavoriteContact={async (email) => {
+              const isFavorite = favoriteContacts.includes(email);
+              const newFavorites = isFavorite 
+                ? favoriteContacts.filter(c => c !== email)
+                : [...favoriteContacts, email];
+              setFavoriteContacts(newFavorites);
+              try {
+                await updateDoc(doc(db, 'users', user.uid), { favoriteContacts: newFavorites });
+              } catch (err) {
+                console.error('Error saving favorite contact:', err);
+              }
+            }}
+          />
+        )}
+
+        {showContacts && (
+          <ContactsModal
+            onClose={() => setShowContacts(false)}
+            currentUserEmail={user?.email?.toLowerCase()}
+            objects={objects}
+            favoriteContacts={favoriteContacts}
+            onToggleFavoriteContact={async (email) => {
+              const isFavorite = favoriteContacts.includes(email);
+              const newFavorites = isFavorite 
+                ? favoriteContacts.filter(c => c !== email)
+                : [...favoriteContacts, email];
+              setFavoriteContacts(newFavorites);
+              try {
+                await updateDoc(doc(db, 'users', user.uid), { favoriteContacts: newFavorites });
+              } catch (err) {
+                console.error('Error saving favorite contact:', err);
+              }
+            }}
+            onNavigateToObject={(objectId) => {
+              const obj = objects.find(o => o.id === objectId);
+              if (obj) {
+                setSelectedObject(obj);
               }
             }}
           />
@@ -2484,6 +2594,26 @@ function App() {
             
             {/* Scrollable content */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                {/* Contacts & Sharing overview */}
+                {user && (
+                  <button
+                    onClick={() => {
+                      setShowContacts(true);
+                      setShowMenu(false);
+                    }}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500/20 text-white transition-all"
+                  >
+                    <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                      <Users size={18} className="text-blue-400" />
+                    </div>
+                    <div className="flex-1 text-left">
+                      <div className="text-sm font-medium">Kontakter & delningar</div>
+                      <div className="text-xs text-gray-400">Se vem du delar med</div>
+                    </div>
+                    <Share2 size={16} className="text-blue-400" />
+                  </button>
+                )}
+                
                 {isAdmin && (
                   <div className="rounded-xl border border-white/10 overflow-hidden">
                     <button

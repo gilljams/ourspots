@@ -698,4 +698,382 @@ export function SimpleTableEditorModal({
   );
 }
 
+// Multi-column table editor for templates like fusebox (3+ columns)
+export function MultiColumnTableEditorModal({ 
+  rows: initialRows, 
+  title, 
+  columns = [],
+  useCollapse = false,
+  onSave, 
+  onCancel 
+}) {
+  const [rows, setRows] = useState(() => 
+    (initialRows || []).map((row, i) => ({ 
+      ...row, 
+      id: row.id || `row-${i}-${Date.now()}` 
+    }))
+  );
+  const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
+  const [viewportOffset, setViewportOffset] = useState(0);
+  const scrollYRef = useRef(0);
+  const listRef = useRef(null);
+  const inputRefs = useRef({});
+  const lastAddedRef = useRef(null);
+  const focusTargetRef = useRef(null);
+  
+  const HEADER_HEIGHT = 52;
+  
+  // Handle viewport changes (keyboard open/close)
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    
+    const updateLayout = () => {
+      if (viewport) {
+        setViewportHeight(viewport.height);
+        setViewportOffset(viewport.offsetTop);
+      } else {
+        setViewportHeight(window.innerHeight);
+        setViewportOffset(0);
+      }
+    };
+    
+    if (viewport) {
+      viewport.addEventListener('resize', updateLayout);
+      viewport.addEventListener('scroll', updateLayout);
+    }
+    window.addEventListener('resize', updateLayout);
+    
+    updateLayout();
+    
+    // Lock body scroll
+    scrollYRef.current = window.scrollY;
+    const scrollY = scrollYRef.current;
+    
+    document.documentElement.style.backgroundColor = '#1e293b';
+    document.body.style.backgroundColor = '#1e293b';
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.overflow = 'hidden';
+    
+    return () => {
+      document.documentElement.style.backgroundColor = '';
+      document.body.style.backgroundColor = '';
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.left = '';
+      document.body.style.right = '';
+      document.body.style.overflow = '';
+      window.scrollTo(0, scrollYRef.current);
+      
+      if (viewport) {
+        viewport.removeEventListener('resize', updateLayout);
+        viewport.removeEventListener('scroll', updateLayout);
+      }
+      window.removeEventListener('resize', updateLayout);
+    };
+  }, []);
+  
+  // Focus newly added row
+  useEffect(() => {
+    if (lastAddedRef.current && columns.length > 0) {
+      const input = inputRefs.current[`${lastAddedRef.current}-${columns[0].id}`];
+      if (input) {
+        input.focus();
+        setTimeout(() => {
+          input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
+      }
+      lastAddedRef.current = null;
+    }
+  }, [rows, columns]);
+  
+  // Handle focus target after state update
+  useEffect(() => {
+    if (focusTargetRef.current) {
+      const input = inputRefs.current[focusTargetRef.current];
+      if (input) {
+        input.focus();
+        setTimeout(() => {
+          input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
+      }
+      focusTargetRef.current = null;
+    }
+  }, [rows]);
+  
+  const addRow = (isHeader = false) => {
+    const newRow = { 
+      id: `row-${Date.now()}`,
+      ...(isHeader ? { isHeader: true } : {})
+    };
+    // Initialize all column values
+    columns.forEach(col => {
+      newRow[col.id] = '';
+    });
+    setRows([...rows, newRow]);
+    lastAddedRef.current = newRow.id;
+  };
+  
+  const addRowAfter = (afterId) => {
+    const idx = rows.findIndex(r => r.id === afterId);
+    const newRow = { 
+      id: `row-${Date.now()}`
+    };
+    columns.forEach(col => {
+      newRow[col.id] = '';
+    });
+    const newRows = [...rows];
+    newRows.splice(idx + 1, 0, newRow);
+    setRows(newRows);
+    lastAddedRef.current = newRow.id;
+  };
+  
+  const removeRow = (rowId) => {
+    setRows(rows.filter(r => r.id !== rowId));
+  };
+  
+  const updateRow = (rowId, field, value) => {
+    setRows(rows.map(r => 
+      r.id === rowId ? { ...r, [field]: value } : r
+    ));
+  };
+  
+  const handleKeyDown = (e, rowId, columnId) => {
+    const currentRow = rows.find(r => r.id === rowId);
+    const colIndex = columns.findIndex(c => c.id === columnId);
+    
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      // If on header row, Enter creates a new normal row below
+      if (currentRow?.isHeader) {
+        addRowAfter(rowId);
+      } else if (colIndex < columns.length - 1) {
+        // Move to next column on same row
+        focusTargetRef.current = `${rowId}-${columns[colIndex + 1].id}`;
+        setRows(r => [...r]);
+      } else {
+        // Last column, add new row
+        addRowAfter(rowId);
+      }
+    } else if (e.key === 'Backspace' && e.target.value === '') {
+      e.preventDefault();
+      const idx = rows.findIndex(r => r.id === rowId);
+      
+      if (colIndex > 0) {
+        // Move back to previous column
+        focusTargetRef.current = `${rowId}-${columns[colIndex - 1].id}`;
+        setRows(r => [...r]);
+      } else if (idx > 0) {
+        // Focus previous row's last column
+        const prevRow = rows[idx - 1];
+        focusTargetRef.current = `${prevRow.id}-${columns[columns.length - 1].id}`;
+        removeRow(rowId);
+      } else {
+        // First row, first column - remove if all empty
+        const allEmpty = columns.every(col => !rows[idx][col.id]);
+        if (allEmpty) {
+          removeRow(rowId);
+        }
+      }
+    } else if (e.key === 'Tab' && !e.shiftKey && colIndex < columns.length - 1) {
+      e.preventDefault();
+      focusTargetRef.current = `${rowId}-${columns[colIndex + 1].id}`;
+      setRows(r => [...r]);
+    } else if (e.key === 'Tab' && e.shiftKey && colIndex > 0) {
+      e.preventDefault();
+      focusTargetRef.current = `${rowId}-${columns[colIndex - 1].id}`;
+      setRows(r => [...r]);
+    }
+  };
+  
+  const handleSave = () => {
+    // Clean up empty rows and row metadata
+    const cleanedRows = rows
+      .filter(row => {
+        if (row.isHeader) {
+          return columns.some(col => row[col.id]?.trim());
+        }
+        return columns.some(col => row[col.id]?.trim());
+      })
+      .map(row => {
+        const cleanRow = {};
+        if (row.isHeader) cleanRow.isHeader = true;
+        columns.forEach(col => {
+          if (row[col.id]) cleanRow[col.id] = row[col.id];
+        });
+        return cleanRow;
+      });
+    onSave(cleanedRows);
+  };
+  
+  const contentHeight = viewportHeight - HEADER_HEIGHT;
+  
+  return (
+    <>
+      {/* Backdrop */}
+      <div className="fixed inset-0 z-[1999] bg-slate-800" />
+      
+      {/* Main modal */}
+      <div
+        className="fixed left-0 right-0 z-[2000] bg-slate-800 flex flex-col"
+        style={{
+          top: `${viewportOffset}px`,
+          height: `${viewportHeight}px`
+        }}
+      >
+        {/* Header */}
+        <div 
+          className="flex-shrink-0 flex items-center justify-between px-3 border-b border-white/5 bg-slate-900/50"
+          style={{ height: `${HEADER_HEIGHT}px` }}
+        >
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <span className="text-base font-medium text-white truncate">
+              {title || 'Redigera'}
+            </span>
+            <span className="text-xs text-slate-400 bg-slate-700/50 px-1.5 py-0.5 rounded-full">
+              {rows.filter(r => !r.isHeader).length} rader
+            </span>
+          </div>
+          
+          {/* Action buttons */}
+          <div className="flex items-center gap-2">
+            {/* Add header row button */}
+            {useCollapse && (
+              <button
+                type="button"
+                onClick={() => addRow(true)}
+                className="h-9 px-3 rounded-lg bg-slate-700/50 text-slate-400 hover:bg-slate-600/50 hover:text-white flex items-center gap-1.5 transition-colors text-sm"
+              >
+                <Plus size={14} />
+                Rubrik
+              </button>
+            )}
+            
+            <button
+              type="button"
+              onClick={onCancel}
+              className="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+            >
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+        
+        {/* Column headers */}
+        <div className="flex-shrink-0 flex items-center px-3 py-2 border-b border-white/10 bg-slate-900/30 gap-2">
+          <div className="w-8" /> {/* Spacer for grip */}
+          {columns.map((col, idx) => (
+            <div
+              key={col.id}
+              className={`text-xs font-medium text-slate-400 uppercase tracking-wide ${col.width || 'flex-1'} ${col.align === 'center' ? 'text-center' : ''}`}
+            >
+              {col.label}
+            </div>
+          ))}
+          <div className="w-8" /> {/* Spacer for delete button */}
+        </div>
+        
+        {/* Scrollable list */}
+        <div 
+          ref={listRef}
+          className="flex-1 overflow-y-auto"
+          style={{ height: `${contentHeight - 40}px`, paddingBottom: '100px' }}
+        >
+          {rows.length === 0 ? (
+            <div className="text-center py-16 text-slate-500">
+              <div className="w-12 h-12 rounded-full bg-slate-700/50 flex items-center justify-center mx-auto mb-3">
+                <Plus size={24} className="text-slate-500" />
+              </div>
+              <p className="font-medium">Tabellen är tom</p>
+              <p className="text-sm mt-1 text-slate-600">Lägg till rader nedan</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-white/5">
+              {rows.map((row, rowIndex) => (
+                <div
+                  key={row.id}
+                  className={`flex items-center gap-2 px-3 py-2.5 min-w-0 ${
+                    row.isHeader ? 'bg-amber-500/10' : ''
+                  }`}
+                >
+                  <div className="w-6 flex-shrink-0 text-slate-600">
+                    <GripVertical size={16} />
+                  </div>
+                  
+                  {row.isHeader ? (
+                    // Header row - single full-width input
+                    <input
+                      ref={el => inputRefs.current[`${row.id}-${columns[0]?.id}`] = el}
+                      type="text"
+                      value={row[columns[0]?.id] || ''}
+                      onChange={(e) => updateRow(row.id, columns[0]?.id, e.target.value)}
+                      onKeyDown={(e) => handleKeyDown(e, row.id, columns[0]?.id)}
+                      placeholder="Grupp/rubrik..."
+                      className="flex-1 min-w-0 bg-transparent text-amber-400 text-sm font-semibold uppercase tracking-wide placeholder-slate-600 focus:outline-none"
+                    />
+                  ) : (
+                    // Regular row - dynamic columns with flex container
+                    <div className="flex-1 flex items-center gap-1.5 min-w-0">
+                      {columns.map((col, colIdx) => (
+                        <input
+                          key={col.id}
+                          ref={el => inputRefs.current[`${row.id}-${col.id}`] = el}
+                          type="text"
+                          inputMode={col.type === 'number' ? 'numeric' : 'text'}
+                          maxLength={col.maxLength}
+                          value={row[col.id] || ''}
+                          onChange={(e) => updateRow(row.id, col.id, e.target.value)}
+                          onKeyDown={(e) => handleKeyDown(e, row.id, col.id)}
+                          placeholder={col.placeholder || col.label}
+                          className={`${col.width === 'flex-1' ? 'flex-1 min-w-0' : `flex-shrink-0 ${col.width}`} bg-slate-700/30 rounded px-2 py-1.5 text-sm placeholder-slate-600 focus:outline-none focus:bg-slate-700/50 ${
+                            col.align === 'center' ? 'text-center' : ''
+                          } ${colIdx === columns.length - 1 ? 'text-slate-300' : 'text-white'}`}
+                        />
+                      ))}
+                    </div>
+                  )}
+                  
+                  <button
+                    type="button"
+                    onClick={() => removeRow(row.id)}
+                    className="w-8 h-8 flex-shrink-0 flex items-center justify-center text-slate-600 hover:text-red-400 transition-colors"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          
+          {/* Add row button at bottom */}
+          <div className="px-3 py-3 border-t border-white/5">
+            <button
+              type="button"
+              onClick={() => addRow(false)}
+              className="w-full h-11 rounded-xl border border-dashed border-slate-600 text-slate-500 hover:border-amber-500/50 hover:text-amber-400 hover:bg-amber-500/5 flex items-center justify-center gap-2 transition-all text-sm"
+            >
+              <Plus size={16} />
+              Lägg till rad
+            </button>
+          </div>
+        </div>
+        
+        {/* Floating save button */}
+        <button
+          type="button"
+          onClick={handleSave}
+          className="fixed z-[2001] right-4 w-14 h-14 rounded-full bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 active:scale-95 transition-all flex items-center justify-center"
+          style={{
+            bottom: `${Math.max(16, viewportHeight - window.innerHeight + 16)}px`
+          }}
+        >
+          <Check size={24} strokeWidth={2.5} />
+        </button>
+      </div>
+    </>
+  );
+}
+
 export default SimpleTableEditorModal;

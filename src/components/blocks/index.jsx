@@ -921,6 +921,20 @@ export const TABLE_TEMPLATES = {
       { id: 'name', label: 'Namn', type: 'text', width: 'w-32' },
       { id: 'phone', label: 'Telefon', type: 'text', width: 'flex-1' }
     ]
+  },
+  // Fusebox / Proppskåp - for electrical panel documentation
+  fusebox: {
+    id: 'fusebox',
+    name: 'Proppskåp',
+    icon: 'Zap',
+    showSum: false,
+    useCollapse: true,
+    defaultCollapsed: true,
+    columns: [
+      { id: 'num', label: 'Nr', type: 'text', width: 'w-12', maxLength: 3, align: 'center' },
+      { id: 'description', label: 'Beskrivning', type: 'text', width: 'flex-1' },
+      { id: 'amps', label: 'A', type: 'text', width: 'w-14', maxLength: 3, align: 'center', placeholder: '10', suffix: 'A' }
+    ]
   }
 };
 
@@ -928,7 +942,8 @@ export const TableBlock = ({ data, objectId, blockIndex, onUpdate, onExpand, onE
   const [isCollapsed, setIsCollapsed] = useState(data.defaultCollapsed ?? false);
   const blockRef = useRef(null);
   const template = TABLE_TEMPLATES[data.template] || TABLE_TEMPLATES.tasks;
-  const columns = data.columns || template.columns;
+  // Use template columns if data.columns is empty or undefined
+  const columns = (data.columns && data.columns.length > 0) ? data.columns : template.columns;
   const rows = data.rows || [];
   const title = data.title || '';
 
@@ -989,7 +1004,8 @@ export const TableBlock = ({ data, objectId, blockIndex, onUpdate, onExpand, onE
       table: 'text-amber-400',
       tasks: 'text-amber-400',
       shopping: 'text-green-400',
-      contacts: 'text-cyan-400'
+      contacts: 'text-cyan-400',
+      fusebox: 'text-yellow-400'
     }[template.id] || 'text-amber-400';
     
     const progressColorClass = {
@@ -997,7 +1013,8 @@ export const TableBlock = ({ data, objectId, blockIndex, onUpdate, onExpand, onE
       table: 'from-amber-500 to-amber-400',
       tasks: 'from-amber-500 to-amber-400',
       shopping: 'from-green-500 to-green-400',
-      contacts: 'from-cyan-500 to-cyan-400'
+      contacts: 'from-cyan-500 to-cyan-400',
+      fusebox: 'from-yellow-500 to-yellow-400'
     }[template.id] || 'from-amber-500 to-amber-400';
     
     const checkboxColorClass = {
@@ -1005,7 +1022,8 @@ export const TableBlock = ({ data, objectId, blockIndex, onUpdate, onExpand, onE
       table: 'bg-amber-500 border-amber-500',
       tasks: 'bg-amber-500 border-amber-500',
       shopping: 'bg-green-500 border-green-500',
-      contacts: 'bg-cyan-500 border-cyan-500'
+      contacts: 'bg-cyan-500 border-cyan-500',
+      fusebox: 'bg-yellow-500 border-yellow-500'
     }[template.id] || 'bg-amber-500 border-amber-500';
     
     const checkboxHoverClass = {
@@ -1013,7 +1031,8 @@ export const TableBlock = ({ data, objectId, blockIndex, onUpdate, onExpand, onE
       table: 'hover:border-amber-400',
       tasks: 'hover:border-amber-400',
       shopping: 'hover:border-green-400',
-      contacts: 'hover:border-cyan-400'
+      contacts: 'hover:border-cyan-400',
+      fusebox: 'hover:border-yellow-400'
     }[template.id] || 'hover:border-amber-400';
     
     const headerColorClass = {
@@ -1021,7 +1040,8 @@ export const TableBlock = ({ data, objectId, blockIndex, onUpdate, onExpand, onE
       table: 'text-amber-400',
       tasks: 'text-amber-400',
       shopping: 'text-green-400',
-      contacts: 'text-cyan-400'
+      contacts: 'text-cyan-400',
+      fusebox: 'text-yellow-400'
     }[template.id] || 'text-amber-400';
 
     return (
@@ -1084,7 +1104,7 @@ export const TableBlock = ({ data, objectId, blockIndex, onUpdate, onExpand, onE
                       className="px-3 py-1.5 mt-2 first:mt-0"
                     >
                       <span className={`text-xs font-semibold ${headerColorClass} uppercase tracking-wider`}>
-                        {row.col1 || row.item || row.task || row.name || row.label || 'Rubrik'}
+                        {row.col1 || row.item || row.task || row.name || row.label || row.num || row.description || 'Rubrik'}
                       </span>
                     </div>
                   ) : (
@@ -1183,7 +1203,7 @@ export const TableBlock = ({ data, objectId, blockIndex, onUpdate, onExpand, onE
                         // Default text rendering
                         return (
                           <span key={col.id} className={baseClass}>
-                            {value || '–'}
+                            {value ? (col.suffix ? `${value}${col.suffix}` : value) : '–'}
                           </span>
                         );
                       })}
@@ -3513,6 +3533,8 @@ export const DistributionBlock = ({
   );
 };
 
+import TiebreakerBlock from './TiebreakerBlock';
+
 export const blockComponents = {
   title: TitleBlock,
   location: LocationBlock,
@@ -3528,5 +3550,8 @@ export const blockComponents = {
   audio: AudioBlock,
   split: SplitBlock,
   leaderboard: LeaderboardBlock,
-  distribution: DistributionBlock
+  distribution: DistributionBlock,
+  tiebreaker: TiebreakerBlock
 };
+
+export { TiebreakerBlock };
