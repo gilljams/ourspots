@@ -51,14 +51,12 @@ const STOCK_IMAGES = {
     { url: 'https://images.unsplash.com/photo-1592919505780-303950717480?w=800&q=80&fit=crop', label: 'Golfklubbor' },
   ],
   sport: [
-    { url: 'https://images.unsplash.com/photo-1461896836934- voices-of-africa?w=800&q=80&fit=crop', label: 'Löpning' },
+    { url: 'https://images.unsplash.com/photo-1461896836934-28e4c76f5d73?w=800&q=80&fit=crop', label: 'Löpning' },
     { url: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800&q=80&fit=crop', label: 'Fotboll' },
     { url: 'https://images.unsplash.com/photo-1530549387789-4c1017266635?w=800&q=80&fit=crop', label: 'Simning' },
   ],
   home: [
-    { url: 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800&q=80&fit=crop', label: 'Villa' },
     { url: 'https://images.unsplash.com/photo-1518780664697-55e3ad937233?w=800&q=80&fit=crop', label: 'Hus' },
-    { url: 'https://images.unsplash.com/photo-1449844908441-8829872d2607?w=800&q=80&fit=crop', label: 'Lantligt' },
   ],
   todo: [
     { url: 'https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=800&q=80&fit=crop', label: 'Checklista' },
@@ -1259,58 +1257,24 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                       {/* Stock Image Picker */}
                       {showStockPicker && (
                         <div className="bg-white/5 rounded-xl p-3 border border-white/10">
-                          <div className="text-xs text-gray-400 mb-2">Välj en stockbild (gratis, ingen lagring)</div>
-                          <div className="grid grid-cols-3 gap-2">
-                            {(() => {
-                              // Get stock images for current category or show all
-                              const stockKey = CATEGORY_STOCK_MAP[selectedType] || 'home';
-                              const images = STOCK_IMAGES[stockKey] || STOCK_IMAGES.home;
-                              return images.map((img, idx) => (
-                                <button
-                                  key={idx}
-                                  type="button"
-                                  onClick={() => {
-                                    setImageUrl(img.url);
-                                    setImageFocalPoint(null);
-                                    setShowStockPicker(false);
-                                    setFormTouched(true);
-                                  }}
-                                  className="relative aspect-[4/3] rounded-lg overflow-hidden border-2 border-transparent hover:border-purple-500 transition-colors"
-                                >
-                                  <img 
-                                    src={getThumbUrl(img.url)} 
-                                    alt={img.label}
-                                    className="w-full h-full object-cover"
-                                    loading="lazy"
-                                  />
-                                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1">
-                                    <span className="text-[10px] text-white/90">{img.label}</span>
-                                  </div>
-                                </button>
-                              ));
-                            })()}
-                          </div>
-                          {/* Show other categories */}
-                          <div className="mt-3 pt-3 border-t border-white/10">
-                            <div className="text-xs text-gray-500 mb-2">Andra kategorier</div>
-                            <div className="flex flex-wrap gap-1">
-                              {Object.keys(STOCK_IMAGES).filter(key => key !== (CATEGORY_STOCK_MAP[selectedType] || 'home')).map(key => (
-                                <button
-                                  key={key}
-                                  type="button"
-                                  onClick={() => {
-                                    const img = STOCK_IMAGES[key][0];
-                                    setImageUrl(img.url);
-                                    setImageFocalPoint(null);
-                                    setShowStockPicker(false);
-                                    setFormTouched(true);
-                                  }}
-                                  className="px-2 py-1 text-xs bg-white/10 hover:bg-white/20 rounded text-gray-400 hover:text-gray-300"
-                                >
-                                  {key === 'food' ? 'Mat' : key === 'travel' ? 'Resor' : key === 'nature' ? 'Natur' : key === 'vehicle' ? 'Fordon' : key === 'golf' ? 'Golf' : key === 'sport' ? 'Sport' : key === 'home' ? 'Hem' : key === 'todo' ? 'Att göra' : key === 'shopping' ? 'Shopping' : key}
-                                </button>
-                              ))}
-                            </div>
+                          <div className="text-xs text-gray-400 mb-2">Välj en stockbild</div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {Object.keys(STOCK_IMAGES).map(key => (
+                              <button
+                                key={key}
+                                type="button"
+                                onClick={() => {
+                                  const img = STOCK_IMAGES[key][0];
+                                  setImageUrl(img.url);
+                                  setImageFocalPoint(null);
+                                  setShowStockPicker(false);
+                                  setFormTouched(true);
+                                }}
+                                className="px-3 py-1.5 text-sm bg-white/10 hover:bg-white/20 rounded-lg text-gray-300 hover:text-white transition-colors"
+                              >
+                                {key === 'food' ? 'Mat' : key === 'travel' ? 'Resor' : key === 'nature' ? 'Natur' : key === 'vehicle' ? 'Fordon' : key === 'golf' ? 'Golf' : key === 'sport' ? 'Sport' : key === 'home' ? 'Hus' : key === 'todo' ? 'Att göra' : key === 'shopping' ? 'Shopping' : key}
+                              </button>
+                            ))}
                           </div>
                         </div>
                       )}
