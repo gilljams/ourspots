@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapPin, Map as MapIcon, X, Check, RotateCcw, ExternalLink, Calendar, Maximize2, Timer, Play, Pause, RotateCw, Vote, HelpCircle, Trophy, ChevronDown, Lock, Link, Plus, Wallet, ChevronRight, User, TriangleIcon, Edit2, Car, ClipboardList, Users, Minus, Copy, MessageCircle, Phone, Target, Images } from 'lucide-react';
+import { MapPin, Map as MapIcon, X, Check, RotateCcw, ExternalLink, Calendar, Maximize2, Timer, Play, Pause, RotateCw, Vote, HelpCircle, Trophy, ChevronDown, Lock, Link, Plus, Wallet, ChevronRight, User, TriangleIcon, Edit2, Car, ClipboardList, Users, Minus, Copy, MessageCircle, Phone, Target, Images, Star } from 'lucide-react';
 import { getTransformedImageUrl, getFocalPointStyles } from '../../utils/imageUtils';
 import { getIconComponent } from '../../utils/iconHelpers';
 import ImageLightbox from '../ImageLightbox';
@@ -2554,6 +2554,119 @@ export const AudioBlock = ({ data }) => {
   );
 };
 
+// Rating Block - star ratings from users
+export const RatingBlock = ({ data, currentUser, shares = {}, onRate, canEdit = false }) => {
+  const [hoveredStar, setHoveredStar] = useState(0);
+  const title = data.title || 'Betyg';
+  const ratings = data.ratings || {};
+  
+  // Get current user's email key
+  const getUserEmailKey = (email) => {
+    if (!email) return null;
+    return email.replace(/\./g, '_DOT_');
+  };
+  
+  const currentUserKey = currentUser?.email ? getUserEmailKey(currentUser.email) : null;
+  const currentUserRating = currentUserKey ? ratings[currentUserKey]?.rating : null;
+  
+  // Calculate average rating
+  const ratingValues = Object.values(ratings).map(r => r.rating).filter(r => r > 0);
+  const averageRating = ratingValues.length > 0 
+    ? ratingValues.reduce((sum, r) => sum + r, 0) / ratingValues.length 
+    : 0;
+  const ratingCount = ratingValues.length;
+  
+  // Handle rating click
+  const handleRate = (stars) => {
+    if (!currentUserKey || !onRate) return;
+    
+    const newRatings = { ...ratings };
+    if (currentUserRating === stars) {
+      // Remove rating if clicking same star
+      delete newRatings[currentUserKey];
+    } else {
+      newRatings[currentUserKey] = {
+        rating: stars,
+        displayName: currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Anonym',
+        timestamp: Date.now()
+      };
+    }
+    onRate(newRatings);
+  };
+  
+  // Render star
+  const renderStar = (starNum, size = 24, interactive = true) => {
+    const filled = interactive 
+      ? (hoveredStar >= starNum || (!hoveredStar && currentUserRating >= starNum))
+      : averageRating >= starNum - 0.5;
+    const halfFilled = !filled && averageRating >= starNum - 0.75 && averageRating < starNum - 0.25;
+    
+    return (
+      <button
+        key={starNum}
+        type="button"
+        onClick={() => interactive && handleRate(starNum)}
+        onMouseEnter={() => interactive && setHoveredStar(starNum)}
+        onMouseLeave={() => interactive && setHoveredStar(0)}
+        disabled={!interactive || !currentUserKey}
+        className={`transition-all ${interactive && currentUserKey ? 'hover:scale-110 cursor-pointer' : 'cursor-default'}`}
+      >
+        <Star
+          size={size}
+          className={`transition-colors ${
+            filled 
+              ? 'text-yellow-400 fill-yellow-400' 
+              : halfFilled 
+                ? 'text-yellow-400 fill-yellow-400/50' 
+                : 'text-gray-600'
+          }`}
+        />
+      </button>
+    );
+  };
+  
+  return (
+    <div className="bg-white/5 rounded-xl p-4">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Star size={18} className="text-yellow-400" />
+          <span className="text-sm font-medium text-white">{title}</span>
+        </div>
+        {ratingCount > 0 && (
+          <div className="flex items-center gap-1.5">
+            <span className="text-lg font-bold text-yellow-400">{averageRating.toFixed(1)}</span>
+            <span className="text-xs text-gray-500">({ratingCount} {ratingCount === 1 ? 'röst' : 'röster'})</span>
+          </div>
+        )}
+      </div>
+      
+      {/* Average rating display */}
+      {ratingCount > 0 && (
+        <div className="flex items-center gap-1 mb-3">
+          {[1, 2, 3, 4, 5].map(star => renderStar(star, 20, false))}
+        </div>
+      )}
+      
+      {/* User's rating input */}
+      {currentUserKey ? (
+        <div className="pt-3 border-t border-white/10">
+          <div className="text-xs text-gray-400 mb-2">
+            {currentUserRating ? 'Ditt betyg (klicka för att ändra)' : 'Ge ditt betyg'}
+          </div>
+          <div className="flex items-center gap-1">
+            {[1, 2, 3, 4, 5].map(star => renderStar(star, 28, true))}
+          </div>
+        </div>
+      ) : (
+        <div className="pt-3 border-t border-white/10 text-xs text-gray-500">
+          Logga in för att betygsätta
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Split Block - expense sharing for trips etc.
 export const SplitBlock = ({ data, currentUser, shares = {}, canEdit = false, onUpdateAmount, onCloseSplit, onResetSplit, onExpand }) => {
   const [isCollapsed, setIsCollapsed] = useState(data.defaultCollapsed ?? true);
@@ -3639,6 +3752,7 @@ export const blockComponents = {
   timer: TimerBlock,
   poll: PollBlock,
   audio: AudioBlock,
+  rating: RatingBlock,
   split: SplitBlock,
   leaderboard: LeaderboardBlock,
   distribution: DistributionBlock,

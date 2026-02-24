@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   X, Plus, Upload, Loader, Navigation, ChevronDown, ChevronUp,
-  Map as MapIcon, FileText, CheckSquare, ClipboardList, Link2, Table2, Image as ImageIcon, Calendar, Phone, Timer, BarChart3, Folder, MapPin, Music, Wallet, Trophy, Car, Users, Minus, MessageCircle, Swords, Zap, Images 
+  Map as MapIcon, FileText, CheckSquare, ClipboardList, Link2, Table2, Image as ImageIcon, Calendar, Phone, Timer, BarChart3, Folder, MapPin, Music, Wallet, Trophy, Car, Users, Minus, MessageCircle, Swords, Zap, Images, Star 
 } from 'lucide-react';
 import { 
   CLOUDINARY_CLOUD_NAME, 
@@ -12,7 +12,7 @@ import {
 import { getIconComponent } from '../utils/iconHelpers';
 import MapPicker from './MapPicker';
 import FocalPointPicker from './FocalPointPicker';
-import BlockEditor, { DateTagBlockEditor, TimerBlockEditor, PollBlockEditor, AudioBlockEditor, SplitBlockEditor, LeaderboardBlockEditor, DistributionBlockEditor, SectionBlockEditor, TiebreakerBlockEditor } from './BlockEditor';
+import BlockEditor, { DateTagBlockEditor, TimerBlockEditor, PollBlockEditor, AudioBlockEditor, SplitBlockEditor, LeaderboardBlockEditor, DistributionBlockEditor, SectionBlockEditor, TiebreakerBlockEditor, RatingBlockEditor } from './BlockEditor';
 
 // Demo users available when in demo mode for realistic examples
 const DEMO_USERS = {
@@ -148,7 +148,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
       }));
     
     const otherBlocks = sourceObject.blocks
-      .filter(b => ['text', 'links', 'table', 'datetag', 'contact', 'timer', 'poll', 'audio', 'split', 'leaderboard', 'distribution', 'section', 'tiebreaker', 'gallery'].includes(b.type))
+      .filter(b => ['text', 'links', 'table', 'datetag', 'contact', 'timer', 'poll', 'audio', 'split', 'leaderboard', 'distribution', 'section', 'tiebreaker', 'gallery', 'rating'].includes(b.type))
       .map(b => {
         if (b.type === 'links') {
           return {
@@ -281,6 +281,14 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             activeMatch: isDuplicate ? null : b.data.activeMatch,
             challenges: isDuplicate ? {} : (b.data.challenges || {}),
             matchHistory: isDuplicate ? [] : (b.data.matchHistory || [])
+          };
+        }
+        if (b.type === 'rating') {
+          return {
+            id: Math.random().toString(36).substr(2, 9),
+            type: 'rating',
+            title: b.data.title || 'Betyg',
+            ratings: isDuplicate ? {} : (b.data.ratings || {})
           };
         }
         if (b.type === 'gallery') {
@@ -763,6 +771,15 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             matchHistory: block.matchHistory || []
           } 
         });
+      } else if (block.type === 'rating') {
+        // Save rating block
+        blocks.push({ 
+          type: 'rating', 
+          data: { 
+            title: (block.title || 'Betyg').trim(),
+            ratings: block.ratings || {}
+          } 
+        });
       } else if (block.type === 'gallery') {
         // Save gallery block
         if (block.images && block.images.length > 0) {
@@ -882,6 +899,10 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
       newBlock.activeMatch = null;
       newBlock.challenges = {};
       newBlock.matchHistory = [];
+    }
+    if (type === 'rating') {
+      newBlock.title = 'Betyg';
+      newBlock.ratings = {};
     }
     if (type === 'gallery') {
       newBlock.images = [];
@@ -1412,6 +1433,16 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   total={customBlocks.length}
                   saving={saving}
                 />
+              ) : block.type === 'rating' ? (
+                <RatingBlockEditor
+                  block={block}
+                  onUpdate={updateCustomBlock}
+                  onRemove={removeCustomBlock}
+                  onMove={moveCustomBlock}
+                  index={index}
+                  total={customBlocks.length}
+                  saving={saving}
+                />
               ) : (
                 <BlockEditor
                   block={block}
@@ -1504,6 +1535,9 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   </button>
                   <button type="button" onClick={() => addCustomBlock('tiebreaker')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
                     <Swords size={16} className="text-purple-400" /> Tiebreaker
+                  </button>
+                  <button type="button" onClick={() => addCustomBlock('rating')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
+                    <Star size={16} className="text-yellow-400" /> Betyg
                   </button>
                   <button type="button" onClick={() => addCustomBlock('gallery')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
                     <Images size={16} className="text-pink-400" /> Galleri

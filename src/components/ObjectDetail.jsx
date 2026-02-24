@@ -1311,6 +1311,18 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                               console.error('Error saving vote:', err);
                             }
                           } : undefined}
+                          onRate={block.type === 'rating' ? async (newRatings) => {
+                            try {
+                              const updatedBlocks = [...object.blocks];
+                              updatedBlocks[actualBlockIndex] = {
+                                ...updatedBlocks[actualBlockIndex],
+                                data: { ...updatedBlocks[actualBlockIndex].data, ratings: newRatings }
+                              };
+                              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
+                            } catch (err) {
+                              console.error('Error saving rating:', err);
+                            }
+                          } : undefined}
                           onClosePoll={block.type === 'poll' && canEdit ? async () => {
                             try {
                               const updatedBlocks = [...object.blocks];
