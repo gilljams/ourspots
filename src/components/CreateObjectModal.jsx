@@ -26,49 +26,49 @@ const DEMO_USERS = {
 // Stock images from Unsplash (no storage needed - direct URLs)
 const STOCK_IMAGES = {
   food: [
-    { id: 'kcA-c3f_3FE', label: 'Matlagning' },
-    { id: 'N_Y88TWmGwA', label: 'Kök' },
-    { id: '08bOYnH_r_E', label: 'Ingredienser' },
+    { url: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=80&fit=crop', label: 'Matlagning' },
+    { url: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&q=80&fit=crop', label: 'Kök' },
+    { url: 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=800&q=80&fit=crop', label: 'Ingredienser' },
   ],
   travel: [
-    { id: 'T7K4aEPoGGk', label: 'Sjö & båtar' },
-    { id: '1Z2niiBPg5A', label: 'Berg' },
-    { id: 'Nyvq2juw4_o', label: 'Väg' },
+    { url: 'https://images.unsplash.com/photo-1506929562872-bb421503ef21?w=800&q=80&fit=crop', label: 'Strand' },
+    { url: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80&fit=crop', label: 'Berg' },
+    { url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&q=80&fit=crop', label: 'Tropiskt' },
   ],
   nature: [
-    { id: 'ugnrXk1129g', label: 'Skog uppifrån' },
-    { id: 'NRQV-hBF10M', label: 'Sjö' },
-    { id: 'eOpewngf68w', label: 'Natur' },
+    { url: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&q=80&fit=crop', label: 'Skog' },
+    { url: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=800&q=80&fit=crop', label: 'Dimma' },
+    { url: 'https://images.unsplash.com/photo-1518173946687-a4c036bc3dc1?w=800&q=80&fit=crop', label: 'Äng' },
   ],
   vehicle: [
-    { id: 'jGZ4FCW_hjE', label: 'Bil' },
-    { id: 'm3m-lnR90uM', label: 'Väg' },
-    { id: 'N7RiDzfF2iw', label: 'Husbil' },
+    { url: 'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800&q=80&fit=crop', label: 'Bil' },
+    { url: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=800&q=80&fit=crop', label: 'Husbil' },
+    { url: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80&fit=crop', label: 'Väg' },
   ],
   golf: [
-    { id: 'Z8XlmAj65iM', label: 'Golfbana' },
-    { id: 'm_qnW28wa00', label: 'Golf green' },
-    { id: 'oGv9xIl7DkY', label: 'Golfutsikt' },
+    { url: 'https://images.unsplash.com/photo-1535131749006-b7f58c99034b?w=800&q=80&fit=crop', label: 'Golfbana' },
+    { url: 'https://images.unsplash.com/photo-1587174486073-ae5e5cff23aa?w=800&q=80&fit=crop', label: 'Green' },
+    { url: 'https://images.unsplash.com/photo-1592919505780-303950717480?w=800&q=80&fit=crop', label: 'Golfklubbor' },
   ],
   sport: [
-    { id: 'Lks7vei-eAg', label: 'Tennis' },
-    { id: 'kZvmEpyfiJs', label: 'Löpning' },
-    { id: 'eMP4sYPJ9x0', label: 'Cykling' },
+    { url: 'https://images.unsplash.com/photo-1461896836934- voices-of-africa?w=800&q=80&fit=crop', label: 'Löpning' },
+    { url: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800&q=80&fit=crop', label: 'Fotboll' },
+    { url: 'https://images.unsplash.com/photo-1530549387789-4c1017266635?w=800&q=80&fit=crop', label: 'Simning' },
   ],
   home: [
-    { id: 'xtxBDbRk-ag', label: 'Villa' },
-    { id: 'gREquCUXQLI', label: 'Hus' },
-    { id: 'NLcLjLNUJbY', label: 'Radhus' },
+    { url: 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800&q=80&fit=crop', label: 'Villa' },
+    { url: 'https://images.unsplash.com/photo-1518780664697-55e3ad937233?w=800&q=80&fit=crop', label: 'Hus' },
+    { url: 'https://images.unsplash.com/photo-1449844908441-8829872d2607?w=800&q=80&fit=crop', label: 'Lantligt' },
   ],
   todo: [
-    { id: 'RLw-UC03Gwc', label: 'Checklista' },
-    { id: 'xoU52jUVUXA', label: 'Planering' },
-    { id: '5aiRb5f464A', label: 'Anteckningar' },
+    { url: 'https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=800&q=80&fit=crop', label: 'Checklista' },
+    { url: 'https://images.unsplash.com/photo-1507925921958-8a62f3d1a50d?w=800&q=80&fit=crop', label: 'Planering' },
+    { url: 'https://images.unsplash.com/photo-1517842645767-c639042777db?w=800&q=80&fit=crop', label: 'Anteckningar' },
   ],
   shopping: [
-    { id: 'nWiM3r-sXLc', label: 'Mataffär' },
-    { id: 'V3qLTvRsoHw', label: 'Varukorg' },
-    { id: 'D3L38c0UEGY', label: 'Grönsaker' },
+    { url: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&q=80&fit=crop', label: 'Mataffär' },
+    { url: 'https://images.unsplash.com/photo-1534723452862-4c874018d66d?w=800&q=80&fit=crop', label: 'Varukorg' },
+    { url: 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=800&q=80&fit=crop', label: 'Grönsaker' },
   ],
 };
 
@@ -93,8 +93,8 @@ const CATEGORY_STOCK_MAP = {
   list: 'shopping',
 };
 
-const getUnsplashUrl = (photoId, width = 800) => 
-  `https://source.unsplash.com/${photoId}/${width}x${Math.round(width * 0.75)}`;
+// Helper to get smaller thumbnail version
+const getThumbUrl = (url) => url.replace('w=800', 'w=400');
 
 function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, saving, availableParents, defaultParentId, userLocation, categories, preciseGPS, isAdmin, currentUser, currentUserDisplayName, hasChildren, defaultCategory, isDemoMode }) {
   // ========== STATE ==========
@@ -1265,12 +1265,12 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                               // Get stock images for current category or show all
                               const stockKey = CATEGORY_STOCK_MAP[selectedType] || 'home';
                               const images = STOCK_IMAGES[stockKey] || STOCK_IMAGES.home;
-                              return images.map((img) => (
+                              return images.map((img, idx) => (
                                 <button
-                                  key={img.id}
+                                  key={idx}
                                   type="button"
                                   onClick={() => {
-                                    setImageUrl(getUnsplashUrl(img.id, 1400));
+                                    setImageUrl(img.url);
                                     setImageFocalPoint(null);
                                     setShowStockPicker(false);
                                     setFormTouched(true);
@@ -1278,7 +1278,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                                   className="relative aspect-[4/3] rounded-lg overflow-hidden border-2 border-transparent hover:border-purple-500 transition-colors"
                                 >
                                   <img 
-                                    src={getUnsplashUrl(img.id, 400)} 
+                                    src={getThumbUrl(img.url)} 
                                     alt={img.label}
                                     className="w-full h-full object-cover"
                                     loading="lazy"
@@ -1300,7 +1300,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                                   type="button"
                                   onClick={() => {
                                     const img = STOCK_IMAGES[key][0];
-                                    setImageUrl(getUnsplashUrl(img.id, 1400));
+                                    setImageUrl(img.url);
                                     setImageFocalPoint(null);
                                     setShowStockPicker(false);
                                     setFormTouched(true);
