@@ -8,7 +8,7 @@ export const TitleBlock = ({ data }) => (
   <h2 className="text-2xl font-bold text-white mb-2">{data.text}</h2>
 );
 
-export const LocationBlock = ({ data, inherited, onDelete, canDelete, positionNumber, isPrimaryLocation, onShowOnMap, onEditNote, hasAudio, isAudioPlaying, onToggleAudio, isCollection, collectionPlacesCount, onShowCollectionMap, whatsappGroupUrl, isExtraLocation }) => {
+export const LocationBlock = ({ data, inherited, onDelete, canDelete, positionNumber, isPrimaryLocation, onShowOnMap, onEditNote, hasAudio, isAudioPlaying, onToggleAudio, isCollection, collectionPlacesCount, onShowCollectionMap, whatsappGroupUrl, isExtraLocation, planningData, onShowPlanner }) => {
 
   const handleShowOnMap = () => {
     if (onShowOnMap && data.lat && data.lng) {
@@ -93,6 +93,16 @@ export const LocationBlock = ({ data, inherited, onDelete, canDelete, positionNu
             >
               <MapIcon size={16} />
               <span className="text-sm font-medium">{collectionPlacesCount} {collectionPlacesCount === 1 ? 'plats' : 'platser'}</span>
+            </button>
+          )}
+          {/* Collection: Show planner button */}
+          {isCollection && planningData && onShowPlanner && (
+            <button
+              onClick={onShowPlanner}
+              className="w-9 h-9 rounded-lg bg-white/5 hover:bg-blue-500/20 flex items-center justify-center text-gray-400 hover:text-blue-400 transition-all flex-shrink-0"
+              title={`Visa planering (${planningData.days} dagar)`}
+            >
+              <Calendar size={16} />
             </button>
           )}
           {/* Non-collection: Show on map button */}

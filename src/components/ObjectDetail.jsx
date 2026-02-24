@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Plus, Edit2, Trash2, Settings, ChevronDown, ChevronUp,
-  Share2, Users, UserMinus, Home, List, LayoutGrid, FileText, Copy, BarChart3, ClipboardList, Link2, X, Search, Check, ExternalLink, Map as MapIcon, Navigation, Maximize2, Target, Locate
+  Share2, Users, UserMinus, Home, List, LayoutGrid, FileText, Copy, BarChart3, ClipboardList, Link2, X, Search, Check, ExternalLink, Map as MapIcon, Navigation, Maximize2, Target, Locate, Calendar
 } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -16,6 +16,7 @@ import { FullscreenTextEditor } from './BlockEditor';
 import { ListEditorModal } from './ListEditorModal';
 import { SimpleTableEditorModal, MultiColumnTableEditorModal } from './SimpleTableEditorModal';
 import { TABLE_TEMPLATES } from './blocks';
+import PlannerModal from './PlannerModal';
 import { MapContainer, TileLayer, Marker, Tooltip, Popup, useMap, useMapEvents, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import { createColoredIcon, createUserIcon } from '../utils/mapIcons';
@@ -665,7 +666,7 @@ function clearPendingLocations(objectId) {
   }
 }
 
-function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockUpdate, currentUser, userDisplayName, userLocation, showQuickCapture, allObjects, onNavigate, onGoBack, previousObject, categories, isAdmin, onShowOnMap, onShare, onLeaveShare, collections, onAddToCollection, onRemoveFromCollection, onUpdateLinkedNote, onAddLinkedUrl, onUpdateLinkedUrl, onRemoveLinkedUrl, onReorderLinked, preciseGPS = true }) {
+function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockUpdate, currentUser, userDisplayName, userLocation, showQuickCapture, allObjects, onNavigate, onGoBack, previousObject, categories, isAdmin, onShowOnMap, onShare, onLeaveShare, collections, onAddToCollection, onRemoveFromCollection, onUpdateLinkedNote, onAddLinkedUrl, onUpdateLinkedUrl, onRemoveLinkedUrl, onReorderLinked, preciseGPS = true, openPlannerOnReturn, onClearPlannerReturn }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showManageSection, setShowManageSection] = useState(false);
   const [showCollectionPicker, setShowCollectionPicker] = useState(false);
@@ -688,6 +689,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
   const [distributionModalData, setDistributionModalData] = useState(null); // { blockIndex, data }
   const [showCollectionMap, setShowCollectionMap] = useState(false); // For collection map modal
   const [showMultiLocationMap, setShowMultiLocationMap] = useState(false); // For multi-location objects map
+  const [showPlanner, setShowPlanner] = useState(false); // For trip planner modal
   const [pendingLocations, setPendingLocations] = useState(() => getPendingLocations(object.id));
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   
@@ -829,6 +831,14 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
   const isOwner = currentUser && object.ownerId === currentUser.uid;
   const isSharedWithMe = object.isSharedWithMe;
   const isDemoObject = object.isDemoObject || object.isDemo;
+  
+  // Open planner automatically when returning from linked object
+  useEffect(() => {
+    if (openPlannerOnReturn && isCollection && object.planningData) {
+      setShowPlanner(true);
+      onClearPlannerReturn?.();
+    }
+  }, [openPlannerOnReturn, isCollection, object.planningData, onClearPlannerReturn]);
   
   // Demo user identity: non-admins become "Anna" when viewing demo objects
   const demoUserIdentity = isDemoObject && !isAdmin ? {
@@ -1203,10 +1213,12 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                         positionNumber={null}
                         isExtraLocation={false}
                         onShowOnMap={onShowOnMap ? (coords) => onShowOnMap(coords, object.id) : undefined}
-                        isCollection={isCollection && linkedObjectsCount > 0}
+                        isCollection={isCollection}
                         collectionPlacesCount={isCollection ? linkedObjectsWithCoords.length : 0}
-                        onShowCollectionMap={isCollection && linkedObjectsCount > 0 ? () => setShowCollectionMap(true) : undefined}
+                        onShowCollectionMap={isCollection && linkedObjectsWithCoords.length > 0 ? () => setShowCollectionMap(true) : undefined}
                         whatsappGroupUrl={isCollection && linkedObjectsCount > 0 ? object.whatsappGroupUrl : undefined}
+                        planningData={isCollection ? object.planningData : undefined}
+                        onShowPlanner={isCollection && object.planningData ? () => setShowPlanner(true) : undefined}
                         hasAudio={audioIsDiscrete && audioUrl && !audioError}
                         isAudioPlaying={isAudioPlaying}
                         onToggleAudio={toggleAudio}
@@ -1281,10 +1293,12 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                           isExtraLocation={isExtraLocation}
                           onShowOnMap={onShowOnMap ? (coords) => onShowOnMap(coords, object.id) : undefined}
                           // Location block: collection map props (only show if there are linked objects with coords)
-                          isCollection={block.type === 'location' && isCollection && linkedObjectsCount > 0}
+                          isCollection={block.type === 'location' && isCollection}
                           collectionPlacesCount={block.type === 'location' && isCollection ? linkedObjectsWithCoords.length : 0}
-                          onShowCollectionMap={block.type === 'location' && isCollection && linkedObjectsCount > 0 ? () => setShowCollectionMap(true) : undefined}
+                          onShowCollectionMap={block.type === 'location' && isCollection && linkedObjectsWithCoords.length > 0 ? () => setShowCollectionMap(true) : undefined}
                           whatsappGroupUrl={block.type === 'location' && isCollection && linkedObjectsCount > 0 ? object.whatsappGroupUrl : undefined}
+                          planningData={block.type === 'location' && isCollection ? object.planningData : undefined}
+                          onShowPlanner={block.type === 'location' && isCollection && object.planningData ? () => setShowPlanner(true) : undefined}
                           // Location block: centralized audio props
                           hasAudio={block.type === 'location' && !block.inherited && audioIsDiscrete && audioUrl && !audioError}
                           isAudioPlaying={block.type === 'location' ? isAudioPlaying : undefined}
@@ -1635,6 +1649,15 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                     {/* Show collection map buttons right after image block - only if no location block and there are linked objects with coords */}
                     {block.type === 'image' && isCollection && !blocksToRender.some(b => b.type === 'location') && linkedObjectsCount > 0 && (
                       <div className="flex items-center justify-end gap-2 flex-wrap mt-3">
+                        {object.planningData && (
+                          <button
+                            onClick={() => setShowPlanner(true)}
+                            className="w-9 h-9 rounded-lg bg-white/5 hover:bg-blue-500/20 flex items-center justify-center text-gray-400 hover:text-blue-400 transition-all flex-shrink-0"
+                            title={`Visa planering (${object.planningData.days} dagar)`}
+                          >
+                            <Calendar size={16} />
+                          </button>
+                        )}
                         {object.whatsappGroupUrl && (
                           <button
                             onClick={() => window.open(object.whatsappGroupUrl, '_blank')}
@@ -2073,6 +2096,25 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                     }
                   })}
                 </div>
+                
+                {/* Planera-knapp under innehållslistan */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    console.log('Planner button clicked, showPlanner:', showPlanner);
+                    setShowPlanner(true);
+                  }}
+                  className={`w-full mt-4 py-3 rounded-xl flex items-center justify-center gap-2 text-sm font-medium transition-all ${
+                    object.planningData 
+                      ? 'bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/30' 
+                      : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-blue-300 border border-white/10 border-dashed'
+                  }`}
+                >
+                  <Calendar size={16} />
+                  {object.planningData 
+                    ? `Visa planering (${object.planningData.days} dagar)` 
+                    : 'Skapa planering'}
+                </button>
               </div>
             )}
             {isCollection && orderedLinkedItems.length === 0 && totalLinkedCount === 0 && canManage && (
@@ -2936,6 +2978,41 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
             </div>
           </div>
         </div>
+      )}
+
+      {/* Planner Modal for collections */}
+      {isCollection && showPlanner && (
+        <PlannerModal
+          isOpen={showPlanner}
+          onClose={() => setShowPlanner(false)}
+          planningData={object.planningData}
+          linkedObjects={linkedObjects}
+          canEdit={canEdit}
+          onNavigateToObject={(obj) => {
+            setShowPlanner(false);
+            onNavigate(obj, { fromPlanner: true });
+          }}
+          onSave={async (planningData) => {
+            try {
+              await updateDoc(doc(db, 'objects', object.id), {
+                planningData
+              });
+            } catch (err) {
+              console.error('Error saving planning data:', err);
+              alert('Kunde inte spara planeringen');
+            }
+          }}
+          onDelete={async () => {
+            try {
+              await updateDoc(doc(db, 'objects', object.id), {
+                planningData: null
+              });
+            } catch (err) {
+              console.error('Error deleting planning data:', err);
+              alert('Kunde inte ta bort planeringen');
+            }
+          }}
+        />
       )}
     </>
   );

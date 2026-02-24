@@ -2,6 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Expand cell animation for planner */
+@keyframes expand-cell {
+  from {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-expand-cell {
+  animation: expand-cell 0.15s ease-out;
+}
+
 /* Custom scrollbar styling for dark theme */
 ::-webkit-scrollbar {
   width: 8px;

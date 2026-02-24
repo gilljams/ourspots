@@ -1,8 +1,8 @@
 ========================
-OurSpots – Manifest / Blueprint (Updated Feb 13, 2026)
+OurSpots – Manifest / Blueprint (Updated Feb 25, 2026)
 ========================
 
-🚀 STATUS: v2.9.8 - Multi-select i Tabeller
+🚀 STATUS: v2.9.9 - Planering Visual Polish
 
 1. VISION
 - Mobilfokuserad app med premium dark theme
@@ -36,6 +36,7 @@ OurSpots – Manifest / Blueprint (Updated Feb 13, 2026)
 - FAB-knappar med spacing från högerkant (right-2) ✅ NY v2.9.6
 - Poll/Timer-editor med "+ Lägg till"-knapp istället för tomma rader ✅ NY v2.9.6
 - Auto-scroll när block flyttas upp/ner i editor ✅ NY v2.9.6
+- PlannerModal med visuell polish och konsekvent UX ✅ NY v2.9.9
 - Kartintegration med position och avstånd ✅
 - Egen positionsmarkör (användarikon) på karta ✅
 - Dark theme + glassmorphism + accentfärger ✅
@@ -290,7 +291,39 @@ Default block sets per typ/kategori (för enkelhet):
   - ✅ Timer-block med countdown och ljud - KLART v2.2
   - PWA-implementation (manifest.json, service worker, installbar)
   - Fler blocktyper (Audio/Video, PDF, Väder)
-  - Lager/samlingar för resor och projekt
+  - ✅ Lager/samlingar för resor och projekt - KLART v2.9.9 (PlannerModal)
+
+### PlannerModal - Resplanering (Implementerat v2.9.9)
+
+**Funktion:** Schema-baserad resplanerare med dag/slot-grid för aktiviteter och boende.
+
+**UX-principer:**
+- Konsekvent modal-mönster: X uppe till höger, Klar-knapp i botten
+- Trash-ikon i header (inte separat knapp)
+- Automatiskt visningsläge efter sparning
+- iOS touch-fixes: 16px font, touch-manipulation
+
+**Visuellt tema:**
+- Två färger: Blå (kost & logi), Grå/Slate (aktiviteter)
+- Lunch, Middag, Boende = bg-blue-500/5 (samma tema)
+- Förmiddag, Eftermiddag, Kväll = bg-slate-500/5
+- Kväll = bg-slate-600/8 (lite mörkare)
+- Nedtonade ikoner (text-gray-500)
+- Neutral länk-ikon (text-white/60)
+
+**Komponenter:**
+- Dag-headers: Solid bg-white/5, font-medium text-white/80
+- Slot-labels: Färgad bakgrund matchande celler
+- Boende-bar: Sömlös (ingen gap), solid färg
+- Expanderade celler: Färg matchar slot
+- Tomma celler: Plus-ikon synlig i edit-läge
+
+**Tekniskt:**
+- ~1380 rader JSX
+- State: slots, accommodation, editingCell, showSettings
+- Drag & drop mellan celler
+- Swipe-navigering mellan dagar
+- Länkning till objekt i listan
 
 8. DELNING / SHARING SYSTEM ✅ DELVIS IMPLEMENTERAT
 
@@ -799,6 +832,7 @@ src/
     ├── DeleteConfirmModal.jsx   (~50 rader)  - Bekräftelsedialog med ättlingsräknare
     ├── FocalPointPicker.jsx     (~175 rader) - Bildbrännpunkt
     ├── BlockEditor.jsx          (~50 rader)  - Block-redigerare
+    ├── PlannerModal.jsx         (~1380 rader) - Resplanering med grid ✅ NY v2.9.9
     │
     ├── ObjectsAdminModal.jsx    (~420 rader) - Admin: alla objekt + synka hierarki
     ├── CategoryAdminModal.jsx   (~410 rader) - Admin: kategorier

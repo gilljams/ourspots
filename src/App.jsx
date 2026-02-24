@@ -84,6 +84,7 @@ function App() {
   const setToast = (value) => setToastInternal(value ? { ...value, key: Date.now() } : null);
   const [selectedObject, setSelectedObject] = useState(null);
   const [navigationHistory, setNavigationHistory] = useState([]); // Stack of previously viewed objects
+  const [openPlannerOnReturn, setOpenPlannerOnReturn] = useState(false); // Flag to open planner when returning
   const [activeCategory, setActiveCategory] = useState(() => {
     const saved = localStorage.getItem('activeCategory');
     return saved || 'all';
@@ -2198,7 +2199,10 @@ function App() {
             showQuickCapture={showQuickCapture}
             preciseGPS={preciseGPS}
             allObjects={objects} 
-            onNavigate={(obj) => {
+            onNavigate={(obj, options = {}) => {
+              if (options.fromPlanner) {
+                setOpenPlannerOnReturn(true);
+              }
               setNavigationHistory(prev => [...prev, selectedObject]);
               setSelectedObject(obj);
             }}
@@ -2206,8 +2210,11 @@ function App() {
               const prev = navigationHistory[navigationHistory.length - 1];
               setNavigationHistory(h => h.slice(0, -1));
               setSelectedObject(prev);
+              // The planner will open via openPlannerOnReturn prop if set
             } : null}
             previousObject={navigationHistory.length > 0 ? navigationHistory[navigationHistory.length - 1] : null}
+            openPlannerOnReturn={openPlannerOnReturn}
+            onClearPlannerReturn={() => setOpenPlannerOnReturn(false)}
             categories={categories} 
             isAdmin={isAdmin}
             onShowOnMap={(coords, objectId) => {
