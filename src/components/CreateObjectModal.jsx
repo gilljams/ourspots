@@ -26,7 +26,7 @@ const DEMO_USERS = {
 // Stock images from Unsplash (no storage needed - direct URLs)
 const STOCK_IMAGES = {
   food: [
-    { url: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=80&fit=crop', label: 'Mat' },
+    { url: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=800&q=80&fit=crop', label: 'Mat' },
   ],
   travel: [
     { url: 'https://images.unsplash.com/photo-1506929562872-bb421503ef21?w=800&q=80&fit=crop', label: 'Strand' },
