@@ -26,9 +26,7 @@ const DEMO_USERS = {
 // Stock images from Unsplash (no storage needed - direct URLs)
 const STOCK_IMAGES = {
   food: [
-    { url: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=80&fit=crop', label: 'Matlagning' },
-    { url: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&q=80&fit=crop', label: 'Kök' },
-    { url: 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=800&q=80&fit=crop', label: 'Ingredienser' },
+    { url: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=80&fit=crop', label: 'Mat' },
   ],
   travel: [
     { url: 'https://images.unsplash.com/photo-1506929562872-bb421503ef21?w=800&q=80&fit=crop', label: 'Strand' },
@@ -50,11 +48,6 @@ const STOCK_IMAGES = {
     { url: 'https://images.unsplash.com/photo-1587174486073-ae5e5cff23aa?w=800&q=80&fit=crop', label: 'Green' },
     { url: 'https://images.unsplash.com/photo-1592919505780-303950717480?w=800&q=80&fit=crop', label: 'Golfklubbor' },
   ],
-  sport: [
-    { url: 'https://images.unsplash.com/photo-1461896836934-28e4c76f5d73?w=800&q=80&fit=crop', label: 'Löpning' },
-    { url: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800&q=80&fit=crop', label: 'Fotboll' },
-    { url: 'https://images.unsplash.com/photo-1530549387789-4c1017266635?w=800&q=80&fit=crop', label: 'Simning' },
-  ],
   home: [
     { url: 'https://images.unsplash.com/photo-1518780664697-55e3ad937233?w=800&q=80&fit=crop', label: 'Hus' },
   ],
@@ -64,9 +57,7 @@ const STOCK_IMAGES = {
     { url: 'https://images.unsplash.com/photo-1517842645767-c639042777db?w=800&q=80&fit=crop', label: 'Anteckningar' },
   ],
   shopping: [
-    { url: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&q=80&fit=crop', label: 'Mataffär' },
-    { url: 'https://images.unsplash.com/photo-1534723452862-4c874018d66d?w=800&q=80&fit=crop', label: 'Varukorg' },
-    { url: 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=800&q=80&fit=crop', label: 'Grönsaker' },
+    { url: 'https://images.unsplash.com/photo-1604719312566-8912e9227c6a?w=800&q=80&fit=crop', label: 'Shopping' },
   ],
 };
 
@@ -81,8 +72,8 @@ const CATEGORY_STOCK_MAP = {
   vehicle: 'vehicle',
   car: 'vehicle',
   golf: 'golf',
-  sport: 'sport',
-  fitness: 'sport',
+  sport: 'golf',
+  fitness: 'golf',
   home: 'home',
   property: 'home',
   todo: 'todo',
@@ -1272,7 +1263,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                                 }}
                                 className="px-3 py-1.5 text-sm bg-white/10 hover:bg-white/20 rounded-lg text-gray-300 hover:text-white transition-colors"
                               >
-                                {key === 'food' ? 'Mat' : key === 'travel' ? 'Resor' : key === 'nature' ? 'Natur' : key === 'vehicle' ? 'Fordon' : key === 'golf' ? 'Golf' : key === 'sport' ? 'Sport' : key === 'home' ? 'Hus' : key === 'todo' ? 'Att göra' : key === 'shopping' ? 'Shopping' : key}
+                                {key === 'food' ? 'Mat' : key === 'travel' ? 'Resor' : key === 'nature' ? 'Natur' : key === 'vehicle' ? 'Fordon' : key === 'golf' ? 'Golf' : key === 'home' ? 'Hus' : key === 'todo' ? 'Att göra' : key === 'shopping' ? 'Shopping' : key}
                               </button>
                             ))}
                           </div>
