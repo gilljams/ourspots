@@ -2556,6 +2556,7 @@ export const AudioBlock = ({ data }) => {
 
 // Rating Block - star ratings from users
 export const RatingBlock = ({ data, currentUser, shares = {}, onRate, canEdit = false }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
   const [hoveredStar, setHoveredStar] = useState(0);
   const title = data.title || 'Betyg';
   const ratings = data.ratings || {};
@@ -2594,72 +2595,94 @@ export const RatingBlock = ({ data, currentUser, shares = {}, onRate, canEdit = 
     onRate(newRatings);
   };
   
-  // Render star
-  const renderStar = (starNum, size = 24, interactive = true) => {
-    const filled = interactive 
-      ? (hoveredStar >= starNum || (!hoveredStar && currentUserRating >= starNum))
-      : averageRating >= starNum - 0.5;
-    const halfFilled = !filled && averageRating >= starNum - 0.75 && averageRating < starNum - 0.25;
-    
+  // Render star for average display
+  const renderAvgStar = (starNum, size = 16) => {
+    const filled = averageRating >= starNum - 0.5;
+    return (
+      <Star
+        key={starNum}
+        size={size}
+        className={filled ? 'text-yellow-400 fill-yellow-400' : 'text-gray-600'}
+      />
+    );
+  };
+  
+  // Render interactive star for voting
+  const renderVoteStar = (starNum) => {
+    const filled = hoveredStar >= starNum || (!hoveredStar && currentUserRating >= starNum);
     return (
       <button
         key={starNum}
         type="button"
-        onClick={() => interactive && handleRate(starNum)}
-        onMouseEnter={() => interactive && setHoveredStar(starNum)}
-        onMouseLeave={() => interactive && setHoveredStar(0)}
-        disabled={!interactive || !currentUserKey}
-        className={`transition-all ${interactive && currentUserKey ? 'hover:scale-110 cursor-pointer' : 'cursor-default'}`}
+        onClick={() => handleRate(starNum)}
+        onMouseEnter={() => setHoveredStar(starNum)}
+        onMouseLeave={() => setHoveredStar(0)}
+        className="transition-all hover:scale-110 cursor-pointer touch-manipulation p-1"
       >
         <Star
-          size={size}
-          className={`transition-colors ${
-            filled 
-              ? 'text-yellow-400 fill-yellow-400' 
-              : halfFilled 
-                ? 'text-yellow-400 fill-yellow-400/50' 
-                : 'text-gray-600'
-          }`}
+          size={28}
+          className={`transition-colors ${filled ? 'text-yellow-400 fill-yellow-400' : 'text-gray-600'}`}
         />
       </button>
     );
   };
   
   return (
-    <div className="bg-white/5 rounded-xl p-4">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-3">
+    <div className="bg-white/5 rounded-xl overflow-hidden">
+      {/* Compact header - always visible */}
+      <button
+        type="button"
+        onClick={() => currentUserKey && setIsExpanded(!isExpanded)}
+        className={`w-full flex items-center justify-between p-3 ${currentUserKey ? 'hover:bg-white/5 cursor-pointer' : ''}`}
+      >
         <div className="flex items-center gap-2">
-          <Star size={18} className="text-yellow-400" />
+          <Star size={16} className="text-yellow-400 flex-shrink-0" />
           <span className="text-sm font-medium text-white">{title}</span>
         </div>
-        {ratingCount > 0 && (
-          <div className="flex items-center gap-1.5">
-            <span className="text-lg font-bold text-yellow-400">{averageRating.toFixed(1)}</span>
-            <span className="text-xs text-gray-500">({ratingCount} {ratingCount === 1 ? 'röst' : 'röster'})</span>
+        <div className="flex items-center gap-2">
+          {/* Show average stars */}
+          <div className="flex items-center gap-0.5">
+            {[1, 2, 3, 4, 5].map(star => renderAvgStar(star, 14))}
           </div>
-        )}
-      </div>
+          {ratingCount > 0 ? (
+            <span className="text-sm font-semibold text-yellow-400">{averageRating.toFixed(1)}</span>
+          ) : (
+            <span className="text-xs text-gray-500">Ingen än</span>
+          )}
+          <span className="text-xs text-gray-500">({ratingCount})</span>
+          {currentUserKey && (
+            <ChevronDown 
+              size={16} 
+              className={`text-gray-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`} 
+            />
+          )}
+        </div>
+      </button>
       
-      {/* Average rating display */}
-      {ratingCount > 0 && (
-        <div className="flex items-center gap-1 mb-3">
-          {[1, 2, 3, 4, 5].map(star => renderStar(star, 20, false))}
+      {/* Expanded: Vote section */}
+      {isExpanded && currentUserKey && (
+        <div className="px-3 pb-3 border-t border-white/10">
+          <div className="text-xs text-gray-400 mt-2 mb-1">
+            {currentUserRating ? `Ditt betyg: ${currentUserRating} ★` : 'Tryck för att betygsätta'}
+          </div>
+          <div className="flex items-center justify-center gap-0.5">
+            {[1, 2, 3, 4, 5].map(star => renderVoteStar(star))}
+          </div>
+          {currentUserRating && (
+            <button
+              type="button"
+              onClick={() => handleRate(currentUserRating)}
+              className="mt-2 text-xs text-gray-500 hover:text-red-400"
+            >
+              Ta bort mitt betyg
+            </button>
+          )}
         </div>
       )}
       
-      {/* User's rating input */}
-      {currentUserKey ? (
-        <div className="pt-3 border-t border-white/10">
-          <div className="text-xs text-gray-400 mb-2">
-            {currentUserRating ? 'Ditt betyg (klicka för att ändra)' : 'Ge ditt betyg'}
-          </div>
-          <div className="flex items-center gap-1">
-            {[1, 2, 3, 4, 5].map(star => renderStar(star, 28, true))}
-          </div>
-        </div>
-      ) : (
-        <div className="pt-3 border-t border-white/10 text-xs text-gray-500">
+      {/* Not logged in hint */}
+      {!currentUserKey && (
+        <div className="px-3 pb-2 text-xs text-gray-500">
           Logga in för att betygsätta
         </div>
       )}
