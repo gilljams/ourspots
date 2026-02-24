@@ -94,7 +94,7 @@ const CATEGORY_STOCK_MAP = {
 };
 
 const getUnsplashUrl = (photoId, width = 800) => 
-  `https://images.unsplash.com/photo-${photoId}?w=${width}&q=80&fit=crop&auto=format`;
+  `https://source.unsplash.com/${photoId}/${width}x${Math.round(width * 0.75)}`;
 
 function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, saving, availableParents, defaultParentId, userLocation, categories, preciseGPS, isAdmin, currentUser, currentUserDisplayName, hasChildren, defaultCategory, isDemoMode }) {
   // ========== STATE ==========
