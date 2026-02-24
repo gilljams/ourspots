@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapPin, Map as MapIcon, X, Check, RotateCcw, ExternalLink, Calendar, Maximize2, Timer, Play, Pause, RotateCw, Vote, HelpCircle, Trophy, ChevronDown, Lock, Link, Plus, Wallet, ChevronRight, User, TriangleIcon, Edit2, Car, ClipboardList, Users, Minus, Copy, MessageCircle, Phone, Target } from 'lucide-react';
+import { MapPin, Map as MapIcon, X, Check, RotateCcw, ExternalLink, Calendar, Maximize2, Timer, Play, Pause, RotateCw, Vote, HelpCircle, Trophy, ChevronDown, Lock, Link, Plus, Wallet, ChevronRight, User, TriangleIcon, Edit2, Car, ClipboardList, Users, Minus, Copy, MessageCircle, Phone, Target, Images } from 'lucide-react';
 import { getTransformedImageUrl, getFocalPointStyles } from '../../utils/imageUtils';
 import { getIconComponent } from '../../utils/iconHelpers';
+import ImageLightbox from '../ImageLightbox';
 
 export const TitleBlock = ({ data }) => (
   <h2 className="text-2xl font-bold text-white mb-2">{data.text}</h2>
@@ -165,9 +166,9 @@ export const LocationBlock = ({ data, inherited, onDelete, canDelete, positionNu
   );
 };
 
-export const ImageBlock = ({ data, isPlaying = false, animation = 'none' }) => {
-  const [showFullscreen, setShowFullscreen] = useState(false);
-  const [imageLoaded, setImageLoaded] = useState(false);
+export const ImageBlock = ({ data, isPlaying = false, animation = 'none', galleryImages = [] }) => {
+  const [showLightbox, setShowLightbox] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
   const [animationActive, setAnimationActive] = useState(false);
   const [animationKey, setAnimationKey] = useState(0);
   const [showSecondLoop, setShowSecondLoop] = useState(false);
@@ -236,10 +237,17 @@ export const ImageBlock = ({ data, isPlaying = false, animation = 'none' }) => {
     };
   }, [animationActive, animation]);
   
-  // Reset loading state when opening fullscreen
-  const openFullscreen = () => {
-    setImageLoaded(false);
-    setShowFullscreen(true);
+  // Build array of all images for lightbox (hero + gallery)
+  const allImages = [
+    { url: data.url, caption: null },
+    ...galleryImages.map(img => ({ url: img.url, caption: img.caption || null }))
+  ];
+  const hasMultipleImages = allImages.length > 1;
+  
+  // Open lightbox at specific index
+  const openLightbox = (index = 0) => {
+    setLightboxIndex(index);
+    setShowLightbox(true);
   };
   
   // Get animation image source
@@ -251,9 +259,9 @@ export const ImageBlock = ({ data, isPlaying = false, animation = 'none' }) => {
   
   return (
     <>
-      <div className="relative w-full h-48 lg:h-auto lg:aspect-[16/9] rounded-xl overflow-hidden mb-4 border border-white/10 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.7)]">
+      <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden mb-4 border border-white/10 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.7)]">
         <img 
-          src={getTransformedImageUrl(data.url, data.focalPoint ? 'custom' : data.cropMode, 800, 480, data.focalPoint)} 
+          src={getTransformedImageUrl(data.url, data.focalPoint ? 'custom' : data.cropMode, 800, 600, data.focalPoint)} 
           alt="" 
           className={`w-full h-full object-cover transition-transform ${animationActive ? 'image-ken-burns' : ''}`}
           style={focalStyles}
@@ -319,41 +327,110 @@ export const ImageBlock = ({ data, isPlaying = false, animation = 'none' }) => {
           </div>
         )}
         
+        {/* Image count badge (if multiple images) */}
+        {hasMultipleImages && (
+          <div className="absolute bottom-2 left-2 px-2 py-1 rounded-md bg-black/50 text-white/90 text-xs flex items-center gap-1">
+            <Images size={12} />
+            <span>{allImages.length}</span>
+          </div>
+        )}
+        
         <button
-          onClick={openFullscreen}
+          onClick={() => openLightbox(0)}
           className="absolute bottom-2 right-2 p-1.5 rounded-md bg-black/30 text-white/70 hover:text-white hover:bg-black/50 transition-all"
-          title="Visa hela bilden"
+          title={hasMultipleImages ? 'Visa alla bilder' : 'Visa hela bilden'}
         >
           <Maximize2 size={14} />
         </button>
       </div>
       
-      {/* Fullscreen image modal */}
-      {showFullscreen && (
-        <div 
-          className="fixed inset-0 z-[2000] bg-black/95 flex items-center justify-center p-4"
-          onClick={() => setShowFullscreen(false)}
-        >
-          <button
-            onClick={() => setShowFullscreen(false)}
-            className="absolute top-4 right-4 p-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors z-10"
-          >
-            <X size={24} />
-          </button>
-          {/* Loading spinner */}
-          {!imageLoaded && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-            </div>
-          )}
-          <img 
-            src={getFullImageUrl(data.url)} 
-            alt="" 
-            className={`max-w-full max-h-full object-contain transition-opacity duration-200 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
-            onClick={(e) => e.stopPropagation()}
-            onLoad={() => setImageLoaded(true)}
-          />
+      {/* Gallery thumbnails (if multiple images) */}
+      {hasMultipleImages && (
+        <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
+          {allImages.slice(1).map((img, idx) => (
+            <button
+              key={idx}
+              onClick={() => openLightbox(idx + 1)}
+              className="flex-shrink-0 w-16 h-12 rounded-lg overflow-hidden border border-white/10 hover:border-white/30 transition-all"
+            >
+              <img 
+                src={img.url.includes('cloudinary.com') 
+                  ? img.url.replace('/upload/', '/upload/c_fill,w_128,h_96,q_auto/') 
+                  : img.url
+                } 
+                alt={img.caption || ''} 
+                className="w-full h-full object-cover"
+              />
+            </button>
+          ))}
         </div>
+      )}
+      
+      {/* Lightbox */}
+      {showLightbox && (
+        <ImageLightbox
+          images={allImages}
+          initialIndex={lightboxIndex}
+          onClose={() => setShowLightbox(false)}
+        />
+      )}
+    </>
+  );
+};
+
+// Gallery block - extra images shown as thumbnails, opens in lightbox
+export const GalleryBlock = ({ data, onUpdate }) => {
+  const [showLightbox, setShowLightbox] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+  
+  const images = data.images || [];
+  
+  if (images.length === 0) {
+    return (
+      <div className="text-sm text-gray-500 italic py-2">
+        Inga extra bilder tillagda
+      </div>
+    );
+  }
+  
+  const openLightbox = (index) => {
+    setLightboxIndex(index);
+    setShowLightbox(true);
+  };
+  
+  return (
+    <>
+      <div className="grid grid-cols-3 gap-2 mb-4">
+        {images.map((img, idx) => (
+          <button
+            key={idx}
+            onClick={() => openLightbox(idx)}
+            className="aspect-square rounded-lg overflow-hidden border border-white/10 hover:border-white/30 transition-all relative group"
+          >
+            <img 
+              src={img.url.includes('cloudinary.com') 
+                ? img.url.replace('/upload/', '/upload/c_fill,w_256,h_256,q_auto/') 
+                : img.url
+              } 
+              alt={img.caption || ''} 
+              className="w-full h-full object-cover"
+            />
+            {img.caption && (
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <span className="text-xs text-white truncate">{img.caption}</span>
+              </div>
+            )}
+          </button>
+        ))}
+      </div>
+      
+      {/* Lightbox */}
+      {showLightbox && (
+        <ImageLightbox
+          images={images.map(img => ({ url: img.url, caption: img.caption }))}
+          initialIndex={lightboxIndex}
+          onClose={() => setShowLightbox(false)}
+        />
       )}
     </>
   );
@@ -3539,6 +3616,7 @@ export const blockComponents = {
   title: TitleBlock,
   location: LocationBlock,
   image: ImageBlock,
+  gallery: GalleryBlock,
   section: SectionBlock,
   text: TextBlock,
   contact: ContactBlock,

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   X, Plus, Upload, Loader, Navigation, ChevronDown, ChevronUp,
-  Map as MapIcon, FileText, CheckSquare, ClipboardList, Link2, Table2, Image as ImageIcon, Calendar, Phone, Timer, BarChart3, Folder, MapPin, Music, Wallet, Trophy, Car, Users, Minus, MessageCircle, Swords, Zap 
+  Map as MapIcon, FileText, CheckSquare, ClipboardList, Link2, Table2, Image as ImageIcon, Calendar, Phone, Timer, BarChart3, Folder, MapPin, Music, Wallet, Trophy, Car, Users, Minus, MessageCircle, Swords, Zap, Images 
 } from 'lucide-react';
 import { 
   CLOUDINARY_CLOUD_NAME, 
@@ -85,7 +85,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
       }));
     
     const otherBlocks = sourceObject.blocks
-      .filter(b => ['text', 'links', 'table', 'datetag', 'contact', 'timer', 'poll', 'audio', 'split', 'leaderboard', 'distribution', 'section', 'tiebreaker'].includes(b.type))
+      .filter(b => ['text', 'links', 'table', 'datetag', 'contact', 'timer', 'poll', 'audio', 'split', 'leaderboard', 'distribution', 'section', 'tiebreaker', 'gallery'].includes(b.type))
       .map(b => {
         if (b.type === 'links') {
           return {
@@ -218,6 +218,13 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             activeMatch: isDuplicate ? null : b.data.activeMatch,
             challenges: isDuplicate ? {} : (b.data.challenges || {}),
             matchHistory: isDuplicate ? [] : (b.data.matchHistory || [])
+          };
+        }
+        if (b.type === 'gallery') {
+          return {
+            id: Math.random().toString(36).substr(2, 9),
+            type: 'gallery',
+            images: b.data.images || []
           };
         }
         // Text blocks
@@ -457,7 +464,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
     try {
       let fileToUpload = file;
       try {
-        const resizedBlob = await resizeImage(file, 2000, 0.85);
+        const resizedBlob = await resizeImage(file, 1400, 0.70);
         if (resizedBlob) fileToUpload = resizedBlob;
       } catch (e) { /* ignore */ }
 
@@ -693,6 +700,19 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             matchHistory: block.matchHistory || []
           } 
         });
+      } else if (block.type === 'gallery') {
+        // Save gallery block
+        if (block.images && block.images.length > 0) {
+          blocks.push({ 
+            type: 'gallery', 
+            data: { 
+              images: block.images.map(img => ({
+                url: img.url,
+                caption: img.caption || ''
+              }))
+            } 
+          });
+        }
       } else if (block.type === 'text') {
         // Always save text blocks, even if empty (can be edited from view mode)
         blocks.push({ 
@@ -799,6 +819,9 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
       newBlock.activeMatch = null;
       newBlock.challenges = {};
       newBlock.matchHistory = [];
+    }
+    if (type === 'gallery') {
+      newBlock.images = [];
     }
     setCustomBlocks(prev => [...prev, newBlock]);
     setFormTouched(true);
@@ -1384,6 +1407,9 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   </button>
                   <button type="button" onClick={() => addCustomBlock('tiebreaker')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
                     <Swords size={16} className="text-purple-400" /> Tiebreaker
+                  </button>
+                  <button type="button" onClick={() => addCustomBlock('gallery')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
+                    <Images size={16} className="text-pink-400" /> Galleri
                   </button>
                   {isAdmin && (
                     <button type="button" onClick={() => addCustomBlock('audio')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
