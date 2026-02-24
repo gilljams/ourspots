@@ -23,6 +23,79 @@ const DEMO_USERS = {
   'maria_DOT_demo_DOT_se': { email: 'maria.demo.se', displayName: 'Maria', status: 'accepted', role: 'viewer' },
 };
 
+// Stock images from Unsplash (no storage needed - direct URLs)
+const STOCK_IMAGES = {
+  food: [
+    { id: 'kcA-c3f_3FE', label: 'Matlagning' },
+    { id: 'N_Y88TWmGwA', label: 'Kök' },
+    { id: '08bOYnH_r_E', label: 'Ingredienser' },
+  ],
+  travel: [
+    { id: 'T7K4aEPoGGk', label: 'Sjö & båtar' },
+    { id: '1Z2niiBPg5A', label: 'Berg' },
+    { id: 'Nyvq2juw4_o', label: 'Väg' },
+  ],
+  nature: [
+    { id: 'ugnrXk1129g', label: 'Skog uppifrån' },
+    { id: 'NRQV-hBF10M', label: 'Sjö' },
+    { id: 'eOpewngf68w', label: 'Natur' },
+  ],
+  vehicle: [
+    { id: 'jGZ4FCW_hjE', label: 'Bil' },
+    { id: 'm3m-lnR90uM', label: 'Väg' },
+    { id: 'N7RiDzfF2iw', label: 'Husbil' },
+  ],
+  golf: [
+    { id: 'Z8XlmAj65iM', label: 'Golfbana' },
+    { id: 'm_qnW28wa00', label: 'Golf green' },
+    { id: 'oGv9xIl7DkY', label: 'Golfutsikt' },
+  ],
+  sport: [
+    { id: 'Lks7vei-eAg', label: 'Tennis' },
+    { id: 'kZvmEpyfiJs', label: 'Löpning' },
+    { id: 'eMP4sYPJ9x0', label: 'Cykling' },
+  ],
+  home: [
+    { id: 'xtxBDbRk-ag', label: 'Villa' },
+    { id: 'gREquCUXQLI', label: 'Hus' },
+    { id: 'NLcLjLNUJbY', label: 'Radhus' },
+  ],
+  todo: [
+    { id: 'RLw-UC03Gwc', label: 'Checklista' },
+    { id: 'xoU52jUVUXA', label: 'Planering' },
+    { id: '5aiRb5f464A', label: 'Anteckningar' },
+  ],
+  shopping: [
+    { id: 'nWiM3r-sXLc', label: 'Mataffär' },
+    { id: 'V3qLTvRsoHw', label: 'Varukorg' },
+    { id: 'D3L38c0UEGY', label: 'Grönsaker' },
+  ],
+};
+
+// Map category IDs to stock image keys
+const CATEGORY_STOCK_MAP = {
+  food: 'food',
+  restaurant: 'food',
+  travel: 'travel',
+  vacation: 'travel',
+  nature: 'nature',
+  outdoor: 'nature',
+  vehicle: 'vehicle',
+  car: 'vehicle',
+  golf: 'golf',
+  sport: 'sport',
+  fitness: 'sport',
+  home: 'home',
+  property: 'home',
+  todo: 'todo',
+  task: 'todo',
+  shopping: 'shopping',
+  list: 'shopping',
+};
+
+const getUnsplashUrl = (photoId, width = 800) => 
+  `https://images.unsplash.com/photo-${photoId}?w=${width}&q=80&fit=crop&auto=format`;
+
 function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, saving, availableParents, defaultParentId, userLocation, categories, preciseGPS, isAdmin, currentUser, currentUserDisplayName, hasChildren, defaultCategory, isDemoMode }) {
   // ========== STATE ==========
   const isEdit = !!editObject;
@@ -69,6 +142,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
   const [imageUrl, setImageUrl] = useState(sourceObject?.blocks?.find(b => b.type === 'image')?.data?.url || '');
   const [imageCropMode, setImageCropMode] = useState(sourceObject?.blocks?.find(b => b.type === 'image')?.data?.cropMode || 'auto');
   const [imageFocalPoint, setImageFocalPoint] = useState(sourceObject?.blocks?.find(b => b.type === 'image')?.data?.focalPoint || null);
+  const [showStockPicker, setShowStockPicker] = useState(false);
   const [customBlocks, setCustomBlocks] = useState(() => {
     if (!sourceObject) return [];
     
@@ -1162,16 +1236,84 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                         </label>
                         <button
                           type="button"
+                          onClick={() => setShowStockPicker(!showStockPicker)}
+                          disabled={uploadingImage || saving}
+                          className={`flex-1 px-4 py-3 rounded-xl border text-sm flex items-center justify-center gap-2 ${showStockPicker ? 'bg-purple-500/20 border-purple-500/50 text-purple-300' : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'}`}
+                        >
+                          <ImageIcon size={18} />
+                          <span>Stock</span>
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => {
                             const url = prompt('Klistra in bild-URL:');
                             if (url?.trim()) { setImageUrl(url.trim()); setFormTouched(true); }
                           }}
                           disabled={uploadingImage || saving}
-                          className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm"
+                          className="px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm"
                         >
                           URL
                         </button>
                       </div>
+                      
+                      {/* Stock Image Picker */}
+                      {showStockPicker && (
+                        <div className="bg-white/5 rounded-xl p-3 border border-white/10">
+                          <div className="text-xs text-gray-400 mb-2">Välj en stockbild (gratis, ingen lagring)</div>
+                          <div className="grid grid-cols-3 gap-2">
+                            {(() => {
+                              // Get stock images for current category or show all
+                              const stockKey = CATEGORY_STOCK_MAP[selectedType] || 'home';
+                              const images = STOCK_IMAGES[stockKey] || STOCK_IMAGES.home;
+                              return images.map((img) => (
+                                <button
+                                  key={img.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setImageUrl(getUnsplashUrl(img.id, 1400));
+                                    setImageFocalPoint(null);
+                                    setShowStockPicker(false);
+                                    setFormTouched(true);
+                                  }}
+                                  className="relative aspect-[4/3] rounded-lg overflow-hidden border-2 border-transparent hover:border-purple-500 transition-colors"
+                                >
+                                  <img 
+                                    src={getUnsplashUrl(img.id, 400)} 
+                                    alt={img.label}
+                                    className="w-full h-full object-cover"
+                                    loading="lazy"
+                                  />
+                                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1">
+                                    <span className="text-[10px] text-white/90">{img.label}</span>
+                                  </div>
+                                </button>
+                              ));
+                            })()}
+                          </div>
+                          {/* Show other categories */}
+                          <div className="mt-3 pt-3 border-t border-white/10">
+                            <div className="text-xs text-gray-500 mb-2">Andra kategorier</div>
+                            <div className="flex flex-wrap gap-1">
+                              {Object.keys(STOCK_IMAGES).filter(key => key !== (CATEGORY_STOCK_MAP[selectedType] || 'home')).map(key => (
+                                <button
+                                  key={key}
+                                  type="button"
+                                  onClick={() => {
+                                    const img = STOCK_IMAGES[key][0];
+                                    setImageUrl(getUnsplashUrl(img.id, 1400));
+                                    setImageFocalPoint(null);
+                                    setShowStockPicker(false);
+                                    setFormTouched(true);
+                                  }}
+                                  className="px-2 py-1 text-xs bg-white/10 hover:bg-white/20 rounded text-gray-400 hover:text-gray-300"
+                                >
+                                  {key === 'food' ? 'Mat' : key === 'travel' ? 'Resor' : key === 'nature' ? 'Natur' : key === 'vehicle' ? 'Fordon' : key === 'golf' ? 'Golf' : key === 'sport' ? 'Sport' : key === 'home' ? 'Hem' : key === 'todo' ? 'Att göra' : key === 'shopping' ? 'Shopping' : key}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
