@@ -3933,6 +3933,7 @@ function TiebreakerBlockEditor({ block, onUpdate, onRemove, onMove, index, total
 // Rating Block Editor
 function RatingBlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }) {
   const [title, setTitle] = useState(block.title || 'Betyg');
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const syncToParent = (newTitle) => {
     onUpdate(block.id, { 
@@ -3950,72 +3951,83 @@ function RatingBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sa
   const ratingCount = Object.keys(block.ratings || {}).length;
 
   return (
-    <div className="bg-white/5 rounded-xl p-4 space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Star size={18} className="text-yellow-400" />
-          <span className="font-medium text-white">Betyg</span>
+    <div className="rounded-xl border border-white/10 bg-white/5 overflow-hidden">
+      {/* Collapsible header */}
+      <div className="flex items-center gap-2 p-3">
+        <button
+          type="button"
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex items-center gap-2 flex-1 min-w-0"
+        >
+          <ChevronDown 
+            size={16} 
+            className={`text-gray-500 transition-transform flex-shrink-0 ${isExpanded ? '' : '-rotate-90'}`} 
+          />
+          <Star size={16} className="text-yellow-400 flex-shrink-0" />
+          <span className="text-sm font-medium text-gray-300 truncate">
+            {title || 'Betyg'}
+          </span>
           {ratingCount > 0 && (
-            <span className="text-xs text-gray-500">({ratingCount} röster)</span>
+            <span className="text-xs text-gray-500 flex-shrink-0">({ratingCount} röster)</span>
           )}
-        </div>
-        <div className="flex items-center gap-1">
-          {index > 0 && (
-            <button type="button" onClick={() => onMove(index, index - 1)} className="p-1.5 hover:bg-white/10 rounded-lg text-gray-400" disabled={saving}>
-              <ChevronUp size={16} />
-            </button>
-          )}
-          {index < total - 1 && (
-            <button type="button" onClick={() => onMove(index, index + 1)} className="p-1.5 hover:bg-white/10 rounded-lg text-gray-400" disabled={saving}>
-              <ChevronDown size={16} />
-            </button>
-          )}
-          <button type="button" onClick={onRemove} className="p-1.5 hover:bg-red-500/20 rounded-lg text-red-400" disabled={saving}>
-            <X size={16} />
+        </button>
+        <div className="flex gap-1 flex-shrink-0">
+          <button type="button" onClick={() => onMove(block.id, -1)} disabled={index === 0} className="w-7 h-7 rounded bg-white/5 text-gray-400 hover:bg-white/10 flex items-center justify-center disabled:opacity-30">
+            <ArrowUp size={14} />
+          </button>
+          <button type="button" onClick={() => onMove(block.id, 1)} disabled={index === total - 1} className="w-7 h-7 rounded bg-white/5 text-gray-400 hover:bg-white/10 flex items-center justify-center disabled:opacity-30">
+            <ArrowDown size={14} />
+          </button>
+          <button type="button" onClick={() => onRemove(block.id)} className="w-7 h-7 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center">
+            <X size={14} />
           </button>
         </div>
       </div>
 
-      {/* Title input */}
-      <div>
-        <label className="block text-xs text-gray-400 mb-1">Rubrik</label>
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => {
-            setTitle(e.target.value);
-            syncToParent(e.target.value);
-          }}
-          placeholder="T.ex. 'Betygsätt restaurangen'"
-          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm"
-        />
-      </div>
+      {/* Expandable content */}
+      {isExpanded && (
+        <div className="px-3 pb-3 space-y-3">
+          {/* Title input */}
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">Rubrik</label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                syncToParent(e.target.value);
+              }}
+              placeholder="T.ex. 'Betygsätt restaurangen'"
+              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm"
+            />
+          </div>
 
-      {/* Reset button */}
-      {ratingCount > 0 && (
-        <button
-          type="button"
-          onClick={resetRatings}
-          className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
-        >
-          <RotateCcw size={12} />
-          Nollställ betyg
-        </button>
+          {/* Reset button */}
+          {ratingCount > 0 && (
+            <button
+              type="button"
+              onClick={resetRatings}
+              className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
+            >
+              <RotateCcw size={12} />
+              Nollställ betyg
+            </button>
+          )}
+
+          {/* Preview */}
+          <div className="bg-white/5 rounded-lg p-3">
+            <div className="text-xs text-gray-500 mb-2">Förhandsvisning</div>
+            <div className="flex items-center gap-1">
+              {[1, 2, 3, 4, 5].map(star => (
+                <Star key={star} size={20} className="text-gray-600" />
+              ))}
+            </div>
+            <div className="text-xs text-gray-500 mt-2">
+              Användare kan ge 1-5 stjärnor. Snittbetyget visas automatiskt.
+            </div>
+          </div>
+        </div>
       )}
-
-      {/* Preview */}
-      <div className="bg-white/5 rounded-lg p-3">
-        <div className="text-xs text-gray-500 mb-2">Förhandsvisning</div>
-        <div className="flex items-center gap-1">
-          {[1, 2, 3, 4, 5].map(star => (
-            <Star key={star} size={20} className="text-gray-600" />
-          ))}
-        </div>
-        <div className="text-xs text-gray-500 mt-2">
-          Användare kan ge 1-5 stjärnor. Snittbetyget visas automatiskt.
-        </div>
-      </div>
     </div>
   );
 }
