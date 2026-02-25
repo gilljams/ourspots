@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, ArrowUp, ArrowDown, ChevronDown, Plus, Edit2, Type, Phone, Link2, Hash } from 'lucide-react';
 import { getIconComponent } from '../../utils/iconHelpers';
-import { TABLE_TEMPLATES } from './index';
+import { TABLE_TEMPLATES } from './tableTemplates';
 import { ListEditorModal } from '../ListEditorModal';
 import { SimpleTableEditorModal, MultiColumnTableEditorModal } from '../SimpleTableEditorModal';
 
