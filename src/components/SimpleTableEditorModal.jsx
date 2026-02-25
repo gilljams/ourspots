@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Plus, Check, Trash2, GripVertical, ClipboardPaste, Phone, Link, Hash, Type, MoreVertical, CheckSquare, Square } from 'lucide-react';
+import { X, Plus, Check, Trash2, GripVertical, ClipboardPaste, Phone, Link, Hash, Type, MoreVertical, CheckSquare, Square, RotateCcw, ListX, ArrowDownUp, Undo2, CheckCheck } from 'lucide-react';
 
 // Column type labels
 const COL2_TYPE_LABELS = {
@@ -33,6 +33,8 @@ export function SimpleTableEditorModal({
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [showUtilsMenu, setShowUtilsMenu] = useState(false);
+  const [deletedRow, setDeletedRow] = useState(null); // { row, index } for undo
+  const undoTimerRef = useRef(null);
   const scrollYRef = useRef(0);
   const listRef = useRef(null);
   const inputRefs = useRef({});
@@ -90,6 +92,7 @@ export function SimpleTableEditorModal({
         viewport.removeEventListener('scroll', updateLayout);
       }
       window.removeEventListener('resize', updateLayout);
+      if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
     };
   }, []);
   
@@ -491,7 +494,7 @@ export function SimpleTableEditorModal({
                     className="fixed inset-0 z-[2001]" 
                     onClick={() => setShowUtilsMenu(false)}
                   />
-                  <div className="absolute right-0 top-full mt-1 w-44 bg-slate-700 rounded-lg shadow-xl border border-white/10 py-1 z-[2002]">
+                  <div className="absolute right-0 top-full mt-1 w-48 bg-slate-700 rounded-lg shadow-xl border border-white/10 py-1 z-[2002]">
                     <button
                       type="button"
                       onClick={() => {
@@ -516,6 +519,85 @@ export function SimpleTableEditorModal({
                     >
                       <CheckSquare size={14} />
                       {selectMode ? 'Avsluta val' : 'Välj flera'}
+                    </button>
+                    <div className="border-t border-white/10 my-1" />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRows(rows.map(r => r.isHeader ? r : { ...r, done: true }));
+                        setShowUtilsMenu(false);
+                      }}
+                      className="w-full px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-600/50 flex items-center gap-2"
+                    >
+                      <CheckCheck size={14} />
+                      Bocka i alla
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (window.confirm('Vill du rensa alla ibockningar?')) {
+                          setRows(rows.map(r => r.isHeader ? r : { ...r, done: false }));
+                        }
+                        setShowUtilsMenu(false);
+                      }}
+                      className="w-full px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-600/50 flex items-center gap-2"
+                    >
+                      <RotateCcw size={14} />
+                      Rensa ibockningar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const result = [];
+                        let currentSection = [];
+                        const flushSection = () => {
+                          if (currentSection.length === 0) return;
+                          const unchecked = currentSection.filter(r => !r.done);
+                          const checked = currentSection.filter(r => r.done);
+                          result.push(...unchecked, ...checked);
+                          currentSection = [];
+                        };
+                        rows.forEach(r => {
+                          if (r.isHeader) { flushSection(); result.push(r); }
+                          else { currentSection.push(r); }
+                        });
+                        flushSection();
+                        setRows(result);
+                        setShowUtilsMenu(false);
+                      }}
+                      className="w-full px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-600/50 flex items-center gap-2"
+                    >
+                      <ArrowDownUp size={14} />
+                      Sortera klara sist
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const checkedCount = rows.filter(r => !r.isHeader && r.done).length;
+                        if (checkedCount === 0) { setShowUtilsMenu(false); return; }
+                        if (window.confirm(`Ta bort ${checkedCount} ibockade rad${checkedCount > 1 ? 'er' : ''}?`)) {
+                          setRows(rows.filter(r => r.isHeader || !r.done));
+                        }
+                        setShowUtilsMenu(false);
+                      }}
+                      className="w-full px-3 py-2 text-left text-sm text-orange-400 hover:bg-orange-500/10 flex items-center gap-2"
+                    >
+                      <Trash2 size={14} />
+                      Ta bort ibockade
+                    </button>
+                    <div className="border-t border-white/10 my-1" />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (window.confirm('Vill du ta bort alla rader från tabellen?')) {
+                          setRows([]);
+                        }
+                        setShowUtilsMenu(false);
+                      }}
+                      className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-red-500/10 flex items-center gap-2"
+                    >
+                      <ListX size={14} />
+                      Rensa tabellen
                     </button>
                   </div>
                 </>
@@ -610,7 +692,7 @@ export function SimpleTableEditorModal({
                     </div>
                   ) : (
                     // Regular row with 2 columns
-                    <div className="flex-1 flex items-center gap-2 px-3 py-2.5">
+                    <div className={`flex-1 flex items-center gap-2 px-3 py-2.5 ${row.done ? 'bg-white/[0.02]' : ''}`}>
                       {selectMode && (
                         <button
                           type="button"
@@ -624,6 +706,9 @@ export function SimpleTableEditorModal({
                           )}
                         </button>
                       )}
+                      <div className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 ${row.done ? 'bg-emerald-500/20' : ''}`}>
+                        {row.done && <Check size={10} className="text-emerald-400" />}
+                      </div>
                       <div
                         className="text-slate-600 cursor-grab active:cursor-grabbing touch-none flex-shrink-0"
                         onTouchStart={(e) => handleTouchStart(e, row.id)}
@@ -639,7 +724,7 @@ export function SimpleTableEditorModal({
                         onChange={(e) => updateRow(row.id, 'col1', e.target.value)}
                         onKeyDown={(e) => handleKeyDown(e, row.id, 'col1')}
                         placeholder={col1Label}
-                        className="flex-1 bg-transparent text-white text-sm placeholder-slate-600 focus:outline-none min-w-0"
+                        className={`flex-1 bg-transparent text-sm placeholder-slate-600 focus:outline-none min-w-0 ${row.done ? 'text-slate-500' : 'text-white'}`}
                       />
                       
                       {/* Column 2 - typed input */}
@@ -681,6 +766,28 @@ export function SimpleTableEditorModal({
 
           </div>
         </div>
+        
+        {/* Undo delete toast */}
+        {deletedRow && (
+          <div 
+            className="fixed z-[2001] left-4 right-20 flex items-center gap-3 bg-slate-700 text-white text-sm rounded-xl px-4 py-3 shadow-lg border border-white/10"
+            style={{
+              bottom: `${Math.max(16, viewportHeight - window.innerHeight + 16)}px`
+            }}
+          >
+            <span className="flex-1 truncate">
+              "{deletedRow.row.col1 || 'Rad'}" borttagen
+            </span>
+            <button
+              type="button"
+              onClick={undoDelete}
+              className="flex items-center gap-1.5 text-blue-400 font-medium hover:text-blue-300 transition-colors flex-shrink-0"
+            >
+              <Undo2 size={14} />
+              Ångra
+            </button>
+          </div>
+        )}
         
         {/* Floating save button */}
         <button
