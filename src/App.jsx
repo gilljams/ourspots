@@ -1,21 +1,16 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback, Suspense, lazy } from 'react';
 import { 
-  X, Plus, Image, Trash2, 
-  Loader, LogOut, LogIn, Check, Circle, 
-  Map as MapIcon, List, ChevronDown, ArrowLeft, Search, Settings,
-  Target, Lightbulb, SlidersHorizontal, Menu, Filter, Share2, Users, Mail, User,
-  MapPin, Home, Star, Navigation, Eye, Edit3, AlertTriangle,
+  X, Plus,
+  Loader, LogIn, Check,
+  Map as MapIcon, List, ArrowLeft, Search,
+  Target, SlidersHorizontal, Menu, Filter, Users, Mail, User,
+  MapPin, Star, Navigation, Eye, AlertTriangle,
   LayoutGrid, LayoutList, ArrowUpDown, Sparkles, Swords
 } from 'lucide-react';
 
-// Utils
-import { 
-  getTransformedImageUrl, 
-  getFocalPointStyles 
-} from './utils/imageUtils';
 import { getObjectDistance as getObjectDistanceUtil } from './utils/geoUtils';
 
-import { getIconComponent, PREDEFINED_ICONS, emailToKey } from './utils/iconHelpers';
+import { getIconComponent, emailToKey } from './utils/iconHelpers';
 import { STORAGE_KEYS } from './utils/storageKeys';
 import { usePersistedState } from './utils/usePersistedState';
 import { useAuth } from './utils/useAuth';
@@ -29,6 +24,10 @@ import { blockComponents } from './components/blocks';
 import ObjectCard from './components/ObjectCard';
 import MapPicker from './components/MapPicker';
 import MapView from './components/MapView';
+import InvitationsDropdown from './components/InvitationsDropdown';
+import CapturesModal from './components/CapturesModal';
+import AppMenu from './components/AppMenu';
+import QuickCaptureObjectPicker from './components/QuickCaptureObjectPicker';
 
 // Lazy load modals and heavy components for better initial load performance
 const ShareModal = lazy(() => import('./components/ShareModal'));
@@ -1177,52 +1176,19 @@ function App() {
       
       {/* Invitations dropdown */}
       {showInvitations && pendingInvitations.length > 0 && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setShowInvitations(false)} />
-          <div className="absolute left-4 right-4 sm:left-auto sm:right-auto sm:w-80 mt-2 ml-0 sm:ml-14 p-3 rounded-xl bg-gray-900/95 backdrop-blur-xl border border-white/10 shadow-2xl z-50 animate-in slide-in-from-top-2">
-            <h4 className="text-sm font-medium text-white mb-3 flex items-center gap-2">
-              <Mail size={16} className="text-blue-400" />
-              Inbjudningar ({pendingInvitations.length})
-            </h4>
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {pendingInvitations.map(obj => {
-                const titleBlock = obj.blocks?.find(b => b.type === 'title');
-                const shareInfo = obj.shares[userEmailKey];
-                return (
-                  <div key={obj.id} className="flex items-center gap-2 p-2.5 rounded-lg bg-white/5 border border-white/10">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-white text-sm font-medium truncate">{titleBlock?.data?.text || 'Namnlöst'}</p>
-                      <p className="text-xs text-gray-400 flex items-center gap-1">
-                        {shareInfo?.role === 'editor' ? <><Edit3 size={10} /> <span>Redigerare</span></> : <><Eye size={10} /> <span>Läsare</span></>}
-                        {shareInfo?.includeChildren && <span className="ml-1">• Inkl. barn</span>}
-                      </p>
-                    </div>
-                    <div className="flex gap-1">
-                      <button
-                        onClick={async () => {
-                          const success = await handleAcceptInvitation(obj);
-                          if (success && pendingInvitations.length === 1) setShowInvitations(false);
-                        }}
-                        className="px-2.5 py-1.5 rounded-lg bg-green-500/20 text-green-300 text-xs font-medium hover:bg-green-500/30 transition-colors flex items-center justify-center"
-                      >
-                        <Check size={14} />
-                      </button>
-                      <button
-                        onClick={async () => {
-                          const success = await handleRejectInvitation(obj);
-                          if (success && pendingInvitations.length === 1) setShowInvitations(false);
-                        }}
-                        className="px-2.5 py-1.5 rounded-lg bg-red-500/20 text-red-300 text-xs font-medium hover:bg-red-500/30 transition-colors flex items-center justify-center"
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </>
+        <InvitationsDropdown
+          pendingInvitations={pendingInvitations}
+          userEmailKey={userEmailKey}
+          onAccept={async (obj) => {
+            const success = await handleAcceptInvitation(obj);
+            if (success && pendingInvitations.length === 1) setShowInvitations(false);
+          }}
+          onReject={async (obj) => {
+            const success = await handleRejectInvitation(obj);
+            if (success && pendingInvitations.length === 1) setShowInvitations(false);
+          }}
+          onClose={() => setShowInvitations(false)}
+        />
       )}
       
       <div className="bg-gray-900/30 backdrop-blur-md border-b border-white/10 sticky z-30" style={{ top: headerHeight }}>
@@ -1871,572 +1837,70 @@ function App() {
 
       {/* Captures Modal */}
       {showCaptures && (
-        <div 
-          className="fixed inset-0 bg-black/80 sm:bg-black/70 backdrop-blur-sm z-[2000] flex items-end sm:items-center justify-center sm:justify-end"
-          onClick={(e) => e.target === e.currentTarget && setShowCaptures(false)}
-        >
-          <div className="bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-l-xl sm:rounded-r-none border-t sm:border-l sm:border-t sm:border-b border-white/10 sm:border-white/[0.08] w-full sm:w-96 h-full sm:h-full overflow-hidden flex flex-col relative sm:shadow-2xl sm:shadow-black/50 animate-in slide-in-from-bottom sm:slide-in-from-right duration-300">
-            {/* Subtle decorative gradient */}
-            <div className="absolute top-0 left-0 right-0 h-72 bg-gradient-to-b from-orange-600/8 via-orange-900/5 to-transparent pointer-events-none" />
-            
-            {/* Fixed header */}
-            <div className="sticky top-0 z-10 px-4 py-4 sm:p-6 border-b border-white/5 bg-gradient-to-r from-gray-900/98 via-gray-900/95 to-gray-900/98 backdrop-blur-xl flex items-center justify-between shadow-[0_1px_12px_rgba(0,0,0,0.4)]">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500/20 to-orange-600/20 flex items-center justify-center">
-                  <Target size={20} className="text-orange-400" />
-                </div>
-                <h2 className="text-xl sm:text-2xl font-bold text-white">GPS-pinningar</h2>
-              </div>
-              <button
-                onClick={() => setShowCaptures(false)}
-                className="w-11 h-11 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 active:bg-white/20 text-gray-400 hover:text-white transition-all touch-manipulation"
-                aria-label="Stäng"
-              >
-<X size={24} />
-              </button>
-            </div>
-            
-            <div className="overflow-y-auto flex-1 p-4 sm:p-6 pb-8 sm:pb-10">
-              <div className="mb-4 p-4 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-300">
-                <div className="flex gap-3">
-                  <Lightbulb size={18} className="text-blue-400 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="mb-1">Använd orange svampknappen för att snabbt spara GPS-positioner när du är i skogen!</p>
-                    <p className="text-xs text-gray-500">Perfekt för kantarellställen utan uppkoppling. Skapa objekt senare.</p>
-                  </div>
-                </div>
-              </div>
-
-              {captures.length === 0 ? (
-                <div className="text-center py-12 text-gray-500">
-                  <Target size={48} className="mx-auto mb-4 text-gray-600" />
-                  <p className="text-lg mb-2">Inga pinningar än</p>
-                  <p className="text-sm">Tryck på orange knappen för att spara en position</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {captures.map((capture, index) => {
-                    const date = new Date(capture.timestamp);
-                    const timeStr = date.toLocaleString('sv-SE', {
-                      month: 'short',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    });
-                    
-                    return (
-                      <div key={capture.id} className="bg-white/5 backdrop-blur-md rounded-xl border border-white/10 p-4">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 text-white font-medium mb-1">
-                              <Target size={16} className="text-orange-400" />
-                              <span>Pinning #{captures.length - index}</span>
-                            </div>
-                            <div className="text-xs text-gray-400">{timeStr}</div>
-                          </div>
-                          <button
-                            onClick={() => handleDeleteCapture(capture.id)}
-                            className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-all"
-                            title="Ta bort"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                        
-                        <div className="text-xs text-gray-400 space-y-1 mb-3">
-                          <div className="flex items-center gap-2">
-                            <MapPin size={12} />
-                            <span>{capture.lat.toFixed(6)}, {capture.lng.toFixed(6)}</span>
-                          </div>
-                        </div>
-                        
-                        <button
-                          onClick={() => handleCreateFromCapture(capture)}
-                          className="w-full py-2 px-3 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium transition-all flex items-center justify-center gap-2"
-                        >
-                          <Plus size={16} />
-                          Skapa objekt från denna
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        <CapturesModal
+          captures={captures}
+          onDeleteCapture={handleDeleteCapture}
+          onCreateFromCapture={handleCreateFromCapture}
+          onClose={() => setShowCaptures(false)}
+        />
       )}
 
       {showMenu && (
-        <>
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[2000]" onClick={() => setShowMenu(false)}></div>
-          <div className="fixed top-0 left-0 h-full w-80 bg-gray-950/98 backdrop-blur-xl border-r border-white/10 z-[2001] shadow-2xl animate-in slide-in-from-left duration-300 flex flex-col">
-            {/* Sticky header */}
-            <div className="flex-shrink-0 p-4 border-b border-white/10">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-white">Meny</h2>
-                <button
-                  onClick={() => setShowMenu(false)}
-                  className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 active:bg-white/20 text-gray-400 hover:text-white transition-all touch-manipulation"
-                  aria-label="Stäng"
-                >
-<X size={20} />
-                </button>
-              </div>
-            </div>
-            
-            {/* Scrollable content */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                {/* Contacts & Sharing overview */}
-                {user && (
-                  <button
-                    onClick={() => {
-                      setShowContacts(true);
-                      setShowMenu(false);
-                    }}
-                    className="w-full flex items-center gap-3 p-3 rounded-xl bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500/20 text-white transition-all"
-                  >
-                    <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
-                      <Users size={18} className="text-blue-400" />
-                    </div>
-                    <div className="flex-1 text-left">
-                      <div className="text-sm font-medium">Kontakter & delningar</div>
-                      <div className="text-xs text-gray-400">Se vem du delar med</div>
-                    </div>
-                    <Share2 size={16} className="text-blue-400" />
-                  </button>
-                )}
-                
-                {isAdmin && (
-                  <div className="rounded-xl border border-white/10 overflow-hidden">
-                    <button
-                      onClick={() => setMenuAdminExpanded(v => !v)}
-                      className="w-full flex items-center gap-2 p-3 bg-white/5 hover:bg-white/10 transition-colors"
-                    >
-                      <ChevronDown size={16} className={`text-gray-500 transition-transform ${menuAdminExpanded ? '' : '-rotate-90'}`} />
-                      <span className="text-xs text-gray-400 uppercase tracking-wide font-medium">Admin</span>
-                    </button>
-                    {menuAdminExpanded && (
-                      <div className="p-2 space-y-1">
-                        <button
-                          onClick={() => {
-                            setShowCategoryAdmin(true);
-                            setShowMenu(false);
-                          }}
-                          className="w-full flex items-center gap-3 p-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-all"
-                        >
-                          <Settings size={16} className="text-blue-400" />
-                          <span className="text-sm">Hantera kategorier</span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            setShowObjectsAdmin(true);
-                            setShowMenu(false);
-                          }}
-                          className="w-full flex items-center gap-3 p-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-all"
-                        >
-                          <Settings size={16} className="text-purple-400" />
-                          <span className="text-sm">Alla objekt</span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            setShowUsersAdmin(true);
-                            setShowMenu(false);
-                          }}
-                          className="w-full flex items-center gap-3 p-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-all"
-                        >
-                          <Users size={16} className="text-green-400" />
-                          <span className="text-sm">Användare</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-                
-                {/* Settings section */}
-                <div className="rounded-xl border border-white/10 overflow-hidden">
-                  <button
-                    onClick={() => setMenuSettingsExpanded(v => !v)}
-                    className="w-full flex items-center gap-2 p-3 bg-white/5 hover:bg-white/10 transition-colors"
-                  >
-                    <ChevronDown size={16} className={`text-gray-500 transition-transform ${menuSettingsExpanded ? '' : '-rotate-90'}`} />
-                    <span className="text-xs text-gray-400 uppercase tracking-wide font-medium">Inställningar</span>
-                  </button>
-                {menuSettingsExpanded && (
-                <div className="p-2 space-y-2">
-                  {/* Profile / Nickname */}
-                  <div className="p-2.5 rounded-lg bg-white/5">
-                    <div className="flex-1 mb-2">
-                      <div className="text-sm font-medium text-white">Visningsnamn</div>
-                      <div className="text-xs text-gray-400 mt-0.5">Hur andra ser dig vid delning</div>
-                    </div>
-                    <input
-                      type="text"
-                      value={displayName}
-                      onChange={(e) => setDisplayName(e.target.value)}
-                      onBlur={async () => {
-                        if (user) {
-                          try {
-                            await updateDoc(doc(db, 'users', user.uid), { displayName: displayName.trim() });
-                          } catch (err) {
-                            console.error('Error saving displayName:', err);
-                          }
-                        }
-                      }}
-                      placeholder={user?.email?.split('@')[0] || 'Ditt namn'}
-                      className="w-full bg-gray-800 border border-white/10 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                  
-                  <div className="p-2.5 rounded-lg bg-white/5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="text-sm font-medium text-white">Håll skärmen påslagen</div>
-                        <div className="text-xs text-gray-400 mt-0.5">Förhindrar att skärmen släcks</div>
-                      </div>
-                      <button
-                        onClick={() => setKeepScreenOn(!keepScreenOn)}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                          keepScreenOn ? 'bg-blue-500' : 'bg-gray-600'
-                        }`}
-                      >
-                        <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                            keepScreenOn ? 'translate-x-6' : 'translate-x-1'
-                          }`}
-                        />
-                      </button>
-                    </div>
-                    {!('wakeLock' in navigator) && (
-                      <div className="mt-2 text-xs text-yellow-400 flex items-center gap-1">
-                        <AlertTriangle size={12} className="flex-shrink-0" /> Din webbläsare stöder inte denna funktion
-                      </div>
-                    )}
-                    {keepScreenOn && 'wakeLock' in navigator && (
-                      <div className="mt-2 text-xs text-blue-400 flex items-center gap-1">
-                        <Check size={12} className="flex-shrink-0" /> Aktiv - skärmen ska förbli påslagen
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-2.5 rounded-lg bg-white/5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="text-sm font-medium text-white">Precis GPS</div>
-                        <div className="text-xs text-gray-400 mt-0.5">Väntar på bättre GPS-signal</div>
-                      </div>
-                      <button
-                        onClick={() => setPreciseGPS(!preciseGPS)}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                          preciseGPS ? 'bg-blue-500' : 'bg-gray-600'
-                        }`}
-                      >
-                        <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                            preciseGPS ? 'translate-x-6' : 'translate-x-1'
-                          }`}
-                        />
-                      </button>
-                    </div>
-                    {preciseGPS && (
-                      <div className="mt-2 text-xs text-blue-400 flex items-center gap-1">
-                        <Check size={12} className="flex-shrink-0" /> Väntar tills GPS är ±10m eller max 15 sek
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-2.5 rounded-lg bg-white/5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="text-sm font-medium text-white">Visa demoexempel</div>
-                        <div className="text-xs text-gray-400 mt-0.5">Se exempel på användning</div>
-                      </div>
-                      <button
-                        onClick={() => {
-                          const newValue = !showDemoObjects;
-                          setShowDemoObjects(newValue);
-                          if (newValue) {
-                            // Clear filters that don't make sense in demo mode
-                            setShowOnlyOwned(false);
-                            setShowFavoritesOnly(false);
-                          }
-                        }}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                          showDemoObjects ? 'bg-blue-500' : 'bg-gray-600'
-                        }`}
-                      >
-                        <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                            showDemoObjects ? 'translate-x-6' : 'translate-x-1'
-                          }`}
-                        />
-                      </button>
-                    </div>
-                    {showDemoObjects && (
-                      <div className="mt-2 text-xs text-blue-400 flex items-center gap-1">
-                        <Check size={12} className="flex-shrink-0" /> Visar endast demoexempel (skrivskyddat)
-                      </div>
-                    )}
-                  </div>
-                </div>
-                )}
-                </div>
-                
-                {/* Quick Capture section */}
-                <div className="rounded-xl border border-white/10 overflow-hidden">
-                  <button
-                    onClick={() => setMenuQuickCaptureExpanded(v => !v)}
-                    className="w-full flex items-center gap-2 p-3 bg-white/5 hover:bg-white/10 transition-colors"
-                  >
-                    <ChevronDown size={16} className={`text-gray-500 transition-transform ${menuQuickCaptureExpanded ? '' : '-rotate-90'}`} />
-                    <span className="text-xs text-gray-400 uppercase tracking-wide font-medium">Snabbpinningar</span>
-                  </button>
-                {menuQuickCaptureExpanded && (
-                <div className="p-2 space-y-2">
-                  <div className="p-2.5 rounded-lg bg-white/5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="text-sm font-medium text-white">Visa snabbpinning</div>
-                        <div className="text-xs text-gray-400 mt-0.5">Orange snabb-pinning för offline</div>
-                      </div>
-                      <button
-                        onClick={() => setShowQuickCapture(!showQuickCapture)}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                          showQuickCapture ? 'bg-orange-500' : 'bg-gray-600'
-                        }`}
-                      >
-                        <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                            showQuickCapture ? 'translate-x-6' : 'translate-x-1'
-                          }`}
-                        />
-                      </button>
-                    </div>
-                  </div>
-                  {showQuickCapture && (
-                    <>
-                      <div className="p-2.5 rounded-lg bg-white/5">
-                        <div className="flex-1 mb-2">
-                          <div className="text-sm font-medium text-white">Går till objekt</div>
-                          <div className="text-xs text-gray-400 mt-0.5">Lägg till positioner direkt</div>
-                        </div>
-                        <button
-                          onClick={() => {
-                            setQuickCaptureSearchQuery('');
-                            setShowQuickCaptureObjectPicker(true);
-                          }}
-                          className="w-full flex items-center justify-between bg-gray-800 border border-white/10 rounded-lg px-3 py-2 text-sm hover:border-orange-500/50 transition-colors"
-                        >
-                          {quickCaptureObjectId ? (
-                            <span className="text-white truncate">
-                              {objects?.find(o => o.id === quickCaptureObjectId)?.blocks?.find(b => b.type === 'title')?.data?.text || 'Namnlöst objekt'}
-                            </span>
-                          ) : (
-                            <span className="text-gray-500">Ingen (spara i lista)</span>
-                          )}
-                          <ChevronDown size={16} className="text-gray-400 flex-shrink-0" />
-                        </button>
-                      </div>
-                      <button
-                        onClick={() => { setShowMenu(false); setShowCaptures(true); }}
-                        className="w-full flex items-center justify-between p-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-all"
-                      >
-                        <div className="flex items-center gap-3">
-                          <Target size={16} className="text-orange-400" />
-                          <span className="text-sm">Visa pinningar</span>
-                        </div>
-                        {captures.length > 0 && (
-                          <span className="bg-orange-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                            {captures.length}
-                          </span>
-                        )}
-                      </button>
-                    </>
-                  )}
-                </div>
-                )}
-                </div>
-            </div>
-            
-            {/* Footer with logout */}
-            {user && (
-              <div className="flex-shrink-0 p-4 border-t border-white/10">
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => {
-                      setShowMenu(false);
-                      handleSwitchAccount();
-                    }}
-                    className="flex-1 flex items-center justify-center gap-2 p-3 rounded-xl bg-white/5 hover:bg-blue-500/20 text-gray-400 hover:text-blue-400 transition-all"
-                  >
-                    <Users size={18} />
-                    <span className="text-sm font-medium">Byt konto</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowMenu(false);
-                      handleLogout();
-                    }}
-                    className="flex-1 flex items-center justify-center gap-2 p-3 rounded-xl bg-white/5 hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition-all"
-                  >
-                    <LogOut size={18} />
-                    <span className="text-sm font-medium">Logga ut</span>
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </>
+        <AppMenu
+          onClose={() => setShowMenu(false)}
+          user={user}
+          isAdmin={isAdmin}
+          displayName={displayName}
+          setDisplayName={setDisplayName}
+          keepScreenOn={keepScreenOn}
+          setKeepScreenOn={setKeepScreenOn}
+          preciseGPS={preciseGPS}
+          setPreciseGPS={setPreciseGPS}
+          showDemoObjects={showDemoObjects}
+          setShowDemoObjects={setShowDemoObjects}
+          setShowOnlyOwned={setShowOnlyOwned}
+          setShowFavoritesOnly={setShowFavoritesOnly}
+          showQuickCapture={showQuickCapture}
+          setShowQuickCapture={setShowQuickCapture}
+          quickCaptureObjectId={quickCaptureObjectId}
+          objects={objects}
+          categories={categories}
+          captures={captures}
+          onOpenQuickCapturePicker={() => {
+            setQuickCaptureSearchQuery('');
+            setShowQuickCaptureObjectPicker(true);
+          }}
+          onShowCaptures={() => setShowCaptures(true)}
+          onShowCategoryAdmin={() => setShowCategoryAdmin(true)}
+          onShowObjectsAdmin={() => setShowObjectsAdmin(true)}
+          onShowUsersAdmin={() => setShowUsersAdmin(true)}
+          onShowContacts={() => setShowContacts(true)}
+          menuAdminExpanded={menuAdminExpanded}
+          setMenuAdminExpanded={setMenuAdminExpanded}
+          menuSettingsExpanded={menuSettingsExpanded}
+          setMenuSettingsExpanded={setMenuSettingsExpanded}
+          menuQuickCaptureExpanded={menuQuickCaptureExpanded}
+          setMenuQuickCaptureExpanded={setMenuQuickCaptureExpanded}
+          handleSwitchAccount={handleSwitchAccount}
+          handleLogout={handleLogout}
+        />
       )}
       
       {/* Quick Capture Object Picker Modal */}
       {showQuickCaptureObjectPicker && (
-        <div 
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[2100] flex items-center justify-center p-4"
-          onClick={() => setShowQuickCaptureObjectPicker(false)}
-        >
-          <div 
-            className="bg-gray-900 rounded-xl border border-white/10 w-full max-w-md overflow-hidden flex flex-col max-h-[80vh]"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between flex-shrink-0">
-              <div className="flex items-center gap-2">
-                <Target size={18} className="text-orange-400" />
-                <h3 className="font-medium text-white">Välj objekt</h3>
-              </div>
-              <button 
-                onClick={() => setShowQuickCaptureObjectPicker(false)}
-                className="p-1 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            {/* Search field */}
-            <div className="px-3 py-2 border-b border-white/5 flex-shrink-0">
-              <div className="relative">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-                <input
-                  type="text"
-                  value={quickCaptureSearchQuery}
-                  onChange={e => setQuickCaptureSearchQuery(e.target.value)}
-                  placeholder="Sök objekt..."
-                  className="w-full pl-9 pr-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-orange-500"
-                  autoFocus
-                />
-              </div>
-            </div>
-            <div className="flex-1 overflow-y-auto p-2">
-              {/* Option for no object */}
-              <button
-                onClick={() => {
-                  setQuickCaptureObjectId('');
-                  setShowQuickCaptureObjectPicker(false);
-                }}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all ${
-                  !quickCaptureObjectId ? 'bg-orange-500/20 text-orange-400' : 'hover:bg-white/10 text-gray-300 hover:text-white'
-                }`}
-              >
-                <div className="w-8 h-8 rounded bg-white/10 flex items-center justify-center flex-shrink-0">
-                  <List size={14} className="text-gray-400" />
-                </div>
-                <span className="flex-1 text-sm">Ingen (spara i lista)</span>
-                {!quickCaptureObjectId && <Check size={16} className="text-orange-400" />}
-              </button>
-              
-              {(() => {
-                // Filter objects owned by user
-                const availableObjects = objects?.filter(obj => obj.ownerId === user?.uid) || [];
-                
-                // Apply search filter
-                const searchLower = quickCaptureSearchQuery.toLowerCase().trim();
-                const filteredObjects = searchLower 
-                  ? availableObjects.filter(obj => {
-                      const title = obj.blocks?.find(b => b.type === 'title')?.data?.text || '';
-                      return title.toLowerCase().includes(searchLower);
-                    })
-                  : availableObjects;
-                
-                // Group by category
-                const grouped = {};
-                filteredObjects.forEach(obj => {
-                  const catId = obj.type || 'other';
-                  if (!grouped[catId]) grouped[catId] = [];
-                  grouped[catId].push(obj);
-                });
-                
-                const categoryIds = Object.keys(grouped).sort((a, b) => {
-                  const catA = categories?.find(c => c.id === a);
-                  const catB = categories?.find(c => c.id === b);
-                  return (catA?.label || a).localeCompare(catB?.label || b);
-                });
-                
-                if (categoryIds.length === 0 && searchLower) {
-                  return (
-                    <div className="text-center py-8 text-gray-500 text-sm">
-                      Inga objekt matchar sökningen
-                    </div>
-                  );
-                }
-                
-                return categoryIds.map(catId => {
-                  const category = categories?.find(c => c.id === catId);
-                  const CategoryIcon = category ? getIconComponent(category.icon) : (PREDEFINED_ICONS[catId]?.icon || Home);
-                  const categoryLabel = category?.label || PREDEFINED_ICONS[catId]?.label || catId;
-                  const objectsInCategory = grouped[catId].sort((a, b) => {
-                    const titleA = a.blocks?.find(bl => bl.type === 'title')?.data?.text || '';
-                    const titleB = b.blocks?.find(bl => bl.type === 'title')?.data?.text || '';
-                    return titleA.localeCompare(titleB);
-                  });
-                  
-                  return (
-                    <div key={catId} className="mb-3">
-                      <div className="flex items-center gap-2 px-2 py-1.5 text-xs font-medium text-gray-400 uppercase tracking-wide">
-                        <CategoryIcon size={12} />
-                        {categoryLabel} ({objectsInCategory.length})
-                      </div>
-                      <div className="space-y-0.5">
-                        {objectsInCategory.map(obj => {
-                          const objTitle = obj.blocks?.find(b => b.type === 'title')?.data?.text || 'Namnlöst';
-                          const objImage = obj.blocks?.find(b => b.type === 'image');
-                          const ObjIcon = category ? getIconComponent(category.icon) : (PREDEFINED_ICONS[obj.type]?.icon || Home);
-                          const isSelected = quickCaptureObjectId === obj.id;
-                          
-                          return (
-                            <button
-                              key={obj.id}
-                              onClick={() => {
-                                setQuickCaptureObjectId(obj.id);
-                                setShowQuickCaptureObjectPicker(false);
-                              }}
-                              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all ${
-                                isSelected ? 'bg-orange-500/20 text-orange-400' : 'hover:bg-white/10 text-gray-300 hover:text-white'
-                              }`}
-                            >
-                              {objImage ? (
-                                <div className="w-8 h-8 rounded overflow-hidden flex-shrink-0">
-                                  <img 
-                                    src={getTransformedImageUrl(objImage.data.url, objImage.data.focalPoint ? 'custom' : objImage.data.focalPoint, 64, 64, objImage.data.focalPoint)} 
-                                    alt="" 
-                                    className="w-full h-full object-cover"
-                                    style={getFocalPointStyles(objImage.data.focalPoint)}
-                                  />
-                                </div>
-                              ) : (
-                                <div className="w-8 h-8 rounded bg-white/10 flex items-center justify-center flex-shrink-0">
-                                  <ObjIcon size={14} className="text-gray-400" />
-                                </div>
-                              )}
-                              <span className="flex-1 truncate text-sm">{objTitle}</span>
-                              {isSelected && <Check size={16} className="text-orange-400" />}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                });
-              })()}
-            </div>
-          </div>
-        </div>
+        <QuickCaptureObjectPicker
+          objects={objects}
+          categories={categories}
+          user={user}
+          quickCaptureObjectId={quickCaptureObjectId}
+          quickCaptureSearchQuery={quickCaptureSearchQuery}
+          onSearchChange={setQuickCaptureSearchQuery}
+          onSelect={(id) => {
+            setQuickCaptureObjectId(id);
+            setShowQuickCaptureObjectPicker(false);
+          }}
+          onClose={() => setShowQuickCaptureObjectPicker(false)}
+        />
       )}
     </div>
   );

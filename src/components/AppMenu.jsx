@@ -1,0 +1,341 @@
+import React from 'react';
+import {
+  X, LogOut, ChevronDown, Settings, Target, Users, Share2, Check, AlertTriangle, Eye
+} from 'lucide-react';
+import { db } from '../firebase';
+import { doc, updateDoc } from 'firebase/firestore';
+
+/**
+ * Slide-out sidebar menu with admin, settings, and quick capture sections.
+ */
+export default function AppMenu({
+  onClose,
+  user,
+  isAdmin,
+  // Settings
+  displayName,
+  setDisplayName,
+  keepScreenOn,
+  setKeepScreenOn,
+  preciseGPS,
+  setPreciseGPS,
+  showDemoObjects,
+  setShowDemoObjects,
+  setShowOnlyOwned,
+  setShowFavoritesOnly,
+  // Quick capture
+  showQuickCapture,
+  setShowQuickCapture,
+  quickCaptureObjectId,
+  objects,
+  categories,
+  captures,
+  onOpenQuickCapturePicker,
+  onShowCaptures,
+  // Admin
+  onShowCategoryAdmin,
+  onShowObjectsAdmin,
+  onShowUsersAdmin,
+  // Contacts
+  onShowContacts,
+  // Section expansion states
+  menuAdminExpanded,
+  setMenuAdminExpanded,
+  menuSettingsExpanded,
+  setMenuSettingsExpanded,
+  menuQuickCaptureExpanded,
+  setMenuQuickCaptureExpanded,
+  // Auth
+  handleSwitchAccount,
+  handleLogout
+}) {
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[2000]" onClick={onClose} />
+      <div className="fixed top-0 left-0 h-full w-80 bg-gray-950/98 backdrop-blur-xl border-r border-white/10 z-[2001] shadow-2xl animate-in slide-in-from-left duration-300 flex flex-col">
+        {/* Sticky header */}
+        <div className="flex-shrink-0 p-4 border-b border-white/10">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-white">Meny</h2>
+            <button
+              onClick={onClose}
+              className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 active:bg-white/20 text-gray-400 hover:text-white transition-all touch-manipulation"
+              aria-label="Stäng"
+            >
+              <X size={20} />
+            </button>
+          </div>
+        </div>
+
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          {/* Contacts & Sharing overview */}
+          {user && (
+            <button
+              onClick={() => {
+                onShowContacts();
+                onClose();
+              }}
+              className="w-full flex items-center gap-3 p-3 rounded-xl bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500/20 text-white transition-all"
+            >
+              <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                <Users size={18} className="text-blue-400" />
+              </div>
+              <div className="flex-1 text-left">
+                <div className="text-sm font-medium">Kontakter & delningar</div>
+                <div className="text-xs text-gray-400">Se vem du delar med</div>
+              </div>
+              <Share2 size={16} className="text-blue-400" />
+            </button>
+          )}
+
+          {isAdmin && (
+            <div className="rounded-xl border border-white/10 overflow-hidden">
+              <button
+                onClick={() => setMenuAdminExpanded(v => !v)}
+                className="w-full flex items-center gap-2 p-3 bg-white/5 hover:bg-white/10 transition-colors"
+              >
+                <ChevronDown size={16} className={`text-gray-500 transition-transform ${menuAdminExpanded ? '' : '-rotate-90'}`} />
+                <span className="text-xs text-gray-400 uppercase tracking-wide font-medium">Admin</span>
+              </button>
+              {menuAdminExpanded && (
+                <div className="p-2 space-y-1">
+                  <button
+                    onClick={() => { onShowCategoryAdmin(); onClose(); }}
+                    className="w-full flex items-center gap-3 p-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-all"
+                  >
+                    <Settings size={16} className="text-blue-400" />
+                    <span className="text-sm">Hantera kategorier</span>
+                  </button>
+                  <button
+                    onClick={() => { onShowObjectsAdmin(); onClose(); }}
+                    className="w-full flex items-center gap-3 p-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-all"
+                  >
+                    <Settings size={16} className="text-purple-400" />
+                    <span className="text-sm">Alla objekt</span>
+                  </button>
+                  <button
+                    onClick={() => { onShowUsersAdmin(); onClose(); }}
+                    className="w-full flex items-center gap-3 p-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-all"
+                  >
+                    <Users size={16} className="text-green-400" />
+                    <span className="text-sm">Användare</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Settings section */}
+          <div className="rounded-xl border border-white/10 overflow-hidden">
+            <button
+              onClick={() => setMenuSettingsExpanded(v => !v)}
+              className="w-full flex items-center gap-2 p-3 bg-white/5 hover:bg-white/10 transition-colors"
+            >
+              <ChevronDown size={16} className={`text-gray-500 transition-transform ${menuSettingsExpanded ? '' : '-rotate-90'}`} />
+              <span className="text-xs text-gray-400 uppercase tracking-wide font-medium">Inställningar</span>
+            </button>
+            {menuSettingsExpanded && (
+              <div className="p-2 space-y-2">
+                {/* Profile / Nickname */}
+                <div className="p-2.5 rounded-lg bg-white/5">
+                  <div className="flex-1 mb-2">
+                    <div className="text-sm font-medium text-white">Visningsnamn</div>
+                    <div className="text-xs text-gray-400 mt-0.5">Hur andra ser dig vid delning</div>
+                  </div>
+                  <input
+                    type="text"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    onBlur={async () => {
+                      if (user) {
+                        try {
+                          await updateDoc(doc(db, 'users', user.uid), { displayName: displayName.trim() });
+                        } catch (err) {
+                          console.error('Error saving displayName:', err);
+                        }
+                      }
+                    }}
+                    placeholder={user?.email?.split('@')[0] || 'Ditt namn'}
+                    className="w-full bg-gray-800 border border-white/10 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                <ToggleSetting
+                  label="Håll skärmen påslagen"
+                  description="Förhindrar att skärmen släcks"
+                  value={keepScreenOn}
+                  onChange={() => setKeepScreenOn(!keepScreenOn)}
+                  color="blue"
+                  warning={!('wakeLock' in navigator) ? 'Din webbläsare stöder inte denna funktion' : null}
+                  activeNote={keepScreenOn && 'wakeLock' in navigator ? 'Aktiv - skärmen ska förbli påslagen' : null}
+                />
+
+                <ToggleSetting
+                  label="Precis GPS"
+                  description="Väntar på bättre GPS-signal"
+                  value={preciseGPS}
+                  onChange={() => setPreciseGPS(!preciseGPS)}
+                  color="blue"
+                  activeNote={preciseGPS ? 'Väntar tills GPS är ±10m eller max 15 sek' : null}
+                />
+
+                <ToggleSetting
+                  label="Visa demoexempel"
+                  description="Se exempel på användning"
+                  value={showDemoObjects}
+                  onChange={() => {
+                    const newValue = !showDemoObjects;
+                    setShowDemoObjects(newValue);
+                    if (newValue) {
+                      setShowOnlyOwned(false);
+                      setShowFavoritesOnly(false);
+                    }
+                  }}
+                  color="blue"
+                  activeNote={showDemoObjects ? 'Visar endast demoexempel (skrivskyddat)' : null}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Quick Capture section */}
+          <div className="rounded-xl border border-white/10 overflow-hidden">
+            <button
+              onClick={() => setMenuQuickCaptureExpanded(v => !v)}
+              className="w-full flex items-center gap-2 p-3 bg-white/5 hover:bg-white/10 transition-colors"
+            >
+              <ChevronDown size={16} className={`text-gray-500 transition-transform ${menuQuickCaptureExpanded ? '' : '-rotate-90'}`} />
+              <span className="text-xs text-gray-400 uppercase tracking-wide font-medium">Snabbpinningar</span>
+            </button>
+            {menuQuickCaptureExpanded && (
+              <div className="p-2 space-y-2">
+                <div className="p-2.5 rounded-lg bg-white/5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="text-sm font-medium text-white">Visa snabbpinning</div>
+                      <div className="text-xs text-gray-400 mt-0.5">Orange snabb-pinning för offline</div>
+                    </div>
+                    <button
+                      onClick={() => setShowQuickCapture(!showQuickCapture)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        showQuickCapture ? 'bg-orange-500' : 'bg-gray-600'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          showQuickCapture ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+                {showQuickCapture && (
+                  <>
+                    <div className="p-2.5 rounded-lg bg-white/5">
+                      <div className="flex-1 mb-2">
+                        <div className="text-sm font-medium text-white">Går till objekt</div>
+                        <div className="text-xs text-gray-400 mt-0.5">Lägg till positioner direkt</div>
+                      </div>
+                      <button
+                        onClick={onOpenQuickCapturePicker}
+                        className="w-full flex items-center justify-between bg-gray-800 border border-white/10 rounded-lg px-3 py-2 text-sm hover:border-orange-500/50 transition-colors"
+                      >
+                        {quickCaptureObjectId ? (
+                          <span className="text-white truncate">
+                            {objects?.find(o => o.id === quickCaptureObjectId)?.blocks?.find(b => b.type === 'title')?.data?.text || 'Namnlöst objekt'}
+                          </span>
+                        ) : (
+                          <span className="text-gray-500">Ingen (spara i lista)</span>
+                        )}
+                        <ChevronDown size={16} className="text-gray-400 flex-shrink-0" />
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => { onClose(); onShowCaptures(); }}
+                      className="w-full flex items-center justify-between p-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-all"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Target size={16} className="text-orange-400" />
+                        <span className="text-sm">Visa pinningar</span>
+                      </div>
+                      {captures.length > 0 && (
+                        <span className="bg-orange-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                          {captures.length}
+                        </span>
+                      )}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer with logout */}
+        {user && (
+          <div className="flex-shrink-0 p-4 border-t border-white/10">
+            <div className="flex gap-2">
+              <button
+                onClick={() => { onClose(); handleSwitchAccount(); }}
+                className="flex-1 flex items-center justify-center gap-2 p-3 rounded-xl bg-white/5 hover:bg-blue-500/20 text-gray-400 hover:text-blue-400 transition-all"
+              >
+                <Users size={18} />
+                <span className="text-sm font-medium">Byt konto</span>
+              </button>
+              <button
+                onClick={() => { onClose(); handleLogout(); }}
+                className="flex-1 flex items-center justify-center gap-2 p-3 rounded-xl bg-white/5 hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition-all"
+              >
+                <LogOut size={18} />
+                <span className="text-sm font-medium">Logga ut</span>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+/** Reusable toggle setting row used inside the settings section. */
+function ToggleSetting({ label, description, value, onChange, color = 'blue', warning, activeNote }) {
+  const colorMap = {
+    blue: { bg: 'bg-blue-500', text: 'text-blue-400' },
+    orange: { bg: 'bg-orange-500', text: 'text-orange-400' }
+  };
+  const c = colorMap[color] || colorMap.blue;
+
+  return (
+    <div className="p-2.5 rounded-lg bg-white/5">
+      <div className="flex items-center justify-between">
+        <div className="flex-1">
+          <div className="text-sm font-medium text-white">{label}</div>
+          <div className="text-xs text-gray-400 mt-0.5">{description}</div>
+        </div>
+        <button
+          onClick={onChange}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+            value ? c.bg : 'bg-gray-600'
+          }`}
+        >
+          <span
+            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+              value ? 'translate-x-6' : 'translate-x-1'
+            }`}
+          />
+        </button>
+      </div>
+      {warning && (
+        <div className="mt-2 text-xs text-yellow-400 flex items-center gap-1">
+          <AlertTriangle size={12} className="flex-shrink-0" /> {warning}
+        </div>
+      )}
+      {activeNote && (
+        <div className={`mt-2 text-xs ${c.text} flex items-center gap-1`}>
+          <Check size={12} className="flex-shrink-0" /> {activeNote}
+        </div>
+      )}
+    </div>
+  );
+}
