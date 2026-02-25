@@ -55,7 +55,7 @@ const getNearestFutureDate = (blocks) => {
   return nearestDate;
 };
 
-function ObjectCard({ object, onClick, currentUser, childCount, distance, categories, isFavorite, onToggleFavorite, onNavigate, onShare, isOrphanChild, parentChain, showAsChild, compact }) {
+function ObjectCard({ object, onClick, currentUser, childCount, distance, categories, isFavorite, onToggleFavorite, onNavigate, onShare, isOrphanChild, allObjects, showAsChild, compact }) {
   // Find category to get icon - use ClipboardList for collections
   const category = categories.find(c => c.id === object.type);
   const isCollection = object.isCollection;
@@ -76,6 +76,29 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
   const isOwner = currentUser && object.ownerId === currentUser.uid;
   const isSharedWithMe = object.isSharedWithMe;
   const myShareRole = isSharedWithMe ? object.shares?.[currentUser?.email?.toLowerCase()]?.role : null;
+
+  // Compute parent chain for breadcrumb
+  const parentChain = React.useMemo(() => {
+    if (!object.parentId) return [];
+    if (isOrphanChild && object.parentPath && object.parentPath.length > 0) {
+      return object.parentPath;
+    }
+    const chain = [];
+    let currentId = object.parentId;
+    let depth = 0;
+    while (currentId && depth < 5) {
+      const p = allObjects?.find(o => o.id === currentId);
+      if (p) {
+        const name = p.blocks?.find(b => b.type === 'title')?.data?.text;
+        if (name) chain.unshift(name);
+        currentId = p.parentId;
+      } else {
+        break;
+      }
+      depth++;
+    }
+    return chain;
+  }, [object.parentId, object.parentPath, isOrphanChild, allObjects]);
 
   const handleFavoriteClick = (e) => {
     e.stopPropagation();
@@ -110,7 +133,7 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
   const showBreadcrumb = showAsChild && parentChain && parentChain.length > 0;
 
   return (
-    <div onClick={onClick} className={`bg-gray-900/80 overflow-hidden border border-white/10 hover:border-blue-400/50 transition-all cursor-pointer transform hover:scale-[1.02] relative group ${compact ? 'rounded-xl' : 'rounded-2xl'}`}>
+    <div onClick={() => onClick(object)} className={`bg-gray-900/80 overflow-hidden border border-white/10 hover:border-blue-400/50 transition-all cursor-pointer transform hover:scale-[1.02] relative group ${compact ? 'rounded-xl' : 'rounded-2xl'}`}>
       {/* Parent breadcrumb for orphan/search children */}
       {showBreadcrumb && (
         <div className="px-3 py-1.5 bg-blue-500/10 border-b border-white/5 flex items-center gap-1 text-[10px] text-blue-300/80 overflow-hidden">
@@ -290,4 +313,4 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
   );
 }
 
-export default ObjectCard;
+export default React.memo(ObjectCard);

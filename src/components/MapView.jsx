@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { MapContainer, Marker, Tooltip, Popup } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
@@ -16,6 +16,85 @@ import {
   InvalidateSizeOnChange,
   MapControlStack
 } from './map/SharedMapComponents';
+
+// Extracted outside MapView to prevent unmount/remount on every parent render
+const MarkerWithPopup = React.memo(function MarkerWithPopup({ object, categories, onSelectObject, displayUserLocation, isTouchDevice, onShowDirection }) {
+  const titleBlock = object.blocks.find(b => b.type === 'title');
+  const position = [object._position.lat, object._position.lng];
+  const category = categories.find(c => c.id === object.type);
+  const markerColor = category?.color || '#3B82F6';
+  const categoryLabel = category?.label || (PREDEFINED_ICONS[object.type]?.label || 'Objekt');
+  const coloredIcon = object._position.isArea ? createAreaIcon(markerColor) : createColoredIcon(markerColor);
+  const showPositionNumber = object._totalPositions > 1;
+  const pinLabel = showPositionNumber ? `Pin ${object._positionIndex + 1}` : '';
+
+  if (isTouchDevice) {
+    return (
+      <Marker position={position} icon={coloredIcon}>
+        <Popup>
+          <div className="min-w-[180px]">
+            <div className="text-sm font-semibold mb-1">{titleBlock?.data?.text || 'Namnlöst'}</div>
+            {showPositionNumber && (
+              <div className="text-xs font-semibold text-orange-600 mb-1">{pinLabel}</div>
+            )}
+            <div className="text-xs text-gray-600 mb-2">{categoryLabel}</div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => onSelectObject(object)}
+                className="px-3 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium transition-colors"
+              >
+                Detaljer
+              </button>
+              {displayUserLocation && (
+                <button
+                  onClick={() => onShowDirection(object)}
+                  className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-medium transition-colors"
+                >
+                  Visa väg
+                </button>
+              )}
+            </div>
+          </div>
+        </Popup>
+      </Marker>
+    );
+  }
+
+  return (
+    <Marker position={position} icon={coloredIcon} eventHandlers={{ click: () => onSelectObject(object) }}>
+      <Tooltip direction="top" offset={[0, -8]} opacity={0.9}>
+        <div className="text-xs">
+          <div className="font-semibold">{titleBlock?.data?.text || 'Namnlöst'}</div>
+          {showPositionNumber && <div className="text-orange-400 font-semibold">{pinLabel}</div>}
+          <div className="text-gray-500">{categoryLabel}</div>
+        </div>
+      </Tooltip>
+    </Marker>
+  );
+});
+
+// Custom cluster icon creator (stable reference via module scope)
+const createClusterIcon = (cluster) => {
+  const count = cluster.getChildCount();
+  let size = 40;
+  let fontSize = 16;
+  
+  if (count > 100) { size = 60; fontSize = 20; }
+  else if (count > 20) { size = 50; fontSize = 18; }
+
+  return L.divIcon({
+    html: `<div style="
+      width: ${size}px; height: ${size}px;
+      background-color: #3B82F6; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: bold; font-size: ${fontSize}px; color: white;
+      border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    ">${count}</div>`,
+    className: 'cluster-icon',
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+  });
+};
 
 function MapView({ objects, onSelectObject, currentUser, userLocation, categories, mapCenter, showFilters, isGlobalTracking, startGlobalTracking, stopGlobalTracking, liveUserLocation, setLiveUserLocation }) {
   const [hasRequestedPermission, setHasRequestedPermission] = useState(false);
@@ -86,19 +165,22 @@ function MapView({ objects, onSelectObject, currentUser, userLocation, categorie
     return [];
   };
 
-  // Create marker objects - one marker per position
-  const markersData = [];
-  objects.forEach(obj => {
-    const positions = getObjectPositions(obj);
-    positions.forEach((position, index) => {
-      markersData.push({
-        ...obj,
-        _position: position,
-        _positionIndex: index,
-        _totalPositions: positions.length
+  // Create marker objects - one marker per position (memoized)
+  const markersData = useMemo(() => {
+    const result = [];
+    objects.forEach(obj => {
+      const positions = getObjectPositions(obj);
+      positions.forEach((position, index) => {
+        result.push({
+          ...obj,
+          _position: position,
+          _positionIndex: index,
+          _totalPositions: positions.length
+        });
       });
     });
-  });
+    return result;
+  }, [objects]);
 
   // Priority: mapCenter > displayUserLocation > average of markers > Stockholm
   const defaultCenter = displayUserLocation 
@@ -113,6 +195,16 @@ function MapView({ objects, onSelectObject, currentUser, userLocation, categorie
   const center = defaultCenter;
   const isTouchDevice = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
 
+  // Stable callback for showing direction from marker
+  const handleShowDirection = useCallback((object) => {
+    const titleBlock = object.blocks.find(b => b.type === 'title');
+    setNavigationTarget({
+      lat: object._position.lat,
+      lng: object._position.lng,
+      name: titleBlock?.data?.text || 'Mål'
+    });
+  }, []);
+
   // Request location permission when map view is first opened
   useEffect(() => {
     if (!hasRequestedPermission && 'geolocation' in navigator) {
@@ -120,92 +212,6 @@ function MapView({ objects, onSelectObject, currentUser, userLocation, categorie
       navigator.geolocation.getCurrentPosition(() => {}, () => {}, { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 });
     }
   }, [hasRequestedPermission]);
-
-  function MarkerWithPopup({ object }) {
-    const titleBlock = object.blocks.find(b => b.type === 'title');
-    const position = [object._position.lat, object._position.lng];
-    const category = categories.find(c => c.id === object.type);
-    const markerColor = category?.color || '#3B82F6';
-    const categoryLabel = category?.label || (PREDEFINED_ICONS[object.type]?.label || 'Objekt');
-    const coloredIcon = object._position.isArea ? createAreaIcon(markerColor) : createColoredIcon(markerColor);
-    const showPositionNumber = object._totalPositions > 1;
-    const pinLabel = showPositionNumber ? `Pin ${object._positionIndex + 1}` : '';
-
-    if (isTouchDevice) {
-      const handleShowDirection = () => {
-        setNavigationTarget({
-          lat: object._position.lat,
-          lng: object._position.lng,
-          name: titleBlock?.data?.text || 'Mål'
-        });
-      };
-
-      return (
-        <Marker position={position} icon={coloredIcon}>
-          <Popup>
-            <div className="min-w-[180px]">
-              <div className="text-sm font-semibold mb-1">{titleBlock?.data?.text || 'Namnlöst'}</div>
-              {showPositionNumber && (
-                <div className="text-xs font-semibold text-orange-600 mb-1">{pinLabel}</div>
-              )}
-              <div className="text-xs text-gray-600 mb-2">{categoryLabel}</div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => onSelectObject(object)}
-                  className="px-3 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium transition-colors"
-                >
-                  Detaljer
-                </button>
-                {displayUserLocation && (
-                  <button
-                    onClick={handleShowDirection}
-                    className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-medium transition-colors"
-                  >
-                    Visa väg
-                  </button>
-                )}
-              </div>
-            </div>
-          </Popup>
-        </Marker>
-      );
-    }
-
-    return (
-      <Marker position={position} icon={coloredIcon} eventHandlers={{ click: () => onSelectObject(object) }}>
-        <Tooltip direction="top" offset={[0, -8]} opacity={0.9}>
-          <div className="text-xs">
-            <div className="font-semibold">{titleBlock?.data?.text || 'Namnlöst'}</div>
-            {showPositionNumber && <div className="text-orange-400 font-semibold">{pinLabel}</div>}
-            <div className="text-gray-500">{categoryLabel}</div>
-          </div>
-        </Tooltip>
-      </Marker>
-    );
-  }
-
-  // Custom cluster icon
-  const createClusterIcon = (cluster) => {
-    const count = cluster.getChildCount();
-    let size = 40;
-    let fontSize = 16;
-    
-    if (count > 100) { size = 60; fontSize = 20; }
-    else if (count > 20) { size = 50; fontSize = 18; }
-
-    return L.divIcon({
-      html: `<div style="
-        width: ${size}px; height: ${size}px;
-        background-color: #3B82F6; border-radius: 50%;
-        display: flex; align-items: center; justify-content: center;
-        font-weight: bold; font-size: ${fontSize}px; color: white;
-        border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-      ">${count}</div>`,
-      className: 'cluster-icon',
-      iconSize: [size, size],
-      iconAnchor: [size / 2, size / 2],
-    });
-  };
 
   return (
     <div ref={containerRef} className="w-full relative z-10 rounded-xl overflow-hidden border border-white/10 shadow-2xl bg-gray-900/80 transition-all duration-300" style={{ height: mapHeight }}>
@@ -226,7 +232,15 @@ function MapView({ objects, onSelectObject, currentUser, userLocation, categorie
           iconCreateFunction={createClusterIcon}
         >
           {markersData.map((markerObj) => (
-            <MarkerWithPopup key={`${markerObj.id}-${markerObj._positionIndex}`} object={markerObj} />
+            <MarkerWithPopup 
+              key={`${markerObj.id}-${markerObj._positionIndex}`} 
+              object={markerObj} 
+              categories={categories}
+              onSelectObject={onSelectObject}
+              displayUserLocation={displayUserLocation}
+              isTouchDevice={isTouchDevice}
+              onShowDirection={handleShowDirection}
+            />
           ))}
         </MarkerClusterGroup>
         

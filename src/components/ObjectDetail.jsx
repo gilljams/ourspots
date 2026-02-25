@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { 
   Plus, Edit2, Trash2, Settings, ChevronDown, ChevronUp,
   Share2, Users, UserMinus, Home, List, LayoutGrid, Copy, ClipboardList, Link2, X, Search, ExternalLink, Map as MapIcon, Calendar
@@ -155,7 +155,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
   // Helper: update a single block's data in Firestore
   // For simple merges:  updateBlockField(idx, { votes: newVotes })
   // For transforms:     updateBlockField(idx, (data) => ({ ...data, options: [...data.options, newOpt] }))
-  const updateBlockField = async (blockIndex, changes) => {
+  const updateBlockField = useCallback(async (blockIndex, changes) => {
     try {
       const updatedBlocks = [...object.blocks];
       const currentData = updatedBlocks[blockIndex].data;
@@ -165,7 +165,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
     } catch (err) {
       console.error('Error updating block:', err);
     }
-  };
+  }, [object.id, object.blocks]);
   
   // Swipe to close state
   const [touchStart, setTouchStart] = useState(null);
@@ -408,36 +408,37 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
   });
   
   // Find all descendants (children, grandchildren, etc.) for cascade delete warning
-  const allDescendants = allObjects.filter(o => o.ancestorIds?.includes(object.id));
+  const allDescendants = useMemo(() => 
+    allObjects.filter(o => o.ancestorIds?.includes(object.id)),
+    [allObjects, object.id]
+  );
   
   // Inherit location from parent if child doesn't have one
   const hasOwnLocation = object.blocks.some(b => b.type === 'location');
   const parentLocation = parentObject?.blocks?.find(b => b.type === 'location');
   
-  // Track original index in object.blocks for each block
-  const rawBlocks = object.blocks.map((block, idx) => ({ ...block, objectBlockIndex: idx }));
-  
-  // Add inherited location if needed (with no objectBlockIndex since it's not in object.blocks)
-  if (!hasOwnLocation && parentLocation) {
-    rawBlocks.push({ type: 'location', data: parentLocation.data, inherited: true, objectBlockIndex: -1 });
-  }
-  
-  const blocksToRender = rawBlocks.sort((a, b) => {
-    // Explicit order for certain block types, others keep their original position
-    const order = { 'title': 0, 'image': 1, 'location': 2, 'contact': 2.5 };
-    const aOrder = order[a.type];
-    const bOrder = order[b.type];
+  // Track original index in object.blocks for each block (memoized)
+  const blocksToRender = useMemo(() => {
+    const rawBlocks = object.blocks.map((block, idx) => ({ ...block, objectBlockIndex: idx }));
     
-    // If both have explicit order, sort by that
-    if (aOrder !== undefined && bOrder !== undefined) {
-      return aOrder - bOrder;
+    // Add inherited location if needed
+    if (!hasOwnLocation && parentLocation) {
+      rawBlocks.push({ type: 'location', data: parentLocation.data, inherited: true, objectBlockIndex: -1 });
     }
-    // If only one has explicit order, it comes first
-    if (aOrder !== undefined) return -1;
-    if (bOrder !== undefined) return 1;
-    // If neither has explicit order, maintain original array order
-    return a.objectBlockIndex - b.objectBlockIndex;
-  });
+    
+    return rawBlocks.sort((a, b) => {
+      const order = { 'title': 0, 'image': 1, 'location': 2, 'contact': 2.5 };
+      const aOrder = order[a.type];
+      const bOrder = order[b.type];
+      
+      if (aOrder !== undefined && bOrder !== undefined) {
+        return aOrder - bOrder;
+      }
+      if (aOrder !== undefined) return -1;
+      if (bOrder !== undefined) return 1;
+      return a.objectBlockIndex - b.objectBlockIndex;
+    });
+  }, [object.blocks, hasOwnLocation, parentLocation]);
 
   // Get first audio block URL (for location block play button)
   // Normalize URL: remove /ourspots prefix if present (for Firebase vs GitHub Pages compatibility)

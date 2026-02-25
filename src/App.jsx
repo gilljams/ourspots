@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, useRef, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback, Suspense, lazy } from 'react';
 import { 
   X, Plus, Image, Trash2, 
   Loader, LogOut, LogIn, Check, Circle, 
@@ -136,7 +136,10 @@ function App() {
   });
 
   // Wrapper to use imported distance function with userLocation state
-  const getObjectDistance = (obj) => getObjectDistanceUtil(obj, userLocation);
+  const getObjectDistance = useCallback(
+    (obj) => getObjectDistanceUtil(obj, userLocation),
+    [userLocation]
+  );
 
   // Global GPS tracking functions for MapView
   const startGlobalTracking = () => {
@@ -618,175 +621,183 @@ function App() {
   }, [selectedObject, showCreateModal, showMenu, showCategoryAdmin, showObjectsAdmin, showUsersAdmin, showCaptures]);
 
   // Count only favorites that still exist in objects
-  const validFavoritesCount = favorites.filter(fid => objects.some(o => o.id === fid)).length;
+  const validFavoritesCount = useMemo(() => 
+    favorites.filter(fid => objects.some(o => o.id === fid)).length,
+    [favorites, objects]
+  );
 
   const searchTerm = searchQuery.trim().toLowerCase();
-  const matchesSearch = (obj) => {
-    if (!searchTerm) return true;
-    const values = [];
-    const titleBlock = obj.blocks?.find(b => b.type === 'title');
-    if (titleBlock?.data?.text) values.push(titleBlock.data.text);
-    const locationBlock = obj.blocks?.find(b => b.type === 'location');
-    if (locationBlock?.data?.address) values.push(locationBlock.data.address);
-    obj.blocks?.forEach(block => {
-      if (block.type === 'text' && block.data?.text) {
-        values.push(block.data.text);
-      }
-      if (block.type === 'table' && Array.isArray(block.data?.rows)) {
-        block.data.rows.forEach(row => {
-          Object.values(row).forEach(val => {
-            if (typeof val === 'string') values.push(val);
-          });
-        });
-      }
-      if (block.type === 'datetag' && Array.isArray(block.data?.tags)) {
-        block.data.tags.forEach(tag => {
-          if (tag.type === 'year') {
-            values.push(tag.value.toString());
-          } else if (tag.type === 'range') {
-            values.push(tag.start);
-            values.push(tag.end);
-          }
-        });
-      }
-    });
-    return values.some(v => v.toString().toLowerCase().includes(searchTerm));
-  };
 
-  // Filter by category (combine with favorites if both selected)
-  let filteredObjects = objects;
-  
   // Get pending invitations (objects where user's share status is pending)
   const userEmailLower = user?.email?.toLowerCase();
   const userEmailKey = userEmailLower ? emailToKey(userEmailLower) : null;
-  const pendingInvitations = userEmailKey 
-    ? objects.filter(obj => {
-        if (!obj.shares) return false;
-        // Check using the escaped email key
-        const shareEntry = obj.shares[userEmailKey];
-        if (shareEntry?.status === 'pending') {
-
-          return true;
-        }
-        // Also check if we're in sharedWithEmails but not the owner
-        if (obj.isSharedWithMe && obj.ownerId !== user.uid) {
-
-        }
-        return false;
-      })
-    : [];
-  
-  // Get pending tiebreaker challenges (objects with tiebreaker blocks that have challenges to me)
-  // Note: Current implementation starts matches directly, so this catches any legacy challenges
-  const pendingTiebreakerChallenges = user ? objects.flatMap(obj => {
-    if (!obj.blocks) return [];
-    return obj.blocks
-      .map((block, blockIndex) => ({ block, blockIndex, obj }))
-      .filter(({ block }) => block.type === 'tiebreaker' && block.data?.challenges && !block.data?.activeMatch)
-      .flatMap(({ block, blockIndex, obj }) => {
-        const challenges = block.data.challenges || {};
-        const now = Date.now();
-        return Object.entries(challenges)
-          .filter(([_, challenge]) => {
-            if (challenge.status !== 'pending') return false;
-            // Ignore challenges older than 5 minutes
-            const createdAt = challenge.createdAt?.toMillis?.() || challenge.createdAt || 0;
-            if (createdAt && (now - createdAt) > 5 * 60 * 1000) return false;
-            // Check if challenge is to me (by uid, email key, or email)
-            const toUid = challenge.to?.uid;
-            const toEmail = challenge.to?.email?.toLowerCase();
-            return toUid === user.uid || 
-                   toUid === userEmailKey ||
-                   (toEmail && toEmail === userEmailLower);
-          })
-          .map(([challengeId, challenge]) => ({
-            challengeId,
-            challenge,
-            objectId: obj.id,
-            objectName: obj.name,
-            blockIndex,
-            fromName: challenge.from?.name || 'Någon'
-          }));
-      });
-  }) : [];
-
-  
-  // Apply category filter
-  if (activeCategory !== 'all' && activeCategory !== 'favorites') {
-    filteredObjects = filteredObjects.filter(o => o.type === activeCategory);
-  }
-  
-  // Apply favorites filter (can be combined with category)
-  if (showFavoritesOnly) {
-    filteredObjects = filteredObjects.filter(o => favorites.includes(o.id));
-  }
-  
-  // Apply "only owned" filter
-  if (showOnlyOwned && user) {
-    filteredObjects = filteredObjects.filter(o => o.ownerId === user.uid);
-  }
-  
-  // Apply view filter (collections vs objects)
-  if (viewFilter === 'collections') {
-    filteredObjects = filteredObjects.filter(o => o.isCollection === true);
-  } else if (viewFilter === 'objects') {
-    filteredObjects = filteredObjects.filter(o => !o.isCollection);
-  }
-  
-  // Determine which objects to display
-  let displayObjects;
-  
-  if (showAllObjects) {
-    // Show all objects flat
-    displayObjects = filteredObjects;
-  } else if (searchTerm) {
-    // When searching: show all matching objects directly (including children)
-    displayObjects = filteredObjects.filter(obj => matchesSearch(obj));
-  } else {
-    // Normal mode: show top-level objects + "orphaned" children (whose parent user can't see)
-    const accessibleIds = new Set(filteredObjects.map(o => o.id));
-    displayObjects = filteredObjects.filter(o => {
-      // Include if no parent (top-level)
-      if (!o.parentId) return true;
-      // Include if parent is not accessible (orphaned child)
-      if (!accessibleIds.has(o.parentId)) return true;
+  const pendingInvitations = useMemo(() => {
+    if (!userEmailKey) return [];
+    return objects.filter(obj => {
+      if (!obj.shares) return false;
+      const shareEntry = obj.shares[userEmailKey];
+      if (shareEntry?.status === 'pending') return true;
       return false;
     });
-  }
-
-  if (maxDistanceKm && userLocation) {
-    displayObjects = displayObjects.filter(obj => {
-      // Always include objects from hideLocation categories (they have no location)
-      const cat = categories.find(c => c.id === obj.type);
-      if (cat?.hideLocation) return true;
-      
-      const dist = getObjectDistance(obj);
-      return typeof dist === 'number' && dist <= maxDistanceKm;
-    });
-  }
+  }, [objects, userEmailKey]);
   
-  // Apply sorting
-  if (sortByDistance && userLocation) {
-    // Sort by distance when enabled
-    displayObjects = [...displayObjects].sort((a, b) => {
-      // Put hideLocation objects last when sorting by distance
-      const catA = categories.find(c => c.id === a.type);
-      const catB = categories.find(c => c.id === b.type);
-      if (catA?.hideLocation && !catB?.hideLocation) return 1;
-      if (!catA?.hideLocation && catB?.hideLocation) return -1;
-      
-      const distA = getObjectDistance(a);
-      const distB = getObjectDistance(b);
-      return (distA ?? Infinity) - (distB ?? Infinity);
+  // Get pending tiebreaker challenges
+  const pendingTiebreakerChallenges = useMemo(() => {
+    if (!user) return [];
+    return objects.flatMap(obj => {
+      if (!obj.blocks) return [];
+      return obj.blocks
+        .map((block, blockIndex) => ({ block, blockIndex, obj }))
+        .filter(({ block }) => block.type === 'tiebreaker' && block.data?.challenges && !block.data?.activeMatch)
+        .flatMap(({ block, blockIndex, obj }) => {
+          const challenges = block.data.challenges || {};
+          const now = Date.now();
+          return Object.entries(challenges)
+            .filter(([_, challenge]) => {
+              if (challenge.status !== 'pending') return false;
+              const createdAt = challenge.createdAt?.toMillis?.() || challenge.createdAt || 0;
+              if (createdAt && (now - createdAt) > 5 * 60 * 1000) return false;
+              const toUid = challenge.to?.uid;
+              const toEmail = challenge.to?.email?.toLowerCase();
+              return toUid === user.uid || 
+                     toUid === userEmailKey ||
+                     (toEmail && toEmail === userEmailLower);
+            })
+            .map(([challengeId, challenge]) => ({
+              challengeId,
+              challenge,
+              objectId: obj.id,
+              objectName: obj.name,
+              blockIndex,
+              fromName: challenge.from?.name || 'Någon'
+            }));
+        });
     });
-  } else {
-    // Default: sort alphabetically by title (case-insensitive)
-    displayObjects = [...displayObjects].sort((a, b) => {
-      const titleA = (a.blocks?.find(bl => bl.type === 'title')?.data?.text || '').toLowerCase();
-      const titleB = (b.blocks?.find(bl => bl.type === 'title')?.data?.text || '').toLowerCase();
-      return titleA.localeCompare(titleB, 'sv');
-    });
-  }
+  }, [objects, user, userEmailKey, userEmailLower]);
+
+  // Memoized filtered + sorted display list
+  const displayObjects = useMemo(() => {
+    const matchesSearch = (obj) => {
+      if (!searchTerm) return true;
+      const values = [];
+      const titleBlock = obj.blocks?.find(b => b.type === 'title');
+      if (titleBlock?.data?.text) values.push(titleBlock.data.text);
+      const locationBlock = obj.blocks?.find(b => b.type === 'location');
+      if (locationBlock?.data?.address) values.push(locationBlock.data.address);
+      obj.blocks?.forEach(block => {
+        if (block.type === 'text' && block.data?.text) {
+          values.push(block.data.text);
+        }
+        if (block.type === 'table' && Array.isArray(block.data?.rows)) {
+          block.data.rows.forEach(row => {
+            Object.values(row).forEach(val => {
+              if (typeof val === 'string') values.push(val);
+            });
+          });
+        }
+        if (block.type === 'datetag' && Array.isArray(block.data?.tags)) {
+          block.data.tags.forEach(tag => {
+            if (tag.type === 'year') {
+              values.push(tag.value.toString());
+            } else if (tag.type === 'range') {
+              values.push(tag.start);
+              values.push(tag.end);
+            }
+          });
+        }
+      });
+      return values.some(v => v.toString().toLowerCase().includes(searchTerm));
+    };
+
+    // Apply category filter
+    let filtered = objects;
+    if (activeCategory !== 'all' && activeCategory !== 'favorites') {
+      filtered = filtered.filter(o => o.type === activeCategory);
+    }
+    
+    // Apply favorites filter
+    if (showFavoritesOnly) {
+      filtered = filtered.filter(o => favorites.includes(o.id));
+    }
+    
+    // Apply "only owned" filter
+    if (showOnlyOwned && user) {
+      filtered = filtered.filter(o => o.ownerId === user.uid);
+    }
+    
+    // Apply view filter (collections vs objects)
+    if (viewFilter === 'collections') {
+      filtered = filtered.filter(o => o.isCollection === true);
+    } else if (viewFilter === 'objects') {
+      filtered = filtered.filter(o => !o.isCollection);
+    }
+    
+    // Determine which objects to display
+    let result;
+    if (showAllObjects) {
+      result = filtered;
+    } else if (searchTerm) {
+      result = filtered.filter(obj => matchesSearch(obj));
+    } else {
+      const accessibleIds = new Set(filtered.map(o => o.id));
+      result = filtered.filter(o => {
+        if (!o.parentId) return true;
+        if (!accessibleIds.has(o.parentId)) return true;
+        return false;
+      });
+    }
+
+    if (maxDistanceKm && userLocation) {
+      result = result.filter(obj => {
+        const cat = categories.find(c => c.id === obj.type);
+        if (cat?.hideLocation) return true;
+        const dist = getObjectDistance(obj);
+        return typeof dist === 'number' && dist <= maxDistanceKm;
+      });
+    }
+    
+    // Apply sorting
+    if (sortByDistance && userLocation) {
+      return [...result].sort((a, b) => {
+        const catA = categories.find(c => c.id === a.type);
+        const catB = categories.find(c => c.id === b.type);
+        if (catA?.hideLocation && !catB?.hideLocation) return 1;
+        if (!catA?.hideLocation && catB?.hideLocation) return -1;
+        const distA = getObjectDistance(a);
+        const distB = getObjectDistance(b);
+        return (distA ?? Infinity) - (distB ?? Infinity);
+      });
+    } else {
+      return [...result].sort((a, b) => {
+        const titleA = (a.blocks?.find(bl => bl.type === 'title')?.data?.text || '').toLowerCase();
+        const titleB = (b.blocks?.find(bl => bl.type === 'title')?.data?.text || '').toLowerCase();
+        return titleA.localeCompare(titleB, 'sv');
+      });
+    }
+  }, [objects, activeCategory, showFavoritesOnly, favorites, showOnlyOwned, user, viewFilter, searchTerm, showAllObjects, maxDistanceKm, userLocation, categories, getObjectDistance, sortByDistance]);
+
+  // Pre-compute child counts for all objects (avoids O(n²) in render loop)
+  const childCountMap = useMemo(() => {
+    const map = {};
+    for (const o of objects) {
+      if (o.parentId) {
+        map[o.parentId] = (map[o.parentId] || 0) + 1;
+      }
+    }
+    return map;
+  }, [objects]);
+
+  // Stable callback for navigating to map from ObjectCard
+  const handleNavigateToMap = useCallback((coords) => {
+    setViewMode('map');
+    setMapCenter(coords);
+    window.scrollTo(0, 0);
+  }, []);
+
+  // Stable callback for selecting an object from ObjectCard
+  const handleSelectObject = useCallback((obj) => {
+    setSelectedObject(obj);
+  }, []);
 
   // Check if running as installed PWA (standalone mode)
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
@@ -823,7 +834,7 @@ function App() {
     }
   };
 
-  const handleToggleFavorite = async (objectId) => {
+  const handleToggleFavorite = useCallback(async (objectId) => {
     if (!user) return;
     
     const isFavorite = favorites.includes(objectId);
@@ -842,7 +853,7 @@ function App() {
       // Revert on error
       setFavorites(favorites);
     }
-  };
+  }, [user, favorites]);
 
   // Quick capture functions
   const handleQuickCapture = async () => {
@@ -914,7 +925,7 @@ function App() {
     setShowCreateModal(true);
   };
 
-  const handleBlockUpdate = async (objectId, blockIndex, newBlockData) => {
+  const handleBlockUpdate = useCallback(async (objectId, blockIndex, newBlockData) => {
     const applyBlockUpdate = (obj) => ({
       ...obj,
       blocks: obj.blocks.map((b, i) => i === blockIndex ? { ...b, data: newBlockData } : b)
@@ -932,7 +943,7 @@ function App() {
     } catch (err) {
       // Silently fail - optimistic update already applied
     }
-  };
+  }, [objects]);
 
   const handleSaveObject = async (objectData, editId) => {
     if (!user) {
@@ -1295,7 +1306,7 @@ function App() {
     }
   };
 
-  const handleDeleteObject = async (id) => {
+  const handleDeleteObject = useCallback(async (id) => {
     try {
       // Find all descendants using ancestorIds
       const descendants = objects.filter(o => o.ancestorIds?.includes(id));
@@ -1325,9 +1336,9 @@ function App() {
       console.error('Error deleting objects:', err);
       setToast({ message: 'Kunde inte ta bort!', type: 'error' });
     }
-  };
+  }, [objects, setToast]);
 
-  const handleLeaveShare = async (obj) => {
+  const handleLeaveShare = useCallback(async (obj) => {
     if (!user) return;
     
     if (!confirm('Är du säker på att du vill lämna denna delning? Du kommer inte längre ha tillgång till objektet.')) {
@@ -1370,9 +1381,9 @@ function App() {
       console.error('Error leaving share:', err);
       setToast({ message: 'Kunde inte lämna delningen!', type: 'error' });
     }
-  };
+  }, [user, objects, setToast]);
 
-  const handleEdit = (obj) => {
+  const handleEdit = useCallback((obj) => {
     if (!user) {
       setToast({ message: 'Du måste vara inloggad för att redigera!', type: 'error' });
       return;
@@ -1394,9 +1405,9 @@ function App() {
     setEditingObject(obj.id ? obj : null);
     setShowCreateModal(true);
     setSelectedObject(null);
-  };
+  }, [user, isAdmin, setToast]);
 
-  const handleDuplicate = (obj) => {
+  const handleDuplicate = useCallback((obj) => {
     if (!user) {
       setToast({ message: 'Du måste vara inloggad för att kopiera!', type: 'error' });
       return;
@@ -1405,7 +1416,7 @@ function App() {
     setDefaultParentId(obj.parentId || null);
     setShowCreateModal(true);
     setSelectedObject(null);
-  };
+  }, [user, setToast]);
 
   if (loading || !categoriesLoaded) {
     return (
@@ -1857,45 +1868,16 @@ function App() {
           <div className="pt-4 pb-8">
             <div className={`grid ${compactCards ? 'grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6' : 'grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3'}`}>
               {displayObjects.map(obj => {
-                const childCount = objects.filter(o => o.parentId === obj.id).length;
+                const childCount = childCountMap[obj.id] || 0;
                 const distance = getObjectDistance(obj);
                 const parent = obj.parentId ? objects.find(o => o.id === obj.parentId) : null;
                 const isOrphanChild = obj.parentId && !parent;
-                
-                // Build parent chain for breadcrumb
-                // For orphans, use stored parentPath; otherwise build dynamically
-                const getParentChain = () => {
-                  if (!obj.parentId) return [];
-                  
-                  // For orphans, use stored parentPath if available
-                  if (isOrphanChild && obj.parentPath && obj.parentPath.length > 0) {
-                    return obj.parentPath;
-                  }
-                  
-                  // Build dynamically from accessible parents
-                  const chain = [];
-                  let currentId = obj.parentId;
-                  let depth = 0;
-                  while (currentId && depth < 5) {
-                    const p = objects.find(o => o.id === currentId);
-                    if (p) {
-                      const name = p.blocks?.find(b => b.type === 'title')?.data?.text;
-                      if (name) chain.unshift(name);
-                      currentId = p.parentId;
-                    } else {
-                      break;
-                    }
-                    depth++;
-                  }
-                  return chain;
-                };
-                const parentChain = getParentChain();
                 
                 return (
                   <ObjectCard 
                     key={obj.id} 
                     object={obj} 
-                    onClick={() => setSelectedObject(obj)} 
+                    onClick={handleSelectObject} 
                     currentUser={user} 
                     childCount={childCount} 
                     distance={distance} 
@@ -1903,15 +1885,11 @@ function App() {
                     isFavorite={favorites.includes(obj.id)}
                     onToggleFavorite={handleToggleFavorite}
                     isOrphanChild={isOrphanChild}
-                    parentChain={parentChain}
+                    allObjects={objects}
                     showAsChild={!!obj.parentId && (searchTerm || isOrphanChild)}
                     compact={compactCards}
-                    onNavigate={(coords) => {
-                      setViewMode('map');
-                      setMapCenter(coords);
-                      window.scrollTo(0, 0);
-                    }}
-                    onShare={(obj) => setShowShareModal(obj)}
+                    onNavigate={handleNavigateToMap}
+                    onShare={setShowShareModal}
                   />
                 );
               })}
