@@ -7,7 +7,7 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { getIconComponent, PREDEFINED_ICONS, emailToKey } from '../utils/iconHelpers';
 import { getTransformedImageUrl, getFocalPointStyles } from '../utils/imageUtils';
-import { getObjectDistance, formatDistance } from '../utils/geoUtils';
+import { getObjectDistance, formatDistance, getDistance } from '../utils/geoUtils';
 import { blockComponents } from './blocks';
 import DeleteConfirmModal from './DeleteConfirmModal';
 import LeaderboardModal from './LeaderboardModal';
@@ -1737,12 +1737,12 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                         const ChildIcon = childCategory ? getIconComponent(childCategory.icon) : (PREDEFINED_ICONS[child.type]?.icon || Home);
                         
                         // Calculate distance if both user location and child location exist
-                        const childDistance = currentUserLocation && childLocation?.data?.coordinates 
-                          ? calculateDistance(
-                              currentUserLocation.lat, 
-                              currentUserLocation.lng, 
-                              childLocation.data.coordinates.lat, 
-                              childLocation.data.coordinates.lng
+                        const childDistance = userLocation && childLocation?.data?.lat && childLocation?.data?.lng
+                          ? getDistance(
+                              userLocation.lat, 
+                              userLocation.lng, 
+                              childLocation.data.lat, 
+                              childLocation.data.lng
                             )
                           : null;
                         
