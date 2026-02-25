@@ -5,7 +5,7 @@ import { CLOUDINARY_CLOUD_NAME, CLOUDINARY_UPLOAD_PRESET, resizeImage } from '..
 // Gallery block editor component - upload multiple images
 function GalleryBlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }) {
   const [images, setImages] = useState(block.images || []);
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [editingCaption, setEditingCaption] = useState(null);
   const fileInputRef = useRef(null);
