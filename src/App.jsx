@@ -18,6 +18,9 @@ import { getObjectDistance as getObjectDistanceUtil } from './utils/geoUtils';
 import { getIconComponent, PREDEFINED_ICONS, emailToKey } from './utils/iconHelpers';
 import { STORAGE_KEYS } from './utils/storageKeys';
 import { usePersistedState } from './utils/usePersistedState';
+import { useAuth } from './utils/useAuth';
+import { useObjects } from './utils/useObjects';
+import { useFavorites } from './utils/useFavorites';
 
 // Components
 import { blockComponents } from './components/blocks';
@@ -48,9 +51,8 @@ const ModalLoadingFallback = () => (
 );
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { db, auth, googleProvider } from './firebase';
-import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, Timestamp, getDoc, getDocs, setDoc, deleteField, query, where, arrayUnion, arrayRemove } from 'firebase/firestore';
-import { signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, GoogleAuthProvider } from 'firebase/auth';
+import { db } from './firebase';
+import { collection, addDoc, updateDoc, deleteDoc, doc, Timestamp, getDoc, getDocs, setDoc, deleteField, query, where, arrayUnion, arrayRemove } from 'firebase/firestore';
 
 // Fix Leaflet default marker icon issue with bundlers
 delete L.Icon.Default.prototype._getIconUrl;
@@ -61,18 +63,33 @@ L.Icon.Default.mergeOptions({
 });
 
 function App() {
-  const [user, setUser] = useState(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [favorites, setFavorites] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [categoriesLoaded, setCategoriesLoaded] = useState(false);
-  const [objects, setObjects] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToastInternal] = useState(null); // { message, type: 'success' | 'error' | 'info', key }
   // Wrapper to add unique key for proper timer reset on repeated toasts
   const setToast = (value) => setToastInternal(value ? { ...value, key: Date.now() } : null);
-  const [selectedObject, setSelectedObject] = useState(null);
+
+  // --- Extracted hooks ---
+  const {
+    user, isAdmin, userApproved, appSettings,
+    displayName, setDisplayName, sharedContacts, setSharedContacts,
+    favoriteContacts, setFavoriteContacts, initialFavorites,
+    handleLogin, handleLogout, handleSwitchAccount
+  } = useAuth(setToast);
+
+  const [showDemoObjects, setShowDemoObjects] = usePersistedState(STORAGE_KEYS.SHOW_DEMO_OBJECTS, false);
+
+  const {
+    objects, setObjects, loading,
+    selectedObject, setSelectedObject
+  } = useObjects(user, showDemoObjects);
+
+  const {
+    favorites, setFavorites, handleToggleFavorite, validFavoritesCount
+  } = useFavorites(user, initialFavorites, objects);
+
+  // --- Local UI state ---
+  const [categories, setCategories] = useState([]);
+  const [categoriesLoaded, setCategoriesLoaded] = useState(false);
   const [navigationHistory, setNavigationHistory] = useState([]); // Stack of previously viewed objects
   const [openPlannerOnReturn, setOpenPlannerOnReturn] = useState(false); // Flag to open planner when returning
   const [activeCategory, setActiveCategory] = usePersistedState(STORAGE_KEYS.ACTIVE_CATEGORY, 'all', { type: 'string' });
@@ -103,9 +120,6 @@ function App() {
   const [showUsersAdmin, setShowUsersAdmin] = useState(false);
   const [showProfileSettings, setShowProfileSettings] = useState(false);
   const [showContacts, setShowContacts] = useState(false);
-  const [displayName, setDisplayName] = useState('');
-  const [sharedContacts, setSharedContacts] = useState([]);
-  const [favoriteContacts, setFavoriteContacts] = useState([]);
   const [captures, setCaptures] = usePersistedState(STORAGE_KEYS.CAPTURES, [], { type: 'json' });
   const [showCaptures, setShowCaptures] = useState(false);
   const [keepScreenOn, setKeepScreenOn] = usePersistedState(STORAGE_KEYS.KEEP_SCREEN_ON, false);
@@ -114,7 +128,6 @@ function App() {
   const [showQuickCaptureObjectPicker, setShowQuickCaptureObjectPicker] = useState(false);
   const [quickCaptureSearchQuery, setQuickCaptureSearchQuery] = useState('');
   const [preciseGPS, setPreciseGPS] = usePersistedState(STORAGE_KEYS.PRECISE_GPS, false);
-  const [showDemoObjects, setShowDemoObjects] = usePersistedState(STORAGE_KEYS.SHOW_DEMO_OBJECTS, false);
   // Menu section collapse states with localStorage
   const [menuAdminExpanded, setMenuAdminExpanded] = usePersistedState(STORAGE_KEYS.MENU_ADMIN_EXPANDED, false);
   const [menuSettingsExpanded, setMenuSettingsExpanded] = usePersistedState(STORAGE_KEYS.MENU_SETTINGS_EXPANDED, true, { defaultTrue: true });
@@ -125,15 +138,8 @@ function App() {
   const [headerHeight, setHeaderHeight] = useState(64);
   const seedingRef = useRef(false);
   const wakeLockRef = useRef(null);
-  const isMountedRef = useRef(true);
   const globalTrackingWatchRef = useRef(null);
-  
-  // User approval and limits
-  const [userApproved, setUserApproved] = useState(false);
-  const [appSettings, setAppSettings] = useState({
-    defaultObjectLimit: 5,
-    approvedObjectLimit: 100
-  });
+
 
   // Wrapper to use imported distance function with userLocation state
   const getObjectDistance = useCallback(
@@ -260,103 +266,9 @@ function App() {
     return () => window.removeEventListener('pageshow', handlePageShow);
   }, []);
 
-  // Auth listener + check admin status
+  // Clean up global GPS tracking on unmount
   useEffect(() => {
-    isMountedRef.current = true;
-    
-    // Handle redirect result (for mobile login)
-    getRedirectResult(auth).catch((err) => {
-      if (err.code !== 'auth/popup-closed-by-user') {
-        console.error('Redirect login error:', err);
-      }
-    });
-
-    const unsubAuth = onAuthStateChanged(auth, async (u) => {
-      if (!isMountedRef.current) return;
-      setUser(u);
-      if (u) {
-        // Check if user is admin
-        try {
-          // Fetch app settings
-          const settingsDoc = await getDoc(doc(db, 'settings', 'app'));
-          if (settingsDoc.exists()) {
-            const settingsData = settingsDoc.data();
-            setAppSettings({
-              defaultObjectLimit: settingsData.defaultObjectLimit ?? 5,
-              approvedObjectLimit: settingsData.approvedObjectLimit ?? 100
-            });
-          }
-
-          const userDoc = await getDoc(doc(db, 'users', u.uid));
-          if (!isMountedRef.current) return;
-          
-          if (userDoc.exists()) {
-            const userData = userDoc.data();
-            
-            // Check if user is blocked
-            if (userData?.blocked) {
-              setToast({ message: 'Ditt konto har blivit blockerat. Kontakta administratören.', type: 'error' });
-              await signOut(auth);
-              return;
-            }
-            
-            if (!isMountedRef.current) return;
-            
-            const adminFlag = userData?.isAdmin === true;
-            const userFavorites = userData?.favorites || [];
-            const userDisplayName = userData?.displayName || '';
-            const userSharedContacts = userData?.sharedContacts || [];
-            const userFavoriteContacts = userData?.favoriteContacts || [];
-            const userApprovedFlag = userData?.approved === true || adminFlag; // Admins are always approved
-
-            setIsAdmin(adminFlag);
-            setUserApproved(userApprovedFlag);
-            setFavorites(userFavorites);
-            setDisplayName(userDisplayName);
-            setSharedContacts(userSharedContacts);
-            setFavoriteContacts(userFavoriteContacts);
-          } else {
-            if (!isMountedRef.current) return;
-
-            // Create user doc if it doesn't exist
-            await setDoc(doc(db, 'users', u.uid), {
-              email: u.email,
-              isAdmin: false,
-              approved: false,
-              favorites: [],
-              displayName: '',
-              sharedContacts: [],
-              favoriteContacts: [],
-              createdAt: Timestamp.now()
-            });
-            if (!isMountedRef.current) return;
-            setIsAdmin(false);
-            setUserApproved(false);
-            setFavorites([]);
-            setDisplayName('');
-            setSharedContacts([]);
-            setFavoriteContacts([]);
-          }
-        } catch (err) {
-          console.error('Error fetching user doc:', err);
-          if (!isMountedRef.current) return;
-          setIsAdmin(false);
-          setUserApproved(false);
-          setFavorites([]);
-        }
-      } else {
-        setIsAdmin(false);
-        setUserApproved(false);
-        setFavorites([]);
-        setDisplayName('');
-        setSharedContacts([]);
-        setFavoriteContacts([]);
-      }
-    });
     return () => {
-      isMountedRef.current = false;
-      unsubAuth();
-      // Clean up global GPS tracking
       if (globalTrackingWatchRef.current !== null) {
         navigator.geolocation.clearWatch(globalTrackingWatchRef.current);
       }
@@ -403,122 +315,6 @@ function App() {
       );
     }
   }, []);
-
-  useEffect(() => {
-    if (!user) {
-      setObjects([]);
-      setLoading(false);
-      return;
-    }
-
-    let isCancelled = false;
-    const userEmail = user.email?.toLowerCase();
-    const objectsRef = collection(db, 'objects');
-    
-    // Demo mode: only show objects with isDemo == true
-    if (showDemoObjects) {
-      const demoQuery = query(objectsRef, where('isDemo', '==', true));
-      
-      const unsubDemo = onSnapshot(demoQuery, (snap) => {
-        if (isCancelled) return;
-        const demoObjects = snap.docs.map(d => ({ 
-          id: d.id, 
-          ...d.data(), 
-          isDemoObject: true // Mark as demo (read-only for non-admins)
-        }));
-        setObjects(demoObjects);
-        setLoading(false);
-        
-        setSelectedObject(prev => {
-          if (!prev?.id) return prev;
-          const updated = demoObjects.find(obj => obj.id === prev.id);
-          return updated || null; // Reset if demo object no longer exists
-        });
-      }, (error) => {
-        console.error('Error loading demo objects:', error);
-        if (isCancelled) return;
-        setLoading(false);
-      });
-      
-      return () => {
-        isCancelled = true;
-        unsubDemo();
-      };
-    }
-    
-    // Normal mode: owned + shared objects
-    // Query 1: Objects where user is owner
-    const ownedQuery = query(objectsRef, where('ownerId', '==', user.uid));
-    
-    // Query 2: Objects shared with this user's email
-    const sharedQuery = userEmail 
-      ? query(objectsRef, where('sharedWithEmails', 'array-contains', userEmail))
-      : null;
-    
-    let ownedObjects = [];
-    let sharedObjects = [];
-    let ownedLoaded = false;
-    let sharedLoaded = !sharedQuery; // If no email, consider it loaded
-    
-    const combineAndSetObjects = () => {
-      if (!ownedLoaded || !sharedLoaded || isCancelled) return;
-      
-      // Combine and dedupe (owned objects take precedence)
-      // Filter out demo objects in normal mode
-      const ownedIds = new Set(ownedObjects.map(o => o.id));
-      const combined = [
-        ...ownedObjects.filter(o => !o.isDemo),
-        ...sharedObjects.filter(o => !ownedIds.has(o.id) && !o.isDemo).map(o => ({ ...o, isSharedWithMe: true }))
-      ];
-      
-      setObjects(combined);
-      setLoading(false);
-      
-      // Update selectedObject if it exists and has been modified
-      setSelectedObject(prev => {
-        if (!prev?.id) return prev;
-        const updated = combined.find(obj => obj.id === prev.id);
-        return updated || prev;
-      });
-    };
-    
-    // Subscribe to owned objects
-    const unsubOwned = onSnapshot(ownedQuery, (snap) => {
-      if (isCancelled) return;
-      ownedObjects = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-      ownedLoaded = true;
-      combineAndSetObjects();
-    }, (error) => {
-      console.error('Error loading owned objects:', error);
-      if (isCancelled) return;
-      ownedLoaded = true;
-      combineAndSetObjects();
-    });
-    
-    // Subscribe to shared objects (if user has email)
-    let unsubShared = () => {};
-    if (sharedQuery) {
-      unsubShared = onSnapshot(sharedQuery, (snap) => {
-        if (isCancelled) return;
-        sharedObjects = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-        sharedLoaded = true;
-        combineAndSetObjects();
-      }, (error) => {
-        console.error('Error loading shared objects:', error);
-        if (isCancelled) return;
-        sharedLoaded = true;
-        combineAndSetObjects();
-      });
-    }
-    
-    return () => {
-      isCancelled = true;
-      unsubOwned();
-      unsubShared();
-    };
-  }, [user, showDemoObjects]);
 
   // Fetch categories once at startup (they rarely change)
   useEffect(() => {
@@ -593,19 +389,6 @@ function App() {
     seedCategories();
   }, [isAdmin, user]);
 
-  useEffect(() => {
-    if (!selectedObject) return;
-    
-    const selectedId = selectedObject.id;
-    const fresh = objects.find(o => o.id === selectedId);
-    
-    // Only update if still the same object is selected
-    setSelectedObject(current => {
-      if (!current || current.id !== selectedId) return current;
-      return fresh || null;
-    });
-  }, [objects, selectedObject?.id]);
-
   // Lock background scroll when any modal is open
   useEffect(() => {
     const hasModalOpen = !!selectedObject || !!showCreateModal || !!showMenu || !!showCategoryAdmin || !!showObjectsAdmin || !!showUsersAdmin || !!showCaptures;
@@ -619,12 +402,6 @@ function App() {
       document.body.style.overflow = previousOverflow;
     };
   }, [selectedObject, showCreateModal, showMenu, showCategoryAdmin, showObjectsAdmin, showUsersAdmin, showCaptures]);
-
-  // Count only favorites that still exist in objects
-  const validFavoritesCount = useMemo(() => 
-    favorites.filter(fid => objects.some(o => o.id === fid)).length,
-    [favorites, objects]
-  );
 
   const searchTerm = searchQuery.trim().toLowerCase();
 
@@ -802,58 +579,6 @@ function App() {
   // Check if running as installed PWA (standalone mode)
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
                        window.navigator.standalone === true;
-
-  const handleLogin = async () => {
-    try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (err) {
-      if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
-        console.error('Login error:', err);
-        setToast({ message: 'Kunde inte logga in. Försök igen!', type: 'error' });
-      }
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-    } catch (err) {}
-  };
-
-  const handleSwitchAccount = async () => {
-    try {
-      // Create a new provider with prompt to force account selection
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: 'select_account' });
-      await signInWithPopup(auth, provider);
-    } catch (err) {
-      if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
-        console.error('Switch account error:', err);
-        setToast({ message: 'Kunde inte byta konto. Försök igen!', type: 'error' });
-      }
-    }
-  };
-
-  const handleToggleFavorite = useCallback(async (objectId) => {
-    if (!user) return;
-    
-    const isFavorite = favorites.includes(objectId);
-    const newFavorites = isFavorite 
-      ? favorites.filter(id => id !== objectId)
-      : [...favorites, objectId];
-    
-    setFavorites(newFavorites);
-    
-    try {
-      await updateDoc(doc(db, 'users', user.uid), {
-        favorites: newFavorites
-      });
-    } catch (err) {
-      console.error('Error updating favorites:', err);
-      // Revert on error
-      setFavorites(favorites);
-    }
-  }, [user, favorites]);
 
   // Quick capture functions
   const handleQuickCapture = async () => {
