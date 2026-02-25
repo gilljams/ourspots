@@ -46,7 +46,7 @@ function ContactBlockEditor({ block, onUpdate, onRemove, onMove, index, total, s
             size={16} 
             className={`text-gray-500 transition-transform flex-shrink-0 ${isExpanded ? '' : '-rotate-90'}`} 
           />
-          <Phone size={16} className="text-green-400 flex-shrink-0" />
+          <Phone size={16} className="text-blue-400 flex-shrink-0" />
           <span className="text-sm font-medium text-gray-300 truncate">
             Kontaktinfo
           </span>
@@ -73,7 +73,7 @@ function ContactBlockEditor({ block, onUpdate, onRemove, onMove, index, total, s
       {isExpanded && (
       <div className="space-y-2 p-3 pt-0">
         <div className="flex items-center gap-2">
-          <Phone size={16} className="text-green-400 flex-shrink-0" />
+          <Phone size={16} className="text-blue-400 flex-shrink-0" />
           <input
             type="tel"
             value={phone}
@@ -81,7 +81,7 @@ function ContactBlockEditor({ block, onUpdate, onRemove, onMove, index, total, s
             onBlur={syncToParent}
             placeholder="Telefonnummer"
             disabled={saving}
-            className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-green-500"
+            className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500"
           />
         </div>
         <div className="flex items-center gap-2">
@@ -97,7 +97,7 @@ function ContactBlockEditor({ block, onUpdate, onRemove, onMove, index, total, s
           />
         </div>
         <div className="flex items-center gap-2">
-          <Globe size={16} className="text-purple-400 flex-shrink-0" />
+          <Globe size={16} className="text-blue-400 flex-shrink-0" />
           <input
             type="url"
             value={website}
@@ -105,7 +105,7 @@ function ContactBlockEditor({ block, onUpdate, onRemove, onMove, index, total, s
             onBlur={syncToParent}
             placeholder="Hemsida (t.ex. example.com)"
             disabled={saving}
-            className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-purple-500"
+            className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500"
           />
         </div>
       </div>

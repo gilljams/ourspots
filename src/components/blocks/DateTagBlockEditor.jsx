@@ -74,7 +74,7 @@ function DateTagBlockEditor({ block, onUpdate, onRemove, onMove, index, total, s
             size={16} 
             className={`text-gray-500 transition-transform flex-shrink-0 ${isExpanded ? '' : '-rotate-90'}`} 
           />
-          <Calendar size={16} className="text-cyan-400 flex-shrink-0" />
+          <Calendar size={16} className="text-blue-400 flex-shrink-0" />
           <span className="text-sm font-medium text-gray-300 truncate">
             Datum
           </span>
@@ -104,11 +104,7 @@ function DateTagBlockEditor({ block, onUpdate, onRemove, onMove, index, total, s
               {tags.map((tag, i) => (
                 <div 
                   key={i}
-                  className={`inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1 rounded-full text-sm ${
-                    tag.type === 'year' 
-                      ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' 
-                      : 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
-                  }`}
+                  className={`inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1 rounded-full text-sm bg-blue-500/20 text-blue-300 border border-blue-500/30`}
                 >
                   <span>{formatTag(tag)}</span>
                   <button
@@ -167,20 +163,20 @@ function DateTagBlockEditor({ block, onUpdate, onRemove, onMove, index, total, s
                     type="date"
                     value={newRangeStart}
                     onChange={(e) => setNewRangeStart(e.target.value)}
-                    className="flex-1 min-w-[140px] px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base focus:outline-none focus:border-purple-500"
+                    className="flex-1 min-w-[140px] px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base focus:outline-none focus:border-blue-500"
                   />
                   <span className="text-gray-500 self-center">→</span>
                   <input
                     type="date"
                     value={newRangeEnd}
                     onChange={(e) => setNewRangeEnd(e.target.value)}
-                    className="flex-1 min-w-[140px] px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base focus:outline-none focus:border-purple-500"
+                    className="flex-1 min-w-[140px] px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base focus:outline-none focus:border-blue-500"
                   />
                   <button
                     type="button"
                     onClick={addRangeTag}
                     disabled={!newRangeStart || !newRangeEnd}
-                    className="px-4 py-2 rounded-lg bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 text-sm disabled:opacity-50"
+                    className="px-4 py-2 rounded-lg bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 text-sm disabled:opacity-50"
                   >
                     Lägg till
                   </button>

@@ -69,7 +69,7 @@ function RatingBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sa
                 syncToParent(e.target.value);
               }}
               placeholder="T.ex. 'Betygsätt restaurangen'"
-              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm"
+              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
             />
           </div>
 

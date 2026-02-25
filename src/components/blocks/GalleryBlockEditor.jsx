@@ -95,7 +95,7 @@ function GalleryBlockEditor({ block, onUpdate, onRemove, onMove, index, total, s
             size={16} 
             className={`text-gray-500 transition-transform flex-shrink-0 ${isExpanded ? '' : '-rotate-90'}`} 
           />
-          <Images size={16} className="text-pink-400 flex-shrink-0" />
+          <Images size={16} className="text-blue-400 flex-shrink-0" />
           <span className="text-sm font-medium text-gray-300 truncate">
             Galleri ({images.length}/{MAX_IMAGES})
           </span>
@@ -172,7 +172,7 @@ function GalleryBlockEditor({ block, onUpdate, onRemove, onMove, index, total, s
                   }
                 }}
                 onBlur={(e) => updateCaption(editingCaption, e.target.value)}
-                className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-pink-500"
+                className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500"
                 placeholder="Skriv bildtext..."
                 autoFocus
               />
@@ -181,7 +181,7 @@ function GalleryBlockEditor({ block, onUpdate, onRemove, onMove, index, total, s
           
           {/* Upload button */}
           {images.length < MAX_IMAGES && (
-            <label className={`flex items-center justify-center gap-2 p-4 rounded-lg border-2 border-dashed border-white/20 cursor-pointer hover:border-pink-500/50 hover:bg-pink-500/5 transition-colors ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+            <label className={`flex items-center justify-center gap-2 p-4 rounded-lg border-2 border-dashed border-white/20 cursor-pointer hover:border-blue-500/50 hover:bg-blue-500/5 transition-colors ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -193,12 +193,12 @@ function GalleryBlockEditor({ block, onUpdate, onRemove, onMove, index, total, s
               />
               {uploading ? (
                 <>
-                  <Loader size={18} className="text-pink-400 animate-spin" />
+                  <Loader size={18} className="text-blue-400 animate-spin" />
                   <span className="text-sm text-gray-400">Laddar upp...</span>
                 </>
               ) : (
                 <>
-                  <Upload size={18} className="text-pink-400" />
+                  <Upload size={18} className="text-blue-400" />
                   <span className="text-sm text-gray-400">
                     Lägg till bilder ({images.length}/{MAX_IMAGES})
                   </span>

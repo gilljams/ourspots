@@ -104,7 +104,7 @@ function LinksBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
             size={16} 
             className={`text-gray-500 transition-transform flex-shrink-0 ${isExpanded ? '' : '-rotate-90'}`} 
           />
-          <Link2 size={16} className="text-purple-400 flex-shrink-0" />
+          <Link2 size={16} className="text-blue-400 flex-shrink-0" />
           <span className="text-sm font-medium text-gray-300 truncate">
             {title || 'Länkar'}
           </span>
@@ -139,7 +139,7 @@ function LinksBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
               onFocus={handleInputFocus}
               placeholder="Rubrik (valfritt)"
               disabled={saving}
-              className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-purple-500"
+              className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500"
             />
           </div>
 
@@ -154,10 +154,10 @@ function LinksBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); setShowIconPicker(showIconPicker === linkIndex ? null : linkIndex); }}
-                      className="w-10 h-10 rounded-lg bg-purple-500/20 border border-white/10 flex items-center justify-center hover:bg-purple-500/30 transition-colors"
+                      className="w-10 h-10 rounded-lg bg-blue-500/20 border border-white/10 flex items-center justify-center hover:bg-blue-500/30 transition-colors"
                       title="Välj ikon"
                     >
-                      <IconComponent size={18} className="text-purple-400" />
+                      <IconComponent size={18} className="text-blue-400" />
                     </button>
                     
                     {/* Icon dropdown */}
@@ -179,7 +179,7 @@ function LinksBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
                                 type="button"
                                 onClick={(e) => { e.stopPropagation(); selectIcon(linkIndex, name); }}
                                 className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
-                                  link.icon === name ? 'bg-purple-500/30 text-purple-300' : 'hover:bg-white/10 text-gray-400'
+                                  link.icon === name ? 'bg-blue-500/30 text-blue-300' : 'hover:bg-white/10 text-gray-400'
                                 }`}
                                 title={label}
                               >
@@ -202,7 +202,7 @@ function LinksBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
                       onFocus={handleInputFocus}
                       placeholder="Länktext (t.ex. Boka bord)"
                       disabled={saving}
-                      className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                      className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500"
                     />
                     <input
                       type="url"
@@ -212,7 +212,7 @@ function LinksBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
                       onFocus={handleInputFocus}
                       placeholder="https://..."
                       disabled={saving}
-                      className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                      className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500"
                     />
                   </div>
 
@@ -235,7 +235,7 @@ function LinksBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
             type="button"
             onClick={addLink}
             disabled={saving}
-            className="w-full px-3 py-2 rounded-lg border border-dashed border-white/20 text-gray-400 hover:border-purple-400 hover:text-purple-400 text-sm flex items-center justify-center gap-2 transition-colors"
+            className="w-full px-3 py-2 rounded-lg border border-dashed border-white/20 text-gray-400 hover:border-blue-400 hover:text-blue-400 text-sm flex items-center justify-center gap-2 transition-colors"
           >
             <Plus size={16} /> Lägg till länk
           </button>

@@ -57,7 +57,7 @@ function AudioBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
             size={16} 
             className={`text-gray-500 transition-transform flex-shrink-0 ${isExpanded ? '' : '-rotate-90'}`} 
           />
-          <Music size={16} className="text-purple-400 flex-shrink-0" />
+          <Music size={16} className="text-blue-400 flex-shrink-0" />
           <span className="text-sm font-medium text-gray-300 truncate">Ljud</span>
           {!isExpanded && (
             <span className="text-xs text-gray-500 truncate ml-1">
@@ -95,7 +95,7 @@ function AudioBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
             onChange={(e) => handleTitleChange(e.target.value)}
             placeholder="T.ex. Vår låt"
             disabled={saving}
-            className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-purple-500"
+            className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500"
           />
         </div>
         <div>
@@ -106,7 +106,7 @@ function AudioBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
             onChange={(e) => handleUrlChange(e.target.value)}
             placeholder="/ourspots/media/låt.mp3 eller https://..."
             disabled={saving}
-            className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-purple-500"
+            className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500"
           />
           <p className="text-xs text-gray-500 mt-1">
             Lägg filer i public/media/ för /ourspots/media/filnamn.mp3
@@ -123,7 +123,7 @@ function AudioBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
             type="button"
             onClick={() => handleDiscreteChange(!discrete)}
             className={`w-12 h-6 rounded-full transition-colors relative ${
-              discrete ? 'bg-purple-500' : 'bg-white/20'
+              discrete ? 'bg-blue-500' : 'bg-white/20'
             }`}
           >
             <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${
@@ -142,7 +142,7 @@ function AudioBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
                 onClick={() => handleAnimationChange('none')}
                 className={`flex-1 px-3 py-2 rounded-lg text-sm transition-all ${
                   animation === 'none' 
-                    ? 'bg-purple-500/30 text-purple-300 ring-1 ring-purple-500/50' 
+                    ? 'bg-blue-500/30 text-blue-300 ring-1 ring-blue-500/50' 
                     : 'bg-white/5 text-gray-400 hover:bg-white/10'
                 }`}
               >
@@ -153,7 +153,7 @@ function AudioBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
                 onClick={() => handleAnimationChange('cykel')}
                 className={`flex-1 px-3 py-2 rounded-lg text-sm transition-all ${
                   animation === 'cykel' 
-                    ? 'bg-purple-500/30 text-purple-300 ring-1 ring-purple-500/50' 
+                    ? 'bg-blue-500/30 text-blue-300 ring-1 ring-blue-500/50' 
                     : 'bg-white/5 text-gray-400 hover:bg-white/10'
                 }`}
               >
@@ -164,7 +164,7 @@ function AudioBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
                 onClick={() => handleAnimationChange('gris')}
                 className={`flex-1 px-3 py-2 rounded-lg text-sm transition-all ${
                   animation === 'gris' 
-                    ? 'bg-purple-500/30 text-purple-300 ring-1 ring-purple-500/50' 
+                    ? 'bg-blue-500/30 text-blue-300 ring-1 ring-blue-500/50' 
                     : 'bg-white/5 text-gray-400 hover:bg-white/10'
                 }`}
               >

@@ -207,7 +207,7 @@ function SplitBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
             size={16} 
             className={`text-gray-500 transition-transform flex-shrink-0 ${isExpanded ? '' : '-rotate-90'}`} 
           />
-          <Wallet size={16} className="text-green-400 flex-shrink-0" />
+          <Wallet size={16} className="text-blue-400 flex-shrink-0" />
           <span className="text-sm font-medium text-gray-300 truncate">
             {title || 'Splitt'}
           </span>
@@ -238,7 +238,7 @@ function SplitBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
               type="text"
               value={title}
               onChange={(e) => handleTitleChange(e.target.value)}
-              className="w-full px-3 py-2 text-sm bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-green-500 text-white placeholder-gray-500"
+              className="w-full px-3 py-2 text-sm bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-blue-500 text-white placeholder-gray-500"
               placeholder="T.ex. Resekostnader"
             />
           </div>
@@ -252,7 +252,7 @@ function SplitBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
                 onClick={() => handleModelChange('individual')}
                 className={`flex-1 py-2 px-3 text-sm rounded-lg border transition-colors ${
                   model === 'individual'
-                    ? 'bg-green-500/20 border-green-500/50 text-green-400'
+                    ? 'bg-blue-500/20 border-blue-500/50 text-blue-400'
                     : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
                 }`}
               >
@@ -263,7 +263,7 @@ function SplitBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
                 onClick={() => handleModelChange('family')}
                 className={`flex-1 py-2 px-3 text-sm rounded-lg border transition-colors ${
                   model === 'family'
-                    ? 'bg-green-500/20 border-green-500/50 text-green-400'
+                    ? 'bg-blue-500/20 border-blue-500/50 text-blue-400'
                     : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
                 }`}
               >
@@ -290,7 +290,7 @@ function SplitBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
                       onClick={() => toggleParticipant(user.email, user.name)}
                       className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
                         isSelected
-                          ? 'bg-green-500/20 border-green-500/50 text-green-400'
+                          ? 'bg-blue-500/20 border-blue-500/50 text-blue-400'
                           : 'bg-white/5 border-white/10 text-gray-500 hover:text-gray-300 hover:bg-white/10'
                       }`}
                     >
@@ -331,7 +331,7 @@ function SplitBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
                           key={idx}
                           type="button"
                           onClick={() => addParticipant(user.email, user.name)}
-                          className="px-2 py-1 text-xs bg-white/10 hover:bg-green-500/20 text-gray-400 hover:text-green-400 rounded-lg flex items-center gap-1"
+                          className="px-2 py-1 text-xs bg-white/10 hover:bg-blue-500/20 text-gray-400 hover:text-blue-400 rounded-lg flex items-center gap-1"
                         >
                           <Plus size={12} />
                           {user.name}
