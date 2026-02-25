@@ -1,104 +1,33 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, ArrowUp, ArrowDown, FileText, CheckSquare, ClipboardList, Link2, Plus, ChevronDown, ChevronUp, Table2, Trash2, GripVertical, Calendar, Phone, Mail, Globe, Timer, Check, Maximize2, RotateCcw, BarChart3, Type, Music, Wallet, Users, Trophy, Minus, MapPin, Edit2, Hash, Target, Images, Upload, Loader, Star } from 'lucide-react';
+import { X, ArrowUp, ArrowDown, FileText, Link2, Plus, ChevronDown, Table2, Trash2, Calendar, Phone, Mail, Globe, Timer, Check, RotateCcw, BarChart3, Type, Music, Wallet, Users, Trophy, Minus, MapPin, Edit2, Hash, Target, Images, Upload, Loader, Star } from 'lucide-react';
 import { getIconComponent, LINK_ICONS, detectIconFromUrl } from '../utils/iconHelpers';
 import { TABLE_TEMPLATES } from './blocks';
 import { ListEditorModal } from './ListEditorModal';
 import { SimpleTableEditorModal, MultiColumnTableEditorModal } from './SimpleTableEditorModal';
 import { CLOUDINARY_CLOUD_NAME, CLOUDINARY_UPLOAD_PRESET, resizeImage } from '../utils/imageUtils';
+import { useFullscreenModal } from '../utils/useFullscreenModal';
 
 // Fullscreen text editor for mobile - iOS Notes-like experience
 function FullscreenTextEditor({ content, title, onSave, onCancel }) {
   const [text, setText] = useState(content || '');
   const textareaRef = useRef(null);
   const containerRef = useRef(null);
-  const [availableHeight, setAvailableHeight] = useState(window.innerHeight - 104);
-  const [viewportOffset, setViewportOffset] = useState(0);
-  const scrollYRef = useRef(0);
-  const rafRef = useRef(null);
-  const lastValuesRef = useRef({ height: 0, offset: 0 });
   
-  // Fixed heights
   const HEADER_HEIGHT = 48;
   const TOOLBAR_HEIGHT = 56;
   
-  // Handle viewport changes (keyboard open/close)
+  const { viewportHeight, viewportOffset, contentHeight: availableHeight } = useFullscreenModal({
+    bgColor: '#111827',
+    headerHeight: HEADER_HEIGHT,
+    toolbarHeight: TOOLBAR_HEIGHT,
+    useRAF: true,
+  });
+
+  // Focus textarea after a short delay to open keyboard
   useEffect(() => {
-    const viewport = window.visualViewport;
-    
-    const updateLayout = () => {
-      // Cancel any pending RAF
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current);
-      }
-      
-      // Use RAF to batch updates and reduce jitter
-      rafRef.current = requestAnimationFrame(() => {
-        if (viewport) {
-          const visibleHeight = viewport.height;
-          const textareaHeight = visibleHeight - HEADER_HEIGHT - TOOLBAR_HEIGHT;
-          const newHeight = Math.max(100, textareaHeight);
-          const newOffset = viewport.offsetTop;
-          
-          // Only update if values changed significantly (reduce jitter)
-          if (Math.abs(newHeight - lastValuesRef.current.height) > 2 ||
-              Math.abs(newOffset - lastValuesRef.current.offset) > 2) {
-            lastValuesRef.current = { height: newHeight, offset: newOffset };
-            setAvailableHeight(newHeight);
-            setViewportOffset(newOffset);
-          }
-        } else {
-          setAvailableHeight(window.innerHeight - HEADER_HEIGHT - TOOLBAR_HEIGHT - 300);
-          setViewportOffset(0);
-        }
-      });
-    };
-    
-    if (viewport) {
-      viewport.addEventListener('resize', updateLayout);
-      viewport.addEventListener('scroll', updateLayout);
-    }
-    window.addEventListener('resize', updateLayout);
-    
-    // Initial calculation
-    updateLayout();
-    
-    // Save scroll position and lock body scroll
-    scrollYRef.current = window.scrollY;
-    const scrollY = scrollYRef.current;
-    
-    // Set background color on html element to prevent white flash
-    document.documentElement.style.backgroundColor = '#111827';
-    document.body.style.backgroundColor = '#111827';
-    document.body.style.position = 'fixed';
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.left = '0';
-    document.body.style.right = '0';
-    document.body.style.overflow = 'hidden';
-    
-    // Focus textarea after a short delay to open keyboard
     setTimeout(() => {
       textareaRef.current?.focus();
-      // Recalculate after keyboard opens
-      setTimeout(updateLayout, 300);
     }, 150);
-    
-    return () => {
-      // Restore
-      document.documentElement.style.backgroundColor = '';
-      document.body.style.backgroundColor = '';
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.left = '';
-      document.body.style.right = '';
-      document.body.style.overflow = '';
-      window.scrollTo(0, scrollYRef.current);
-      
-      if (viewport) {
-        viewport.removeEventListener('resize', updateLayout);
-        viewport.removeEventListener('scroll', updateLayout);
-      }
-      window.removeEventListener('resize', updateLayout);
-    };
   }, []);
   
   // Markdown helper - wraps selected text or inserts at cursor
@@ -198,7 +127,7 @@ function FullscreenTextEditor({ content, title, onSave, onCancel }) {
         className="fixed left-0 right-0 z-[2000] bg-gray-900 flex flex-col"
         style={{ 
           top: `${viewportOffset}px`,
-          height: `${availableHeight + HEADER_HEIGHT + TOOLBAR_HEIGHT}px`
+          height: `${viewportHeight}px`
         }}
         onTouchMove={(e) => {
           // Only allow touchmove on the textarea

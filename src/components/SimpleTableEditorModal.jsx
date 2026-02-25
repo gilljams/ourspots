@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Plus, Check, Trash2, GripVertical, ClipboardPaste, Phone, Link, Hash, Type, MoreVertical, CheckSquare, Square, RotateCcw, ListX, ArrowDownUp, Undo2, CheckCheck } from 'lucide-react';
+import { useFullscreenModal } from '../utils/useFullscreenModal';
+import { useDragReorder } from '../utils/useDragReorder';
 
 // Column type labels
 const COL2_TYPE_LABELS = {
@@ -26,16 +28,11 @@ export function SimpleTableEditorModal({
     }))
   );
   const col2Type = initialCol2Type;
-  const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
-  const [viewportOffset, setViewportOffset] = useState(0);
-  const [draggedId, setDraggedId] = useState(null);
-  const [dragOverId, setDragOverId] = useState(null);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [showUtilsMenu, setShowUtilsMenu] = useState(false);
-  const [deletedRow, setDeletedRow] = useState(null); // { row, index } for undo
+  const [deletedRow, setDeletedRow] = useState(null);
   const undoTimerRef = useRef(null);
-  const scrollYRef = useRef(0);
   const listRef = useRef(null);
   const inputRefs = useRef({});
   const lastAddedRef = useRef(null);
@@ -43,58 +40,16 @@ export function SimpleTableEditorModal({
   
   const HEADER_HEIGHT = 52;
   
-  // Handle viewport changes (keyboard open/close)
-  useEffect(() => {
-    const viewport = window.visualViewport;
-    
-    const updateLayout = () => {
-      if (viewport) {
-        setViewportHeight(viewport.height);
-        setViewportOffset(viewport.offsetTop);
-      } else {
-        setViewportHeight(window.innerHeight);
-        setViewportOffset(0);
-      }
-    };
-    
-    if (viewport) {
-      viewport.addEventListener('resize', updateLayout);
-      viewport.addEventListener('scroll', updateLayout);
-    }
-    window.addEventListener('resize', updateLayout);
-    
-    updateLayout();
-    
-    // Lock body scroll
-    scrollYRef.current = window.scrollY;
-    const scrollY = scrollYRef.current;
-    
-    document.documentElement.style.backgroundColor = '#1e293b';
-    document.body.style.backgroundColor = '#1e293b';
-    document.body.style.position = 'fixed';
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.left = '0';
-    document.body.style.right = '0';
-    document.body.style.overflow = 'hidden';
-    
-    return () => {
-      document.documentElement.style.backgroundColor = '';
-      document.body.style.backgroundColor = '';
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.left = '';
-      document.body.style.right = '';
-      document.body.style.overflow = '';
-      window.scrollTo(0, scrollYRef.current);
-      
-      if (viewport) {
-        viewport.removeEventListener('resize', updateLayout);
-        viewport.removeEventListener('scroll', updateLayout);
-      }
-      window.removeEventListener('resize', updateLayout);
-      if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
-    };
-  }, []);
+  const { viewportHeight, viewportOffset } = useFullscreenModal({
+    headerHeight: HEADER_HEIGHT,
+    onCleanup: () => { if (undoTimerRef.current) clearTimeout(undoTimerRef.current); },
+  });
+
+  const {
+    draggedId, dragOverId, touchDragId, touchY,
+    handleDragStart, handleDragOver, handleDragLeave,
+    handleDrop, handleDragEnd, handleTouchStart,
+  } = useDragReorder({ rows, setRows, selectMode, selectedIds, listRef });
   
   // Focus newly added row and scroll it into view
   useEffect(() => {
@@ -206,24 +161,6 @@ export function SimpleTableEditorModal({
     }
   };
   
-  // Drag and drop handlers
-  const handleDragStart = (e, rowId) => {
-    setDraggedId(rowId);
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', rowId);
-  };
-  
-  const handleDragOver = (e, rowId) => {
-    e.preventDefault();
-    if (rowId !== draggedId) {
-      setDragOverId(rowId);
-    }
-  };
-  
-  const handleDragLeave = () => {
-    setDragOverId(null);
-  };
-  
   const toggleSelection = (rowId) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
@@ -235,140 +172,6 @@ export function SimpleTableEditorModal({
       return next;
     });
   };
-  
-  const handleDrop = (e, targetId) => {
-    e.preventDefault();
-    if (!draggedId || draggedId === targetId) {
-      setDraggedId(null);
-      setDragOverId(null);
-      return;
-    }
-    
-    const targetIdx = rows.findIndex(r => r.id === targetId);
-    
-    // Check if we're in select mode and have selected items
-    if (selectMode && selectedIds.size > 0 && selectedIds.has(draggedId)) {
-      // Move all selected rows to the target position
-      const selectedRows = rows.filter(r => selectedIds.has(r.id));
-      const remainingRows = rows.filter(r => !selectedIds.has(r.id));
-      
-      // Find target index in remaining rows
-      const targetRow = rows[targetIdx];
-      let insertIdx = remainingRows.findIndex(r => r.id === targetRow?.id);
-      if (insertIdx === -1) insertIdx = remainingRows.length;
-      
-      // Insert selected rows at target position
-      const newRows = [
-        ...remainingRows.slice(0, insertIdx),
-        ...selectedRows,
-        ...remainingRows.slice(insertIdx)
-      ];
-      
-      setRows(newRows);
-    } else {
-      // Single row move (original behavior)
-      const draggedIdx = rows.findIndex(r => r.id === draggedId);
-      const newRows = [...rows];
-      const [removed] = newRows.splice(draggedIdx, 1);
-      newRows.splice(targetIdx, 0, removed);
-      setRows(newRows);
-    }
-    
-    setDraggedId(null);
-    setDragOverId(null);
-  };
-  
-  const handleDragEnd = () => {
-    setDraggedId(null);
-    setDragOverId(null);
-  };
-  
-  // Touch-based reordering
-  const [touchDragId, setTouchDragId] = useState(null);
-  const [touchY, setTouchY] = useState(0);
-  const touchStartY = useRef(0);
-  const touchRowRef = useRef(null);
-  
-  const handleTouchStart = (e, rowId) => {
-    const touch = e.touches[0];
-    touchStartY.current = touch.clientY;
-    touchRowRef.current = rowId;
-  };
-  
-  const handleTouchMove = useCallback((e) => {
-    if (!touchRowRef.current) return;
-    
-    const touch = e.touches[0];
-    const deltaY = touch.clientY - touchStartY.current;
-    
-    if (Math.abs(deltaY) > 10 && !touchDragId) {
-      setTouchDragId(touchRowRef.current);
-    }
-    
-    if (touchDragId) {
-      setTouchY(deltaY);
-      
-      // Find which row we're over
-      const elements = listRef.current?.querySelectorAll('[data-row-id]');
-      elements?.forEach(el => {
-        const rect = el.getBoundingClientRect();
-        const rowId = el.dataset.rowId;
-        if (touch.clientY >= rect.top && touch.clientY <= rect.bottom && rowId !== touchDragId) {
-          setDragOverId(rowId);
-        }
-      });
-    }
-  }, [touchDragId]);
-  
-  const handleTouchEnd = useCallback(() => {
-    if (touchDragId && dragOverId) {
-      const targetIdx = rows.findIndex(r => r.id === dragOverId);
-      
-      // Check if we're in select mode and have selected items
-      if (selectMode && selectedIds.size > 0 && selectedIds.has(touchDragId)) {
-        // Move all selected rows to the target position
-        const selectedRows = rows.filter(r => selectedIds.has(r.id));
-        const remainingRows = rows.filter(r => !selectedIds.has(r.id));
-        
-        // Find target index in remaining rows
-        const targetRow = rows[targetIdx];
-        let insertIdx = remainingRows.findIndex(r => r.id === targetRow?.id);
-        if (insertIdx === -1) insertIdx = remainingRows.length;
-        
-        // Insert selected rows at target position
-        const newRows = [
-          ...remainingRows.slice(0, insertIdx),
-          ...selectedRows,
-          ...remainingRows.slice(insertIdx)
-        ];
-        
-        setRows(newRows);
-      } else {
-        // Single row move (original behavior)
-        const draggedIdx = rows.findIndex(r => r.id === touchDragId);
-        const newRows = [...rows];
-        const [removed] = newRows.splice(draggedIdx, 1);
-        newRows.splice(targetIdx, 0, removed);
-        setRows(newRows);
-      }
-    }
-    
-    setTouchDragId(null);
-    setTouchY(0);
-    setDragOverId(null);
-    touchRowRef.current = null;
-  }, [touchDragId, dragOverId, rows, selectMode, selectedIds]);
-  
-  useEffect(() => {
-    if (touchDragId) {
-      document.addEventListener('touchmove', handleTouchMove, { passive: false });
-      document.addEventListener('touchend', handleTouchEnd);
-      return () => {
-        document.removeEventListener('touchmove', handleTouchMove);
-        document.removeEventListener('touchend', handleTouchEnd);
-      };
-    }
-  }, [touchDragId, handleTouchMove, handleTouchEnd]);
   
   const handleSave = () => {
     const cleanRows = rows.map(({ id, ...rest }) => rest);
@@ -820,9 +623,6 @@ export function MultiColumnTableEditorModal({
       id: row.id || `row-${i}-${Date.now()}` 
     }))
   );
-  const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
-  const [viewportOffset, setViewportOffset] = useState(0);
-  const scrollYRef = useRef(0);
   const listRef = useRef(null);
   const inputRefs = useRef({});
   const lastAddedRef = useRef(null);
@@ -830,57 +630,9 @@ export function MultiColumnTableEditorModal({
   
   const HEADER_HEIGHT = 52;
   
-  // Handle viewport changes (keyboard open/close)
-  useEffect(() => {
-    const viewport = window.visualViewport;
-    
-    const updateLayout = () => {
-      if (viewport) {
-        setViewportHeight(viewport.height);
-        setViewportOffset(viewport.offsetTop);
-      } else {
-        setViewportHeight(window.innerHeight);
-        setViewportOffset(0);
-      }
-    };
-    
-    if (viewport) {
-      viewport.addEventListener('resize', updateLayout);
-      viewport.addEventListener('scroll', updateLayout);
-    }
-    window.addEventListener('resize', updateLayout);
-    
-    updateLayout();
-    
-    // Lock body scroll
-    scrollYRef.current = window.scrollY;
-    const scrollY = scrollYRef.current;
-    
-    document.documentElement.style.backgroundColor = '#1e293b';
-    document.body.style.backgroundColor = '#1e293b';
-    document.body.style.position = 'fixed';
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.left = '0';
-    document.body.style.right = '0';
-    document.body.style.overflow = 'hidden';
-    
-    return () => {
-      document.documentElement.style.backgroundColor = '';
-      document.body.style.backgroundColor = '';
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.left = '';
-      document.body.style.right = '';
-      document.body.style.overflow = '';
-      window.scrollTo(0, scrollYRef.current);
-      
-      if (viewport) {
-        viewport.removeEventListener('resize', updateLayout);
-        viewport.removeEventListener('scroll', updateLayout);
-      }
-      window.removeEventListener('resize', updateLayout);
-    };
-  }, []);
+  const { viewportHeight, viewportOffset } = useFullscreenModal({
+    headerHeight: HEADER_HEIGHT,
+  });
   
   // Focus newly added row
   useEffect(() => {

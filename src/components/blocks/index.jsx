@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapPin, Map as MapIcon, X, Check, RotateCcw, ExternalLink, Calendar, Maximize2, Timer, Play, Pause, RotateCw, Vote, HelpCircle, Trophy, ChevronDown, Lock, Link, Plus, Wallet, ChevronRight, User, TriangleIcon, Edit2, Car, ClipboardList, Users, Minus, Copy, MessageCircle, Phone, Target, Images, Star } from 'lucide-react';
+import { MapPin, Map as MapIcon, X, Check, RotateCcw, ExternalLink, Calendar, Maximize2, Timer, Play, Pause, RotateCw, Vote, HelpCircle, Trophy, ChevronDown, Lock, Link, Plus, Wallet, ChevronRight, User, Edit2, Car, ClipboardList, Users, Copy, MessageCircle, Phone, Target, Images, Star } from 'lucide-react';
 import { getTransformedImageUrl, getFocalPointStyles } from '../../utils/imageUtils';
 import { getIconComponent } from '../../utils/iconHelpers';
 import ImageLightbox from '../ImageLightbox';

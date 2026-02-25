@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Plus, Edit2, Trash2, Settings, ChevronDown, ChevronUp,
-  Share2, Users, UserMinus, Home, List, LayoutGrid, FileText, Copy, BarChart3, ClipboardList, Link2, X, Search, Check, ExternalLink, Map as MapIcon, Calendar
+  Share2, Users, UserMinus, Home, List, LayoutGrid, Copy, ClipboardList, Link2, X, Search, ExternalLink, Map as MapIcon, Calendar
 } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -18,6 +18,7 @@ import { SimpleTableEditorModal, MultiColumnTableEditorModal } from './SimpleTab
 import { TABLE_TEMPLATES } from './blocks';
 import PlannerModal from './PlannerModal';
 import CollectionMapView from './map/CollectionMapView';
+import { STORAGE_KEYS } from '../utils/storageKeys';
 
 // Folder icon - we'll define it locally since it's only used here
 const Folder = ({ size = 24, ...props }) => (
@@ -27,7 +28,7 @@ const Folder = ({ size = 24, ...props }) => (
 );
 
 // Helper to get/set pending locations from localStorage
-const PENDING_LOCATIONS_KEY = 'ourspots_pending_locations';
+const PENDING_LOCATIONS_KEY = STORAGE_KEYS.PENDING_LOCATIONS;
 
 function getPendingLocations(objectId) {
   try {
@@ -66,7 +67,7 @@ function clearPendingLocations(objectId) {
   }
 }
 
-function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockUpdate, currentUser, userDisplayName, userLocation, showQuickCapture, allObjects, onNavigate, onGoBack, previousObject, categories, isAdmin, onShowOnMap, onShare, onLeaveShare, collections, onAddToCollection, onRemoveFromCollection, onUpdateLinkedNote, onAddLinkedUrl, onUpdateLinkedUrl, onRemoveLinkedUrl, onReorderLinked, preciseGPS = true, openPlannerOnReturn, onClearPlannerReturn }) {
+function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockUpdate, currentUser, userDisplayName, userLocation, showQuickCapture, allObjects, onNavigate, onGoBack, previousObject, categories, isAdmin, onShowOnMap, onShare, onLeaveShare, collections, onAddToCollection, onRemoveFromCollection, onUpdateLinkedNote, onAddLinkedUrl, onUpdateLinkedUrl, onRemoveLinkedUrl, onReorderLinked, preciseGPS = true, openPlannerOnReturn, onClearPlannerReturn, setToast }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showManageSection, setShowManageSection] = useState(false);
   const [showCollectionPicker, setShowCollectionPicker] = useState(false);
@@ -82,7 +83,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
   const [newUrlNote, setNewUrlNote] = useState('');
   const [editingUrlId, setEditingUrlId] = useState(null);
   const [childViewMode, setChildViewMode] = useState(() => {
-    return localStorage.getItem('ourspots-child-view-mode') || 'grid';
+    return localStorage.getItem(STORAGE_KEYS.CHILD_VIEW_MODE) || 'grid';
   });
   const [leaderboardModalData, setLeaderboardModalData] = useState(null); // { blockIndex, data }
   const [textEditModalData, setTextEditModalData] = useState(null); // { blockIndex, content, title }
@@ -133,7 +134,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
         setPendingLocations([]);
         
         if (pending.length > 0) {
-          alert(`${pending.length} sparade platser synkade!`);
+          setToast?.({ message: `${pending.length} sparade platser synkade!`, type: 'success' });
         }
       } catch (err) {
         console.error('Failed to sync pending locations:', err);
@@ -148,7 +149,22 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
   const toggleChildViewMode = () => {
     const newMode = childViewMode === 'grid' ? 'list' : 'grid';
     setChildViewMode(newMode);
-    localStorage.setItem('ourspots-child-view-mode', newMode);
+    localStorage.setItem(STORAGE_KEYS.CHILD_VIEW_MODE, newMode);
+  };
+  
+  // Helper: update a single block's data in Firestore
+  // For simple merges:  updateBlockField(idx, { votes: newVotes })
+  // For transforms:     updateBlockField(idx, (data) => ({ ...data, options: [...data.options, newOpt] }))
+  const updateBlockField = async (blockIndex, changes) => {
+    try {
+      const updatedBlocks = [...object.blocks];
+      const currentData = updatedBlocks[blockIndex].data;
+      const newData = typeof changes === 'function' ? changes(currentData) : { ...currentData, ...changes };
+      updatedBlocks[blockIndex] = { ...updatedBlocks[blockIndex], data: newData };
+      await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
+    } catch (err) {
+      console.error('Error updating block:', err);
+    }
   };
   
   // Swipe to close state
@@ -695,25 +711,15 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                     });
                   } catch (err) {
                     console.error('Error deleting block:', err);
-                    alert('Kunde inte ta bort position');
+                    setToast?.({ message: 'Kunde inte ta bort position', type: 'error' });
                   }
                 };
                 
                 const handleEditNote = block.type === 'location' && canEdit && !block.inherited ? () => {
                   const currentNote = block.data?.note || '';
                   const newNote = window.prompt('Anteckning för denna position:', currentNote);
-                  if (newNote === null) return; // User cancelled
-                  
-                  const updatedBlocks = [...object.blocks];
-                  updatedBlocks[actualBlockIndex] = {
-                    ...updatedBlocks[actualBlockIndex],
-                    data: { ...updatedBlocks[actualBlockIndex].data, note: newNote }
-                  };
-                  updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks })
-                    .catch(err => {
-                      console.error('Error updating note:', err);
-                      alert('Kunde inte spara anteckning');
-                    });
+                  if (newNote === null) return;
+                  updateBlockField(actualBlockIndex, { note: newNote });
                 } : undefined;
                 
                 return BlockComponent ? (
@@ -753,155 +759,56 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                           objectOwner={{ uid: object.ownerId, email: object.ownerEmail, displayName: object.ownerName }}
                           canEdit={canEdit}
                           onVote={block.type === 'poll' ? async (newVotes) => {
-                            try {
-                              const updatedBlocks = [...object.blocks];
-                              updatedBlocks[actualBlockIndex] = {
-                                ...updatedBlocks[actualBlockIndex],
-                                data: { ...updatedBlocks[actualBlockIndex].data, votes: newVotes }
-                              };
-                              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
-                            } catch (err) {
-                              console.error('Error saving vote:', err);
-                            }
+                            await updateBlockField(actualBlockIndex, { votes: newVotes });
                           } : undefined}
                           onRate={block.type === 'rating' ? async (newRatings) => {
-                            try {
-                              const updatedBlocks = [...object.blocks];
-                              updatedBlocks[actualBlockIndex] = {
-                                ...updatedBlocks[actualBlockIndex],
-                                data: { ...updatedBlocks[actualBlockIndex].data, ratings: newRatings }
-                              };
-                              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
-                            } catch (err) {
-                              console.error('Error saving rating:', err);
-                            }
+                            await updateBlockField(actualBlockIndex, { ratings: newRatings });
                           } : undefined}
                           onClosePoll={block.type === 'poll' && canEdit ? async () => {
-                            try {
-                              const updatedBlocks = [...object.blocks];
-                              updatedBlocks[actualBlockIndex] = {
-                                ...updatedBlocks[actualBlockIndex],
-                                data: { ...updatedBlocks[actualBlockIndex].data, closed: true }
-                              };
-                              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
-                            } catch (err) {
-                              console.error('Error closing poll:', err);
-                            }
+                            await updateBlockField(actualBlockIndex, { closed: true });
                           } : undefined}
                           onResetPoll={block.type === 'poll' && canEdit ? async () => {
-                            try {
-                              const updatedBlocks = [...object.blocks];
-                              updatedBlocks[actualBlockIndex] = {
-                                ...updatedBlocks[actualBlockIndex],
-                                data: { ...updatedBlocks[actualBlockIndex].data, votes: {} }
-                              };
-                              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
-                            } catch (err) {
-                              console.error('Error resetting poll:', err);
-                            }
+                            await updateBlockField(actualBlockIndex, { votes: {} });
                           } : undefined}
                           onAddOption={block.type === 'poll' && block.data?.allowSuggestions ? async (label, addedBy, url) => {
-                            try {
-                              const updatedBlocks = [...object.blocks];
-                              const currentOptions = updatedBlocks[actualBlockIndex].data.options || [];
-                              const newOption = {
-                                id: Date.now().toString(),
-                                label,
-                                addedBy,
-                                ...(url && { url }) // Only add url if provided
-                              };
-                              updatedBlocks[actualBlockIndex] = {
-                                ...updatedBlocks[actualBlockIndex],
-                                data: { 
-                                  ...updatedBlocks[actualBlockIndex].data, 
-                                  options: [...currentOptions, newOption] 
-                                }
-                              };
-                              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
-                            } catch (err) {
-                              console.error('Error adding option:', err);
-                            }
+                            await updateBlockField(actualBlockIndex, (data) => ({
+                              ...data,
+                              options: [...(data.options || []), {
+                                id: Date.now().toString(), label, addedBy,
+                                ...(url && { url })
+                              }]
+                            }));
                           } : undefined}
                           onRemoveOption={block.type === 'poll' && block.data?.allowSuggestions ? async (optionId) => {
-                            try {
-                              const updatedBlocks = [...object.blocks];
-                              const currentOptions = updatedBlocks[actualBlockIndex].data.options || [];
-                              // Only allow removing if user added this option (use effectiveUser for demo identity)
-                              const userKey = effectiveUser?.email ? effectiveUser.email.replace(/\./g, '_DOT_') : null;
-                              const optionToRemove = currentOptions.find(o => o.id === optionId);
-                              if (!optionToRemove || optionToRemove.addedBy !== userKey) {
-                                console.error('Cannot remove option: not owner');
-                                return;
-                              }
-                              updatedBlocks[actualBlockIndex] = {
-                                ...updatedBlocks[actualBlockIndex],
-                                data: { 
-                                  ...updatedBlocks[actualBlockIndex].data, 
-                                  options: currentOptions.filter(o => o.id !== optionId)
-                                }
-                              };
-                              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
-                            } catch (err) {
-                              console.error('Error removing option:', err);
-                            }
+                            const userKey = effectiveUser?.email ? effectiveUser.email.replace(/\./g, '_DOT_') : null;
+                            const optionToRemove = (block.data.options || []).find(o => o.id === optionId);
+                            if (!optionToRemove || optionToRemove.addedBy !== userKey) return;
+                            await updateBlockField(actualBlockIndex, (data) => ({
+                              ...data,
+                              options: (data.options || []).filter(o => o.id !== optionId)
+                            }));
                           } : undefined}
                           // Split-specific props
                           onUpdateAmount={block.type === 'split' ? async (participantEmail, amount) => {
-                            try {
-                              const updatedBlocks = [...object.blocks];
-                              const currentParticipants = updatedBlocks[actualBlockIndex].data.participants || [];
-                              // Only allow updating own amount (use effectiveUser for demo identity)
-                              const userEmail = effectiveUser?.email?.toLowerCase();
-                              if (participantEmail.toLowerCase() !== userEmail) {
-                                console.error('Cannot update amount: not own participant');
-                                return;
-                              }
-                              const updatedParticipants = currentParticipants.map(p => 
+                            const userEmail = effectiveUser?.email?.toLowerCase();
+                            if (participantEmail.toLowerCase() !== userEmail) return;
+                            await updateBlockField(actualBlockIndex, (data) => ({
+                              ...data,
+                              participants: (data.participants || []).map(p =>
                                 p.email?.toLowerCase() === participantEmail.toLowerCase()
-                                  ? { ...p, paid: amount }
-                                  : p
-                              );
-                              updatedBlocks[actualBlockIndex] = {
-                                ...updatedBlocks[actualBlockIndex],
-                                data: { 
-                                  ...updatedBlocks[actualBlockIndex].data, 
-                                  participants: updatedParticipants 
-                                }
-                              };
-                              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
-                            } catch (err) {
-                              console.error('Error updating amount:', err);
-                            }
+                                  ? { ...p, paid: amount } : p
+                              )
+                            }));
                           } : undefined}
                           onCloseSplit={block.type === 'split' && canEdit ? async () => {
-                            try {
-                              const updatedBlocks = [...object.blocks];
-                              updatedBlocks[actualBlockIndex] = {
-                                ...updatedBlocks[actualBlockIndex],
-                                data: { ...updatedBlocks[actualBlockIndex].data, closed: true }
-                              };
-                              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
-                            } catch (err) {
-                              console.error('Error closing split:', err);
-                            }
+                            await updateBlockField(actualBlockIndex, { closed: true });
                           } : undefined}
                           onResetSplit={block.type === 'split' && canEdit ? async () => {
-                            try {
-                              const updatedBlocks = [...object.blocks];
-                              const currentParticipants = updatedBlocks[actualBlockIndex].data.participants || [];
-                              const resetParticipants = currentParticipants.map(p => ({ ...p, paid: 0 }));
-                              updatedBlocks[actualBlockIndex] = {
-                                ...updatedBlocks[actualBlockIndex],
-                                data: { 
-                                  ...updatedBlocks[actualBlockIndex].data, 
-                                  participants: resetParticipants,
-                                  closed: false 
-                                }
-                              };
-                              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
-                            } catch (err) {
-                              console.error('Error resetting split:', err);
-                            }
+                            await updateBlockField(actualBlockIndex, (data) => ({
+                              ...data,
+                              participants: (data.participants || []).map(p => ({ ...p, paid: 0 })),
+                              closed: false
+                            }));
                           } : undefined}
                           // Leaderboard-specific props
                           onOpenModal={block.type === 'leaderboard' ? () => {
@@ -910,61 +817,17 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                             setDistributionModalData({ blockIndex: actualBlockIndex, data: block.data });
                           } : undefined}
                           onCloseLeaderboard={block.type === 'leaderboard' && canEdit ? async () => {
-                            try {
-                              const updatedBlocks = [...object.blocks];
-                              updatedBlocks[actualBlockIndex] = {
-                                ...updatedBlocks[actualBlockIndex],
-                                data: { ...updatedBlocks[actualBlockIndex].data, status: 'finished' }
-                              };
-                              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
-                            } catch (err) {
-                              console.error('Error closing leaderboard:', err);
-                            }
+                            await updateBlockField(actualBlockIndex, { status: 'finished' });
                           } : undefined}
                           onResetLeaderboard={block.type === 'leaderboard' && canEdit ? async () => {
-                            try {
-                              const updatedBlocks = [...object.blocks];
-                              updatedBlocks[actualBlockIndex] = {
-                                ...updatedBlocks[actualBlockIndex],
-                                data: { 
-                                  ...updatedBlocks[actualBlockIndex].data, 
-                                  scores: {}, 
-                                  roundCount: 0,
-                                  status: 'active'
-                                }
-                              };
-                              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
-                            } catch (err) {
-                              console.error('Error resetting leaderboard:', err);
-                            }
+                            await updateBlockField(actualBlockIndex, { scores: {}, roundCount: 0, status: 'active' });
                           } : undefined}
                           onResetDistribution={block.type === 'distribution' && canEdit ? async () => {
-                            try {
-                              const updatedBlocks = [...object.blocks];
-                              updatedBlocks[actualBlockIndex] = {
-                                ...updatedBlocks[actualBlockIndex],
-                                data: { 
-                                  ...updatedBlocks[actualBlockIndex].data, 
-                                  slots: [] 
-                                }
-                              };
-                              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
-                            } catch (err) {
-                              console.error('Error resetting distribution:', err);
-                            }
+                            await updateBlockField(actualBlockIndex, { slots: [] });
                           } : undefined}
                           // Tiebreaker-specific update callback
                           onUpdateTiebreaker={block.type === 'tiebreaker' ? async (newData) => {
-                            try {
-                              const updatedBlocks = [...object.blocks];
-                              updatedBlocks[actualBlockIndex] = {
-                                ...updatedBlocks[actualBlockIndex],
-                                data: { ...updatedBlocks[actualBlockIndex].data, ...newData }
-                              };
-                              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
-                            } catch (err) {
-                              console.error('Error updating tiebreaker:', err);
-                            }
+                            await updateBlockField(actualBlockIndex, newData);
                           } : undefined}
                           // Text block inline edit - for owners/editors OR when viewerEditable
                           onEditContent={(block.type === 'text' && (canEdit || block.data.viewerEditable)) ? () => {
@@ -1947,172 +1810,52 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
           canEdit={canEdit}
           onClose={() => setLeaderboardModalData(null)}
           onUpdateScores={async (newScores) => {
-            try {
-              const updatedBlocks = [...object.blocks];
-              updatedBlocks[leaderboardModalData.blockIndex] = {
-                ...updatedBlocks[leaderboardModalData.blockIndex],
-                data: { 
-                  ...updatedBlocks[leaderboardModalData.blockIndex].data, 
-                  scores: newScores 
-                }
-              };
-              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
-              // Update local state to reflect change
-              setLeaderboardModalData(prev => ({
-                ...prev,
-                data: { ...prev.data, scores: newScores }
-              }));
-            } catch (err) {
-              console.error('Error updating scores:', err);
-            }
+            await updateBlockField(leaderboardModalData.blockIndex, { scores: newScores });
+            setLeaderboardModalData(prev => ({ ...prev, data: { ...prev.data, scores: newScores } }));
           }}
           onAddRound={async () => {
-            try {
-              const updatedBlocks = [...object.blocks];
-              const currentRoundCount = updatedBlocks[leaderboardModalData.blockIndex].data.roundCount || 0;
-              updatedBlocks[leaderboardModalData.blockIndex] = {
-                ...updatedBlocks[leaderboardModalData.blockIndex],
-                data: { 
-                  ...updatedBlocks[leaderboardModalData.blockIndex].data, 
-                  roundCount: currentRoundCount + 1 
-                }
-              };
-              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
-              // Update local state
-              setLeaderboardModalData(prev => ({
-                ...prev,
-                data: { ...prev.data, roundCount: currentRoundCount + 1 }
-              }));
-            } catch (err) {
-              console.error('Error adding round:', err);
-            }
+            const newCount = (object.blocks[leaderboardModalData.blockIndex].data.roundCount || 0) + 1;
+            await updateBlockField(leaderboardModalData.blockIndex, { roundCount: newCount });
+            setLeaderboardModalData(prev => ({ ...prev, data: { ...prev.data, roundCount: newCount } }));
           }}
           onDeleteRound={async (roundIndex) => {
-            try {
-              const updatedBlocks = [...object.blocks];
-              const blockData = updatedBlocks[leaderboardModalData.blockIndex].data;
-              const currentRoundCount = blockData.roundCount || 0;
-              
-              if (currentRoundCount <= 0) return;
-              
-              // Remove scores for this round and shift subsequent rounds
-              const newScores = { ...blockData.scores };
-              Object.keys(newScores).forEach(email => {
-                const participantScores = { ...newScores[email] };
-                // Shift scores after deleted round
-                for (let i = roundIndex; i < currentRoundCount - 1; i++) {
-                  participantScores[i] = participantScores[i + 1] || 0;
-                }
-                delete participantScores[currentRoundCount - 1];
-                newScores[email] = participantScores;
-              });
-              
-              // Also handle shots (for longest drive)
-              const newShots = { ...blockData.shots };
-              Object.keys(newShots).forEach(email => {
-                const participantShots = { ...newShots[email] };
-                for (let i = roundIndex; i < currentRoundCount - 1; i++) {
-                  participantShots[i] = participantShots[i + 1];
-                }
-                delete participantShots[currentRoundCount - 1];
-                newShots[email] = participantShots;
-              });
-              
-              // Also handle rounds metadata
-              const newRounds = [...(blockData.rounds || [])];
-              newRounds.splice(roundIndex, 1);
-              
-              updatedBlocks[leaderboardModalData.blockIndex] = {
-                ...updatedBlocks[leaderboardModalData.blockIndex],
-                data: { 
-                  ...blockData, 
-                  roundCount: currentRoundCount - 1,
-                  scores: newScores,
-                  shots: newShots,
-                  rounds: newRounds
-                }
-              };
-              
-              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
-              // Update local state
-              setLeaderboardModalData(prev => ({
-                ...prev,
-                data: { 
-                  ...prev.data, 
-                  roundCount: currentRoundCount - 1,
-                  scores: newScores,
-                  shots: newShots,
-                  rounds: newRounds
-                }
-              }));
-            } catch (err) {
-              console.error('Error deleting round:', err);
-            }
+            const blockData = object.blocks[leaderboardModalData.blockIndex].data;
+            const currentRoundCount = blockData.roundCount || 0;
+            if (currentRoundCount <= 0) return;
+            
+            // Remove scores for this round and shift subsequent rounds
+            const newScores = { ...blockData.scores };
+            Object.keys(newScores).forEach(email => {
+              const ps = { ...newScores[email] };
+              for (let i = roundIndex; i < currentRoundCount - 1; i++) ps[i] = ps[i + 1] || 0;
+              delete ps[currentRoundCount - 1];
+              newScores[email] = ps;
+            });
+            const newShots = { ...blockData.shots };
+            Object.keys(newShots).forEach(email => {
+              const ps = { ...newShots[email] };
+              for (let i = roundIndex; i < currentRoundCount - 1; i++) ps[i] = ps[i + 1];
+              delete ps[currentRoundCount - 1];
+              newShots[email] = ps;
+            });
+            const newRounds = [...(blockData.rounds || [])];
+            newRounds.splice(roundIndex, 1);
+            
+            const changes = { roundCount: currentRoundCount - 1, scores: newScores, shots: newShots, rounds: newRounds };
+            await updateBlockField(leaderboardModalData.blockIndex, changes);
+            setLeaderboardModalData(prev => ({ ...prev, data: { ...prev.data, ...changes } }));
           }}
           onToggleStatus={async (newStatus) => {
-            try {
-              const updatedBlocks = [...object.blocks];
-              updatedBlocks[leaderboardModalData.blockIndex] = {
-                ...updatedBlocks[leaderboardModalData.blockIndex],
-                data: { 
-                  ...updatedBlocks[leaderboardModalData.blockIndex].data, 
-                  status: newStatus 
-                }
-              };
-              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
-              // Update local state
-              setLeaderboardModalData(prev => ({
-                ...prev,
-                data: { ...prev.data, status: newStatus }
-              }));
-            } catch (err) {
-              console.error('Error toggling status:', err);
-            }
+            await updateBlockField(leaderboardModalData.blockIndex, { status: newStatus });
+            setLeaderboardModalData(prev => ({ ...prev, data: { ...prev.data, status: newStatus } }));
           }}
           onUpdateShots={async (newShots) => {
-            console.log('[ObjectDetail] onUpdateShots called with:', newShots);
-            try {
-              const updatedBlocks = [...object.blocks];
-              updatedBlocks[leaderboardModalData.blockIndex] = {
-                ...updatedBlocks[leaderboardModalData.blockIndex],
-                data: { 
-                  ...updatedBlocks[leaderboardModalData.blockIndex].data, 
-                  shots: newShots 
-                }
-              };
-              console.log('[ObjectDetail] Updating Firestore...');
-              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
-              console.log('[ObjectDetail] Firestore updated, updating local state...');
-              // Update local state
-              setLeaderboardModalData(prev => ({
-                ...prev,
-                data: { ...prev.data, shots: newShots }
-              }));
-              console.log('[ObjectDetail] onUpdateShots complete');
-            } catch (err) {
-              console.error('Error updating shots:', err);
-              alert('Fel vid sparande: ' + err.message);
-            }
+            await updateBlockField(leaderboardModalData.blockIndex, { shots: newShots });
+            setLeaderboardModalData(prev => ({ ...prev, data: { ...prev.data, shots: newShots } }));
           }}
           onUpdateRounds={async (newRounds) => {
-            try {
-              const updatedBlocks = [...object.blocks];
-              updatedBlocks[leaderboardModalData.blockIndex] = {
-                ...updatedBlocks[leaderboardModalData.blockIndex],
-                data: { 
-                  ...updatedBlocks[leaderboardModalData.blockIndex].data, 
-                  rounds: newRounds 
-                }
-              };
-              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
-              // Update local state
-              setLeaderboardModalData(prev => ({
-                ...prev,
-                data: { ...prev.data, rounds: newRounds }
-              }));
-            } catch (err) {
-              console.error('Error updating rounds:', err);
-            }
+            await updateBlockField(leaderboardModalData.blockIndex, { rounds: newRounds });
+            setLeaderboardModalData(prev => ({ ...prev, data: { ...prev.data, rounds: newRounds } }));
           }}
           preciseGPS={preciseGPS}
         />
@@ -2131,7 +1874,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
               setTextEditModalData(null);
             } catch (err) {
               console.error('Error saving text content:', err);
-              alert('Kunde inte spara texten');
+              setToast?.({ message: 'Kunde inte spara texten', type: 'error' });
             }
           }}
           onCancel={() => setTextEditModalData(null)}
@@ -2158,7 +1901,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
               setTableEditModalData(null);
             } catch (err) {
               console.error('Error saving list content:', err);
-              alert('Kunde inte spara listan');
+              setToast?.({ message: 'Kunde inte spara listan', type: 'error' });
             }
           }}
           onCancel={() => setTableEditModalData(null)}
@@ -2181,7 +1924,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
               setTableEditModalData(null);
             } catch (err) {
               console.error('Error saving table content:', err);
-              alert('Kunde inte spara tabellen');
+              setToast?.({ message: 'Kunde inte spara tabellen', type: 'error' });
             }
           }}
           onCancel={() => setTableEditModalData(null)}
@@ -2206,7 +1949,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
               setTableEditModalData(null);
             } catch (err) {
               console.error('Error saving table content:', err);
-              alert('Kunde inte spara tabellen');
+              setToast?.({ message: 'Kunde inte spara tabellen', type: 'error' });
             }
           }}
           onCancel={() => setTableEditModalData(null)}
@@ -2220,111 +1963,55 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
           canEdit={canEdit}
           onClose={() => setDistributionModalData(null)}
           onCreateSlot={async (newSlot, leaveSlotId) => {
-            try {
-              const updatedBlocks = [...object.blocks];
-              let currentSlots = updatedBlocks[distributionModalData.blockIndex].data.slots || [];
-              
-              // If user needs to leave another slot first, remove them
+            const idx = distributionModalData.blockIndex;
+            await updateBlockField(idx, (data) => {
+              let currentSlots = data.slots || [];
               if (leaveSlotId) {
                 const currentUserKey = effectiveUser?.email?.replace(/\./g, '_DOT_');
-                currentSlots = currentSlots.map(slot => {
-                  if (slot.id === leaveSlotId) {
-                    return { ...slot, assignees: (slot.assignees || []).filter(key => key !== currentUserKey) };
-                  }
-                  return slot;
-                });
+                currentSlots = currentSlots.map(slot =>
+                  slot.id === leaveSlotId
+                    ? { ...slot, assignees: (slot.assignees || []).filter(key => key !== currentUserKey) }
+                    : slot
+                );
               }
-              
-              updatedBlocks[distributionModalData.blockIndex] = {
-                ...updatedBlocks[distributionModalData.blockIndex],
-                data: { 
-                  ...updatedBlocks[distributionModalData.blockIndex].data, 
-                  slots: [...currentSlots, newSlot]
-                }
-              };
-              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
-            } catch (err) {
-              console.error('Error creating slot:', err);
-              alert('Kunde inte skapa');
-            }
+              return { ...data, slots: [...currentSlots, newSlot] };
+            });
           }}
           onJoinSlot={async (slotId, userKey, extraSeats = 0, extraSeatsNote = null) => {
-            try {
-              const updatedBlocks = [...object.blocks];
-              const currentSlots = updatedBlocks[distributionModalData.blockIndex].data.slots || [];
-              const updatedSlots = currentSlots.map(slot => {
-                if (slot.id === slotId) {
-                  const assignees = slot.assignees || [];
-                  if (!assignees.includes(userKey)) {
-                    // Add to assignees
-                    const newAssignees = [...assignees, userKey];
-                    // Store extra seats info if provided
-                    const assigneeDetails = { ...(slot.assigneeDetails || {}) };
-                    if (extraSeats > 0 || extraSeatsNote) {
-                      assigneeDetails[userKey] = { extraSeats, note: extraSeatsNote };
-                    }
-                    return { ...slot, assignees: newAssignees, assigneeDetails };
+            const idx = distributionModalData.blockIndex;
+            await updateBlockField(idx, (data) => {
+              const updatedSlots = (data.slots || []).map(slot => {
+                if (slot.id === slotId && !(slot.assignees || []).includes(userKey)) {
+                  const assigneeDetails = { ...(slot.assigneeDetails || {}) };
+                  if (extraSeats > 0 || extraSeatsNote) {
+                    assigneeDetails[userKey] = { extraSeats, note: extraSeatsNote };
                   }
+                  return { ...slot, assignees: [...(slot.assignees || []), userKey], assigneeDetails };
                 }
                 return slot;
               });
-              updatedBlocks[distributionModalData.blockIndex] = {
-                ...updatedBlocks[distributionModalData.blockIndex],
-                data: { 
-                  ...updatedBlocks[distributionModalData.blockIndex].data, 
-                  slots: updatedSlots
-                }
-              };
-              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
-            } catch (err) {
-              console.error('Error joining slot:', err);
-              alert('Kunde inte gå med');
-            }
+              return { ...data, slots: updatedSlots };
+            });
           }}
           onLeaveSlot={async (slotId, userKey) => {
-            try {
-              const updatedBlocks = [...object.blocks];
-              const currentSlots = updatedBlocks[distributionModalData.blockIndex].data.slots || [];
-              const updatedSlots = currentSlots.map(slot => {
+            const idx = distributionModalData.blockIndex;
+            await updateBlockField(idx, (data) => {
+              const updatedSlots = (data.slots || []).map(slot => {
                 if (slot.id === slotId) {
-                  const assignees = (slot.assignees || []).filter(key => key !== userKey);
-                  // Remove from assigneeDetails too
                   const assigneeDetails = { ...(slot.assigneeDetails || {}) };
                   delete assigneeDetails[userKey];
-                  return { ...slot, assignees, assigneeDetails };
+                  return { ...slot, assignees: (slot.assignees || []).filter(key => key !== userKey), assigneeDetails };
                 }
                 return slot;
               });
-              updatedBlocks[distributionModalData.blockIndex] = {
-                ...updatedBlocks[distributionModalData.blockIndex],
-                data: { 
-                  ...updatedBlocks[distributionModalData.blockIndex].data, 
-                  slots: updatedSlots
-                }
-              };
-              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
-            } catch (err) {
-              console.error('Error leaving slot:', err);
-              alert('Kunde inte lämna');
-            }
+              return { ...data, slots: updatedSlots };
+            });
           }}
           onDeleteSlot={async (slotId) => {
-            try {
-              const updatedBlocks = [...object.blocks];
-              const currentSlots = updatedBlocks[distributionModalData.blockIndex].data.slots || [];
-              const updatedSlots = currentSlots.filter(slot => slot.id !== slotId);
-              updatedBlocks[distributionModalData.blockIndex] = {
-                ...updatedBlocks[distributionModalData.blockIndex],
-                data: { 
-                  ...updatedBlocks[distributionModalData.blockIndex].data, 
-                  slots: updatedSlots
-                }
-              };
-              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
-            } catch (err) {
-              console.error('Error deleting slot:', err);
-              alert('Kunde inte ta bort');
-            }
+            const idx = distributionModalData.blockIndex;
+            await updateBlockField(idx, (data) => ({
+              ...data, slots: (data.slots || []).filter(slot => slot.id !== slotId)
+            }));
           }}
         />
       )}
@@ -2427,13 +2114,13 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                     await updateDoc(doc(db, 'objects', object.id), {
                       blocks: updatedBlocks
                     });
-                    alert(`Plats #${ownLocationBlocks.length + pendingLocations.length + 1} tillagd!`);
+                    setToast?.({ message: `Plats #${ownLocationBlocks.length + pendingLocations.length + 1} tillagd!`, type: 'success' });
                   } catch (err) {
                     console.error('Error adding location, saving locally:', err);
                     // Fallback: Save to localStorage for later sync
                     const newPending = savePendingLocation(object.id, coords);
                     setPendingLocations(newPending);
-                    alert(`Plats #${ownLocationBlocks.length + newPending.length} sparad lokalt (synkas när nät finns)`);
+                    setToast?.({ message: `Plats #${ownLocationBlocks.length + newPending.length} sparad lokalt (synkas när nät finns)`, type: 'info' });
                   }
                 } : undefined}
                 onSelectObject={() => {
@@ -2469,7 +2156,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
               });
             } catch (err) {
               console.error('Error saving planning data:', err);
-              alert('Kunde inte spara planeringen');
+              setToast?.({ message: 'Kunde inte spara planeringen', type: 'error' });
             }
           }}
           onDelete={async () => {
@@ -2479,7 +2166,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
               });
             } catch (err) {
               console.error('Error deleting planning data:', err);
-              alert('Kunde inte ta bort planeringen');
+              setToast?.({ message: 'Kunde inte ta bort planeringen', type: 'error' });
             }
           }}
         />

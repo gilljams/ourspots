@@ -1,34 +1,26 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, Suspense, lazy } from 'react';
 import { 
-  X, Plus, Image, Edit2, Trash2, 
-  Loader, LogOut, LogIn, Check, Circle, Upload, 
-  Map as MapIcon, List, ChevronDown, ArrowUp, ArrowDown, ArrowLeft, Search, Settings,
-  Target, Lightbulb, SlidersHorizontal, Menu, Filter, Share2, UserPlus, UserMinus, Users, Mail, User,
-  FileText, MapPin, Home, RotateCcw, Star, Navigation, Eye, Edit3, AlertTriangle, Trophy,
+  X, Plus, Image, Trash2, 
+  Loader, LogOut, LogIn, Check, Circle, 
+  Map as MapIcon, List, ChevronDown, ArrowLeft, Search, Settings,
+  Target, Lightbulb, SlidersHorizontal, Menu, Filter, Share2, Users, Mail, User,
+  MapPin, Home, Star, Navigation, Eye, Edit3, AlertTriangle,
   LayoutGrid, LayoutList, ArrowUpDown, Sparkles, Swords
 } from 'lucide-react';
 
-// Version for cache-busting visual indicator (remove in production)
-// const APP_VERSION = 'v9';
-
 // Utils
 import { 
-  CLOUDINARY_CLOUD_NAME, 
-  CLOUDINARY_UPLOAD_PRESET, 
   getTransformedImageUrl, 
-  getFocalPointStyles, 
-  resizeImage, 
-  extractGPSFromImage 
+  getFocalPointStyles 
 } from './utils/imageUtils';
-import { getDistance, getObjectDistance as getObjectDistanceUtil, formatDistance } from './utils/geoUtils';
+import { getObjectDistance as getObjectDistanceUtil } from './utils/geoUtils';
 
-import { iconMap, getIconComponent, PREDEFINED_ICONS, AVAILABLE_ICONS, emailToKey, keyToEmail } from './utils/iconHelpers';
+import { getIconComponent, PREDEFINED_ICONS, emailToKey } from './utils/iconHelpers';
+import { STORAGE_KEYS } from './utils/storageKeys';
+import { usePersistedState } from './utils/usePersistedState';
 
 // Components
-import { 
-  TitleBlock, LocationBlock, ImageBlock, TextBlock, 
-  LinksBlock, TableBlock, blockComponents, renderMarkdown 
-} from './components/blocks';
+import { blockComponents } from './components/blocks';
 import ObjectCard from './components/ObjectCard';
 import MapPicker from './components/MapPicker';
 import MapView from './components/MapView';
@@ -83,15 +75,9 @@ function App() {
   const [selectedObject, setSelectedObject] = useState(null);
   const [navigationHistory, setNavigationHistory] = useState([]); // Stack of previously viewed objects
   const [openPlannerOnReturn, setOpenPlannerOnReturn] = useState(false); // Flag to open planner when returning
-  const [activeCategory, setActiveCategory] = useState(() => {
-    const saved = localStorage.getItem('activeCategory');
-    return saved || 'all';
-  });
+  const [activeCategory, setActiveCategory] = usePersistedState(STORAGE_KEYS.ACTIVE_CATEGORY, 'all', { type: 'string' });
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false); // Don't persist - avoids flash of empty list on reload
-  const [showOnlyOwned, setShowOnlyOwned] = useState(() => {
-    const saved = localStorage.getItem('showOnlyOwned');
-    return saved === 'true';
-  });
+  const [showOnlyOwned, setShowOnlyOwned] = usePersistedState(STORAGE_KEYS.SHOW_ONLY_OWNED, false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingObject, setEditingObject] = useState(null);
   const [duplicatingObject, setDuplicatingObject] = useState(null);
@@ -102,20 +88,14 @@ function App() {
   const [liveUserLocation, setLiveUserLocation] = useState(null);
   const [isGlobalTracking, setIsGlobalTracking] = useState(false);
   const [showShareModal, setShowShareModal] = useState(null); // Object to share
-  const [sortByDistance, setSortByDistance] = useState(() => {
-    const saved = localStorage.getItem('sortByDistance');
-    return saved === 'true';
-  });
+  const [sortByDistance, setSortByDistance] = usePersistedState(STORAGE_KEYS.SORT_BY_DISTANCE, false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchExpanded, setSearchExpanded] = useState(false);
   const searchInputRef = useRef(null);
   const [maxDistanceKm, setMaxDistanceKm] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
   const [viewFilter, setViewFilter] = useState('all'); // 'all' | 'collections' | 'objects'
-  const [compactCards, setCompactCards] = useState(() => {
-    const saved = localStorage.getItem('compactCards');
-    return saved === 'true';
-  });
+  const [compactCards, setCompactCards] = usePersistedState(STORAGE_KEYS.COMPACT_CARDS, false);
   const [showMenu, setShowMenu] = useState(false);
   const [showInvitations, setShowInvitations] = useState(false);
   const [showCategoryAdmin, setShowCategoryAdmin] = useState(false);
@@ -126,49 +106,19 @@ function App() {
   const [displayName, setDisplayName] = useState('');
   const [sharedContacts, setSharedContacts] = useState([]);
   const [favoriteContacts, setFavoriteContacts] = useState([]);
-  const [captures, setCaptures] = useState(() => {
-    try {
-      const saved = localStorage.getItem('ourspots_captures');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [captures, setCaptures] = usePersistedState(STORAGE_KEYS.CAPTURES, [], { type: 'json' });
   const [showCaptures, setShowCaptures] = useState(false);
-  const [keepScreenOn, setKeepScreenOn] = useState(() => {
-    const saved = localStorage.getItem('keepScreenOn');
-    return saved === 'true';
-  });
-  const [showQuickCapture, setShowQuickCapture] = useState(() => {
-    const saved = localStorage.getItem('showQuickCapture');
-    return saved === 'true'; // Default false
-  });
-  const [quickCaptureObjectId, setQuickCaptureObjectId] = useState(() => {
-    return localStorage.getItem('quickCaptureObjectId') || '';
-  });
+  const [keepScreenOn, setKeepScreenOn] = usePersistedState(STORAGE_KEYS.KEEP_SCREEN_ON, false);
+  const [showQuickCapture, setShowQuickCapture] = usePersistedState(STORAGE_KEYS.SHOW_QUICK_CAPTURE, false);
+  const [quickCaptureObjectId, setQuickCaptureObjectId] = usePersistedState(STORAGE_KEYS.QUICK_CAPTURE_OBJECT_ID, '', { type: 'string' });
   const [showQuickCaptureObjectPicker, setShowQuickCaptureObjectPicker] = useState(false);
   const [quickCaptureSearchQuery, setQuickCaptureSearchQuery] = useState('');
-  const [preciseGPS, setPreciseGPS] = useState(() => {
-    const saved = localStorage.getItem('preciseGPS');
-    return saved === 'true'; // Default false (snabb GPS)
-  });
-  const [showDemoObjects, setShowDemoObjects] = useState(() => {
-    const saved = localStorage.getItem('showDemoObjects');
-    return saved === 'true'; // Default false
-  });
+  const [preciseGPS, setPreciseGPS] = usePersistedState(STORAGE_KEYS.PRECISE_GPS, false);
+  const [showDemoObjects, setShowDemoObjects] = usePersistedState(STORAGE_KEYS.SHOW_DEMO_OBJECTS, false);
   // Menu section collapse states with localStorage
-  const [menuAdminExpanded, setMenuAdminExpanded] = useState(() => {
-    const saved = localStorage.getItem('menuAdminExpanded');
-    return saved === 'true'; // Default collapsed
-  });
-  const [menuSettingsExpanded, setMenuSettingsExpanded] = useState(() => {
-    const saved = localStorage.getItem('menuSettingsExpanded');
-    return saved !== 'false'; // Default expanded
-  });
-  const [menuQuickCaptureExpanded, setMenuQuickCaptureExpanded] = useState(() => {
-    const saved = localStorage.getItem('menuQuickCaptureExpanded');
-    return saved !== 'false'; // Default expanded
-  });
+  const [menuAdminExpanded, setMenuAdminExpanded] = usePersistedState(STORAGE_KEYS.MENU_ADMIN_EXPANDED, false);
+  const [menuSettingsExpanded, setMenuSettingsExpanded] = usePersistedState(STORAGE_KEYS.MENU_SETTINGS_EXPANDED, true, { defaultTrue: true });
+  const [menuQuickCaptureExpanded, setMenuQuickCaptureExpanded] = usePersistedState(STORAGE_KEYS.MENU_QUICK_CAPTURE_EXPANDED, true, { defaultTrue: true });
   const [mapCenter, setMapCenter] = useState(null);
   const [returnToObjectId, setReturnToObjectId] = useState(null); // For "back to object" from map
   const headerRef = useRef(null);
@@ -213,20 +163,6 @@ function App() {
     setIsGlobalTracking(false);
   };
 
-  // Save filter preferences
-  useEffect(() => {
-    localStorage.setItem('sortByDistance', sortByDistance.toString());
-  }, [sortByDistance]);
-
-  useEffect(() => {
-    localStorage.setItem('showOnlyOwned', showOnlyOwned.toString());
-  }, [showOnlyOwned]);
-
-  // Save activeCategory preference
-  useEffect(() => {
-    localStorage.setItem('activeCategory', activeCategory);
-  }, [activeCategory]);
-
   // Auto-dismiss toast after 3 seconds (key ensures timer resets on repeated toasts)
   useEffect(() => {
     if (toast) {
@@ -242,8 +178,6 @@ function App() {
 
   // Wake Lock för att hålla skärmen påslagen
   useEffect(() => {
-    localStorage.setItem('keepScreenOn', keepScreenOn.toString());
-
     let isActive = true; // Track if effect is still active
 
     const requestWakeLock = async () => {
@@ -309,23 +243,6 @@ function App() {
       }
     };
   }, [keepScreenOn]);
-
-  useEffect(() => {
-    localStorage.setItem('showQuickCapture', showQuickCapture.toString());
-  }, [showQuickCapture]);
-
-  useEffect(() => {
-    if (quickCaptureObjectId) {
-      localStorage.setItem('quickCaptureObjectId', quickCaptureObjectId);
-    } else {
-      localStorage.removeItem('quickCaptureObjectId');
-    }
-  }, [quickCaptureObjectId]);
-
-  // Save preciseGPS preference
-  useEffect(() => {
-    localStorage.setItem('preciseGPS', preciseGPS.toString());
-  }, [preciseGPS]);
 
   // Handle bfcache (back-forward cache) - force page reload to avoid stale state
   useEffect(() => {
@@ -976,7 +893,6 @@ function App() {
 
     const newCaptures = [...captures, capture];
     setCaptures(newCaptures);
-    localStorage.setItem('ourspots_captures', JSON.stringify(newCaptures));
     
     // Visual feedback
     setToast({ message: `Position sparad! (${newCaptures.length} st)`, type: 'success' });
@@ -985,7 +901,6 @@ function App() {
   const handleDeleteCapture = (captureId) => {
     const newCaptures = captures.filter(c => c.id !== captureId);
     setCaptures(newCaptures);
-    localStorage.setItem('ourspots_captures', JSON.stringify(newCaptures));
   };
 
   const handleCreateFromCapture = (capture) => {
@@ -1574,7 +1489,6 @@ function App() {
               <button
                 onClick={() => {
                   setShowDemoObjects(false);
-                  localStorage.setItem('showDemoObjects', 'false');
                 }}
                 className="flex items-center gap-1 px-2 py-1 rounded-md bg-white/20 hover:bg-white/30 text-white text-xs font-medium transition-colors flex-shrink-0"
               >
@@ -1891,11 +1805,7 @@ function App() {
                 
                 {/* Compact cards toggle - pushed to right */}
                 <button
-                  onClick={() => {
-                    const newValue = !compactCards;
-                    setCompactCards(newValue);
-                    localStorage.setItem('compactCards', newValue);
-                  }}
+                  onClick={() => setCompactCards(v => !v)}
                   className={`ml-auto h-8 w-8 flex items-center justify-center rounded-lg transition-all flex-shrink-0 ${compactCards ? 'bg-emerald-600 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20'}`}
                   title={compactCards ? 'Stora kort' : 'Kompakta kort'}
                 >
@@ -2044,7 +1954,6 @@ function App() {
                           setShowDemoObjects(true);
                           setShowOnlyOwned(false);
                           setShowFavoritesOnly(false);
-                          localStorage.setItem('showDemoObjects', 'true');
                         }}
                         className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-purple-500/20 border border-purple-500/30 text-purple-300 hover:bg-purple-500/30 transition-all text-sm"
                       >
@@ -2197,6 +2106,7 @@ function App() {
             showQuickCapture={showQuickCapture}
             preciseGPS={preciseGPS}
             allObjects={objects} 
+            setToast={setToast}
             onNavigate={(obj, options = {}) => {
               if (options.fromPlanner) {
                 setOpenPlannerOnReturn(true);
@@ -2622,11 +2532,7 @@ function App() {
                 {isAdmin && (
                   <div className="rounded-xl border border-white/10 overflow-hidden">
                     <button
-                      onClick={() => {
-                        const newValue = !menuAdminExpanded;
-                        setMenuAdminExpanded(newValue);
-                        localStorage.setItem('menuAdminExpanded', String(newValue));
-                      }}
+                      onClick={() => setMenuAdminExpanded(v => !v)}
                       className="w-full flex items-center gap-2 p-3 bg-white/5 hover:bg-white/10 transition-colors"
                     >
                       <ChevronDown size={16} className={`text-gray-500 transition-transform ${menuAdminExpanded ? '' : '-rotate-90'}`} />
@@ -2672,11 +2578,7 @@ function App() {
                 {/* Settings section */}
                 <div className="rounded-xl border border-white/10 overflow-hidden">
                   <button
-                    onClick={() => {
-                      const newValue = !menuSettingsExpanded;
-                      setMenuSettingsExpanded(newValue);
-                      localStorage.setItem('menuSettingsExpanded', String(newValue));
-                    }}
+                    onClick={() => setMenuSettingsExpanded(v => !v)}
                     className="w-full flex items-center gap-2 p-3 bg-white/5 hover:bg-white/10 transition-colors"
                   >
                     <ChevronDown size={16} className={`text-gray-500 transition-transform ${menuSettingsExpanded ? '' : '-rotate-90'}`} />
@@ -2778,7 +2680,6 @@ function App() {
                             setShowOnlyOwned(false);
                             setShowFavoritesOnly(false);
                           }
-                          localStorage.setItem('showDemoObjects', String(newValue));
                         }}
                         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                           showDemoObjects ? 'bg-blue-500' : 'bg-gray-600'
@@ -2804,11 +2705,7 @@ function App() {
                 {/* Quick Capture section */}
                 <div className="rounded-xl border border-white/10 overflow-hidden">
                   <button
-                    onClick={() => {
-                      const newValue = !menuQuickCaptureExpanded;
-                      setMenuQuickCaptureExpanded(newValue);
-                      localStorage.setItem('menuQuickCaptureExpanded', String(newValue));
-                    }}
+                    onClick={() => setMenuQuickCaptureExpanded(v => !v)}
                     className="w-full flex items-center gap-2 p-3 bg-white/5 hover:bg-white/10 transition-colors"
                   >
                     <ChevronDown size={16} className={`text-gray-500 transition-transform ${menuQuickCaptureExpanded ? '' : '-rotate-90'}`} />
