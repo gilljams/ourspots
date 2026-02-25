@@ -2,7 +2,7 @@
 OurSpots – Manifest / Blueprint (Updated Feb 25, 2026)
 ========================
 
-🚀 STATUS: v2.9.9 - Planering Visual Polish
+🚀 STATUS: v2.9.10 - Innehållsredigering UX Polish
 
 1. VISION
 - Mobilfokuserad app med premium dark theme
@@ -37,6 +37,10 @@ OurSpots – Manifest / Blueprint (Updated Feb 25, 2026)
 - Poll/Timer-editor med "+ Lägg till"-knapp istället för tomma rader ✅ NY v2.9.6
 - Auto-scroll när block flyttas upp/ner i editor ✅ NY v2.9.6
 - PlannerModal med visuell polish och konsekvent UX ✅ NY v2.9.9
+- Innehållsredigering: stödtext-input under raden (inte inline) ✅ NY v2.9.10
+- Auto-spara stödtext vid blur/byte av rad (ingen V-knapp) ✅ NY v2.9.10
+- saveAndSwitchNote för sömlöst byte mellan rader ✅ NY v2.9.10
+- iOS fokus-fix med ref-callback och setTimeout ✅ NY v2.9.10
 - Kartintegration med position och avstånd ✅
 - Egen positionsmarkör (användarikon) på karta ✅
 - Dark theme + glassmorphism + accentfärger ✅

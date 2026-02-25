@@ -674,6 +674,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
   const [objectSearchQuery, setObjectSearchQuery] = useState('');
   const [editingNoteId, setEditingNoteId] = useState(null);
   const [editingNoteText, setEditingNoteText] = useState('');
+  const editingNoteRef = useRef({ id: null, text: '' }); // Track current editing state for save-before-switch
   const [linkedEditMode, setLinkedEditMode] = useState(false);
   const [showAddUrlForm, setShowAddUrlForm] = useState(false);
   const [newUrlTitle, setNewUrlTitle] = useState('');
@@ -868,7 +869,41 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
         .filter(Boolean)
     : [];
   const hiddenLinkedCount = totalLinkedCount - linkedObjects.length;
+  const linkedUrls = object.linkedUrls || [];
   
+  // Helper function to save current note and switch to a new one
+  const saveAndSwitchNote = (newId, newText) => {
+    const currentId = editingNoteRef.current.id;
+    const currentText = editingNoteRef.current.text;
+    
+    // Save current note if one is being edited
+    if (currentId && currentId !== newId) {
+      if (currentId.startsWith('url_')) {
+        // It's a URL note
+        const urlId = currentId.replace('url_', '');
+        const urlItem = linkedUrls.find(u => u.id === urlId);
+        if (urlItem && onUpdateLinkedUrl) {
+          onUpdateLinkedUrl(object.id, urlId, { ...urlItem, note: currentText.trim() });
+        }
+      } else {
+        // It's an object note
+        if (onUpdateLinkedNote) {
+          onUpdateLinkedNote(object.id, currentId, currentText.trim());
+        }
+      }
+    }
+    
+    // Update ref and state for new note
+    editingNoteRef.current = { id: newId, text: newText };
+    setEditingNoteId(newId);
+    setEditingNoteText(newText);
+  };
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    editingNoteRef.current = { id: editingNoteId, text: editingNoteText };
+  }, [editingNoteId, editingNoteText]);
+
   // Build unified ordered list of linked items (objects + URLs)
   const orderedLinkedItems = (() => {
     if (!isCollection) return [];
@@ -1911,110 +1946,119 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                       const linkedDistance = getObjectDistance(linked, userLocation);
                       
                       return (
-                        <div key={`obj_${linked.id}`} className="flex items-center gap-1">
-                          {/* Reorder arrows */}
-                          {canManage && linkedEditMode && onReorderLinked && (
-                            <div className="flex items-center gap-0.5 mr-1">
-                              <button
-                                onClick={() => onReorderLinked(object.id, itemIndex, 'up')}
-                                disabled={isFirst}
-                                className={`p-1.5 rounded-lg transition-colors ${isFirst ? 'text-gray-700 cursor-default' : 'text-gray-400 hover:text-purple-300 hover:bg-white/10 active:bg-purple-500/20'}`}
-                                title="Flytta upp"
-                              >
-                                <ChevronUp size={18} />
-                              </button>
-                              <button
-                                onClick={() => onReorderLinked(object.id, itemIndex, 'down')}
-                                disabled={isLast}
-                                className={`p-1.5 rounded-lg transition-colors ${isLast ? 'text-gray-700 cursor-default' : 'text-gray-400 hover:text-purple-300 hover:bg-white/10 active:bg-purple-500/20'}`}
-                                title="Flytta ner"
-                              >
-                                <ChevronDown size={18} />
-                              </button>
-                            </div>
-                          )}
-                          <button
-                            onClick={() => onNavigate(linked)}
-                            className="flex-1 flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 hover:border-purple-400/30 transition-all text-left"
-                          >
-                            {linkedImage ? (
-                              <div className="w-8 h-8 rounded overflow-hidden flex-shrink-0">
-                                <img 
-                                  src={getTransformedImageUrl(linkedImage.data.url, linkedImage.data.focalPoint ? 'custom' : linkedImage.data.focalPoint, 64, 64, linkedImage.data.focalPoint)} 
-                                  alt="" 
-                                  className="w-full h-full object-cover"
-                                  style={getFocalPointStyles(linkedImage.data.focalPoint)}
-                                />
-                              </div>
-                            ) : (
-                              <div className="w-8 h-8 rounded bg-purple-500/20 flex items-center justify-center flex-shrink-0">
-                                <LinkedIcon size={14} className="text-purple-400" />
-                              </div>
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <div className="text-sm font-medium text-white truncate">{linkedTitle?.data?.text || 'Namnlöst'}</div>
-                              {linkedNote && !isEditingThis && (
-                                <div className="text-xs text-purple-300 truncate">{linkedNote}</div>
-                              )}
-                              {linkedDistance !== undefined && !linkedNote && (
-                                <div className="text-xs text-gray-500">{formatDistance(linkedDistance)}</div>
-                              )}
-                            </div>
-                            {linkedDistance !== undefined && (linkedNote || isEditingThis) && (
-                              <div className="text-xs text-gray-500 flex-shrink-0">{formatDistance(linkedDistance)}</div>
-                            )}
-                          </button>
-                          {/* Note edit button/field - only in edit mode */}
-                          {canManage && linkedEditMode && onUpdateLinkedNote && (
-                            isEditingThis ? (
-                              <div className="flex items-center gap-1">
-                                <input
-                                  type="text"
-                                  value={editingNoteText}
-                                  onChange={e => setEditingNoteText(e.target.value)}
-                                  onKeyDown={e => {
-                                    if (e.key === 'Enter') {
-                                      onUpdateLinkedNote(object.id, linked.id, editingNoteText.trim());
-                                      setEditingNoteId(null);
-                                    } else if (e.key === 'Escape') {
-                                      setEditingNoteId(null);
-                                    }
-                                  }}
-                                  placeholder="t.ex. Lördag 10:00"
-                                  className="w-28 px-2 py-1.5 text-xs bg-white/10 border border-purple-500/50 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-400"
-                                  autoFocus
-                                />
+                        <div key={`obj_${linked.id}`} className="space-y-1">
+                          <div className="flex items-center gap-1">
+                            {/* Reorder arrows */}
+                            {canManage && linkedEditMode && onReorderLinked && (
+                              <div className="flex items-center gap-0.5 mr-1 flex-shrink-0">
                                 <button
-                                  onClick={() => {
-                                    onUpdateLinkedNote(object.id, linked.id, editingNoteText.trim());
-                                    setEditingNoteId(null);
-                                  }}
-                                  className="p-1.5 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300"
+                                  onClick={() => onReorderLinked(object.id, itemIndex, 'up')}
+                                  disabled={isFirst}
+                                  className={`p-1.5 rounded-lg transition-colors ${isFirst ? 'text-gray-700 cursor-default' : 'text-gray-400 hover:text-purple-300 hover:bg-white/10 active:bg-purple-500/20'}`}
+                                  title="Flytta upp"
                                 >
-                                  <Check size={14} />
+                                  <ChevronUp size={18} />
+                                </button>
+                                <button
+                                  onClick={() => onReorderLinked(object.id, itemIndex, 'down')}
+                                  disabled={isLast}
+                                  className={`p-1.5 rounded-lg transition-colors ${isLast ? 'text-gray-700 cursor-default' : 'text-gray-400 hover:text-purple-300 hover:bg-white/10 active:bg-purple-500/20'}`}
+                                  title="Flytta ner"
+                                >
+                                  <ChevronDown size={18} />
                                 </button>
                               </div>
-                            ) : (
+                            )}
+                            <button
+                              onClick={() => onNavigate(linked)}
+                              className="flex-1 min-w-0 flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 hover:border-purple-400/30 transition-all text-left"
+                            >
+                              {linkedImage ? (
+                                <div className="w-8 h-8 rounded overflow-hidden flex-shrink-0">
+                                  <img 
+                                    src={getTransformedImageUrl(linkedImage.data.url, linkedImage.data.focalPoint ? 'custom' : linkedImage.data.focalPoint, 64, 64, linkedImage.data.focalPoint)} 
+                                    alt="" 
+                                    className="w-full h-full object-cover"
+                                    style={getFocalPointStyles(linkedImage.data.focalPoint)}
+                                  />
+                                </div>
+                              ) : (
+                                <div className="w-8 h-8 rounded bg-purple-500/20 flex items-center justify-center flex-shrink-0">
+                                  <LinkedIcon size={14} className="text-purple-400" />
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-medium text-white truncate">{linkedTitle?.data?.text || 'Namnlöst'}</div>
+                                {linkedNote && !isEditingThis && (
+                                  <div className="text-xs text-purple-300 truncate">{linkedNote}</div>
+                                )}
+                                {linkedDistance !== undefined && !linkedNote && (
+                                  <div className="text-xs text-gray-500">{formatDistance(linkedDistance)}</div>
+                                )}
+                              </div>
+                              {linkedDistance !== undefined && (linkedNote || isEditingThis) && (
+                                <div className="text-xs text-gray-500 flex-shrink-0">{formatDistance(linkedDistance)}</div>
+                              )}
+                            </button>
+                            {/* Edit note button - only in edit mode */}
+                            {canManage && linkedEditMode && onUpdateLinkedNote && (
                               <button
                                 onClick={() => {
-                                  setEditingNoteId(linked.id);
-                                  setEditingNoteText(linkedNote);
+                                  if (isEditingThis) {
+                                    // Save and close
+                                    onUpdateLinkedNote(object.id, linked.id, editingNoteText.trim());
+                                    saveAndSwitchNote(null, '');
+                                  } else {
+                                    // Save any current note and switch to this one
+                                    saveAndSwitchNote(linked.id, linkedNote);
+                                  }
                                 }}
-                                className="p-2 rounded-lg hover:bg-white/10 text-gray-500 hover:text-purple-300 transition-all"
+                                className={`p-2 rounded-lg transition-all flex-shrink-0 ${isEditingThis ? 'bg-purple-500/20 text-purple-300' : 'hover:bg-white/10 text-gray-500 hover:text-purple-300'}`}
                                 title={linkedNote ? 'Redigera anteckning' : 'Lägg till anteckning'}
                               >
                                 <Edit2 size={14} />
                               </button>
-                            )
-                          )}
-                          {canManage && linkedEditMode && onRemoveFromCollection && (
-                            <button
-                              onClick={() => onRemoveFromCollection(object.id, linked.id)}
-                              className="p-2 rounded-lg hover:bg-red-500/20 text-gray-500 hover:text-red-400 transition-all"
-                              title="Ta bort från samlingsvy"
+                            )}
+                            {canManage && linkedEditMode && onRemoveFromCollection && (
+                              <button
+                                onClick={() => onRemoveFromCollection(object.id, linked.id)}
+                                className="p-2 rounded-lg hover:bg-red-500/20 text-gray-500 hover:text-red-400 transition-all flex-shrink-0"
+                                title="Ta bort från samlingsvy"
+                              >
+                                <X size={16} />
+                              </button>
+                            )}
+                          </div>
+                          {/* Note input field - shown below the row when editing */}
+                          {canManage && linkedEditMode && isEditingThis && onUpdateLinkedNote && (
+                            <div 
+                              className="flex items-center gap-1"
+                              onClick={e => e.stopPropagation()}
+                              onTouchStart={e => e.stopPropagation()}
                             >
-                              <X size={16} />
-                            </button>
+                              {/* Spacer matching reorder arrows */}
+                              <div className="flex items-center gap-0.5 mr-1 flex-shrink-0">
+                                <div className="p-1.5 w-[18px]" />
+                                <div className="p-1.5 w-[18px]" />
+                              </div>
+                              <input
+                                ref={el => el && setTimeout(() => el.focus(), 50)}
+                                type="text"
+                                value={editingNoteText}
+                                onChange={e => setEditingNoteText(e.target.value)}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter' || e.key === 'Escape') {
+                                    e.target.blur();
+                                  }
+                                }}
+                                onBlur={() => {
+                                  onUpdateLinkedNote(object.id, linked.id, editingNoteText.trim());
+                                  saveAndSwitchNote(null, '');
+                                }}
+                                placeholder="t.ex. Lördag 10:00"
+                                className="flex-1 min-w-0 px-3 py-2 text-base bg-white/10 border border-purple-500/50 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-400"
+                              />
+                            </div>
                           )}
                         </div>
                       );
@@ -2024,95 +2068,104 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                       const isEditingUrlNote = editingNoteId === `url_${urlItem.id}`;
                       
                       return (
-                        <div key={`url_${urlItem.id}`} className="flex items-center gap-1">
-                          {/* Reorder arrows for URLs */}
-                          {canManage && linkedEditMode && onReorderLinked && (
-                            <div className="flex items-center gap-0.5 mr-1">
-                              <button
-                                onClick={() => onReorderLinked(object.id, itemIndex, 'up')}
-                                disabled={isFirst}
-                                className={`p-1.5 rounded-lg transition-colors ${isFirst ? 'text-gray-700 cursor-default' : 'text-gray-400 hover:text-purple-300 hover:bg-white/10 active:bg-purple-500/20'}`}
-                                title="Flytta upp"
-                              >
-                                <ChevronUp size={18} />
-                              </button>
-                              <button
-                                onClick={() => onReorderLinked(object.id, itemIndex, 'down')}
-                                disabled={isLast}
-                                className={`p-1.5 rounded-lg transition-colors ${isLast ? 'text-gray-700 cursor-default' : 'text-gray-400 hover:text-purple-300 hover:bg-white/10 active:bg-purple-500/20'}`}
-                                title="Flytta ner"
-                              >
-                                <ChevronDown size={18} />
-                              </button>
-                            </div>
-                          )}
-                          <a
-                            href={urlItem.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex-1 flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 hover:border-purple-400/30 transition-all text-left"
-                          >
-                            <div className="w-8 h-8 rounded bg-purple-500/20 flex items-center justify-center flex-shrink-0">
-                              <ExternalLink size={14} className="text-purple-400" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="text-sm font-medium text-white truncate">{urlItem.title}</div>
-                              {urlItem.note && !isEditingUrlNote && (
-                                <div className="text-xs text-purple-300 truncate">{urlItem.note}</div>
-                              )}
-                            </div>
-                          </a>
-                          {/* Note edit for URL */}
-                          {canManage && linkedEditMode && onUpdateLinkedUrl && (
-                            isEditingUrlNote ? (
-                              <div className="flex items-center gap-1">
-                                <input
-                                  type="text"
-                                  value={editingNoteText}
-                                  onChange={e => setEditingNoteText(e.target.value)}
-                                  onKeyDown={e => {
-                                    if (e.key === 'Enter') {
-                                      onUpdateLinkedUrl(object.id, urlItem.id, { ...urlItem, note: editingNoteText.trim() });
-                                      setEditingNoteId(null);
-                                    } else if (e.key === 'Escape') {
-                                      setEditingNoteId(null);
-                                    }
-                                  }}
-                                  placeholder="t.ex. Middag 20:00"
-                                  className="w-28 px-2 py-1.5 text-xs bg-white/10 border border-purple-500/50 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-400"
-                                  autoFocus
-                                />
+                        <div key={`url_${urlItem.id}`} className="space-y-1">
+                          <div className="flex items-center gap-1">
+                            {/* Reorder arrows for URLs */}
+                            {canManage && linkedEditMode && onReorderLinked && (
+                              <div className="flex items-center gap-0.5 mr-1 flex-shrink-0">
                                 <button
-                                  onClick={() => {
-                                    onUpdateLinkedUrl(object.id, urlItem.id, { ...urlItem, note: editingNoteText.trim() });
-                                    setEditingNoteId(null);
-                                  }}
-                                  className="p-1.5 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300"
+                                  onClick={() => onReorderLinked(object.id, itemIndex, 'up')}
+                                  disabled={isFirst}
+                                  className={`p-1.5 rounded-lg transition-colors ${isFirst ? 'text-gray-700 cursor-default' : 'text-gray-400 hover:text-purple-300 hover:bg-white/10 active:bg-purple-500/20'}`}
+                                  title="Flytta upp"
                                 >
-                                  <Check size={14} />
+                                  <ChevronUp size={18} />
+                                </button>
+                                <button
+                                  onClick={() => onReorderLinked(object.id, itemIndex, 'down')}
+                                  disabled={isLast}
+                                  className={`p-1.5 rounded-lg transition-colors ${isLast ? 'text-gray-700 cursor-default' : 'text-gray-400 hover:text-purple-300 hover:bg-white/10 active:bg-purple-500/20'}`}
+                                  title="Flytta ner"
+                                >
+                                  <ChevronDown size={18} />
                                 </button>
                               </div>
-                            ) : (
+                            )}
+                            <a
+                              href={urlItem.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex-1 min-w-0 flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 hover:border-purple-400/30 transition-all text-left"
+                            >
+                              <div className="w-8 h-8 rounded bg-purple-500/20 flex items-center justify-center flex-shrink-0">
+                                <ExternalLink size={14} className="text-purple-400" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-medium text-white truncate">{urlItem.title}</div>
+                                {urlItem.note && !isEditingUrlNote && (
+                                  <div className="text-xs text-purple-300 truncate">{urlItem.note}</div>
+                                )}
+                              </div>
+                            </a>
+                            {/* Edit note button - only in edit mode */}
+                            {canManage && linkedEditMode && onUpdateLinkedUrl && (
                               <button
                                 onClick={() => {
-                                  setEditingNoteId(`url_${urlItem.id}`);
-                                  setEditingNoteText(urlItem.note || '');
+                                  if (isEditingUrlNote) {
+                                    // Save and close
+                                    onUpdateLinkedUrl(object.id, urlItem.id, { ...urlItem, note: editingNoteText.trim() });
+                                    saveAndSwitchNote(null, '');
+                                  } else {
+                                    // Save any current note and switch to this one
+                                    saveAndSwitchNote(`url_${urlItem.id}`, urlItem.note || '');
+                                  }
                                 }}
-                                className="p-2 rounded-lg hover:bg-white/10 text-gray-500 hover:text-blue-300 transition-all"
+                                className={`p-2 rounded-lg transition-all flex-shrink-0 ${isEditingUrlNote ? 'bg-purple-500/20 text-purple-300' : 'hover:bg-white/10 text-gray-500 hover:text-purple-300'}`}
                                 title={urlItem.note ? 'Redigera anteckning' : 'Lägg till anteckning'}
                               >
                                 <Edit2 size={14} />
                               </button>
-                            )
-                          )}
-                          {canManage && linkedEditMode && onRemoveLinkedUrl && (
-                            <button
-                              onClick={() => onRemoveLinkedUrl(object.id, urlItem.id)}
-                              className="p-2 rounded-lg hover:bg-red-500/20 text-gray-500 hover:text-red-400 transition-all"
-                              title="Ta bort länk"
+                            )}
+                            {canManage && linkedEditMode && onRemoveLinkedUrl && (
+                              <button
+                                onClick={() => onRemoveLinkedUrl(object.id, urlItem.id)}
+                                className="p-2 rounded-lg hover:bg-red-500/20 text-gray-500 hover:text-red-400 transition-all flex-shrink-0"
+                                title="Ta bort länk"
+                              >
+                                <X size={16} />
+                              </button>
+                            )}
+                          </div>
+                          {/* Note input field - shown below the row when editing */}
+                          {canManage && linkedEditMode && isEditingUrlNote && onUpdateLinkedUrl && (
+                            <div 
+                              className="flex items-center gap-1"
+                              onClick={e => e.stopPropagation()}
+                              onTouchStart={e => e.stopPropagation()}
                             >
-                              <X size={16} />
-                            </button>
+                              {/* Spacer matching reorder arrows */}
+                              <div className="flex items-center gap-0.5 mr-1 flex-shrink-0">
+                                <div className="p-1.5 w-[18px]" />
+                                <div className="p-1.5 w-[18px]" />
+                              </div>
+                              <input
+                                ref={el => el && setTimeout(() => el.focus(), 50)}
+                                type="text"
+                                value={editingNoteText}
+                                onChange={e => setEditingNoteText(e.target.value)}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter' || e.key === 'Escape') {
+                                    e.target.blur();
+                                  }
+                                }}
+                                onBlur={() => {
+                                  onUpdateLinkedUrl(object.id, urlItem.id, { ...urlItem, note: editingNoteText.trim() });
+                                  saveAndSwitchNote(null, '');
+                                }}
+                                placeholder="t.ex. Middag 20:00"
+                                className="flex-1 min-w-0 px-3 py-2 text-base bg-white/10 border border-purple-500/50 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-400"
+                              />
+                            </div>
                           )}
                         </div>
                       );
