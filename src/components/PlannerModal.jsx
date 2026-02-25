@@ -68,6 +68,7 @@ export default function PlannerModal({
   const [tempAccommodationText, setTempAccommodationText] = useState('');
   const [tempSubtext, setTempSubtext] = useState(''); // Subtext for cells
   const [tempAccommodationObjectId, setTempAccommodationObjectId] = useState(null);
+  const [tempAccommodationUrlId, setTempAccommodationUrlId] = useState(null);
   const [tempAccommodationStartDay, setTempAccommodationStartDay] = useState(0);
   const [tempAccommodationEndDay, setTempAccommodationEndDay] = useState(0);
   
@@ -344,12 +345,35 @@ export default function PlannerModal({
   
   // Handle accommodation click
   const handleAccommodationClick = (dayIndex) => {
-    if (!isEditMode || !canEdit) return;
-    
     // Find if there's accommodation for this day
     const existingAcc = accommodation.find(a => dayIndex >= a.startDay && dayIndex <= a.endDay);
+    
+    // In view mode - navigate to linked object/URL if exists
+    if (!isEditMode) {
+      if (existingAcc?.objectId && onNavigateToObject) {
+        const obj = linkedObjects.find(o => o.id === existingAcc.objectId);
+        if (obj) {
+          onClose();
+          onNavigateToObject(obj);
+        }
+      } else if (existingAcc?.urlId) {
+        const url = linkedUrls.find(u => u.id === existingAcc.urlId);
+        if (url) {
+          if (onOpenUrl) {
+            onOpenUrl(url);
+          } else {
+            window.open(url.url, '_blank');
+          }
+        }
+      }
+      return;
+    }
+    
+    if (!canEdit) return;
+    
     setTempAccommodationText(existingAcc?.text || '');
     setTempAccommodationObjectId(existingAcc?.objectId || null);
+    setTempAccommodationUrlId(existingAcc?.urlId || null);
     setTempAccommodationStartDay(existingAcc?.startDay ?? dayIndex);
     setTempAccommodationEndDay(existingAcc?.endDay ?? dayIndex);
     setEditingAccommodation({ dayIndex, existing: existingAcc });
@@ -361,12 +385,13 @@ export default function PlannerModal({
     
     const { existing } = editingAccommodation;
     
-    if (tempAccommodationText.trim() || tempAccommodationObjectId) {
+    if (tempAccommodationText.trim() || tempAccommodationObjectId || tempAccommodationUrlId) {
       const newAcc = {
         startDay: tempAccommodationStartDay,
         endDay: tempAccommodationEndDay,
         text: tempAccommodationText.trim(),
-        objectId: tempAccommodationObjectId
+        objectId: tempAccommodationObjectId,
+        urlId: tempAccommodationUrlId
       };
       
       if (existing) {
@@ -387,6 +412,7 @@ export default function PlannerModal({
     setEditingAccommodation(null);
     setTempAccommodationText('');
     setTempAccommodationObjectId(null);
+    setTempAccommodationUrlId(null);
   };
 
   // Save cell edit
@@ -691,7 +717,9 @@ export default function PlannerModal({
                 const isMiddle = acc && !isStart && !isEnd;
                 const isFirstVisible = acc && dayIndex === Math.max(acc.startDay, visibleStartDay);
                 const linkedAccObj = acc?.objectId ? getLinkedObject(acc.objectId) : null;
-                const displayText = acc?.text || linkedAccObj?.title || 'Boende';
+                const linkedAccUrl = acc?.urlId ? getLinkedUrl(acc.urlId) : null;
+                const isLinked = linkedAccObj || linkedAccUrl;
+                const displayText = acc?.text || linkedAccObj?.title || linkedAccUrl?.title || 'Boende';
                 
                 // For accommodation cells, remove gap between connected cells
                 const gapStyle = acc && !isEnd ? { marginRight: '-4px', paddingRight: '4px' } : {};
@@ -700,6 +728,9 @@ export default function PlannerModal({
                 const roundedClasses = acc 
                   ? `${isStart ? 'rounded-l-lg' : ''} ${isEnd ? 'rounded-r-lg' : ''}`
                   : 'rounded-lg';
+                
+                // Clickable in view mode if linked, or in edit mode
+                const isClickable = (acc && isLinked) || (isEditMode && canEdit);
                 
                 return (
                   <button
@@ -711,10 +742,10 @@ export default function PlannerModal({
                       acc 
                         ? 'bg-blue-500/20 hover:bg-blue-500/30' 
                         : 'bg-white/[0.02] hover:bg-white/5 rounded-lg border border-dashed border-white/10 hover:border-white/20'
-                    } ${isEditMode && canEdit ? 'cursor-pointer' : ''}`}
+                    } ${isClickable ? 'cursor-pointer' : ''}`}
                   >
                     {isFirstVisible ? (
-                      <span className="text-xs truncate px-2 text-blue-200 font-medium">
+                      <span className={`text-xs truncate px-2 font-medium ${isLinked ? 'text-blue-300' : 'text-blue-200'}`}>
                         {displayText}
                       </span>
                     ) : !acc && isEditMode && canEdit ? (
@@ -1400,16 +1431,19 @@ export default function PlannerModal({
               </div>
             </div>
             
-            {/* Linked object selector */}
-            {linkedObjects.length > 0 && (
+            {/* Linked items selector */}
+            {(linkedObjects.length > 0 || linkedUrls.length > 0) && (
               <div>
-                <label className="block text-xs text-gray-400 mb-2">Länka till objekt</label>
-                <div className="flex flex-wrap gap-2 max-h-32 overflow-auto p-1">
+                <label className="block text-xs text-gray-400 mb-2">Länka till innehåll</label>
+                <div className="flex flex-wrap gap-2 max-h-40 overflow-auto p-1">
                   <button
                     type="button"
-                    onClick={() => setTempAccommodationObjectId(null)}
+                    onClick={() => {
+                      setTempAccommodationObjectId(null);
+                      setTempAccommodationUrlId(null);
+                    }}
                     className={`px-3 py-1.5 rounded-lg text-sm transition-colors touch-manipulation ${
-                      !tempAccommodationObjectId
+                      !tempAccommodationObjectId && !tempAccommodationUrlId
                         ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50'
                         : 'bg-white/5 text-gray-400 hover:bg-white/10 border border-transparent'
                     }`}
@@ -1425,6 +1459,7 @@ export default function PlannerModal({
                         type="button"
                         onClick={() => {
                           setTempAccommodationObjectId(obj.id);
+                          setTempAccommodationUrlId(null);
                           if (!tempAccommodationText) {
                             setTempAccommodationText(title);
                           }
@@ -1435,8 +1470,31 @@ export default function PlannerModal({
                             : 'bg-white/5 text-gray-300 hover:bg-white/10 border border-transparent'
                         }`}
                       >
-                        <Link2 size={12} />
                         <span className="truncate max-w-[150px]">{title}</span>
+                      </button>
+                    );
+                  })}
+                  {linkedUrls.map(url => {
+                    const isSelected = tempAccommodationUrlId === url.id;
+                    return (
+                      <button
+                        key={url.id}
+                        type="button"
+                        onClick={() => {
+                          setTempAccommodationUrlId(url.id);
+                          setTempAccommodationObjectId(null);
+                          if (!tempAccommodationText) {
+                            setTempAccommodationText(url.title);
+                          }
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-1.5 transition-colors touch-manipulation ${
+                          isSelected
+                            ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50'
+                            : 'bg-white/5 text-gray-300 hover:bg-white/10 border border-transparent'
+                        }`}
+                      >
+                        <Link2 size={12} className="text-gray-500" />
+                        <span className="truncate max-w-[150px]">{url.title}</span>
                       </button>
                     );
                   })}
@@ -1444,8 +1502,8 @@ export default function PlannerModal({
               </div>
             )}
             
-              {/* Text input - only show when no linked object */}
-              {!tempAccommodationObjectId && (
+              {/* Text input - only show when no linked item */}
+              {!tempAccommodationObjectId && !tempAccommodationUrlId && (
                 <div>
                   <label className="block text-xs text-gray-400 mb-1">Namn på boende</label>
                   <div className="relative">
