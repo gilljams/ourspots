@@ -365,8 +365,10 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
   const ownLocationBlocks = object.blocks
     .filter(b => b.type === 'location' && b.data?.lat != null && b.data?.lng != null);
   const hasMultipleLocations = !isCollection && (ownLocationBlocks.length > 1 || (ownLocationBlocks.length >= 1 && pendingLocations.length > 0) || pendingLocations.length > 1);
-  // Show map button for any non-collection object with at least 1 location (enables adding more via FAB)
-  const showLocationMap = !isCollection && (ownLocationBlocks.length >= 1 || pendingLocations.length > 0);
+  // Show map button for non-collection objects:
+  //   - Always if 2+ locations (multi-location view is useful)
+  //   - With 1 location only if showQuickCapture is on (FAB enables adding more)
+  const showLocationMap = !isCollection && (hasMultipleLocations || (ownLocationBlocks.length >= 1 && showQuickCapture));
   const hasImageBlock = object.blocks.some(b => b.type === 'image' && b.data?.url);
   
   // Create fake "objects" for the multi-location map view (one per location)
