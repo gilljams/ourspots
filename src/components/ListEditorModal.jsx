@@ -727,11 +727,9 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
                           )}
                         </button>
                       )}
-                      {row.done && (
-                        <div className="w-4 h-4 rounded bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
-                          <Check size={10} className="text-emerald-400" />
-                        </div>
-                      )}
+                      <div className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 ${row.done ? 'bg-emerald-500/20' : ''}`}>
+                        {row.done && <Check size={10} className="text-emerald-400" />}
+                      </div>
                       <div
                         className="text-slate-600 cursor-grab active:cursor-grabbing touch-none"
                         onTouchStart={(e) => handleTouchStart(e, row.id)}
