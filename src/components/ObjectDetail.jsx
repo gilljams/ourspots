@@ -2097,7 +2097,8 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                   })}
                 </div>
                 
-                {/* Planera-knapp under innehållslistan */}
+                {/* Planera-knapp under innehållslistan - visa endast för editors, eller viewers om planering finns */}
+                {(canEdit || object.planningData) && (
                 <button
                   type="button"
                   onClick={() => {
@@ -2115,6 +2116,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                     ? `Visa planering (${object.planningData.days} dagar)` 
                     : 'Skapa planering'}
                 </button>
+                )}
               </div>
             )}
             {isCollection && orderedLinkedItems.length === 0 && totalLinkedCount === 0 && canManage && (
