@@ -99,7 +99,7 @@ export const LocationBlock = ({ data, inherited, onDelete, canDelete, positionNu
           {isCollection && planningData && onShowPlanner && (
             <button
               onClick={onShowPlanner}
-              className="w-9 h-9 rounded-lg bg-white/5 hover:bg-blue-500/20 flex items-center justify-center text-gray-400 hover:text-blue-400 transition-all flex-shrink-0"
+              className="w-9 h-9 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-gray-300 transition-all flex-shrink-0"
               title={`Visa planering (${planningData.days} dagar)`}
             >
               <Calendar size={16} />

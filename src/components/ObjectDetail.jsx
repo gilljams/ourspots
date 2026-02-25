@@ -1652,7 +1652,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                         {object.planningData && (
                           <button
                             onClick={() => setShowPlanner(true)}
-                            className="w-9 h-9 rounded-lg bg-white/5 hover:bg-blue-500/20 flex items-center justify-center text-gray-400 hover:text-blue-400 transition-all flex-shrink-0"
+                            className="w-9 h-9 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-gray-300 transition-all flex-shrink-0"
                             title={`Visa planering (${object.planningData.days} dagar)`}
                           >
                             <Calendar size={16} />
@@ -2106,8 +2106,8 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                   }}
                   className={`w-full mt-4 py-3 rounded-xl flex items-center justify-center gap-2 text-sm font-medium transition-all ${
                     object.planningData 
-                      ? 'bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/30' 
-                      : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-blue-300 border border-white/10 border-dashed'
+                      ? 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-gray-300 border border-white/10' 
+                      : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-gray-300 border border-white/10 border-dashed'
                   }`}
                 >
                   <Calendar size={16} />
