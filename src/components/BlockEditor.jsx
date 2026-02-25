@@ -237,6 +237,9 @@ function FullscreenTextEditor({ content, title, onSave, onCancel }) {
           <ToolbarButton onPress={() => insertMarkdown('*', '*', 'text')} title="Kursiv">
             <span className="italic text-sm">I</span>
           </ToolbarButton>
+          <ToolbarButton onPress={() => insertMarkdown('~~', '~~', 'text')} title="Genomstruken">
+            <span className="line-through text-sm">S</span>
+          </ToolbarButton>
           <ToolbarButton onPress={() => insertMarkdown('# ', '', 'Rubrik')} title="Rubrik">
             <span className="text-sm">H</span>
           </ToolbarButton>
@@ -254,6 +257,9 @@ function FullscreenTextEditor({ content, title, onSave, onCancel }) {
           </ToolbarButton>
           <ToolbarButton onPress={() => insertMarkdown('```\n', '\n```', 'kod')} title="Kodblock">
             <span className="font-mono text-xs">{'</>'}</span>
+          </ToolbarButton>
+          <ToolbarButton onPress={() => insertMarkdown('\n---\n', '', '')} title="Skiljelinje">
+            <span className="text-sm">―</span>
           </ToolbarButton>
           <div className="flex-1" />
           <ToolbarButton onPress={handleClear} title="Rensa" variant="danger">

@@ -578,6 +578,8 @@ export const renderMarkdown = (text) => {
       const boldMatch = remaining.match(/\*\*(.+?)\*\*/);
       // Check for *italic* (but not **)
       const italicMatch = remaining.match(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/);
+      // Check for ~~strikethrough~~
+      const strikeMatch = remaining.match(/~~(.+?)~~/);
       
       // Find the first match
       let firstMatch = null;
@@ -598,6 +600,11 @@ export const renderMarkdown = (text) => {
         firstMatch = italicMatch;
         matchType = 'italic';
         matchIndex = italicMatch.index;
+      }
+      if (strikeMatch && strikeMatch.index < matchIndex) {
+        firstMatch = strikeMatch;
+        matchType = 'strike';
+        matchIndex = strikeMatch.index;
       }
       
       if (firstMatch) {
@@ -625,6 +632,8 @@ export const renderMarkdown = (text) => {
           );
         } else if (matchType === 'bold') {
           parts.push(<strong key={keyIndex++} className="font-semibold text-white">{firstMatch[1]}</strong>);
+        } else if (matchType === 'strike') {
+          parts.push(<del key={keyIndex++} className="line-through text-gray-500">{firstMatch[1]}</del>);
         } else {
           parts.push(<em key={keyIndex++} className="italic text-gray-300">{firstMatch[1]}</em>);
         }
@@ -657,6 +666,14 @@ export const renderMarkdown = (text) => {
     // If inside code block, just collect lines
     if (inCodeBlock) {
       codeBlockLines.push(line);
+      return;
+    }
+    
+    // Check for horizontal rule (--- or ___ or ***)
+    if (/^[-_*]{3,}\s*$/.test(line.trim())) {
+      flushList();
+      flushQuote();
+      elements.push(<hr key={`hr-${index}`} className="border-t border-white/10 my-3" />);
       return;
     }
     
@@ -794,9 +811,20 @@ export const TextBlock = ({ data, onExpand, onEditContent }) => {
       {/* Collapsible content */}
       {!isCollapsed && (
         <div className="bg-white/[0.03] rounded-xl p-4">
-          <div className="text-sm leading-relaxed space-y-1">
-            {renderMarkdown(data.content)}
-          </div>
+          {data.content?.trim() ? (
+            <div className="text-sm leading-relaxed space-y-1">
+              {renderMarkdown(data.content)}
+            </div>
+          ) : onEditContent ? (
+            <button
+              onClick={handleEditClick}
+              className="w-full text-left text-sm text-gray-500 italic hover:text-gray-400 transition-colors py-1"
+            >
+              Tryck för att skriva...
+            </button>
+          ) : (
+            <div className="text-sm text-gray-600 italic">Tom anteckning</div>
+          )}
         </div>
       )}
     </div>
@@ -1237,7 +1265,7 @@ export const TableBlock = ({ data, objectId, blockIndex, onUpdate, onExpand, onE
                         const widthClass = effectiveWidth === 'flex-1' ? 'flex-1' : `flex-shrink-0 ${effectiveWidth}`;
                         const baseClass = `text-sm text-left ${widthClass} ${
                           col.type === 'number' ? 'text-right tabular-nums' : ''
-                        } ${isChecked ? 'text-gray-500 line-through' : (colIndex === 0 ? 'text-gray-200' : 'text-gray-400')}`;
+                        } ${isChecked ? 'text-gray-500/70 line-through decoration-gray-600' : (colIndex === 0 ? 'text-gray-200' : 'text-gray-400')}`;
                         
                         // Handle col2 with col2Type
                         if (col.id === 'col2' && data.col2Type && value) {

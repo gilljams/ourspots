@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, forwardRef } from 'react';
-import { X, Plus, Check, Trash2, GripVertical, Heading, ClipboardPaste, MoreVertical, CheckSquare, Square, RotateCcw, ListX } from 'lucide-react';
+import { X, Plus, Check, Trash2, GripVertical, Heading, ClipboardPaste, MoreVertical, CheckSquare, Square, RotateCcw, ListX, ArrowDownUp, Undo2, CheckCheck } from 'lucide-react';
 
 // Expandable input - shows textarea when focused if text is long
 const ExpandableInput = forwardRef(({ value, onChange, onKeyDown, placeholder, className, isHeader }, ref) => {
@@ -94,6 +94,8 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [showUtilsMenu, setShowUtilsMenu] = useState(false);
+  const [deletedRow, setDeletedRow] = useState(null); // { row, index } for undo
+  const undoTimerRef = useRef(null);
   const scrollYRef = useRef(0);
   const listRef = useRef(null);
   const inputRefs = useRef({});
@@ -150,6 +152,7 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
         viewport.removeEventListener('scroll', updateLayout);
       }
       window.removeEventListener('resize', updateLayout);
+      if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
     };
   }, []);
   
@@ -190,7 +193,28 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
   };
   
   const removeRow = (rowId) => {
+    const idx = rows.findIndex(r => r.id === rowId);
+    const row = rows[idx];
+    if (idx === -1) return;
+    
+    // Save for undo
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    setDeletedRow({ row, index: idx });
+    undoTimerRef.current = setTimeout(() => {
+      setDeletedRow(null);
+    }, 5000);
+    
     setRows(rows.filter(r => r.id !== rowId));
+  };
+  
+  const undoDelete = () => {
+    if (!deletedRow) return;
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    const newRows = [...rows];
+    const insertAt = Math.min(deletedRow.index, newRows.length);
+    newRows.splice(insertAt, 0, deletedRow.row);
+    setRows(newRows);
+    setDeletedRow(null);
   };
   
   const updateRow = (rowId, text) => {
@@ -510,6 +534,17 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
                     <button
                       type="button"
                       onClick={() => {
+                        setRows(rows.map(r => r.isHeader ? r : { ...r, done: true }));
+                        setShowUtilsMenu(false);
+                      }}
+                      className="w-full px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-600/50 flex items-center gap-2"
+                    >
+                      <CheckCheck size={14} />
+                      Bocka i alla
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
                         if (window.confirm('Vill du rensa alla ibockningar?')) {
                           setRows(rows.map(r => r.isHeader ? r : { ...r, done: false }));
                         }
@@ -520,6 +555,40 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
                       <RotateCcw size={14} />
                       Rensa ibockningar
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // Sort: headers stay, unchecked first, then checked — preserving relative order
+                        const result = [];
+                        let currentSection = [];
+                        
+                        const flushSection = () => {
+                          if (currentSection.length === 0) return;
+                          const unchecked = currentSection.filter(r => !r.done);
+                          const checked = currentSection.filter(r => r.done);
+                          result.push(...unchecked, ...checked);
+                          currentSection = [];
+                        };
+                        
+                        rows.forEach(r => {
+                          if (r.isHeader) {
+                            flushSection();
+                            result.push(r);
+                          } else {
+                            currentSection.push(r);
+                          }
+                        });
+                        flushSection();
+                        
+                        setRows(result);
+                        setShowUtilsMenu(false);
+                      }}
+                      className="w-full px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-600/50 flex items-center gap-2"
+                    >
+                      <ArrowDownUp size={14} />
+                      Sortera klara sist
+                    </button>
+                    <div className="border-t border-white/10 my-1" />
                     <button
                       type="button"
                       onClick={() => {
@@ -680,6 +749,28 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
             </button>
           </div>
         </div>
+        
+        {/* Undo delete toast */}
+        {deletedRow && (
+          <div 
+            className="fixed z-[2001] left-4 right-20 flex items-center gap-3 bg-slate-700 text-white text-sm rounded-xl px-4 py-3 shadow-lg border border-white/10"
+            style={{
+              bottom: `${Math.max(16, viewportHeight - window.innerHeight + 16)}px`
+            }}
+          >
+            <span className="flex-1 truncate">
+              "{deletedRow.row.item || 'Rad'}" borttagen
+            </span>
+            <button
+              type="button"
+              onClick={undoDelete}
+              className="flex items-center gap-1.5 text-blue-400 font-medium hover:text-blue-300 transition-colors flex-shrink-0"
+            >
+              <Undo2 size={14} />
+              Ångra
+            </button>
+          </div>
+        )}
         
         {/* Floating save button */}
         <button
