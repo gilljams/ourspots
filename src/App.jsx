@@ -21,6 +21,8 @@ import { usePersistedState } from './utils/usePersistedState';
 import { useAuth } from './utils/useAuth';
 import { useObjects } from './utils/useObjects';
 import { useFavorites } from './utils/useFavorites';
+import { useSharing } from './utils/useSharing';
+import { useDisplayObjects } from './utils/useDisplayObjects';
 
 // Components
 import { blockComponents } from './components/blocks';
@@ -86,6 +88,11 @@ function App() {
   const {
     favorites, setFavorites, handleToggleFavorite, validFavoritesCount
   } = useFavorites(user, initialFavorites, objects);
+
+  const {
+    pendingInvitations, userEmailKey, userEmailLower,
+    handleAcceptInvitation, handleRejectInvitation, handleLeaveShare
+  } = useSharing(user, objects, displayName, setToast, setSelectedObject);
 
   // --- Local UI state ---
   const [categories, setCategories] = useState([]);
@@ -403,21 +410,6 @@ function App() {
     };
   }, [selectedObject, showCreateModal, showMenu, showCategoryAdmin, showObjectsAdmin, showUsersAdmin, showCaptures]);
 
-  const searchTerm = searchQuery.trim().toLowerCase();
-
-  // Get pending invitations (objects where user's share status is pending)
-  const userEmailLower = user?.email?.toLowerCase();
-  const userEmailKey = userEmailLower ? emailToKey(userEmailLower) : null;
-  const pendingInvitations = useMemo(() => {
-    if (!userEmailKey) return [];
-    return objects.filter(obj => {
-      if (!obj.shares) return false;
-      const shareEntry = obj.shares[userEmailKey];
-      if (shareEntry?.status === 'pending') return true;
-      return false;
-    });
-  }, [objects, userEmailKey]);
-  
   // Get pending tiebreaker challenges
   const pendingTiebreakerChallenges = useMemo(() => {
     if (!user) return [];
@@ -452,117 +444,13 @@ function App() {
     });
   }, [objects, user, userEmailKey, userEmailLower]);
 
-  // Memoized filtered + sorted display list
-  const displayObjects = useMemo(() => {
-    const matchesSearch = (obj) => {
-      if (!searchTerm) return true;
-      const values = [];
-      const titleBlock = obj.blocks?.find(b => b.type === 'title');
-      if (titleBlock?.data?.text) values.push(titleBlock.data.text);
-      const locationBlock = obj.blocks?.find(b => b.type === 'location');
-      if (locationBlock?.data?.address) values.push(locationBlock.data.address);
-      obj.blocks?.forEach(block => {
-        if (block.type === 'text' && block.data?.text) {
-          values.push(block.data.text);
-        }
-        if (block.type === 'table' && Array.isArray(block.data?.rows)) {
-          block.data.rows.forEach(row => {
-            Object.values(row).forEach(val => {
-              if (typeof val === 'string') values.push(val);
-            });
-          });
-        }
-        if (block.type === 'datetag' && Array.isArray(block.data?.tags)) {
-          block.data.tags.forEach(tag => {
-            if (tag.type === 'year') {
-              values.push(tag.value.toString());
-            } else if (tag.type === 'range') {
-              values.push(tag.start);
-              values.push(tag.end);
-            }
-          });
-        }
-      });
-      return values.some(v => v.toString().toLowerCase().includes(searchTerm));
-    };
-
-    // Apply category filter
-    let filtered = objects;
-    if (activeCategory !== 'all' && activeCategory !== 'favorites') {
-      filtered = filtered.filter(o => o.type === activeCategory);
-    }
-    
-    // Apply favorites filter
-    if (showFavoritesOnly) {
-      filtered = filtered.filter(o => favorites.includes(o.id));
-    }
-    
-    // Apply "only owned" filter
-    if (showOnlyOwned && user) {
-      filtered = filtered.filter(o => o.ownerId === user.uid);
-    }
-    
-    // Apply view filter (collections vs objects)
-    if (viewFilter === 'collections') {
-      filtered = filtered.filter(o => o.isCollection === true);
-    } else if (viewFilter === 'objects') {
-      filtered = filtered.filter(o => !o.isCollection);
-    }
-    
-    // Determine which objects to display
-    let result;
-    if (showAllObjects) {
-      result = filtered;
-    } else if (searchTerm) {
-      result = filtered.filter(obj => matchesSearch(obj));
-    } else {
-      const accessibleIds = new Set(filtered.map(o => o.id));
-      result = filtered.filter(o => {
-        if (!o.parentId) return true;
-        if (!accessibleIds.has(o.parentId)) return true;
-        return false;
-      });
-    }
-
-    if (maxDistanceKm && userLocation) {
-      result = result.filter(obj => {
-        const cat = categories.find(c => c.id === obj.type);
-        if (cat?.hideLocation) return true;
-        const dist = getObjectDistance(obj);
-        return typeof dist === 'number' && dist <= maxDistanceKm;
-      });
-    }
-    
-    // Apply sorting
-    if (sortByDistance && userLocation) {
-      return [...result].sort((a, b) => {
-        const catA = categories.find(c => c.id === a.type);
-        const catB = categories.find(c => c.id === b.type);
-        if (catA?.hideLocation && !catB?.hideLocation) return 1;
-        if (!catA?.hideLocation && catB?.hideLocation) return -1;
-        const distA = getObjectDistance(a);
-        const distB = getObjectDistance(b);
-        return (distA ?? Infinity) - (distB ?? Infinity);
-      });
-    } else {
-      return [...result].sort((a, b) => {
-        const titleA = (a.blocks?.find(bl => bl.type === 'title')?.data?.text || '').toLowerCase();
-        const titleB = (b.blocks?.find(bl => bl.type === 'title')?.data?.text || '').toLowerCase();
-        return titleA.localeCompare(titleB, 'sv');
-      });
-    }
-  }, [objects, activeCategory, showFavoritesOnly, favorites, showOnlyOwned, user, viewFilter, searchTerm, showAllObjects, maxDistanceKm, userLocation, categories, getObjectDistance, sortByDistance]);
-
-  // Pre-compute child counts for all objects (avoids O(n²) in render loop)
-  const childCountMap = useMemo(() => {
-    const map = {};
-    for (const o of objects) {
-      if (o.parentId) {
-        map[o.parentId] = (map[o.parentId] || 0) + 1;
-      }
-    }
-    return map;
-  }, [objects]);
+  const { displayObjects, childCountMap, searchTerm } = useDisplayObjects({
+    objects, categories, favorites, user,
+    activeCategory, showFavoritesOnly, showOnlyOwned,
+    viewFilter, searchQuery, showAllObjects,
+    maxDistanceKm, userLocation, sortByDistance,
+    getObjectDistance
+  });
 
   // Stable callback for navigating to map from ObjectCard
   const handleNavigateToMap = useCallback((coords) => {
@@ -1063,51 +951,6 @@ function App() {
     }
   }, [objects, setToast]);
 
-  const handleLeaveShare = useCallback(async (obj) => {
-    if (!user) return;
-    
-    if (!confirm('Är du säker på att du vill lämna denna delning? Du kommer inte längre ha tillgång till objektet.')) {
-      return;
-    }
-    
-    try {
-      const userEmail = user.email.toLowerCase();
-      const emailKey = emailToKey(userEmail);
-      const shareData = obj.shares?.[emailKey];
-      
-      await updateDoc(doc(db, 'objects', obj.id), {
-        [`shares.${emailKey}`]: deleteField(),
-        sharedWithEmails: arrayRemove(userEmail),
-        acceptedShareEmails: arrayRemove(userEmail),
-        editorEmails: arrayRemove(userEmail)
-      });
-      
-      // If this was the original share with includeChildren (not inherited), 
-      // also remove from all descendants
-      if (shareData?.includeChildren && shareData?.status !== 'inherited') {
-        const descendants = objects.filter(o => 
-          o.ancestorIds?.includes(obj.id) && 
-          o.shares?.[emailKey]?.inheritedFrom === obj.id
-        );
-        if (descendants.length > 0) {
-          await Promise.all(descendants.map(desc => 
-            updateDoc(doc(db, 'objects', desc.id), {
-              [`shares.${emailKey}`]: deleteField(),
-              sharedWithEmails: arrayRemove(userEmail),
-              acceptedShareEmails: arrayRemove(userEmail),
-              editorEmails: arrayRemove(userEmail)
-            })
-          ));
-        }
-      }
-      
-      setSelectedObject(null);
-    } catch (err) {
-      console.error('Error leaving share:', err);
-      setToast({ message: 'Kunde inte lämna delningen!', type: 'error' });
-    }
-  }, [user, objects, setToast]);
-
   const handleEdit = useCallback((obj) => {
     if (!user) {
       setToast({ message: 'Du måste vara inloggad för att redigera!', type: 'error' });
@@ -1357,46 +1200,8 @@ function App() {
                     <div className="flex gap-1">
                       <button
                         onClick={async () => {
-                          try {
-                            const emailKey = emailToKey(user.email.toLowerCase());
-                            const userEmail = user.email.toLowerCase();
-                            const userDisplayName = displayName || user.email.split('@')[0];
-                            const updateData = {
-                              [`shares.${emailKey}.status`]: 'accepted',
-                              [`shares.${emailKey}.respondedAt`]: Timestamp.now(),
-                              [`shares.${emailKey}.displayName`]: userDisplayName,
-                              acceptedShareEmails: arrayUnion(userEmail)
-                            };
-                            // Add to editorEmails if editor role (for Firestore security rules)
-                            if (shareInfo?.role === 'editor') {
-                              updateData.editorEmails = arrayUnion(userEmail);
-                            }
-                            await updateDoc(doc(db, 'objects', obj.id), updateData);
-                            
-                            // If includeChildren, also update all descendants that have inherited share
-                            if (shareInfo?.includeChildren) {
-                              const descendants = objects.filter(o => 
-                                o.ancestorIds?.includes(obj.id) && 
-                                o.shares?.[emailKey]?.status === 'inherited'
-                              );
-                              if (descendants.length > 0) {
-                                await Promise.all(descendants.map(desc => {
-                                  const descUpdateData = {
-                                    [`shares.${emailKey}.displayName`]: userDisplayName,
-                                    acceptedShareEmails: arrayUnion(userEmail)
-                                  };
-                                  if (shareInfo?.role === 'editor') {
-                                    descUpdateData.editorEmails = arrayUnion(userEmail);
-                                  }
-                                  return updateDoc(doc(db, 'objects', desc.id), descUpdateData);
-                                }));
-                              }
-                            }
-                            if (pendingInvitations.length === 1) setShowInvitations(false);
-                          } catch (err) {
-                            console.error('Error accepting invitation:', err);
-                            setToast({ message: 'Kunde inte acceptera', type: 'error' });
-                          }
+                          const success = await handleAcceptInvitation(obj);
+                          if (success && pendingInvitations.length === 1) setShowInvitations(false);
                         }}
                         className="px-2.5 py-1.5 rounded-lg bg-green-500/20 text-green-300 text-xs font-medium hover:bg-green-500/30 transition-colors flex items-center justify-center"
                       >
@@ -1404,38 +1209,8 @@ function App() {
                       </button>
                       <button
                         onClick={async () => {
-                          try {
-                            const emailKey = emailToKey(user.email.toLowerCase());
-                            const userEmail = user.email.toLowerCase();
-                            await updateDoc(doc(db, 'objects', obj.id), {
-                              [`shares.${emailKey}`]: deleteField(),
-                              sharedWithEmails: arrayRemove(userEmail),
-                              acceptedShareEmails: arrayRemove(userEmail),
-                              editorEmails: arrayRemove(userEmail)
-                            });
-                            
-                            // If includeChildren, also remove from all descendants that have inherited share
-                            if (shareInfo?.includeChildren) {
-                              const descendants = objects.filter(o => 
-                                o.ancestorIds?.includes(obj.id) && 
-                                o.shares?.[emailKey]?.inheritedFrom === obj.id
-                              );
-                              if (descendants.length > 0) {
-                                await Promise.all(descendants.map(desc => 
-                                  updateDoc(doc(db, 'objects', desc.id), {
-                                    [`shares.${emailKey}`]: deleteField(),
-                                    sharedWithEmails: arrayRemove(userEmail),
-                                    acceptedShareEmails: arrayRemove(userEmail),
-                                    editorEmails: arrayRemove(userEmail)
-                                  })
-                                ));
-                              }
-                            }
-                            if (pendingInvitations.length === 1) setShowInvitations(false);
-                          } catch (err) {
-                            console.error('Error declining invitation:', err);
-                            setToast({ message: 'Kunde inte neka', type: 'error' });
-                          }
+                          const success = await handleRejectInvitation(obj);
+                          if (success && pendingInvitations.length === 1) setShowInvitations(false);
                         }}
                         className="px-2.5 py-1.5 rounded-lg bg-red-500/20 text-red-300 text-xs font-medium hover:bg-red-500/30 transition-colors flex items-center justify-center"
                       >
