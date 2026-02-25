@@ -7,7 +7,7 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { getIconComponent, PREDEFINED_ICONS, emailToKey } from '../utils/iconHelpers';
 import { getTransformedImageUrl, getFocalPointStyles } from '../utils/imageUtils';
-import { getObjectDistance, formatDistance, getDistance } from '../utils/geoUtils';
+import { getObjectDistance, formatDistance } from '../utils/geoUtils';
 import { blockComponents } from './blocks';
 import DeleteConfirmModal from './DeleteConfirmModal';
 import LeaderboardModal from './LeaderboardModal';
@@ -1732,25 +1732,15 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                       .map(child => {
                         const childTitle = child.blocks.find(bl => bl.type === 'title');
                         const childImage = child.blocks.find(bl => bl.type === 'image');
-                        const childLocation = child.blocks.find(bl => bl.type === 'location');
                         const childCategory = categories?.find(c => c.id === child.type);
                         const ChildIcon = childCategory ? getIconComponent(childCategory.icon) : (PREDEFINED_ICONS[child.type]?.icon || Home);
-                        
-                        // Calculate distance if both user location and child location exist
-                        const childDistance = userLocation && childLocation?.data?.lat && childLocation?.data?.lng
-                          ? getDistance(
-                              userLocation.lat, 
-                              userLocation.lng, 
-                              childLocation.data.lat, 
-                              childLocation.data.lng
-                            )
-                          : null;
+                        const childDistance = getObjectDistance(child, userLocation);
                         
                         return (
                           <button
                             key={child.id}
                             onClick={() => onNavigate(child)}
-                            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 hover:border-blue-400/30 transition-all text-left"
+                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 hover:border-blue-400/30 transition-all text-left"
                           >
                             {childImage ? (
                               <div className="w-8 h-8 rounded overflow-hidden flex-shrink-0">
@@ -1766,9 +1756,11 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                                 <ChildIcon size={14} className="text-blue-400" />
                               </div>
                             )}
-                            <span className="text-sm text-white truncate flex-1">{childTitle?.data?.text || 'Namnlöst'}</span>
-                            {childDistance !== null && (
-                              <span className="text-xs text-gray-500 flex-shrink-0">{formatDistance(childDistance)}</span>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium text-white truncate">{childTitle?.data?.text || 'Namnlöst'}</div>
+                            </div>
+                            {childDistance !== undefined && (
+                              <div className="text-xs text-gray-500 flex-shrink-0">{formatDistance(childDistance)}</div>
                             )}
                           </button>
                         );
