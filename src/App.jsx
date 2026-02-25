@@ -18,6 +18,9 @@ import { useObjects } from './utils/useObjects';
 import { useFavorites } from './utils/useFavorites';
 import { useSharing } from './utils/useSharing';
 import { useDisplayObjects } from './utils/useDisplayObjects';
+import { useSaveObject } from './utils/useSaveObject';
+import { useCollectionActions } from './utils/useCollectionActions';
+import { useDebounce } from './utils/useDebounce';
 
 // Components
 import { blockComponents } from './components/blocks';
@@ -53,7 +56,7 @@ const ModalLoadingFallback = () => (
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { db } from './firebase';
-import { collection, addDoc, updateDoc, deleteDoc, doc, Timestamp, getDoc, getDocs, setDoc, deleteField, query, where, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { collection, updateDoc, deleteDoc, doc, Timestamp, getDoc, getDocs, setDoc } from 'firebase/firestore';
 
 // Fix Leaflet default marker icon issue with bundlers
 delete L.Icon.Default.prototype._getIconUrl;
@@ -64,7 +67,6 @@ L.Icon.Default.mergeOptions({
 });
 
 function App() {
-  const [saving, setSaving] = useState(false);
   const [toast, setToastInternal] = useState(null); // { message, type: 'success' | 'error' | 'info', key }
   // Wrapper to add unique key for proper timer reset on repeated toasts
   const setToast = (value) => setToastInternal(value ? { ...value, key: Date.now() } : null);
@@ -93,6 +95,16 @@ function App() {
     handleAcceptInvitation, handleRejectInvitation, handleLeaveShare
   } = useSharing(user, objects, displayName, setToast, setSelectedObject);
 
+  const { saving, saveObject } = useSaveObject({
+    user, isAdmin, userApproved, appSettings,
+    objects, showDemoObjects, setToast, setSelectedObject
+  });
+
+  const {
+    addToCollection, removeFromCollection, updateLinkedNote,
+    addLinkedUrl, updateLinkedUrl, removeLinkedUrl, reorderLinked
+  } = useCollectionActions(objects, setToast);
+
   // --- Local UI state ---
   const [categories, setCategories] = useState([]);
   const [categoriesLoaded, setCategoriesLoaded] = useState(false);
@@ -113,6 +125,7 @@ function App() {
   const [showShareModal, setShowShareModal] = useState(null); // Object to share
   const [sortByDistance, setSortByDistance] = usePersistedState(STORAGE_KEYS.SORT_BY_DISTANCE, false);
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 200);
   const [searchExpanded, setSearchExpanded] = useState(false);
   const searchInputRef = useRef(null);
   const [maxDistanceKm, setMaxDistanceKm] = useState(null);
@@ -446,7 +459,7 @@ function App() {
   const { displayObjects, childCountMap, searchTerm } = useDisplayObjects({
     objects, categories, favorites, user,
     activeCategory, showFavoritesOnly, showOnlyOwned,
-    viewFilter, searchQuery, showAllObjects,
+    viewFilter, searchQuery: debouncedSearchQuery, showAllObjects,
     maxDistanceKm, userLocation, sortByDistance,
     getObjectDistance
   });
@@ -558,363 +571,11 @@ function App() {
   }, [objects]);
 
   const handleSaveObject = async (objectData, editId) => {
-    if (!user) {
-      setToast({ message: 'Du måste vara inloggad!', type: 'error' });
-      return;
-    }
-    
-    // Check object limit for new objects (not edits) - admins have no limit
-    if (!editId && !isAdmin) {
-      const ownedObjectsCount = objects.filter(o => o.ownerId === user.uid).length;
-      const limit = userApproved ? appSettings.approvedObjectLimit : appSettings.defaultObjectLimit;
-      
-      if (ownedObjectsCount >= limit) {
-        if (!userApproved) {
-          setToast({ message: `Du har nått gränsen på ${limit} objekt. Kontakta en administratör för att få ditt konto godkänt och utökat.`, type: 'error' });
-        } else {
-          setToast({ message: `Du har nått din gräns på ${limit} objekt.`, type: 'error' });
-        }
-        return;
-      }
-    }
-    
-    setSaving(true);
-    try {
-      let savedObjectId = editId;
-      
-      // Build parent path for breadcrumb display AND ancestor IDs for fast lookups
-      const buildAncestorData = (parentId) => {
-        if (!parentId) return { parentPath: [], ancestorIds: [] };
-        const path = [];
-        const ids = [];
-        let currentId = parentId;
-        let depth = 0;
-        while (currentId && depth < 10) {
-          const p = objects.find(o => o.id === currentId);
-          if (p) {
-            const name = p.blocks?.find(b => b.type === 'title')?.data?.text;
-            if (name) path.unshift(name);
-            ids.unshift(currentId); // Add ID to ancestor list
-            currentId = p.parentId;
-          } else {
-            break;
-          }
-          depth++;
-        }
-        return { parentPath: path, ancestorIds: ids };
-      };
-      
-      const { parentPath, ancestorIds } = buildAncestorData(objectData.parentId);
-      const dataWithPath = { ...objectData, parentPath, ancestorIds };
-      
-      // Check if parent has shares with includeChildren - inherit them for new children
-      let inheritedShares = {};
-      let inheritedSharedWithEmails = [];
-      let inheritedAcceptedShareEmails = []; // For inherited shares - auto-accepted
-      let inheritedEditorEmails = [];
-      if (!editId && objectData.parentId) {
-        const parent = objects.find(o => o.id === objectData.parentId);
-        if (parent?.shares) {
-          // Find shares that have includeChildren enabled
-          Object.entries(parent.shares).forEach(([emailKey, shareData]) => {
-            if (shareData.includeChildren) {
-              inheritedShares[emailKey] = {
-                ...shareData,
-                status: 'inherited', // Use 'inherited' status - no notification needed
-                includeChildren: false, // Children don't cascade further
-                inheritedFrom: objectData.parentId
-              };
-              if (shareData.email) {
-                const emailLower = shareData.email.toLowerCase();
-                inheritedSharedWithEmails.push(emailLower);
-                inheritedAcceptedShareEmails.push(emailLower); // Inherited = auto-accepted
-                if (shareData.role === 'editor') {
-                  inheritedEditorEmails.push(emailLower);
-                }
-              }
-            }
-          });
-        }
-      }
-      
-      if (editId) {
-        // Check if parent changed - need to update descendants' ancestorIds and shares
-        const existingObj = objects.find(o => o.id === editId);
-        const parentChanged = existingObj?.parentId !== objectData.parentId;
-        const oldParentId = existingObj?.parentId;
-        const newParentId = objectData.parentId;
-        
-        // Build shares update data if parent changed
-        let sharesUpdateData = {};
-        if (parentChanged) {
-          // Find old inherited shares (from old ancestors) that need to be removed
-          const oldAncestorIds = existingObj?.ancestorIds || [];
-          const sharesToRemove = {};
-          const emailsToRemove = [];
-          
-          if (existingObj?.shares) {
-            Object.entries(existingObj.shares).forEach(([emailKey, shareData]) => {
-              // Remove inherited shares that came from old ancestors
-              if (shareData.status === 'inherited' && oldAncestorIds.includes(shareData.inheritedFrom)) {
-                sharesToRemove[emailKey] = deleteField();
-                if (shareData.email) {
-                  emailsToRemove.push(shareData.email.toLowerCase());
-                }
-              }
-            });
-          }
-          
-          // Find new inherited shares from new parent
-          const newInheritedShares = {};
-          const newInheritedEmails = [];
-          const newInheritedEditorEmails = [];
-          
-          if (newParentId) {
-            const newParent = objects.find(o => o.id === newParentId);
-            if (newParent?.shares) {
-              Object.entries(newParent.shares).forEach(([emailKey, shareData]) => {
-                if (shareData.includeChildren && (shareData.status === 'accepted' || shareData.status === 'inherited')) {
-                  newInheritedShares[emailKey] = {
-                    ...shareData,
-                    status: 'inherited',
-                    includeChildren: false,
-                    inheritedFrom: newParentId
-                  };
-                  if (shareData.email) {
-                    const emailLower = shareData.email.toLowerCase();
-                    newInheritedEmails.push(emailLower);
-                    if (shareData.role === 'editor') {
-                      newInheritedEditorEmails.push(emailLower);
-                    }
-                  }
-                }
-              });
-            }
-          }
-          
-          // Build the shares update
-          Object.keys(sharesToRemove).forEach(key => {
-            sharesUpdateData[`shares.${key}`] = deleteField();
-          });
-          Object.entries(newInheritedShares).forEach(([key, data]) => {
-            sharesUpdateData[`shares.${key}`] = data;
-          });
-          
-          // Update array fields for removed emails
-          if (emailsToRemove.length > 0) {
-            sharesUpdateData.sharedWithEmails = arrayRemove(...emailsToRemove);
-            sharesUpdateData.acceptedShareEmails = arrayRemove(...emailsToRemove);
-            sharesUpdateData.editorEmails = arrayRemove(...emailsToRemove);
-          }
-        }
-        
-        // Update existing object
-        const updatePayload = { ...dataWithPath, updatedAt: Timestamp.now(), ...sharesUpdateData };
-        await updateDoc(doc(db, 'objects', editId), updatePayload);
-        
-        // If new inherited emails, add them (separate update to handle arrayUnion after arrayRemove)
-        if (parentChanged && newParentId) {
-          const newParent = objects.find(o => o.id === newParentId);
-          if (newParent?.shares) {
-            const emailsToAdd = [];
-            const editorEmailsToAdd = [];
-            Object.entries(newParent.shares).forEach(([emailKey, shareData]) => {
-              if (shareData.includeChildren && (shareData.status === 'accepted' || shareData.status === 'inherited')) {
-                if (shareData.email) {
-                  emailsToAdd.push(shareData.email.toLowerCase());
-                  if (shareData.role === 'editor') {
-                    editorEmailsToAdd.push(shareData.email.toLowerCase());
-                  }
-                }
-              }
-            });
-            if (emailsToAdd.length > 0) {
-              const addPayload = {
-                sharedWithEmails: arrayUnion(...emailsToAdd),
-                acceptedShareEmails: arrayUnion(...emailsToAdd)
-              };
-              if (editorEmailsToAdd.length > 0) {
-                addPayload.editorEmails = arrayUnion(...editorEmailsToAdd);
-              }
-              await updateDoc(doc(db, 'objects', editId), addPayload);
-            }
-          }
-        }
-        
-        // If parent changed, update all descendants' ancestorIds AND shares
-        if (parentChanged) {
-          const descendants = objects.filter(o => o.ancestorIds?.includes(editId));
-          if (descendants.length > 0) {
-            // New ancestor path for the edited object
-            const newAncestorBase = [...ancestorIds, editId];
-            // Old ancestors that are no longer in the chain
-            const oldAncestorIds = existingObj?.ancestorIds || [];
-            
-            // Get new inherited shares from the moved object's new ancestor chain
-            const newInheritedSharesForDesc = {};
-            const newInheritedEmailsForDesc = [];
-            const newInheritedEditorEmailsForDesc = [];
-            
-            // Check all new ancestors for shares with includeChildren
-            for (const ancId of ancestorIds) {
-              const ancestor = objects.find(o => o.id === ancId);
-              if (ancestor?.shares) {
-                Object.entries(ancestor.shares).forEach(([emailKey, shareData]) => {
-                  if (shareData.includeChildren && (shareData.status === 'accepted' || shareData.status === 'inherited')) {
-                    if (!newInheritedSharesForDesc[emailKey]) {
-                      newInheritedSharesForDesc[emailKey] = {
-                        ...shareData,
-                        status: 'inherited',
-                        includeChildren: false,
-                        inheritedFrom: ancId
-                      };
-                      if (shareData.email) {
-                        const emailLower = shareData.email.toLowerCase();
-                        if (!newInheritedEmailsForDesc.includes(emailLower)) {
-                          newInheritedEmailsForDesc.push(emailLower);
-                          if (shareData.role === 'editor') {
-                            newInheritedEditorEmailsForDesc.push(emailLower);
-                          }
-                        }
-                      }
-                    }
-                  }
-                });
-              }
-            }
-            
-            await Promise.all(descendants.map(async (desc) => {
-              // Find where editId is in the descendant's ancestorIds
-              const editIdIndex = desc.ancestorIds.indexOf(editId);
-              if (editIdIndex !== -1) {
-                // Replace everything before editId with new ancestor path
-                const descendantSuffix = desc.ancestorIds.slice(editIdIndex + 1);
-                const newDescAncestorIds = [...newAncestorBase, ...descendantSuffix];
-                
-                // Also rebuild parentPath names
-                const newParentPath = [];
-                for (const ancId of newDescAncestorIds) {
-                  const anc = objects.find(o => o.id === ancId);
-                  if (anc) {
-                    const name = anc.blocks?.find(b => b.type === 'title')?.data?.text;
-                    if (name) newParentPath.push(name);
-                  }
-                }
-                
-                // Build shares update for descendant
-                const descSharesUpdate = {};
-                const descEmailsToRemove = [];
-                
-                // Remove inherited shares from old ancestors
-                if (desc.shares) {
-                  Object.entries(desc.shares).forEach(([emailKey, shareData]) => {
-                    if (shareData.status === 'inherited' && oldAncestorIds.includes(shareData.inheritedFrom)) {
-                      descSharesUpdate[`shares.${emailKey}`] = deleteField();
-                      if (shareData.email) {
-                        descEmailsToRemove.push(shareData.email.toLowerCase());
-                      }
-                    }
-                  });
-                }
-                
-                // Add new inherited shares
-                Object.entries(newInheritedSharesForDesc).forEach(([key, data]) => {
-                  descSharesUpdate[`shares.${key}`] = data;
-                });
-                
-                const descUpdatePayload = {
-                  ancestorIds: newDescAncestorIds,
-                  parentPath: newParentPath,
-                  ...descSharesUpdate
-                };
-                
-                if (descEmailsToRemove.length > 0) {
-                  descUpdatePayload.sharedWithEmails = arrayRemove(...descEmailsToRemove);
-                  descUpdatePayload.acceptedShareEmails = arrayRemove(...descEmailsToRemove);
-                  descUpdatePayload.editorEmails = arrayRemove(...descEmailsToRemove);
-                }
-                
-                await updateDoc(doc(db, 'objects', desc.id), descUpdatePayload);
-                
-                // Add new emails (separate update)
-                if (newInheritedEmailsForDesc.length > 0) {
-                  const addPayload = {
-                    sharedWithEmails: arrayUnion(...newInheritedEmailsForDesc),
-                    acceptedShareEmails: arrayUnion(...newInheritedEmailsForDesc)
-                  };
-                  if (newInheritedEditorEmailsForDesc.length > 0) {
-                    addPayload.editorEmails = arrayUnion(...newInheritedEditorEmailsForDesc);
-                  }
-                  await updateDoc(doc(db, 'objects', desc.id), addPayload);
-                }
-              }
-            }));
-          }
-        }
-      } else {
-        // Create new - use Promise.race with timeout
-        const newObjectData = { 
-          ...dataWithPath, 
-          ownerId: user.uid, 
-          ownerName: user.displayName, 
-          ownerEmail: user.email, 
-          createdAt: Timestamp.now(), 
-          updatedAt: Timestamp.now(),
-          isCollection: objectData.isCollection || false,
-          linkedObjectIds: objectData.linkedObjectIds || [],
-          linkedUrls: objectData.linkedUrls || [],
-          linkedOrder: objectData.linkedOrder || [],
-          whatsappGroupUrl: objectData.whatsappGroupUrl || null,
-          // Demo objects: auto-create as demo when admin is in demo mode
-          ...(isAdmin && showDemoObjects ? { isDemo: true } : {})
-          // Note: linkedObjectNotes is NOT copied - it contains time-specific info
-        };
-        
-        // Add inherited shares if any
-        if (Object.keys(inheritedShares).length > 0) {
-          newObjectData.shares = inheritedShares;
-          newObjectData.sharedWithEmails = inheritedSharedWithEmails;
-          newObjectData.acceptedShareEmails = inheritedAcceptedShareEmails;
-          if (inheritedEditorEmails.length > 0) {
-            newObjectData.editorEmails = inheritedEditorEmails;
-          }
-        }
-        
-        const addOperation = addDoc(collection(db, 'objects'), newObjectData);
-        
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Timeout')), 10000)
-        );
-        
-        const docRef = await Promise.race([addOperation, timeoutPromise]);
-        savedObjectId = docRef.id;
-      }
-      
+    const savedObjectId = await saveObject(objectData, editId);
+    if (savedObjectId !== undefined && savedObjectId !== null) {
       setShowCreateModal(false);
       setEditingObject(null);
       setDefaultParentId(null);
-      
-      // Show the saved object - fetch fresh from Firestore to ensure we have latest data
-      if (savedObjectId) {
-        try {
-          const freshDoc = await getDoc(doc(db, 'objects', savedObjectId));
-          if (freshDoc.exists()) {
-            setSelectedObject({ id: freshDoc.id, ...freshDoc.data() });
-          }
-        } catch (fetchErr) {
-          console.error('Error fetching saved object:', fetchErr);
-          // Fallback to local objects if fetch fails
-          const savedObj = objects.find(o => o.id === savedObjectId);
-          if (savedObj) {
-            setSelectedObject(savedObj);
-          }
-        }
-      }
-    } catch (err) {
-      console.error('Save error:', err);
-      setToast({ message: err.message === 'Timeout' ? 'Sparningen tog för lång tid. Försök igen.' : 'Kunde inte spara!', type: 'error' });
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -1579,141 +1240,13 @@ function App() {
             onShare={(obj) => setShowShareModal(obj)}
             onLeaveShare={handleLeaveShare}
             collections={objects.filter(o => o.isCollection && (o.ownerId === user?.uid || isAdmin))}
-            onAddToCollection={async (objectId, collectionId) => {
-              try {
-                // Prevent circular linking (adding collection to itself)
-                if (objectId === collectionId) {
-                  setToast({ message: 'En samlingsvy kan inte länka till sig själv', type: 'error' });
-                  return;
-                }
-                const collection = objects.find(o => o.id === collectionId);
-                if (!collection) return;
-                const currentLinked = collection.linkedObjectIds || [];
-                if (currentLinked.includes(objectId)) {
-                  setToast({ message: 'Objektet finns redan i samlingsvyn', type: 'info' });
-                  return;
-                }
-                // Add to both linkedObjectIds and linkedOrder
-                const currentOrder = collection.linkedOrder || [];
-                await updateDoc(doc(db, 'objects', collectionId), {
-                  linkedObjectIds: [...currentLinked, objectId],
-                  linkedOrder: [...currentOrder, { type: 'object', id: objectId }],
-                  updatedAt: Timestamp.now()
-                });
-                const collectionTitle = collection.blocks?.find(b => b.type === 'title')?.data?.text || 'samlingsvyn';
-                setToast({ message: `Tillagt i "${collectionTitle}"!`, type: 'success' });
-              } catch (err) {
-                console.error('Error adding to collection:', err);
-                setToast({ message: 'Kunde inte lägga till i samlingsvyn', type: 'error' });
-              }
-            }}
-            onRemoveFromCollection={async (collectionId, objectId) => {
-              try {
-                const collection = objects.find(o => o.id === collectionId);
-                if (!collection) return;
-                const currentLinked = collection.linkedObjectIds || [];
-                const currentOrder = collection.linkedOrder || [];
-                await updateDoc(doc(db, 'objects', collectionId), {
-                  linkedObjectIds: currentLinked.filter(id => id !== objectId),
-                  linkedOrder: currentOrder.filter(item => !(item.type === 'object' && item.id === objectId)),
-                  updatedAt: Timestamp.now()
-                });
-              } catch (err) {
-                console.error('Error removing from collection:', err);
-                setToast({ message: 'Kunde inte ta bort från samlingsvyn', type: 'error' });
-              }
-            }}
-            onUpdateLinkedNote={async (collectionId, linkedObjectId, note) => {
-              try {
-                const collection = objects.find(o => o.id === collectionId);
-                if (!collection) return;
-                const currentNotes = collection.linkedObjectNotes || {};
-                const updatedNotes = { ...currentNotes };
-                if (note) {
-                  updatedNotes[linkedObjectId] = note;
-                } else {
-                  delete updatedNotes[linkedObjectId];
-                }
-                await updateDoc(doc(db, 'objects', collectionId), {
-                  linkedObjectNotes: updatedNotes,
-                  updatedAt: Timestamp.now()
-                });
-              } catch (err) {
-                console.error('Error updating linked note:', err);
-              }
-            }}
-            onAddLinkedUrl={async (collectionId, urlData) => {
-              try {
-                const collection = objects.find(o => o.id === collectionId);
-                if (!collection) return;
-                const newUrl = {
-                  id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
-                  title: urlData.title,
-                  url: urlData.url,
-                  note: urlData.note || ''
-                };
-                const currentUrls = collection.linkedUrls || [];
-                const currentOrder = collection.linkedOrder || [];
-                await updateDoc(doc(db, 'objects', collectionId), {
-                  linkedUrls: [...currentUrls, newUrl],
-                  linkedOrder: [...currentOrder, { type: 'url', id: newUrl.id }],
-                  updatedAt: Timestamp.now()
-                });
-              } catch (err) {
-                console.error('Error adding linked URL:', err);
-                setToast({ message: 'Kunde inte lägga till länken', type: 'error' });
-              }
-            }}
-            onUpdateLinkedUrl={async (collectionId, urlId, urlData) => {
-              try {
-                const collection = objects.find(o => o.id === collectionId);
-                if (!collection) return;
-                const currentUrls = collection.linkedUrls || [];
-                const updatedUrls = currentUrls.map(u => u.id === urlId ? { ...u, ...urlData } : u);
-                await updateDoc(doc(db, 'objects', collectionId), {
-                  linkedUrls: updatedUrls,
-                  updatedAt: Timestamp.now()
-                });
-              } catch (err) {
-                console.error('Error updating linked URL:', err);
-              }
-            }}
-            onRemoveLinkedUrl={async (collectionId, urlId) => {
-              try {
-                const collection = objects.find(o => o.id === collectionId);
-                if (!collection) return;
-                const currentUrls = collection.linkedUrls || [];
-                const currentOrder = collection.linkedOrder || [];
-                await updateDoc(doc(db, 'objects', collectionId), {
-                  linkedUrls: currentUrls.filter(u => u.id !== urlId),
-                  linkedOrder: currentOrder.filter(item => !(item.type === 'url' && item.id === urlId)),
-                  updatedAt: Timestamp.now()
-                });
-              } catch (err) {
-                console.error('Error removing linked URL:', err);
-              }
-            }}
-            onReorderLinked={async (collectionId, currentIndex, direction) => {
-              try {
-                const collection = objects.find(o => o.id === collectionId);
-                if (!collection) return;
-                
-                const currentOrder = [...(collection.linkedOrder || [])];
-                const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
-                
-                if (newIndex < 0 || newIndex >= currentOrder.length) return;
-                
-                // Swap in the unified order array
-                [currentOrder[currentIndex], currentOrder[newIndex]] = [currentOrder[newIndex], currentOrder[currentIndex]];
-                
-                await updateDoc(doc(db, 'objects', collectionId), {
-                  linkedOrder: currentOrder,
-                  updatedAt: Timestamp.now()
-                });
-              } catch (err) {
-                console.error('Error reordering linked item:', err);
-              }
-            }}
+            onAddToCollection={addToCollection}
+            onRemoveFromCollection={removeFromCollection}
+            onUpdateLinkedNote={updateLinkedNote}
+            onAddLinkedUrl={addLinkedUrl}
+            onUpdateLinkedUrl={updateLinkedUrl}
+            onRemoveLinkedUrl={removeLinkedUrl}
+            onReorderLinked={reorderLinked}
           />
         )}
 
