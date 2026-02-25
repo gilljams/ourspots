@@ -94,6 +94,27 @@ export default function PlannerModal({
     return () => window.removeEventListener('resize', updateVisibleDays);
   }, [manualVisibleDays]);
   
+  // Set initial visible day: if using dates and today is within the planning period, start on today
+  useEffect(() => {
+    if (isOpen && startDate && days > 0) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const planStart = new Date(startDate);
+      planStart.setHours(0, 0, 0, 0);
+      const planEnd = new Date(planStart);
+      planEnd.setDate(planEnd.getDate() + days - 1);
+      
+      if (today >= planStart && today <= planEnd) {
+        const dayIndex = Math.floor((today - planStart) / (1000 * 60 * 60 * 24));
+        setVisibleStartDay(dayIndex);
+      } else {
+        setVisibleStartDay(0);
+      }
+    } else if (isOpen) {
+      setVisibleStartDay(0);
+    }
+  }, [isOpen, startDate, days]);
+  
   if (!isOpen) return null;
   
   // Handle swipe navigation
