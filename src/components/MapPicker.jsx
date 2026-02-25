@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, Loader } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Tooltip, useMapEvents } from 'react-leaflet';
-import { createUserIcon } from '../utils/mapIcons';
+import { MapContainer, Marker, useMapEvents } from 'react-leaflet';
+import { BaseTileLayer, UserLocationMarker } from './map/SharedMapComponents';
 
 function MapPicker({ onSelect, onClose, initialPosition, userLocation }) {
   const [position, setPosition] = useState(initialPosition || [59.33, 18.06]);
@@ -124,15 +124,8 @@ function MapPicker({ onSelect, onClose, initialPosition, userLocation }) {
         
         <div className="h-[50vh] rounded-xl overflow-hidden border border-white/10 shadow-2xl bg-gray-900/80 transition-all duration-300 mb-4 relative">
           <MapContainer center={position} zoom={13} style={{ height: '100%', width: '100%' }}>
-            <TileLayer
-              attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-              url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-            />
-            {userLocation && (
-              <Marker position={[userLocation.lat, userLocation.lng]} icon={createUserIcon()}>
-                <Tooltip permanent={false} direction="top">Din plats</Tooltip>
-              </Marker>
-            )}
+            <BaseTileLayer />
+            <UserLocationMarker position={userLocation} />
             <LocationMarker />
           </MapContainer>
           

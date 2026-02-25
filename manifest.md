@@ -2,7 +2,7 @@
 OurSpots – Manifest / Blueprint (Updated Feb 25, 2026)
 ========================
 
-🚀 STATUS: v2.9.11 - iPhone Safari-optimering
+🚀 STATUS: v2.9.12 - Kartkomponentkonsolidering och UX-standardisering
 
 1. VISION
 - Mobilfokuserad app med premium dark theme
@@ -47,6 +47,9 @@ OurSpots – Manifest / Blueprint (Updated Feb 25, 2026)
 - iPhone Safari: overscroll-contain för att stoppa rubber-band scroll ✅ NY v2.9.11
 - iPhone Safari: backdrop-blur borttagen från ObjectCard (GPU-prestanda) ✅ NY v2.9.11
 - iPhone Safari: MapView visualViewport för toolbar-resize ✅ NY v2.9.11
+- Kartkonsolidering: SharedMapComponents med delad knappdesign ✅ NY v2.9.12
+- Kartkonsolidering: CollectionMapView extraherad till egen fil ✅ NY v2.9.12
+- Kartkonsolidering: MapView/MapPicker/ObjectDetail refaktorerade ✅ NY v2.9.12
 - Kartintegration med position och avstånd ✅
 - Egen positionsmarkör (användarikon) på karta ✅
 - Dark theme + glassmorphism + accentfärger ✅
@@ -976,6 +979,32 @@ src/
   - Valda rader får blå bakgrund
   - Knappen lyser blått när aktivt
   - "Avsluta val" avmarkerar och stänger läget
+
+18. CHANGELOG v2.9.12 - Kartkomponentkonsolidering och UX-standardisering (Feb 25, 2026)
+
+### Ny delad kartinfrastruktur
+- ✅ SharedMapComponents.jsx — gemensamma byggstenar för alla kartvisningar
+  - BaseTileLayer, UserLocationMarker, DirectionLine, NavigationInfoPanel
+  - MapDragDetector, RecenterButton, FitBounds, FitAllButton
+  - CenterOnLocationButton (med enableWatch), TrackingToggleButton
+  - AddLocationButton (FAB), InvalidateSizeOnChange, MapControlStack
+- ✅ Konsekvent knappdesignsystem (2026 best practice):
+  - 44×44px touch targets (WCAG / Apple HIG)
+  - Dark glass-stil: bg-black/60 + vit text + shadow + rounded-full
+  - Aktiva tillstånd: blue/green bakgrund med pulsring
+  - Layout: top-right (kontroller), top-left (info), bottom-center (recenter), bottom-right (FAB)
+
+### Refaktorerade kartkomponenter
+- ✅ MapView.jsx omskriven med delade komponenter (~260 rader, ner från ~495)
+- ✅ CollectionMapView extraherad till egen fil (src/components/map/CollectionMapView.jsx)
+- ✅ ObjectDetail.jsx reducerad med ~600 rader (inline kartkod borttagen)
+- ✅ MapPicker.jsx refaktorerad med BaseTileLayer och UserLocationMarker
+- ✅ App.jsx städad — borttagna oanvända react-leaflet/cluster/mapIcons-importer
+- ✅ LeaderboardModal behållen som-den-är (unik golf-karta, liten och fristående)
+
+### Nya geoUtils-tillägg
+- ✅ getDistanceMeters() — meter-precision avståndsberäkning
+- ✅ formatDistanceMeters() — smart formatering (m < 1000, annars km)
 
 17. CHANGELOG v2.9.11 - iPhone Safari-optimering (Feb 25, 2026)
 

@@ -21,7 +21,7 @@ import {
   extractGPSFromImage 
 } from './utils/imageUtils';
 import { getDistance, getObjectDistance as getObjectDistanceUtil, formatDistance } from './utils/geoUtils';
-import { createColoredIcon, createUserIcon, createAreaIcon } from './utils/mapIcons';
+
 import { iconMap, getIconComponent, PREDEFINED_ICONS, AVAILABLE_ICONS, emailToKey, keyToEmail } from './utils/iconHelpers';
 
 // Components
@@ -54,8 +54,6 @@ const ModalLoadingFallback = () => (
     </div>
   </div>
 );
-import { MapContainer, TileLayer, Marker, useMapEvents, useMap, Tooltip, Popup } from 'react-leaflet';
-import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { db, auth, googleProvider } from './firebase';
