@@ -15,10 +15,10 @@ const formatDate = (startDate, dayIndex) => {
   }
   const date = new Date(startDate);
   date.setDate(date.getDate() + dayIndex);
-  const weekday = date.toLocaleDateString('sv-SE', { weekday: 'short' });
+  const weekday = date.toLocaleDateString('sv-SE', { weekday: 'short' }).slice(0, 3);
   const day = date.getDate();
-  const month = date.toLocaleDateString('sv-SE', { month: 'short' });
-  return `${weekday} ${day}/${month.replace('.', '')}`;
+  const month = date.toLocaleDateString('sv-SE', { month: 'short' }).replace('.', '').slice(0, 3);
+  return `${weekday} ${day} ${month}`;
 };
 
 const getShortDate = (startDate, dayIndex) => {
@@ -27,9 +27,10 @@ const getShortDate = (startDate, dayIndex) => {
   }
   const date = new Date(startDate);
   date.setDate(date.getDate() + dayIndex);
-  const weekday = date.toLocaleDateString('sv-SE', { weekday: 'short' });
+  const weekday = date.toLocaleDateString('sv-SE', { weekday: 'short' }).slice(0, 3);
   const day = date.getDate();
-  return `${weekday} ${day}`;
+  const month = date.toLocaleDateString('sv-SE', { month: 'short' }).replace('.', '').slice(0, 3);
+  return `${weekday} ${day} ${month}`;
 };
 
 export default function PlannerModal({ 
