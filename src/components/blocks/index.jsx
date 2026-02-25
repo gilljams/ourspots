@@ -580,7 +580,8 @@ export const renderMarkdown = (text) => {
       const italicMatch = remaining.match(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/);
       // Check for ~~strikethrough~~
       const strikeMatch = remaining.match(/~~(.+?)~~/);
-      
+      // Check for `inline code`
+      const codeMatch = remaining.match(/`([^`]+)`/);      
       // Find the first match
       let firstMatch = null;
       let matchType = null;
@@ -605,6 +606,11 @@ export const renderMarkdown = (text) => {
         firstMatch = strikeMatch;
         matchType = 'strike';
         matchIndex = strikeMatch.index;
+      }
+      if (codeMatch && codeMatch.index < matchIndex) {
+        firstMatch = codeMatch;
+        matchType = 'code';
+        matchIndex = codeMatch.index;
       }
       
       if (firstMatch) {
@@ -634,6 +640,8 @@ export const renderMarkdown = (text) => {
           parts.push(<strong key={keyIndex++} className="font-semibold text-white">{firstMatch[1]}</strong>);
         } else if (matchType === 'strike') {
           parts.push(<del key={keyIndex++} className="line-through text-gray-500">{firstMatch[1]}</del>);
+        } else if (matchType === 'code') {
+          parts.push(<code key={keyIndex++} className="px-1.5 py-0.5 rounded bg-white/10 text-amber-300 text-[0.85em] font-mono">{firstMatch[1]}</code>);
         } else {
           parts.push(<em key={keyIndex++} className="italic text-gray-300">{firstMatch[1]}</em>);
         }
@@ -1239,12 +1247,12 @@ export const TableBlock = ({ data, objectId, blockIndex, onUpdate, onExpand, onE
                     // Regular row
                     <div 
                       key={row.id || rowIndex} 
-                      className="flex items-start gap-3 px-3 py-2 hover:bg-white/[0.03] transition-colors"
+                      className={`flex items-start gap-3 px-3 py-2 hover:bg-white/[0.03] transition-colors ${checkboxCol ? 'cursor-pointer' : ''}`}
+                      onClick={checkboxCol ? () => handleCheckboxToggle(rowIndex, checkboxCol.id) : undefined}
                     >
                       {/* Checkbox first (if exists) */}
                       {checkboxCol && (
-                        <button
-                          onClick={() => handleCheckboxToggle(rowIndex, checkboxCol.id)}
+                        <div
                           className="flex-shrink-0 touch-manipulation mt-0.5"
                         >
                           <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
@@ -1252,7 +1260,7 @@ export const TableBlock = ({ data, objectId, blockIndex, onUpdate, onExpand, onE
                           }`}>
                             {row[checkboxCol.id] && <Check size={12} className="text-white" />}
                           </div>
-                        </button>
+                        </div>
                       )}
                       
                       {/* Display columns */}

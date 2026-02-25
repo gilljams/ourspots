@@ -217,8 +217,15 @@ function FullscreenTextEditor({ content, title, onSave, onCancel }) {
         </span>
         <button
           type="button"
-          onTouchEnd={(e) => { e.preventDefault(); onCancel(); }}
-          onClick={onCancel}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            if (text !== (content || '') && !window.confirm('Du har osparade ändringar. Vill du kasta dem?')) return;
+            onCancel();
+          }}
+          onClick={() => {
+            if (text !== (content || '') && !window.confirm('Du har osparade ändringar. Vill du kasta dem?')) return;
+            onCancel();
+          }}
           className="w-12 h-12 flex items-center justify-center text-gray-400 active:text-white transition-colors touch-manipulation"
         >
           <X size={24} />

@@ -588,6 +588,24 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
                       <ArrowDownUp size={14} />
                       Sortera klara sist
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const checkedCount = rows.filter(r => !r.isHeader && r.done).length;
+                        if (checkedCount === 0) {
+                          setShowUtilsMenu(false);
+                          return;
+                        }
+                        if (window.confirm(`Ta bort ${checkedCount} ibockade rad${checkedCount > 1 ? 'er' : ''}?`)) {
+                          setRows(rows.filter(r => r.isHeader || !r.done));
+                        }
+                        setShowUtilsMenu(false);
+                      }}
+                      className="w-full px-3 py-2 text-left text-sm text-orange-400 hover:bg-orange-500/10 flex items-center gap-2"
+                    >
+                      <Trash2 size={14} />
+                      Ta bort ibockade
+                    </button>
                     <div className="border-t border-white/10 my-1" />
                     <button
                       type="button"
@@ -695,7 +713,7 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
                     </div>
                   ) : (
                     // Regular row
-                    <div className="flex-1 flex items-center gap-2 px-3 py-2.5">
+                    <div className={`flex-1 flex items-center gap-2 px-3 py-2.5 ${row.done ? 'bg-white/[0.02]' : ''}`}>
                       {selectMode && (
                         <button
                           type="button"
@@ -709,6 +727,11 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
                           )}
                         </button>
                       )}
+                      {row.done && (
+                        <div className="w-4 h-4 rounded bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                          <Check size={10} className="text-emerald-400" />
+                        </div>
+                      )}
                       <div
                         className="text-slate-600 cursor-grab active:cursor-grabbing touch-none"
                         onTouchStart={(e) => handleTouchStart(e, row.id)}
@@ -721,7 +744,7 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
                         onChange={(e) => updateRow(row.id, e.target.value)}
                         onKeyDown={(e) => handleKeyDown(e, row.id)}
                         placeholder="Skriv här..."
-                        className="flex-1 bg-transparent text-white text-sm placeholder-slate-600 focus:outline-none"
+                        className={`flex-1 bg-transparent text-sm placeholder-slate-600 focus:outline-none ${row.done ? 'text-slate-500' : 'text-white'}`}
                       />
                       <button
                         type="button"
