@@ -36,6 +36,7 @@ function CollectionMapView({ objects, categories, onSelectObject, userLocation, 
   const [currentUserLocation, setCurrentUserLocation] = useState(userLocation);
   const [navigationTarget, setNavigationTarget] = useState(null);
   const [hasPannedAway, setHasPannedAway] = useState(false);
+  const [isGPSWatching, setIsGPSWatching] = useState(false);
   
   const positions = objects.map(obj => {
     const loc = obj.blocks.find(b => b.type === 'location');
@@ -64,7 +65,8 @@ function CollectionMapView({ objects, categories, onSelectObject, userLocation, 
         (position) => {
           setCurrentUserLocation({
             lat: position.coords.latitude,
-            lng: position.coords.longitude
+            lng: position.coords.longitude,
+            accuracy: Math.round(position.coords.accuracy)
           });
         },
         () => {},
@@ -93,8 +95,8 @@ function CollectionMapView({ objects, categories, onSelectObject, userLocation, 
       <BaseTileLayer />
       <FitBounds positions={positions} />
       
-      {/* User location marker */}
-      <UserLocationMarker position={currentUserLocation} />
+      {/* User location marker with accuracy circle */}
+      <UserLocationMarker position={currentUserLocation} isTracking={isGPSWatching} />
       
       {Object.entries(groupedByLocation).map(([coordKey, groupObjects]) => {
         const [lat, lng] = coordKey.split(',').map(Number);
@@ -311,11 +313,18 @@ function CollectionMapView({ objects, categories, onSelectObject, userLocation, 
       {/* Top-right control stack – consistent layout */}
       <MapControlStack>
         <FitAllButton positions={allPositions} />
-        <CenterOnLocationButton onLocationFound={setCurrentUserLocation} enableWatch />
+        <CenterOnLocationButton 
+          onLocationFound={setCurrentUserLocation} 
+          enableWatch 
+          onWatchStateChange={({ isWatching, isFollowing }) => {
+            setIsGPSWatching(isWatching);
+            if (isFollowing) setHasPannedAway(false);
+          }}
+        />
       </MapControlStack>
       
       <MapDragDetector onPanned={() => setHasPannedAway(true)} />
-      <RecenterButton show={hasPannedAway} userLocation={currentUserLocation} />
+      <RecenterButton show={hasPannedAway && !isGPSWatching} userLocation={currentUserLocation} />
       <DirectionLine from={currentUserLocation} to={navigationTarget} />
       
       {onAddLocation && (

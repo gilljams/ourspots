@@ -20,7 +20,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Navigation, Locate, X, Maximize2, Target } from 'lucide-react';
-import { TileLayer, Marker, Tooltip, Polyline, useMap, useMapEvents } from 'react-leaflet';
+import { TileLayer, Marker, Tooltip, Polyline, Circle, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { createUserIcon } from '../../utils/mapIcons';
 import { getDistanceMeters, formatDistanceMeters } from '../../utils/geoUtils';
@@ -53,16 +53,34 @@ export function BaseTileLayer() {
 
 export function UserLocationMarker({ position, isTracking = false }) {
   if (!position) return null;
+  const accuracy = position.accuracy;
   return (
-    <Marker 
-      position={[position.lat, position.lng]} 
-      icon={createUserIcon()} 
-      zIndexOffset={1000}
-    >
-      <Tooltip permanent={false} direction="top">
-        {isTracking ? 'Din plats (spårar)' : 'Din plats'}
-      </Tooltip>
-    </Marker>
+    <>
+      {accuracy != null && accuracy < 200 && (
+        <Circle
+          center={[position.lat, position.lng]}
+          radius={accuracy}
+          pathOptions={{
+            color: '#3B82F6',
+            fillColor: '#3B82F6',
+            fillOpacity: 0.08,
+            weight: 1.5,
+            opacity: 0.3,
+          }}
+        />
+      )}
+      <Marker 
+        position={[position.lat, position.lng]} 
+        icon={createUserIcon()} 
+        zIndexOffset={1000}
+      >
+        <Tooltip permanent={false} direction="top">
+          {isTracking 
+            ? `Din plats${accuracy ? ` (±${accuracy}m)` : ' (spårar)'}` 
+            : 'Din plats'}
+        </Tooltip>
+      </Marker>
+    </>
   );
 }
 
@@ -95,12 +113,16 @@ export function NavigationInfoPanel({ target, userLocation, onClose }) {
     userLocation.lat, userLocation.lng,
     target.lat, target.lng
   );
+  const accuracy = userLocation.accuracy;
   
   return (
     <div className="absolute top-3 left-3 z-[1000] bg-black/60 text-white px-3.5 py-2.5 rounded-2xl shadow-lg flex items-center gap-3">
       <div>
         <div className="text-[11px] text-gray-300 leading-tight">Till {target.name}</div>
         <div className="text-lg font-bold text-emerald-400 leading-tight">{formatDistanceMeters(distance)}</div>
+        {accuracy && (
+          <div className="text-[10px] text-gray-400 leading-tight">GPS ±{accuracy}m</div>
+        )}
       </div>
       <button
         onClick={onClose}
@@ -201,13 +223,26 @@ export function FitAllButton({ positions }) {
 }
 
 // ─── Center On Location Button ────────────────────────────────────────────────
+// 3-state button when enableWatch is true:
+//   1. Idle (default)          → Click: locate + start watching in follow mode
+//   2. Watching + following    → Green + pulse. Auto-centers on GPS. Click: stop watching.
+//   3. Watching + NOT following → Blue. Marker moves, map stays. Click: re-enable follow.
+// When user pans manually during follow, it transitions to state 3.
 
-export function CenterOnLocationButton({ onLocationFound, enableWatch = false }) {
+export function CenterOnLocationButton({ onLocationFound, enableWatch = false, onWatchStateChange }) {
   const map = useMap();
   const [isLocating, setIsLocating] = useState(false);
   const [isWatching, setIsWatching] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(true);
   const watchIdRef = useRef(null);
+  const isFollowingRef = useRef(true);
+  const onLocationFoundRef = useRef(onLocationFound);
   
+  // Keep refs in sync (for use inside watchPosition closure)
+  useEffect(() => { isFollowingRef.current = isFollowing; }, [isFollowing]);
+  useEffect(() => { onLocationFoundRef.current = onLocationFound; }, [onLocationFound]);
+  
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (watchIdRef.current !== null) {
@@ -215,6 +250,27 @@ export function CenterOnLocationButton({ onLocationFound, enableWatch = false })
       }
     };
   }, []);
+  
+  // Notify parent of watch/follow state changes
+  useEffect(() => {
+    if (onWatchStateChange) onWatchStateChange({ isWatching, isFollowing });
+  }, [isWatching, isFollowing]);
+  
+  // Detect manual pan → disable auto-follow (transition to state 3)
+  useMapEvents({
+    dragstart: () => {
+      if (isWatching) setIsFollowing(false);
+    }
+  });
+  
+  const stopWatching = () => {
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+    setIsWatching(false);
+    setIsFollowing(true);
+  };
   
   const handleClick = async () => {
     if (!('geolocation' in navigator)) {
@@ -233,36 +289,59 @@ export function CenterOnLocationButton({ onLocationFound, enableWatch = false })
       } catch (e) { /* continue */ }
     }
 
-    // If watching, toggle off
-    if (isWatching && watchIdRef.current !== null) {
-      navigator.geolocation.clearWatch(watchIdRef.current);
-      watchIdRef.current = null;
-      setIsWatching(false);
+    // State 2 → stop watching
+    if (isWatching && isFollowing) {
+      stopWatching();
       return;
     }
     
+    // State 3 → re-enable follow, snap to user
+    if (isWatching && !isFollowing) {
+      setIsFollowing(true);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const { latitude, longitude, accuracy } = pos.coords;
+          map.setView([latitude, longitude], Math.max(map.getZoom(), 16), { animate: true });
+          if (onLocationFound) onLocationFound({ lat: latitude, lng: longitude, accuracy: Math.round(accuracy) });
+        },
+        () => {},
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 2000 }
+      );
+      return;
+    }
+    
+    // State 1 → start locating
     setIsLocating(true);
     
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const { latitude, longitude } = position.coords;
-        map.setView([latitude, longitude], Math.max(map.getZoom(), 15));
+        const { latitude, longitude, accuracy } = position.coords;
+        map.setView([latitude, longitude], Math.max(map.getZoom(), 16));
         if (onLocationFound) {
-          onLocationFound({ lat: latitude, lng: longitude });
+          onLocationFound({ lat: latitude, lng: longitude, accuracy: Math.round(accuracy) });
         }
         setIsLocating(false);
         
         // Start continuous watch if enabled
         if (enableWatch) {
           setIsWatching(true);
+          setIsFollowing(true);
           watchIdRef.current = navigator.geolocation.watchPosition(
             (pos) => {
-              const { latitude: lat, longitude: lng } = pos.coords;
-              if (onLocationFound) onLocationFound({ lat, lng });
-              map.setView([lat, lng], map.getZoom(), { animate: true });
+              const { latitude: lat, longitude: lng, accuracy: acc } = pos.coords;
+              // Always update marker position + accuracy
+              if (onLocationFoundRef.current) {
+                onLocationFoundRef.current({ lat, lng, accuracy: Math.round(acc) });
+              }
+              // Only auto-center if in follow mode
+              if (isFollowingRef.current) {
+                map.setView([lat, lng], map.getZoom(), { animate: true });
+              }
             },
-            () => {},
-            { enableHighAccuracy: true, timeout: 30000, maximumAge: 5000 }
+            (err) => {
+              console.warn('Watch position error:', err.code);
+            },
+            { enableHighAccuracy: true, timeout: 20000, maximumAge: 2000 }
           );
         }
       },
@@ -282,17 +361,24 @@ export function CenterOnLocationButton({ onLocationFound, enableWatch = false })
     );
   };
   
-  const isActive = isLocating || isWatching;
-  
   return (
     <button
       onClick={handleClick}
       disabled={isLocating}
-      className={isWatching ? MAP_BTN_ACTIVE_GREEN : isLocating ? MAP_BTN_ACTIVE_BLUE : MAP_BTN_DEFAULT}
-      title={isWatching ? 'Stoppa positionsspårning' : 'Centrera på min position'}
+      className={
+        isWatching && isFollowing ? MAP_BTN_ACTIVE_GREEN :
+        isWatching ? MAP_BTN_ACTIVE_BLUE :
+        isLocating ? MAP_BTN_ACTIVE_BLUE :
+        MAP_BTN_DEFAULT
+      }
+      title={
+        isWatching && isFollowing ? 'Stoppa spårning' :
+        isWatching ? 'Följ min position' :
+        enableWatch ? 'Spåra min position' : 'Centrera på min position'
+      }
     >
       {enableWatch ? <Navigation size={20} /> : <Locate size={20} />}
-      {isActive && (
+      {isWatching && isFollowing && (
         <span className="absolute inset-0 rounded-full border-2 border-white/50 animate-ping" />
       )}
     </button>
