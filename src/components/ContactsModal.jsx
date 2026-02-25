@@ -307,7 +307,7 @@ function ContactsModal({ onClose, currentUserEmail, objects = [], favoriteContac
     >
       <div 
         ref={modalRef}
-        className="bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-xl lg:rounded-2xl border-t sm:border border-white/10 sm:border-white/[0.08] w-full sm:max-w-md lg:max-w-sm sm:w-[90%] lg:w-[28%] h-full sm:h-auto sm:max-h-[85vh] lg:h-[calc(100vh-2rem)] lg:max-h-none overflow-hidden flex flex-col transition-transform duration-200 ease-out relative sm:shadow-2xl sm:shadow-black/50"
+        className="bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-xl lg:rounded-2xl border-t sm:border border-white/10 sm:border-white/[0.08] w-full sm:max-w-md lg:max-w-sm sm:w-[90%] lg:w-[28%] h-full sm:h-auto sm:max-h-[85vh] lg:h-[calc(100dvh-2rem)] lg:max-h-none overflow-hidden flex flex-col transition-transform duration-200 ease-out relative sm:shadow-2xl sm:shadow-black/50"
         style={{ transform: `translateX(${touchDelta}px)`, opacity: touchDelta > 0 ? 1 - (touchDelta / 300) : 1 }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
@@ -389,7 +389,7 @@ function ContactsModal({ onClose, currentUserEmail, objects = [], favoriteContac
         </div>
 
         {/* Scrollable content */}
-        <div className="overflow-y-auto flex-1 p-4 sm:p-5 pb-8 sm:pb-10">
+        <div className="overflow-y-auto overscroll-contain flex-1 p-4 sm:p-5 pb-8 sm:pb-10">
           {activeTab === 'sharing' 
             ? renderContactList(sharingData, true)
             : renderContactList(sharedWithMeData, false)

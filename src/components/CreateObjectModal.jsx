@@ -963,7 +963,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
       >
         {/* Modal */}
         <div 
-          className="bg-gray-900 sm:rounded-xl lg:rounded-2xl border-t sm:border border-white/10 w-full sm:max-w-2xl lg:max-w-xl sm:w-[90%] lg:w-[40%] h-full sm:h-auto sm:max-h-[90vh] lg:h-[calc(100vh-2rem)] lg:max-h-none overflow-hidden flex flex-col"
+          className="bg-gray-900 sm:rounded-xl lg:rounded-2xl border-t sm:border border-white/10 w-full sm:max-w-2xl lg:max-w-xl sm:w-[90%] lg:w-[40%] h-full sm:h-auto sm:max-h-[90vh] lg:h-[calc(100dvh-2rem)] lg:max-h-none overflow-hidden flex flex-col"
           style={{ touchAction: 'pan-y' }}
         >
           
@@ -991,7 +991,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
           </div>
 
           {/* Scrollable Content */}
-          <div className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-6 lg:space-y-4">
+          <div className="flex-1 overflow-y-auto overscroll-contain p-4 lg:p-6 space-y-6 lg:space-y-4">
             
             {/* Category selector */}
             <div>

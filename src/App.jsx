@@ -1496,7 +1496,7 @@ function App() {
 
   if (loading || !categoriesLoaded) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900/20 to-gray-900 flex items-center justify-center">
+      <div className="min-h-[100dvh] bg-gradient-to-br from-gray-900 via-blue-900/20 to-gray-900 flex items-center justify-center">
         <div className="text-center">
           <Loader size={48} className="animate-spin text-blue-400 mx-auto mb-4" />
           <p className="text-gray-400">{!categoriesLoaded ? 'Laddar kategorier...' : 'Laddar dina platser...'}</p>
@@ -1507,7 +1507,7 @@ function App() {
 
   return (
     <div
-      className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950"
+      className="min-h-[100dvh] bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950"
       style={{
          backgroundImage: `radial-gradient(circle at 15% 12%, rgba(59,130,246,0.20), transparent 35%),
                            radial-gradient(circle at 85% 8%, rgba(56,189,248,0.16), transparent 32%),
@@ -2104,7 +2104,7 @@ function App() {
 
       {/* FAB container - constrained to max-w-6xl like main content */}
       {user && (
-        <div className="fixed inset-x-0 bottom-0 pointer-events-none z-[1200]">
+        <div className="fixed inset-x-0 bottom-0 pointer-events-none z-[1200]" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
           <div className="max-w-6xl mx-auto relative px-4">
             {/* Hide buttons when modals are open */}
             {!selectedObject && !showCreateModal && !showCategoryAdmin && !showObjectsAdmin && !showShareModal && (

@@ -34,12 +34,13 @@ function MapView({ objects, onSelectObject, currentUser, userLocation, categorie
   // The position to show on map - live tracking takes priority over initial userLocation
   const displayUserLocation = liveUserLocation || userLocation;
 
-  // Calculate available height dynamically
+  // Calculate available height dynamically (use visualViewport for iOS Safari toolbar resize)
   useEffect(() => {
     const updateHeight = () => {
       if (containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
-        const availableHeight = window.innerHeight - rect.top - 24; // 24px bottom padding
+        const vh = window.visualViewport?.height || window.innerHeight;
+        const availableHeight = vh - rect.top - 24; // 24px bottom padding
         setMapHeight(`${Math.max(300, availableHeight)}px`);
       }
     };
@@ -47,10 +48,13 @@ function MapView({ objects, onSelectObject, currentUser, userLocation, categorie
     // Initial calculation with small delay to ensure DOM is ready
     const timer = setTimeout(updateHeight, 50);
     window.addEventListener('resize', updateHeight);
+    // visualViewport fires resize when iOS Safari toolbar shows/hides
+    window.visualViewport?.addEventListener('resize', updateHeight);
     
     return () => {
       clearTimeout(timer);
       window.removeEventListener('resize', updateHeight);
+      window.visualViewport?.removeEventListener('resize', updateHeight);
     };
   }, [showFilters]);
 

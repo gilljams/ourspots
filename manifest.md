@@ -2,7 +2,7 @@
 OurSpots – Manifest / Blueprint (Updated Feb 25, 2026)
 ========================
 
-🚀 STATUS: v2.9.10 - Innehållsredigering UX Polish
+🚀 STATUS: v2.9.11 - iPhone Safari-optimering
 
 1. VISION
 - Mobilfokuserad app med premium dark theme
@@ -41,6 +41,12 @@ OurSpots – Manifest / Blueprint (Updated Feb 25, 2026)
 - Auto-spara stödtext vid blur/byte av rad (ingen V-knapp) ✅ NY v2.9.10
 - saveAndSwitchNote för sömlöst byte mellan rader ✅ NY v2.9.10
 - iOS fokus-fix med ref-callback och setTimeout ✅ NY v2.9.10
+- iPhone Safari: viewport-fit=cover + PWA meta-taggar ✅ NY v2.9.11
+- iPhone Safari: FAB safe-area padding för notch/Dynamic Island ✅ NY v2.9.11
+- iPhone Safari: 100dvh istället för 100vh på alla modaler ✅ NY v2.9.11
+- iPhone Safari: overscroll-contain för att stoppa rubber-band scroll ✅ NY v2.9.11
+- iPhone Safari: backdrop-blur borttagen från ObjectCard (GPU-prestanda) ✅ NY v2.9.11
+- iPhone Safari: MapView visualViewport för toolbar-resize ✅ NY v2.9.11
 - Kartintegration med position och avstånd ✅
 - Egen positionsmarkör (användarikon) på karta ✅
 - Dark theme + glassmorphism + accentfärger ✅
@@ -970,6 +976,18 @@ src/
   - Valda rader får blå bakgrund
   - Knappen lyser blått när aktivt
   - "Avsluta val" avmarkerar och stänger läget
+
+17. CHANGELOG v2.9.11 - iPhone Safari-optimering (Feb 25, 2026)
+
+### iOS Safari kompatibilitet
+- ✅ viewport-fit=cover + apple-mobile-web-app-capable meta-taggar
+- ✅ FAB-knappar respekterar safe-area-inset-bottom (notch/Dynamic Island)
+- ✅ safe-area-inset-bottom CSS-klass för iOS-säkra marginaler
+- ✅ 100dvh istället för 100vh på App.jsx + alla 7 modaler
+- ✅ overscroll-contain på alla modal-scrollområden (stoppar rubber-band)
+- ✅ backdrop-blur-md borttagen från ObjectCard (GPU-tung på äldre iPhones)
+- ✅ MapView använder visualViewport API för korrekt höjd vid toolbar-resize
+- ✅ Input font-size 16px och touch-action: manipulation (redan sedan tidigare)
 - ✅ Multi-select drag:
   - Markera flera rader med checkboxarna
   - Dra på valfri markerad rad

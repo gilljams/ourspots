@@ -61,6 +61,11 @@ input, textarea, select {
   font-size: 16px !important;
 }
 
+/* Safe area utility classes */
+.safe-area-inset-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
 /* User position marker - best practice styling */
 .user-marker-container {
   position: relative;

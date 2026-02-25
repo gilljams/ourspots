@@ -110,7 +110,7 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
   const showBreadcrumb = showAsChild && parentChain && parentChain.length > 0;
 
   return (
-    <div onClick={onClick} className={`bg-white/5 backdrop-blur-md overflow-hidden border border-white/10 hover:border-blue-400/50 transition-all cursor-pointer transform hover:scale-[1.02] relative group ${compact ? 'rounded-xl' : 'rounded-2xl'}`}>
+    <div onClick={onClick} className={`bg-gray-900/80 overflow-hidden border border-white/10 hover:border-blue-400/50 transition-all cursor-pointer transform hover:scale-[1.02] relative group ${compact ? 'rounded-xl' : 'rounded-2xl'}`}>
       {/* Parent breadcrumb for orphan/search children */}
       {showBreadcrumb && (
         <div className="px-3 py-1.5 bg-blue-500/10 border-b border-white/5 flex items-center gap-1 text-[10px] text-blue-300/80 overflow-hidden">
@@ -130,7 +130,7 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
             {currentUser && (
               <button
                 onClick={handleFavoriteClick}
-                className={`rounded-full bg-gray-900/70 backdrop-blur-sm hover:bg-gray-800/90 hover:scale-110 transition-all duration-200 ${compact ? 'p-1 lg:p-1' : 'p-1.5'}`}
+                className={`rounded-full bg-gray-900/80 hover:bg-gray-800/90 hover:scale-110 transition-all duration-200 ${compact ? 'p-1 lg:p-1' : 'p-1.5'}`}
                 title={isFavorite ? 'Ta bort från favoriter' : 'Lägg till i favoriter'}
               >
                 <Star 
@@ -142,7 +142,7 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
             {isOwner && !compact && (
               <button
                 onClick={handleShareClick}
-                className="rounded-full bg-gray-900/70 backdrop-blur-sm hover:bg-gray-800/90 hover:scale-110 transition-all duration-200 p-1.5"
+                className="rounded-full bg-gray-900/80 hover:bg-gray-800/90 hover:scale-110 transition-all duration-200 p-1.5"
                 title="Dela"
               >
                 <Share2 size={16} className="text-gray-400 hover:text-blue-300" />
@@ -152,18 +152,18 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
           {/* Top right badges: Shared indicator + Child count */}
           <div className={`absolute ${showBreadcrumb ? 'top-8' : 'top-2'} right-2 z-10 flex items-center gap-1.5`}>
             {isSharedWithMe && (
-              <div className={`bg-purple-500/20 backdrop-blur-sm text-purple-300 rounded-full border border-purple-500/30 flex items-center gap-1 ${compact ? 'text-[10px] px-1.5 py-0.5' : 'text-xs px-2 py-1'}`} title={`Delad med dig som ${myShareRole === 'editor' ? 'redigerare' : 'läsare'}`}>
+              <div className={`bg-purple-500/20 text-purple-300 rounded-full border border-purple-500/30 flex items-center gap-1 ${compact ? 'text-[10px] px-1.5 py-0.5' : 'text-xs px-2 py-1'}`} title={`Delad med dig som ${myShareRole === 'editor' ? 'redigerare' : 'läsare'}`}>
                 <Users size={compact ? 10 : 12} />
               </div>
             )}
             {childCount > 0 && (
-              <div className={`bg-white/10 backdrop-blur-sm text-gray-200 rounded-full border border-white/15 flex items-center gap-1 ${compact ? 'text-[10px] px-1.5 py-0.5' : 'text-xs px-2 py-1'}`}>
+              <div className={`bg-white/10 text-gray-200 rounded-full border border-white/15 flex items-center gap-1 ${compact ? 'text-[10px] px-1.5 py-0.5' : 'text-xs px-2 py-1'}`}>
                 <Folder size={compact ? 10 : 12} className="text-gray-300" />
                 {childCount}
               </div>
             )}
             {linkedCount > 0 && (
-              <div className={`bg-white/10 backdrop-blur-sm text-gray-200 rounded-full border border-white/15 flex items-center gap-1 ${compact ? 'text-[10px] px-1.5 py-0.5' : 'text-xs px-2 py-1'}`}>
+              <div className={`bg-white/10 text-gray-200 rounded-full border border-white/15 flex items-center gap-1 ${compact ? 'text-[10px] px-1.5 py-0.5' : 'text-xs px-2 py-1'}`}>
                 <Folder size={compact ? 10 : 12} className="text-gray-300" />
                 {linkedCount}
               </div>
@@ -178,7 +178,7 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
             />
             {/* Countdown badge at bottom left */}
             {countdown && (
-              <div className={`absolute bottom-2 left-2 z-10 backdrop-blur-sm rounded-full flex items-center gap-1 ${
+              <div className={`absolute bottom-2 left-2 z-10 rounded-full flex items-center gap-1 ${
                 countdown.highlight 
                   ? 'bg-amber-500/30 text-amber-200 border border-amber-500/40' 
                   : 'bg-gray-900/70 text-gray-300 border border-white/10'

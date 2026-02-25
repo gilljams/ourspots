@@ -423,7 +423,7 @@ function UsersAdminModal({ currentUserId, onClose }) {
     >
       <div 
         ref={modalRef}
-        className="bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-xl lg:rounded-2xl border-t sm:border border-white/10 w-full sm:max-w-2xl lg:max-w-md sm:w-[90%] lg:w-[30%] h-full sm:h-auto sm:max-h-[85vh] lg:h-[calc(100vh-2rem)] lg:max-h-none overflow-hidden flex flex-col"
+        className="bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-xl lg:rounded-2xl border-t sm:border border-white/10 w-full sm:max-w-2xl lg:max-w-md sm:w-[90%] lg:w-[30%] h-full sm:h-auto sm:max-h-[85vh] lg:h-[calc(100dvh-2rem)] lg:max-h-none overflow-hidden flex flex-col"
         style={{ transform: `translateX(${touchDelta}px)`, opacity: touchDelta > 0 ? 1 - (touchDelta / 300) : 1 }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
@@ -586,7 +586,7 @@ function UsersAdminModal({ currentUserId, onClose }) {
         </div>
         
         {/* User list */}
-        <div className="flex-1 overflow-y-auto p-4 lg:p-3 space-y-3 lg:space-y-2">
+        <div className="flex-1 overflow-y-auto overscroll-contain p-4 lg:p-3 space-y-3 lg:space-y-2">
           {loading ? (
             <div className="text-center py-8 text-gray-400">Laddar användare...</div>
           ) : filteredUsers.length === 0 ? (

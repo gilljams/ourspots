@@ -171,7 +171,7 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
     >
       <div 
         ref={modalRef}
-        className="bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-xl lg:rounded-2xl border-t sm:border border-white/10 sm:border-white/[0.08] w-full sm:max-w-lg lg:max-w-md sm:w-[90%] lg:w-[30%] h-full sm:h-auto sm:max-h-[85vh] lg:h-[calc(100vh-2rem)] lg:max-h-none overflow-hidden flex flex-col transition-transform duration-200 ease-out relative sm:shadow-2xl sm:shadow-black/50"
+        className="bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-xl lg:rounded-2xl border-t sm:border border-white/10 sm:border-white/[0.08] w-full sm:max-w-lg lg:max-w-md sm:w-[90%] lg:w-[30%] h-full sm:h-auto sm:max-h-[85vh] lg:h-[calc(100dvh-2rem)] lg:max-h-none overflow-hidden flex flex-col transition-transform duration-200 ease-out relative sm:shadow-2xl sm:shadow-black/50"
         style={{ transform: `translateX(${touchDelta}px)`, opacity: touchDelta > 0 ? 1 - (touchDelta / 300) : 1 }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
@@ -201,7 +201,7 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
           </button>
         </div>
 
-        <div className="p-4 sm:p-6 lg:p-4 overflow-y-auto flex-1">
+        <div className="p-4 sm:p-6 lg:p-4 overflow-y-auto overscroll-contain flex-1">
           {/* Add new category */}
           <div className="mb-6 lg:mb-4 p-4 lg:p-3 rounded-xl lg:rounded-lg bg-white/5 border border-white/10">
             <h3 className="text-lg lg:text-sm font-semibold text-white mb-3 lg:mb-2">Skapa ny kategori</h3>
