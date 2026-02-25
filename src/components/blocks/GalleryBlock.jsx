@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import ImageLightbox from '../ImageLightbox';
 
 // Gallery block - extra images shown as thumbnails, opens in lightbox
-export const GalleryBlock = ({ data, onUpdate }) => {
+export const GalleryBlock = ({ data }) => {
   const [showLightbox, setShowLightbox] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   

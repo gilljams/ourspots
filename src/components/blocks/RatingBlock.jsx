@@ -99,7 +99,7 @@ export const RatingBlock = ({ data, currentUser, shares = {}, onRate, canEdit = 
           {currentUserKey && (
             <ChevronDown 
               size={16} 
-              className={`text-gray-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`} 
+              className={`text-gray-500 transition-all ${isExpanded ? 'rotate-0' : '-rotate-90'}`} 
             />
           )}
         </div>

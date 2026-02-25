@@ -1,7 +1,7 @@
 import React from 'react';
 import { MapPin, Map as MapIcon, X, Calendar, Play, Pause, Edit2, MessageCircle } from 'lucide-react';
 
-export const LocationBlock = ({ data, inherited, onDelete, canDelete, positionNumber, isPrimaryLocation, onShowOnMap, onEditNote, hasAudio, isAudioPlaying, onToggleAudio, isCollection, collectionPlacesCount, onShowCollectionMap, whatsappGroupUrl, isExtraLocation, planningData, onShowPlanner }) => {
+export const LocationBlock = ({ data, onDelete, canDelete, positionNumber, isPrimaryLocation, onShowOnMap, onEditNote, hasAudio, isAudioPlaying, onToggleAudio, isCollection, collectionPlacesCount, onShowCollectionMap, whatsappGroupUrl, isExtraLocation, planningData, onShowPlanner }) => {
 
   const handleShowOnMap = () => {
     if (onShowOnMap && data.lat && data.lng) {

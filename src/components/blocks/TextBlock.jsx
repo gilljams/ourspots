@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronDown, Edit2 } from 'lucide-react';
+import { ChevronDown, Edit2, FileText } from 'lucide-react';
 import { renderMarkdown } from './renderMarkdown';
 
 export const TextBlock = ({ data, onExpand, onEditContent }) => {
@@ -43,12 +43,7 @@ export const TextBlock = ({ data, onExpand, onEditContent }) => {
             />
           </div>
           <div className="flex items-center gap-2.5 flex-1 min-w-0">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 flex-shrink-0">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-              <polyline points="14 2 14 8 20 8"></polyline>
-              <line x1="16" y1="13" x2="8" y2="13"></line>
-              <line x1="16" y1="17" x2="8" y2="17"></line>
-            </svg>
+            <FileText size={16} className="text-gray-400 flex-shrink-0" />
             <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors truncate">
               {title}
             </span>
@@ -58,7 +53,7 @@ export const TextBlock = ({ data, onExpand, onEditContent }) => {
         {!isCollapsed && onEditContent && (
           <button
             onClick={handleEditClick}
-            className="w-8 h-8 rounded-lg bg-white/5 hover:bg-blue-500/20 flex items-center justify-center text-gray-400 hover:text-blue-400 transition-all"
+            className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
             title="Redigera text"
           >
             <Edit2 size={14} />

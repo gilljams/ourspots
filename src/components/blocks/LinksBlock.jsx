@@ -15,6 +15,8 @@ export const LinksBlock = ({ data, onExpand }) => {
     setIsCollapsed(data.defaultCollapsed ?? true);
   }, [data.defaultCollapsed]);
   
+  if (items.length === 0) return null;
+  
   // Scroll into view when expanded
   const handleToggleCollapse = () => {
     const wasCollapsed = isCollapsed;

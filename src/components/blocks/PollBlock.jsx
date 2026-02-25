@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Vote, Lock, Check, HelpCircle, X, Trophy, Edit2, RotateCcw, Plus, Users, Link } from 'lucide-react';
 
 // Poll block - allows viewers to vote (date poll or ranked poll)
@@ -18,7 +18,7 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
   const allowSuggestions = data.allowSuggestions || false;
   
   // Sync collapsed state when defaultCollapsed changes
-  React.useEffect(() => {
+  useEffect(() => {
     setIsCollapsed(data.defaultCollapsed ?? false);
   }, [data.defaultCollapsed]);
   

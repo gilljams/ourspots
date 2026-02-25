@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Check, Edit2, ExternalLink, Phone } from 'lucide-react';
 import { getIconComponent } from '../../utils/iconHelpers';
 import { TABLE_TEMPLATES } from './tableTemplates';
@@ -13,7 +13,7 @@ export const TableBlock = ({ data, objectId, blockIndex, onUpdate, onExpand, onE
   const title = data.title || '';
 
   // Sync collapsed state when defaultCollapsed changes
-  React.useEffect(() => {
+  useEffect(() => {
     setIsCollapsed(data.defaultCollapsed ?? false);
   }, [data.defaultCollapsed]);
   
@@ -142,7 +142,7 @@ export const TableBlock = ({ data, objectId, blockIndex, onUpdate, onExpand, onE
           {onEditTable && !isCollapsed && (
             <button
               onClick={onEditTable}
-              className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+              className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
               title="Redigera lista"
             >
               <Edit2 size={14} />
