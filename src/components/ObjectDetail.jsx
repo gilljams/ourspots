@@ -2123,15 +2123,11 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
           title={textEditModalData.title}
           onSave={async (newContent) => {
             try {
-              const updatedBlocks = [...object.blocks];
-              updatedBlocks[textEditModalData.blockIndex] = {
-                ...updatedBlocks[textEditModalData.blockIndex],
-                data: { 
-                  ...updatedBlocks[textEditModalData.blockIndex].data, 
-                  content: newContent 
-                }
+              const blockData = {
+                ...object.blocks[textEditModalData.blockIndex].data,
+                content: newContent
               };
-              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
+              await onBlockUpdate(object.id, textEditModalData.blockIndex, blockData);
               setTextEditModalData(null);
             } catch (err) {
               console.error('Error saving text content:', err);
@@ -2154,15 +2150,11 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                 if (row.done) cleanRow.done = true;
                 return cleanRow;
               });
-              const updatedBlocks = [...object.blocks];
-              updatedBlocks[tableEditModalData.blockIndex] = {
-                ...updatedBlocks[tableEditModalData.blockIndex],
-                data: { 
-                  ...updatedBlocks[tableEditModalData.blockIndex].data, 
-                  rows: cleanedRows 
-                }
+              const blockData = {
+                ...object.blocks[tableEditModalData.blockIndex].data,
+                rows: cleanedRows
               };
-              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
+              await onBlockUpdate(object.id, tableEditModalData.blockIndex, blockData);
               setTableEditModalData(null);
             } catch (err) {
               console.error('Error saving list content:', err);
@@ -2180,16 +2172,12 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
           useCollapse={TABLE_TEMPLATES[tableEditModalData.template]?.useCollapse}
           onSave={async (newRows) => {
             try {
-              const updatedBlocks = [...object.blocks];
-              updatedBlocks[tableEditModalData.blockIndex] = {
-                ...updatedBlocks[tableEditModalData.blockIndex],
-                data: { 
-                  ...updatedBlocks[tableEditModalData.blockIndex].data, 
-                  rows: newRows,
-                  template: tableEditModalData.template
-                }
+              const blockData = {
+                ...object.blocks[tableEditModalData.blockIndex].data,
+                rows: newRows,
+                template: tableEditModalData.template
               };
-              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
+              await onBlockUpdate(object.id, tableEditModalData.blockIndex, blockData);
               setTableEditModalData(null);
             } catch (err) {
               console.error('Error saving table content:', err);
@@ -2208,17 +2196,13 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
           col2Type={tableEditModalData.col2Type || 'text'}
           onSave={async (newRows, newCol2Type) => {
             try {
-              const updatedBlocks = [...object.blocks];
-              updatedBlocks[tableEditModalData.blockIndex] = {
-                ...updatedBlocks[tableEditModalData.blockIndex],
-                data: { 
-                  ...updatedBlocks[tableEditModalData.blockIndex].data, 
-                  rows: newRows,
-                  col2Type: newCol2Type,
-                  template: tableEditModalData.template || 'table' // Preserve template type
-                }
+              const blockData = {
+                ...object.blocks[tableEditModalData.blockIndex].data,
+                rows: newRows,
+                col2Type: newCol2Type,
+                template: tableEditModalData.template || 'table'
               };
-              await updateDoc(doc(db, 'objects', object.id), { blocks: updatedBlocks });
+              await onBlockUpdate(object.id, tableEditModalData.blockIndex, blockData);
               setTableEditModalData(null);
             } catch (err) {
               console.error('Error saving table content:', err);
