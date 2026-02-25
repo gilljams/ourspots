@@ -2987,10 +2987,14 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
           onClose={() => setShowPlanner(false)}
           planningData={object.planningData}
           linkedObjects={linkedObjects}
+          linkedUrls={object.linkedUrls || []}
           canEdit={canEdit}
           onNavigateToObject={(obj) => {
             setShowPlanner(false);
             onNavigate(obj, { fromPlanner: true });
+          }}
+          onOpenUrl={(url) => {
+            window.open(url.url, '_blank');
           }}
           onSave={async (planningData) => {
             try {

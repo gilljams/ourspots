@@ -39,8 +39,10 @@ export default function PlannerModal({
   onSave, 
   onDelete, // callback to completely remove planner
   linkedObjects = [],
+  linkedUrls = [],
   canEdit = false,
-  onNavigateToObject // callback to navigate to a linked object
+  onNavigateToObject, // callback to navigate to a linked object
+  onOpenUrl // callback to open a linked URL
 }) {
   console.log('PlannerModal render, isOpen:', isOpen, 'planningData:', planningData);
   
@@ -54,6 +56,7 @@ export default function PlannerModal({
   const [showSetup, setShowSetup] = useState(!planningData);
   const [tempText, setTempText] = useState('');
   const [tempObjectId, setTempObjectId] = useState(null);
+  const [tempUrlId, setTempUrlId] = useState(null);
   const [hasChanges, setHasChanges] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false); // View mode by default
   const [draggingCell, setDraggingCell] = useState(null); // { day, slotId, data }
@@ -218,6 +221,35 @@ export default function PlannerModal({
         return;
       }
       
+      // If cell has linked URL
+      if (data?.urlId) {
+        const url = linkedUrls.find(u => u.id === data.urlId);
+        if (url) {
+          const displayText = url.title || '';
+          const subtext = data?.subtext || '';
+          const isTruncated = displayText.length > 15 || subtext.length > 20;
+          
+          if (isTruncated) {
+            // Expand to show full content first
+            const cellKey = `${dayIndex}-${slotId}`;
+            if (expandedCell?.key === cellKey) {
+              setExpandedCell(null);
+              expandedCellRef.current = null;
+            } else {
+              setExpandedCell({ key: cellKey });
+            }
+          } else {
+            // Short enough - open URL directly
+            if (onOpenUrl) {
+              onOpenUrl(url);
+            } else {
+              window.open(url.url, '_blank');
+            }
+          }
+        }
+        return;
+      }
+      
       // If cell has text (but no link), toggle expanded view
       if (data?.text) {
         const cellKey = `${dayIndex}-${slotId}`;
@@ -238,6 +270,7 @@ export default function PlannerModal({
     setTempText(data?.text || '');
     setTempSubtext(data?.subtext || '');
     setTempObjectId(data?.objectId || null);
+    setTempUrlId(data?.urlId || null);
     setEditingCell({ day: dayIndex, slotId });
   };
   
@@ -361,10 +394,11 @@ export default function PlannerModal({
     if (!editingCell || editingCell.type === 'accommodation') return;
     
     const { day, slotId } = editingCell;
-    if (tempText.trim() || tempObjectId) {
+    if (tempText.trim() || tempObjectId || tempUrlId) {
       updateSlot(day, slotId, {
         text: tempText.trim() || null,
         objectId: tempObjectId,
+        urlId: tempUrlId,
         subtext: tempSubtext.trim() || null
       });
     } else {
@@ -374,6 +408,7 @@ export default function PlannerModal({
     setTempText('');
     setTempSubtext('');
     setTempObjectId(null);
+    setTempUrlId(null);
   };
   
   // Get linked object by ID
@@ -386,6 +421,11 @@ export default function PlannerModal({
       ...obj,
       title: titleBlock?.data?.text || 'Namnlöst'
     };
+  };
+  
+  // Get linked URL by ID
+  const getLinkedUrl = (urlId) => {
+    return linkedUrls.find(u => u.id === urlId) || null;
   };
   
   // Get title for any linked object
@@ -711,7 +751,10 @@ export default function PlannerModal({
                   
                   const data = getSlotData(dayIndex, slot.id);
                   const linkedObj = data?.objectId ? getLinkedObject(data.objectId) : null;
-                  const hasContent = linkedObj || data?.text;
+                  const linkedUrl = data?.urlId ? getLinkedUrl(data.urlId) : null;
+                  const hasContent = linkedObj || linkedUrl || data?.text;
+                  const isLinked = linkedObj || linkedUrl;
+                  const linkedTitle = linkedObj?.title || linkedUrl?.title;
                   const isDragging = draggingCell?.day === dayIndex && draggingCell?.slotId === slot.id;
                   const isDragOver = draggingCell && !isDragging;
                   const cellKey = `${dayIndex}-${slot.id}`;
@@ -722,8 +765,8 @@ export default function PlannerModal({
                       <button
                         type="button"
                         onClick={(e) => {
-                          // Store rect for potential expansion (text or linked objects)
-                          if (!isEditMode && (data?.text || data?.objectId)) {
+                          // Store rect for potential expansion (text or linked items)
+                          if (!isEditMode && (data?.text || data?.objectId || data?.urlId)) {
                             const rect = e.currentTarget.getBoundingClientRect();
                             expandedCellRef.current = rect;
                           }
@@ -734,7 +777,7 @@ export default function PlannerModal({
                         onMouseLeave={handleLongPressEnd}
                         onTouchStart={(e) => {
                           // Store rect on touch for potential expansion
-                          if (!isEditMode && (data?.text || data?.objectId)) {
+                          if (!isEditMode && (data?.text || data?.objectId || data?.urlId)) {
                             const rect = e.currentTarget.getBoundingClientRect();
                             expandedCellRef.current = rect;
                           }
@@ -752,14 +795,11 @@ export default function PlannerModal({
                           hasContent ? 'flex-col justify-start items-start text-left' : 'items-center justify-center'
                         }`}
                       >
-                        {linkedObj ? (
+                        {isLinked ? (
                           <div className="flex flex-col gap-1 min-w-0 w-full">
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <Link2 size={11} className="text-white/60 flex-shrink-0" />
-                              <span className="text-xs font-medium text-white/90 truncate">{linkedObj.title}</span>
-                            </div>
+                            <span className="text-xs font-medium text-blue-300 truncate">{linkedTitle}</span>
                             {data?.subtext && (
-                              <span className="text-[10px] text-white/40 truncate pl-[18px]">{data.subtext}</span>
+                              <span className="text-[10px] text-white/40 truncate">{data.subtext}</span>
                             )}
                           </div>
                         ) : data?.text ? (
@@ -828,6 +868,7 @@ export default function PlannerModal({
         if (!data?.text && !data?.objectId) return null;
         
         const linkedObj = data?.objectId ? getLinkedObject(data.objectId) : null;
+        const linkedUrl = data?.urlId ? getLinkedUrl(data.urlId) : null;
         const slot = SLOTS.find(s => s.id === slotId);
         const rect = expandedCellRef.current;
         const screenWidth = window.innerWidth;
@@ -875,10 +916,28 @@ export default function PlannerModal({
                       onClose();
                       onNavigateToObject(linkedObj);
                     }}
-                    className="flex items-center gap-2 text-left w-full hover:bg-white/10 -m-1 p-1 rounded transition-colors"
+                    className="text-left w-full hover:bg-white/10 -m-1 p-1 rounded transition-colors"
                   >
-                    <Link2 size={14} className="text-blue-400 flex-shrink-0" />
-                    <span className="text-sm text-white/90">{linkedObj.title}</span>
+                    <span className="text-sm text-blue-300">{linkedObj.title}</span>
+                  </button>
+                  {data.subtext && (
+                    <p className="text-xs text-white/50 mt-2 whitespace-pre-wrap">{data.subtext}</p>
+                  )}
+                </>
+              ) : linkedUrl ? (
+                <>
+                  <button
+                    onClick={() => {
+                      handleClose();
+                      if (onOpenUrl) {
+                        onOpenUrl(linkedUrl);
+                      } else {
+                        window.open(linkedUrl.url, '_blank');
+                      }
+                    }}
+                    className="text-left w-full hover:bg-white/10 -m-1 p-1 rounded transition-colors"
+                  >
+                    <span className="text-sm text-blue-300">{linkedUrl.title}</span>
                   </button>
                   {data.subtext && (
                     <p className="text-xs text-white/50 mt-2 whitespace-pre-wrap">{data.subtext}</p>
@@ -1183,18 +1242,23 @@ export default function PlannerModal({
                 </div>
               </div>
               
-              {/* Linked objects */}
-              {linkedObjects.length > 0 && (
+              {/* Linked items (objects and URLs) */}
+              {(linkedObjects.length > 0 || linkedUrls.length > 0) && (
                 <div>
-                  <label className="block text-xs text-gray-400 mb-2">Eller välj länkat objekt</label>
-                  <div className="space-y-2 max-h-40 overflow-auto">
+                  <label className="block text-xs text-gray-400 mb-2">Eller välj från innehållet</label>
+                  <div className="space-y-2 max-h-48 overflow-auto">
                     {linkedObjects.map(obj => (
                       <button
                         key={obj.id}
                         type="button"
                         onClick={() => {
-                          setTempObjectId(obj.id);
-                          setTempText('');
+                          if (tempObjectId === obj.id) {
+                            setTempObjectId(null);
+                          } else {
+                            setTempObjectId(obj.id);
+                            setTempUrlId(null);
+                            setTempText('');
+                          }
                         }}
                         className={`w-full p-3 rounded-xl border text-left flex items-center gap-2 touch-manipulation ${
                           tempObjectId === obj.id 
@@ -1202,8 +1266,30 @@ export default function PlannerModal({
                             : 'border-white/10 bg-white/5'
                         }`}
                       >
-                        <Link2 size={14} className="text-blue-400" />
-                        <span className="text-sm text-white truncate">{getObjectTitle(obj)}</span>
+                        <span className="text-sm text-blue-300 truncate">{getObjectTitle(obj)}</span>
+                      </button>
+                    ))}
+                    {linkedUrls.map(url => (
+                      <button
+                        key={url.id}
+                        type="button"
+                        onClick={() => {
+                          if (tempUrlId === url.id) {
+                            setTempUrlId(null);
+                          } else {
+                            setTempUrlId(url.id);
+                            setTempObjectId(null);
+                            setTempText('');
+                          }
+                        }}
+                        className={`w-full p-3 rounded-xl border text-left flex items-center gap-2 touch-manipulation ${
+                          tempUrlId === url.id 
+                            ? 'border-blue-500 bg-blue-500/10' 
+                            : 'border-white/10 bg-white/5'
+                        }`}
+                      >
+                        <Link2 size={14} className="text-gray-500 flex-shrink-0" />
+                        <span className="text-sm text-blue-300 truncate">{url.title}</span>
                       </button>
                     ))}
                   </div>
