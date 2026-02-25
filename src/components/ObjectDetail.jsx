@@ -365,6 +365,8 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
   const ownLocationBlocks = object.blocks
     .filter(b => b.type === 'location' && b.data?.lat != null && b.data?.lng != null);
   const hasMultipleLocations = !isCollection && (ownLocationBlocks.length > 1 || (ownLocationBlocks.length >= 1 && pendingLocations.length > 0) || pendingLocations.length > 1);
+  // Show map button for any non-collection object with at least 1 location (enables adding more via FAB)
+  const showLocationMap = !isCollection && (ownLocationBlocks.length >= 1 || pendingLocations.length > 0);
   const hasImageBlock = object.blocks.some(b => b.type === 'image' && b.data?.url);
   
   // Create fake "objects" for the multi-location map view (one per location)
@@ -602,12 +604,12 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
           <div className="overflow-y-auto overscroll-contain flex-1 p-4 sm:p-5 lg:p-6 pb-8 sm:pb-10 lg:pb-6">
             <div className="space-y-5">
               {/* Show multi-location map button at top if no image block exists */}
-              {!hasImageBlock && hasMultipleLocations && (
+              {!hasImageBlock && showLocationMap && (
                 <div className="flex items-center justify-end">
                   <button
                     onClick={() => setShowMultiLocationMap(true)}
                     className="h-9 px-3 rounded-lg bg-white/5 hover:bg-blue-500/20 flex items-center gap-2 text-gray-400 hover:text-blue-400 transition-all"
-                    title="Visa alla platser på karta"
+                    title="Visa platser på karta"
                   >
                     <MapIcon size={16} />
                     <span className="text-sm font-medium">
@@ -1114,13 +1116,13 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                         </button>
                       </div>
                     )}
-                    {/* Show multi-location map button for non-collection objects with 2+ locations */}
-                    {block.type === 'image' && hasMultipleLocations && (
+                    {/* Show location map button – visible for 1+ locations (enables adding more via FAB) */}
+                    {block.type === 'image' && showLocationMap && (
                       <div className="flex items-center justify-end mt-3">
                         <button
                           onClick={() => setShowMultiLocationMap(true)}
                           className="h-9 px-3 rounded-lg bg-white/5 hover:bg-blue-500/20 flex items-center gap-2 text-gray-400 hover:text-blue-400 transition-all"
-                          title="Visa alla platser på karta"
+                          title="Visa platser på karta"
                         >
                           <MapIcon size={16} />
                           <span className="text-sm font-medium">
@@ -2397,7 +2399,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
               <div className="flex items-center gap-2">
                 <MapIcon size={18} className="text-blue-400" />
                 <h3 className="font-medium text-white">
-                  {object.blocks.find(b => b.type === 'title')?.data?.text || 'Platser'} ({multiLocationMapObjects.length + pendingLocations.length} platser)
+                  {object.blocks.find(b => b.type === 'title')?.data?.text || 'Platser'} ({multiLocationMapObjects.length + pendingLocations.length} {(multiLocationMapObjects.length + pendingLocations.length) === 1 ? 'plats' : 'platser'})
                 </h3>
                 {pendingLocations.length > 0 && (
                   <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs font-medium rounded-full">
