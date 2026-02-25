@@ -12,9 +12,6 @@ function GalleryBlockEditor({ block, onUpdate, onRemove, onMove, index, total, s
   
   const MAX_IMAGES = 4;
   
-  const imagesRef = useRef(images);
-  imagesRef.current = images;
-  
   const syncImages = (newImages) => {
     setImages(newImages);
     onUpdate(block.id, { images: newImages });

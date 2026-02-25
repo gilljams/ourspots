@@ -12,7 +12,7 @@ import {
 import { getIconComponent } from '../utils/iconHelpers';
 import MapPicker from './MapPicker';
 import FocalPointPicker from './FocalPointPicker';
-import BlockEditor, { DateTagBlockEditor, TimerBlockEditor, PollBlockEditor, AudioBlockEditor, SplitBlockEditor, LeaderboardBlockEditor, DistributionBlockEditor, SectionBlockEditor, TiebreakerBlockEditor, RatingBlockEditor } from './BlockEditor';
+import BlockEditor from './BlockEditor';
 
 // Demo users available when in demo mode for realistic examples
 const DEMO_USERS = {
@@ -1334,116 +1334,6 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
               
               return (
               <div key={block.id} data-block-id={block.id}>
-              {block.type === 'datetag' ? (
-                <DateTagBlockEditor
-                  block={block}
-                  onUpdate={updateCustomBlock}
-                  onRemove={removeCustomBlock}
-                  onMove={moveCustomBlock}
-                  index={index}
-                  total={customBlocks.length}
-                  saving={saving}
-                />
-              ) : block.type === 'timer' ? (
-                <TimerBlockEditor
-                  block={block}
-                  onUpdate={updateCustomBlock}
-                  onRemove={removeCustomBlock}
-                  onMove={moveCustomBlock}
-                  index={index}
-                  total={customBlocks.length}
-                  saving={saving}
-                />
-              ) : block.type === 'poll' ? (
-                <PollBlockEditor
-                  block={block}
-                  onUpdate={updateCustomBlock}
-                  onRemove={removeCustomBlock}
-                  onMove={moveCustomBlock}
-                  index={index}
-                  total={customBlocks.length}
-                  saving={saving}
-                />
-              ) : block.type === 'audio' ? (
-                <AudioBlockEditor
-                  block={block}
-                  onUpdate={updateCustomBlock}
-                  onRemove={removeCustomBlock}
-                  onMove={moveCustomBlock}
-                  index={index}
-                  total={customBlocks.length}
-                  saving={saving}
-                />
-              ) : block.type === 'split' ? (
-                <SplitBlockEditor
-                  block={block}
-                  onUpdate={updateCustomBlock}
-                  onRemove={removeCustomBlock}
-                  onMove={moveCustomBlock}
-                  index={index}
-                  total={customBlocks.length}
-                  saving={saving}
-                  shares={effectiveSharesWithDemo}
-                  currentUser={currentUser}
-                  currentUserDisplayName={currentUserDisplayName}
-                />
-              ) : block.type === 'leaderboard' ? (
-                <LeaderboardBlockEditor
-                  block={block}
-                  onUpdate={updateCustomBlock}
-                  onRemove={removeCustomBlock}
-                  onMove={moveCustomBlock}
-                  index={index}
-                  total={customBlocks.length}
-                  saving={saving}
-                  shares={effectiveSharesWithDemo}
-                  currentUser={currentUser}
-                  currentUserDisplayName={currentUserDisplayName}
-                />
-              ) : block.type === 'distribution' ? (
-                <DistributionBlockEditor
-                  block={block}
-                  onUpdate={updateCustomBlock}
-                  onRemove={removeCustomBlock}
-                  onMove={moveCustomBlock}
-                  index={index}
-                  total={customBlocks.length}
-                  saving={saving}
-                  shares={effectiveSharesWithDemo}
-                  currentUser={currentUser}
-                  currentUserDisplayName={currentUserDisplayName}
-                />
-              ) : block.type === 'section' ? (
-                <SectionBlockEditor
-                  block={block}
-                  onUpdate={updateCustomBlock}
-                  onRemove={removeCustomBlock}
-                  onMove={moveCustomBlock}
-                  index={index}
-                  total={customBlocks.length}
-                  saving={saving}
-                />
-              ) : block.type === 'tiebreaker' ? (
-                <TiebreakerBlockEditor
-                  block={block}
-                  onUpdate={updateCustomBlock}
-                  onRemove={removeCustomBlock}
-                  onMove={moveCustomBlock}
-                  index={index}
-                  total={customBlocks.length}
-                  saving={saving}
-                />
-              ) : block.type === 'rating' ? (
-                <RatingBlockEditor
-                  block={block}
-                  onUpdate={updateCustomBlock}
-                  onRemove={removeCustomBlock}
-                  onMove={moveCustomBlock}
-                  index={index}
-                  total={customBlocks.length}
-                  saving={saving}
-                />
-              ) : (
                 <BlockEditor
                   block={block}
                   onUpdate={updateCustomBlock}
@@ -1453,8 +1343,10 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   total={customBlocks.length}
                   saving={saving}
                   locationIndexOffset={locationIndexOffset}
+                  shares={effectiveSharesWithDemo}
+                  currentUser={currentUser}
+                  currentUserDisplayName={currentUserDisplayName}
                 />
-              )}
               </div>
             );})}
 
