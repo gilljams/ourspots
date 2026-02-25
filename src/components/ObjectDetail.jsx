@@ -1731,14 +1731,45 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                       })
                       .map(child => {
                         const childTitle = child.blocks.find(bl => bl.type === 'title');
+                        const childImage = child.blocks.find(bl => bl.type === 'image');
+                        const childLocation = child.blocks.find(bl => bl.type === 'location');
+                        const childCategory = categories?.find(c => c.id === child.type);
+                        const ChildIcon = childCategory ? getIconComponent(childCategory.icon) : (PREDEFINED_ICONS[child.type]?.icon || Home);
+                        
+                        // Calculate distance if both user location and child location exist
+                        const childDistance = currentUserLocation && childLocation?.data?.coordinates 
+                          ? calculateDistance(
+                              currentUserLocation.lat, 
+                              currentUserLocation.lng, 
+                              childLocation.data.coordinates.lat, 
+                              childLocation.data.coordinates.lng
+                            )
+                          : null;
+                        
                         return (
                           <button
                             key={child.id}
                             onClick={() => onNavigate(child)}
-                            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 hover:border-blue-400/30 transition-all text-left"
+                            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 hover:border-blue-400/30 transition-all text-left"
                           >
-                            <FileText size={14} className="text-gray-500 flex-shrink-0" />
-                            <span className="text-sm text-white truncate">{childTitle?.data?.text || 'Namnlöst'}</span>
+                            {childImage ? (
+                              <div className="w-8 h-8 rounded overflow-hidden flex-shrink-0">
+                                <img 
+                                  src={getTransformedImageUrl(childImage.data.url, childImage.data.focalPoint ? 'custom' : childImage.data.focalPoint, 64, 64, childImage.data.focalPoint)} 
+                                  alt="" 
+                                  className="w-full h-full object-cover"
+                                  style={getFocalPointStyles(childImage.data.focalPoint)}
+                                />
+                              </div>
+                            ) : (
+                              <div className="w-8 h-8 rounded bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+                                <ChildIcon size={14} className="text-blue-400" />
+                              </div>
+                            )}
+                            <span className="text-sm text-white truncate flex-1">{childTitle?.data?.text || 'Namnlöst'}</span>
+                            {childDistance !== null && (
+                              <span className="text-xs text-gray-500 flex-shrink-0">{formatDistance(childDistance)}</span>
+                            )}
                           </button>
                         );
                       })}
