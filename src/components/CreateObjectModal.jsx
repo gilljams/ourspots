@@ -929,12 +929,20 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
     setFormTouched(true);
   };
 
+  // Block types rendered in the dedicated metadata section (not reorderable content)
+  const METADATA_TYPES = ['rating', 'datetag'];
+
   const moveCustomBlock = (id, delta) => {
     setCustomBlocks(prev => {
       const items = [...prev];
       const from = items.findIndex(b => b.id === id);
-      const to = from + delta;
-      if (from === -1 || to < 0 || to >= items.length) return prev;
+      if (from === -1) return prev;
+      // Skip over metadata blocks when moving content blocks
+      let to = from + delta;
+      while (to >= 0 && to < items.length && METADATA_TYPES.includes(items[to].type)) {
+        to += delta;
+      }
+      if (to < 0 || to >= items.length) return prev;
       const [moved] = items.splice(from, 1);
       items.splice(to, 0, moved);
       return items;
@@ -1317,38 +1325,78 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
               </div>
             )}
 
-            {/* Custom blocks */}
-            {customBlocks.map((block, index) => {
-              // For location blocks in customBlocks, they are always "extra" locations (position 2+)
-              // so we calculate their display number based on their order among location blocks here
-              // The first location block in customBlocks is #2, second is #3, etc.
-              const locationBlocksBeforeThis = customBlocks.slice(0, index).filter(b => b.type === 'location').length;
-              // Location blocks in customBlocks always start at #2 (primary is #1, handled separately in form)
-              const locationDisplayNumber = block.type === 'location' ? locationBlocksBeforeThis + 2 : 0;
-              // Calculate offset so that LocationBlockEditor displays correct number
-              // LocationBlockEditor does: displayNumber = index + 1 + offset
-              // We want: locationDisplayNumber = index + 1 + offset → offset = locationDisplayNumber - index - 1
-              const locationIndexOffset = block.type === 'location' 
-                ? locationDisplayNumber - index - 1 
-                : 0;
-              
+            {/* Metadata section – rating + datetag (fixed position, not reorderable) */}
+            {(() => {
+              const metadataBlocks = customBlocks.filter(b => METADATA_TYPES.includes(b.type));
+              const hasRating = metadataBlocks.some(b => b.type === 'rating');
+              const hasDateTag = metadataBlocks.some(b => b.type === 'datetag');
+              // Always show section so add buttons are accessible
               return (
-              <div key={block.id} data-block-id={block.id}>
-                <BlockEditor
-                  block={block}
-                  onUpdate={updateCustomBlock}
-                  onRemove={removeCustomBlock}
-                  onMove={moveCustomBlock}
-                  index={index}
-                  total={customBlocks.length}
-                  saving={saving}
-                  locationIndexOffset={locationIndexOffset}
-                  shares={effectiveSharesWithDemo}
-                  currentUser={currentUser}
-                  currentUserDisplayName={currentUserDisplayName}
-                />
-              </div>
-            );})}
+                <div className="space-y-2">
+                  <div className="text-xs text-gray-500 uppercase">Metadata</div>
+                  {metadataBlocks.map((block) => (
+                    <div key={block.id} data-block-id={block.id}>
+                      <BlockEditor
+                        block={block}
+                        onUpdate={updateCustomBlock}
+                        onRemove={removeCustomBlock}
+                        onMove={moveCustomBlock}
+                        index={0}
+                        total={1}
+                        saving={saving}
+                        hideReorder
+                      />
+                    </div>
+                  ))}
+                  {/* Quick-add buttons for missing metadata types */}
+                  {(!hasDateTag || !hasRating) && (
+                    <div className="flex gap-2">
+                      {!hasDateTag && (
+                        <button type="button" onClick={() => addCustomBlock('datetag')} disabled={saving} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 border border-dashed border-white/10 text-gray-500 hover:text-gray-300 hover:bg-white/10 text-xs transition-colors">
+                          <Calendar size={12} /> + Datum
+                        </button>
+                      )}
+                      {!hasRating && (
+                        <button type="button" onClick={() => addCustomBlock('rating')} disabled={saving} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 border border-dashed border-white/10 text-gray-500 hover:text-gray-300 hover:bg-white/10 text-xs transition-colors">
+                          <Star size={12} /> + Betyg
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Content blocks (excludes metadata types) */}
+            {(() => {
+              const contentBlocks = customBlocks.filter(b => !METADATA_TYPES.includes(b.type));
+              return contentBlocks.map((block, index) => {
+                // For location blocks in customBlocks, they are always "extra" locations (position 2+)
+                const locationBlocksBeforeThis = contentBlocks.slice(0, index).filter(b => b.type === 'location').length;
+                const locationDisplayNumber = block.type === 'location' ? locationBlocksBeforeThis + 2 : 0;
+                const locationIndexOffset = block.type === 'location' 
+                  ? locationDisplayNumber - index - 1 
+                  : 0;
+                
+                return (
+                  <div key={block.id} data-block-id={block.id}>
+                    <BlockEditor
+                      block={block}
+                      onUpdate={updateCustomBlock}
+                      onRemove={removeCustomBlock}
+                      onMove={moveCustomBlock}
+                      index={index}
+                      total={contentBlocks.length}
+                      saving={saving}
+                      locationIndexOffset={locationIndexOffset}
+                      shares={effectiveSharesWithDemo}
+                      currentUser={currentUser}
+                      currentUserDisplayName={currentUserDisplayName}
+                    />
+                  </div>
+                );
+              });
+            })()}
 
             {/* Add block buttons */}
             <div className="pt-4 border-t border-white/10">
@@ -1401,9 +1449,6 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   <button type="button" onClick={() => addCustomBlock('table', 'fusebox')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
                     <Zap size={16} className="text-yellow-400" /> Proppskåp
                   </button>
-                  <button type="button" onClick={() => addCustomBlock('datetag')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
-                    <Calendar size={16} className="text-cyan-400" /> Datum
-                  </button>
                   <button type="button" onClick={() => addCustomBlock('timer')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
                     <Timer size={16} className="text-orange-400" /> Timers
                   </button>
@@ -1427,9 +1472,6 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   </button>
                   <button type="button" onClick={() => addCustomBlock('tiebreaker')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
                     <Swords size={16} className="text-purple-400" /> Tiebreaker
-                  </button>
-                  <button type="button" onClick={() => addCustomBlock('rating')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
-                    <Star size={16} className="text-yellow-400" /> Betyg
                   </button>
                   <button type="button" onClick={() => addCustomBlock('gallery')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
                     <Images size={16} className="text-pink-400" /> Galleri

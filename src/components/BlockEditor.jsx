@@ -39,7 +39,7 @@ const EDITOR_MAP = {
 // Main block editor dispatcher
 // Routes to the correct specialized editor based on block.type
 // Falls back to TextBlockEditor for unknown types (text, notes, etc.)
-function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving, locationIndexOffset = 0, shares, currentUser, currentUserDisplayName }) {
+function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving, locationIndexOffset = 0, shares, currentUser, currentUserDisplayName, hideReorder }) {
   const Editor = EDITOR_MAP[block.type] || TextBlockEditor;
 
   return (
@@ -55,6 +55,7 @@ function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving, 
       shares={shares}
       currentUser={currentUser}
       currentUserDisplayName={currentUserDisplayName}
+      hideReorder={hideReorder}
     />
   );
 }

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, ArrowUp, ArrowDown, ChevronDown, Calendar, Plus } from 'lucide-react';
 
 // DateTag block editor component
-function DateTagBlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }) {
+function DateTagBlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving, hideReorder }) {
   const [tags, setTags] = useState(block.tags || []);
   const [showAddMenu, setShowAddMenu] = useState(false);
   const [newYear, setNewYear] = useState(new Date().getFullYear().toString());
@@ -83,12 +83,16 @@ function DateTagBlockEditor({ block, onUpdate, onRemove, onMove, index, total, s
           )}
         </button>
         <div className="flex gap-1 flex-shrink-0">
-          <button type="button" onClick={() => onMove(block.id, -1)} disabled={index === 0} className="w-7 h-7 rounded bg-white/5 text-gray-400 hover:bg-white/10 flex items-center justify-center disabled:opacity-30">
-            <ArrowUp size={14} />
-          </button>
-          <button type="button" onClick={() => onMove(block.id, 1)} disabled={index === total - 1} className="w-7 h-7 rounded bg-white/5 text-gray-400 hover:bg-white/10 flex items-center justify-center disabled:opacity-30">
-            <ArrowDown size={14} />
-          </button>
+          {!hideReorder && (
+            <>
+              <button type="button" onClick={() => onMove(block.id, -1)} disabled={index === 0} className="w-7 h-7 rounded bg-white/5 text-gray-400 hover:bg-white/10 flex items-center justify-center disabled:opacity-30">
+                <ArrowUp size={14} />
+              </button>
+              <button type="button" onClick={() => onMove(block.id, 1)} disabled={index === total - 1} className="w-7 h-7 rounded bg-white/5 text-gray-400 hover:bg-white/10 flex items-center justify-center disabled:opacity-30">
+                <ArrowDown size={14} />
+              </button>
+            </>
+          )}
           <button type="button" onClick={() => onRemove(block.id)} className="w-7 h-7 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center">
             <X size={14} />
           </button>
