@@ -1412,28 +1412,27 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
 
             {/* Add block buttons */}
             <div className="pt-4 border-t border-white/10">
-              <div className="text-xs text-gray-500 uppercase mb-3">Lägg till block</div>
+              <div className="text-xs text-gray-600 uppercase mb-2">Lägg till block</div>
               
-              {/* Primary blocks - always visible, compact to fit one row */}
-              <div className="flex gap-2">
-                <button type="button" onClick={() => addCustomBlock('text')} disabled={saving} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
-                  <FileText size={16} className="text-blue-400" /> Text
+              {/* Primary blocks - always visible */}
+              <div className="flex gap-1.5">
+                <button type="button" onClick={() => addCustomBlock('text')} disabled={saving} className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-500 hover:bg-white/5 hover:text-gray-300 text-xs transition-colors">
+                  <FileText size={14} className="text-gray-500 group-hover:text-blue-400 transition-colors" /> Text
                 </button>
-                <button type="button" onClick={() => addCustomBlock('table', 'list')} disabled={saving} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
-                  <CheckSquare size={16} className="text-green-400" /> Lista
+                <button type="button" onClick={() => addCustomBlock('table', 'list')} disabled={saving} className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-500 hover:bg-white/5 hover:text-gray-300 text-xs transition-colors">
+                  <CheckSquare size={14} className="text-gray-500 group-hover:text-blue-400 transition-colors" /> Lista
                 </button>
-                <button type="button" onClick={() => addCustomBlock('links')} disabled={saving} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
-                  <Link2 size={16} className="text-purple-400" /> URL
+                <button type="button" onClick={() => addCustomBlock('table')} disabled={saving} className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-500 hover:bg-white/5 hover:text-gray-300 text-xs transition-colors">
+                  <Table2 size={14} className="text-gray-500 group-hover:text-blue-400 transition-colors" /> Tabell
                 </button>
                 
-                {/* Expand/collapse button */}
+                {/* Expand/collapse */}
                 <button 
                   type="button" 
                   onClick={() => {
                     const willExpand = !showMoreBlocks;
                     setShowMoreBlocks(willExpand);
                     if (willExpand) {
-                      // Scroll down to show expanded content
                       setTimeout(() => {
                         const scrollContainer = document.querySelector('.overflow-y-auto');
                         if (scrollContainer) {
@@ -1442,52 +1441,52 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                       }, 50);
                     }
                   }} 
-                  className="flex items-center gap-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-gray-300 text-sm"
+                  className="flex items-center gap-0.5 px-2 py-1.5 rounded-lg text-gray-600 hover:text-gray-400 text-xs transition-colors ml-auto"
                 >
-                  {showMoreBlocks ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                  {showMoreBlocks ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                   {showMoreBlocks ? 'Färre' : 'Fler'}
                 </button>
               </div>
               
               {/* Secondary blocks - expandable */}
               {showMoreBlocks && (
-                <div className="flex gap-2 flex-wrap mt-2 pt-2 border-t border-white/5">
-                  <button type="button" onClick={() => addCustomBlock('contact')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
-                    <Phone size={16} className="text-green-400" /> Kontakt
+                <div className="grid grid-cols-3 gap-x-1 gap-y-0.5 mt-1.5 pt-1.5 border-t border-white/5">
+                  <button type="button" onClick={() => addCustomBlock('links')} disabled={saving} className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-500 hover:bg-white/5 hover:text-gray-300 text-xs transition-colors">
+                    <Link2 size={14} className="text-gray-500 group-hover:text-blue-400 transition-colors" /> Länkar
                   </button>
-                  <button type="button" onClick={() => addCustomBlock('table')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
-                    <Table2 size={16} className="text-amber-400" /> Tabell
+                  <button type="button" onClick={() => addCustomBlock('contact')} disabled={saving} className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-500 hover:bg-white/5 hover:text-gray-300 text-xs transition-colors">
+                    <Phone size={14} className="text-gray-500 group-hover:text-blue-400 transition-colors" /> Kontakt
                   </button>
-                  <button type="button" onClick={() => addCustomBlock('table', 'fusebox')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
-                    <Zap size={16} className="text-yellow-400" /> Proppskåp
+                  <button type="button" onClick={() => addCustomBlock('timer')} disabled={saving} className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-500 hover:bg-white/5 hover:text-gray-300 text-xs transition-colors">
+                    <Timer size={14} className="text-gray-500 group-hover:text-blue-400 transition-colors" /> Timers
                   </button>
-                  <button type="button" onClick={() => addCustomBlock('timer')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
-                    <Timer size={16} className="text-orange-400" /> Timers
+                  <button type="button" onClick={() => addCustomBlock('poll')} disabled={saving} className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-500 hover:bg-white/5 hover:text-gray-300 text-xs transition-colors">
+                    <BarChart3 size={14} className="text-gray-500 group-hover:text-blue-400 transition-colors" /> Omröstning
                   </button>
-                  <button type="button" onClick={() => addCustomBlock('poll')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
-                    <BarChart3 size={16} className="text-indigo-400" /> Omröstning
+                  <button type="button" onClick={() => addCustomBlock('section')} disabled={saving} className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-500 hover:bg-white/5 hover:text-gray-300 text-xs transition-colors">
+                    <Minus size={14} className="text-gray-500 group-hover:text-blue-400 transition-colors" /> Sektion
                   </button>
-                  <button type="button" onClick={() => addCustomBlock('split')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
-                    <Wallet size={16} className="text-green-400" /> Splitt
+                  <button type="button" onClick={() => addCustomBlock('split')} disabled={saving} className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-500 hover:bg-white/5 hover:text-gray-300 text-xs transition-colors">
+                    <Wallet size={14} className="text-gray-500 group-hover:text-blue-400 transition-colors" /> Splitt
                   </button>
-                  <button type="button" onClick={() => addCustomBlock('leaderboard')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
-                    <Trophy size={16} className="text-blue-400" /> Golf
+                  <button type="button" onClick={() => addCustomBlock('distribution', 'carpool')} disabled={saving} className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-500 hover:bg-white/5 hover:text-gray-300 text-xs transition-colors">
+                    <Car size={14} className="text-gray-500 group-hover:text-blue-400 transition-colors" /> Samåkning
                   </button>
-                  <button type="button" onClick={() => addCustomBlock('section')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
-                    <Minus size={16} className="text-blue-400" /> Sektion
+                  <button type="button" onClick={() => addCustomBlock('distribution', 'tasks')} disabled={saving} className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-500 hover:bg-white/5 hover:text-gray-300 text-xs transition-colors">
+                    <Users size={14} className="text-gray-500 group-hover:text-blue-400 transition-colors" /> Uppgifter
                   </button>
-                  <button type="button" onClick={() => addCustomBlock('distribution', 'carpool')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
-                    <Car size={16} className="text-blue-400" /> Samåkning
+                  <button type="button" onClick={() => addCustomBlock('leaderboard')} disabled={saving} className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-500 hover:bg-white/5 hover:text-gray-300 text-xs transition-colors">
+                    <Trophy size={14} className="text-gray-500 group-hover:text-blue-400 transition-colors" /> Golf
                   </button>
-                  <button type="button" onClick={() => addCustomBlock('distribution', 'tasks')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
-                    <Users size={16} className="text-blue-400" /> Uppgiftstilldelning
+                  <button type="button" onClick={() => addCustomBlock('tiebreaker')} disabled={saving} className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-500 hover:bg-white/5 hover:text-gray-300 text-xs transition-colors">
+                    <Swords size={14} className="text-gray-500 group-hover:text-blue-400 transition-colors" /> Tiebreaker
                   </button>
-                  <button type="button" onClick={() => addCustomBlock('tiebreaker')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
-                    <Swords size={16} className="text-purple-400" /> Tiebreaker
+                  <button type="button" onClick={() => addCustomBlock('table', 'fusebox')} disabled={saving} className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-500 hover:bg-white/5 hover:text-gray-300 text-xs transition-colors">
+                    <Zap size={14} className="text-gray-500 group-hover:text-blue-400 transition-colors" /> Proppskåp
                   </button>
                   {isAdmin && (
-                    <button type="button" onClick={() => addCustomBlock('audio')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
-                      <Music size={16} className="text-purple-400" /> Ljud
+                    <button type="button" onClick={() => addCustomBlock('audio')} disabled={saving} className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-500 hover:bg-white/5 hover:text-gray-300 text-xs transition-colors">
+                      <Music size={14} className="text-gray-500 group-hover:text-blue-400 transition-colors" /> Ljud
                     </button>
                   )}
                 </div>
