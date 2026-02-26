@@ -456,7 +456,7 @@ export function SimpleTableEditorModal({
                 >
                   {row.isHeader ? (
                     // Header row
-                    <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-amber-500/5">
+                    <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-blue-500/5">
                       {selectMode && (
                         <button
                           type="button"
@@ -483,7 +483,7 @@ export function SimpleTableEditorModal({
                         onChange={(e) => updateRow(row.id, 'col1', e.target.value)}
                         onKeyDown={(e) => handleKeyDown(e, row.id, 'col1')}
                         placeholder="Rubrik..."
-                        className="flex-1 bg-transparent text-amber-400 text-sm font-semibold uppercase tracking-wide placeholder-slate-600 focus:outline-none"
+                        className="flex-1 bg-transparent text-blue-400 text-sm font-semibold uppercase tracking-wide placeholder-slate-600 focus:outline-none"
                       />
                       <button
                         type="button"
@@ -561,7 +561,7 @@ export function SimpleTableEditorModal({
             <button
               type="button"
               onClick={() => addRow(false)}
-              className="w-full h-11 rounded-xl border border-dashed border-slate-600 text-slate-500 hover:border-amber-500/50 hover:text-amber-400 hover:bg-amber-500/5 flex items-center justify-center gap-2 transition-all text-sm"
+              className="w-full h-11 rounded-xl border border-dashed border-slate-600 text-slate-500 hover:border-blue-500/50 hover:text-blue-400 hover:bg-blue-500/5 flex items-center justify-center gap-2 transition-all text-sm"
             >
               <Plus size={16} />
               Lägg till rad
@@ -854,7 +854,7 @@ export function MultiColumnTableEditorModal({
                 <div
                   key={row.id}
                   className={`flex items-center gap-2 px-3 py-2.5 min-w-0 ${
-                    row.isHeader ? 'bg-amber-500/10' : ''
+                    row.isHeader ? 'bg-blue-500/10' : ''
                   }`}
                 >
                   <div className="w-6 flex-shrink-0 text-slate-600">
@@ -870,7 +870,7 @@ export function MultiColumnTableEditorModal({
                       onChange={(e) => updateRow(row.id, columns[0]?.id, e.target.value)}
                       onKeyDown={(e) => handleKeyDown(e, row.id, columns[0]?.id)}
                       placeholder="Grupp/rubrik..."
-                      className="flex-1 min-w-0 bg-transparent text-amber-400 text-sm font-semibold uppercase tracking-wide placeholder-slate-600 focus:outline-none"
+                      className="flex-1 min-w-0 bg-transparent text-blue-400 text-sm font-semibold uppercase tracking-wide placeholder-slate-600 focus:outline-none"
                     />
                   ) : (
                     // Regular row - dynamic columns with flex container
@@ -911,7 +911,7 @@ export function MultiColumnTableEditorModal({
             <button
               type="button"
               onClick={() => addRow(false)}
-              className="w-full h-11 rounded-xl border border-dashed border-slate-600 text-slate-500 hover:border-amber-500/50 hover:text-amber-400 hover:bg-amber-500/5 flex items-center justify-center gap-2 transition-all text-sm"
+              className="w-full h-11 rounded-xl border border-dashed border-slate-600 text-slate-500 hover:border-blue-500/50 hover:text-blue-400 hover:bg-blue-500/5 flex items-center justify-center gap-2 transition-all text-sm"
             >
               <Plus size={16} />
               Lägg till rad

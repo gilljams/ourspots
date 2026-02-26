@@ -64,48 +64,48 @@ export const TableBlock = ({ data, objectId, blockIndex, onUpdate, onExpand, onE
     // Determine icon color based on template
     const iconColorClass = {
       list: 'text-blue-400',
-      table: 'text-amber-400',
-      tasks: 'text-amber-400',
+      table: 'text-blue-400',
+      tasks: 'text-blue-400',
       shopping: 'text-green-400',
       contacts: 'text-cyan-400',
       fusebox: 'text-yellow-400'
-    }[template.id] || 'text-amber-400';
+    }[template.id] || 'text-blue-400';
     
     const progressColorClass = {
       list: 'from-blue-500 to-blue-400',
-      table: 'from-amber-500 to-amber-400',
-      tasks: 'from-amber-500 to-amber-400',
+      table: 'from-blue-500 to-blue-400',
+      tasks: 'from-blue-500 to-blue-400',
       shopping: 'from-green-500 to-green-400',
       contacts: 'from-cyan-500 to-cyan-400',
       fusebox: 'from-yellow-500 to-yellow-400'
-    }[template.id] || 'from-amber-500 to-amber-400';
+    }[template.id] || 'from-blue-500 to-blue-400';
     
     const checkboxColorClass = {
       list: 'bg-blue-500 border-blue-500',
-      table: 'bg-amber-500 border-amber-500',
-      tasks: 'bg-amber-500 border-amber-500',
+      table: 'bg-blue-500 border-blue-500',
+      tasks: 'bg-blue-500 border-blue-500',
       shopping: 'bg-green-500 border-green-500',
       contacts: 'bg-cyan-500 border-cyan-500',
       fusebox: 'bg-yellow-500 border-yellow-500'
-    }[template.id] || 'bg-amber-500 border-amber-500';
+    }[template.id] || 'bg-blue-500 border-blue-500';
     
     const checkboxHoverClass = {
       list: 'hover:border-blue-400',
-      table: 'hover:border-amber-400',
-      tasks: 'hover:border-amber-400',
+      table: 'hover:border-blue-400',
+      tasks: 'hover:border-blue-400',
       shopping: 'hover:border-green-400',
       contacts: 'hover:border-cyan-400',
       fusebox: 'hover:border-yellow-400'
-    }[template.id] || 'hover:border-amber-400';
+    }[template.id] || 'hover:border-blue-400';
     
     const headerColorClass = {
       list: 'text-blue-400',
-      table: 'text-amber-400',
-      tasks: 'text-amber-400',
+      table: 'text-blue-400',
+      tasks: 'text-blue-400',
       shopping: 'text-green-400',
       contacts: 'text-cyan-400',
       fusebox: 'text-yellow-400'
-    }[template.id] || 'text-amber-400';
+    }[template.id] || 'text-blue-400';
 
     return (
       <div ref={blockRef} className="space-y-2">
@@ -281,7 +281,7 @@ export const TableBlock = ({ data, objectId, blockIndex, onUpdate, onExpand, onE
         <div className="flex items-center gap-3 px-4 py-2 border-b border-white/5">
           <div className="h-1.5 w-20 bg-gray-800 rounded-full overflow-hidden">
             <div 
-              className="h-full bg-gradient-to-r from-amber-500 to-orange-400 transition-all duration-300"
+              className="h-full bg-gradient-to-r from-blue-500 to-blue-400 transition-all duration-300"
               style={{ width: `${(checkedCount / totalCount) * 100}%` }}
             />
           </div>
@@ -330,7 +330,7 @@ export const TableBlock = ({ data, objectId, blockIndex, onUpdate, onExpand, onE
                           className="w-full flex justify-center py-1 touch-manipulation active:bg-white/[0.03]"
                         >
                           <div className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-all ${
-                            row[col.id] ? 'bg-amber-500 border-amber-500' : 'border-gray-600 hover:border-amber-400'
+                            row[col.id] ? 'bg-blue-500 border-blue-500' : 'border-gray-600 hover:border-blue-400'
                           }`}>
                             {row[col.id] && <Check size={16} className="text-white" />}
                           </div>
@@ -370,7 +370,7 @@ export const TableBlock = ({ data, objectId, blockIndex, onUpdate, onExpand, onE
                     {i === 0 ? (
                       <span className="text-xs font-medium text-gray-400 uppercase">Summa</span>
                     ) : col.type === 'number' ? (
-                      <span className="text-sm font-semibold text-amber-400 tabular-nums">
+                      <span className="text-sm font-semibold text-blue-400 tabular-nums">
                         {sums[col.id]}
                       </span>
                     ) : null}
