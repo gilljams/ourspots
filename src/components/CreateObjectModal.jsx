@@ -930,7 +930,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
   };
 
   // Block types rendered in the dedicated metadata section (not reorderable content)
-  const METADATA_TYPES = ['rating', 'datetag'];
+  const METADATA_TYPES = ['rating', 'datetag', 'gallery'];
 
   const moveCustomBlock = (id, delta) => {
     setCustomBlocks(prev => {
@@ -1330,6 +1330,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
               const metadataBlocks = customBlocks.filter(b => METADATA_TYPES.includes(b.type));
               const hasRating = metadataBlocks.some(b => b.type === 'rating');
               const hasDateTag = metadataBlocks.some(b => b.type === 'datetag');
+              const hasGallery = metadataBlocks.some(b => b.type === 'gallery');
               // Always show section so add buttons are accessible
               return (
                 <div className="space-y-2">
@@ -1349,7 +1350,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                     </div>
                   ))}
                   {/* Quick-add buttons for missing metadata types */}
-                  {(!hasDateTag || !hasRating) && (
+                  {(!hasDateTag || !hasRating || !hasGallery) && (
                     <div className="flex gap-2">
                       {!hasDateTag && (
                         <button type="button" onClick={() => addCustomBlock('datetag')} disabled={saving} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 border border-dashed border-white/10 text-gray-500 hover:text-gray-300 hover:bg-white/10 text-xs transition-colors">
@@ -1361,6 +1362,11 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                           <Star size={12} /> + Betyg
                         </button>
                       )}
+                      {!hasGallery && (
+                        <button type="button" onClick={() => addCustomBlock('gallery')} disabled={saving} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 border border-dashed border-white/10 text-gray-500 hover:text-gray-300 hover:bg-white/10 text-xs transition-colors">
+                          <Images size={12} /> + Galleri
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1370,7 +1376,11 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             {/* Content blocks (excludes metadata types) */}
             {(() => {
               const contentBlocks = customBlocks.filter(b => !METADATA_TYPES.includes(b.type));
-              return contentBlocks.map((block, index) => {
+              if (contentBlocks.length === 0) return null;
+              return (
+                <>
+                <div className="text-xs text-gray-500 uppercase">Innehåll</div>
+                {contentBlocks.map((block, index) => {
                 // For location blocks in customBlocks, they are always "extra" locations (position 2+)
                 const locationBlocksBeforeThis = contentBlocks.slice(0, index).filter(b => b.type === 'location').length;
                 const locationDisplayNumber = block.type === 'location' ? locationBlocksBeforeThis + 2 : 0;
@@ -1395,7 +1405,9 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                     />
                   </div>
                 );
-              });
+              })}
+              </>
+              );
             })()}
 
             {/* Add block buttons */}
@@ -1472,9 +1484,6 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   </button>
                   <button type="button" onClick={() => addCustomBlock('tiebreaker')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
                     <Swords size={16} className="text-purple-400" /> Tiebreaker
-                  </button>
-                  <button type="button" onClick={() => addCustomBlock('gallery')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
-                    <Images size={16} className="text-pink-400" /> Galleri
                   </button>
                   {isAdmin && (
                     <button type="button" onClick={() => addCustomBlock('audio')} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 text-sm">
