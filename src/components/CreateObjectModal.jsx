@@ -86,6 +86,51 @@ const CATEGORY_STOCK_MAP = {
 // Helper to get smaller thumbnail version
 const getThumbUrl = (url) => url.replace('w=800', 'w=400');
 
+// Wrapper that auto-scrolls a block into view when it expands (ResizeObserver)
+function ScrollOnExpandWrapper({ children, blockId }) {
+  const ref = useRef(null);
+  const prevHeight = useRef(0);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const newHeight = entry.contentRect.height;
+        // Detect expansion (height grew from a meaningful previous height)
+        if (newHeight > prevHeight.current && prevHeight.current > 0) {
+          setTimeout(() => {
+            const scrollContainer = el.closest('.overflow-y-auto');
+            if (!scrollContainer) return;
+
+            const elementRect = el.getBoundingClientRect();
+            const containerRect = scrollContainer.getBoundingClientRect();
+
+            if (elementRect.top < containerRect.top) {
+              el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else if (elementRect.bottom > containerRect.bottom) {
+              const headerHeight = 44;
+              const maxScroll = elementRect.top - containerRect.top - headerHeight;
+              const neededScroll = elementRect.bottom - containerRect.bottom + 20;
+              const scrollAmount = Math.min(neededScroll, maxScroll);
+              if (scrollAmount > 0) {
+                scrollContainer.scrollBy({ top: scrollAmount, behavior: 'smooth' });
+              }
+            }
+          }, 50);
+        }
+        prevHeight.current = newHeight;
+      }
+    });
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return <div ref={ref} data-block-id={blockId}>{children}</div>;
+}
+
 function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, saving, availableParents, defaultParentId, userLocation, categories, preciseGPS, isAdmin, currentUser, currentUserDisplayName, hasChildren, defaultCategory, isDemoMode }) {
   // ========== STATE ==========
   const isEdit = !!editObject;
@@ -1340,7 +1385,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                 <div className="space-y-2">
                   <div className="text-xs text-gray-500 uppercase">Metadata</div>
                   {metadataBlocks.map((block) => (
-                    <div key={block.id} data-block-id={block.id}>
+                    <ScrollOnExpandWrapper key={block.id} blockId={block.id}>
                       <BlockEditor
                         block={block}
                         onUpdate={updateCustomBlock}
@@ -1351,7 +1396,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                         saving={saving}
                         hideReorder
                       />
-                    </div>
+                    </ScrollOnExpandWrapper>
                   ))}
                   {/* Quick-add buttons for missing metadata types */}
                   {(!hasDateTag || !hasRating || !hasGallery) && (
@@ -1393,7 +1438,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   : 0;
                 
                 return (
-                  <div key={block.id} data-block-id={block.id}>
+                  <ScrollOnExpandWrapper key={block.id} blockId={block.id}>
                     <BlockEditor
                       block={block}
                       onUpdate={updateCustomBlock}
@@ -1407,7 +1452,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                       currentUser={currentUser}
                       currentUserDisplayName={currentUserDisplayName}
                     />
-                  </div>
+                  </ScrollOnExpandWrapper>
                 );
               })}
               </>
