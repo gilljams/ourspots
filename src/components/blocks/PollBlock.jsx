@@ -450,14 +450,14 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
                       </div>
                     )}
                     
-                    {/* Remove button */}
+                    {/* Reserve space for remove button when suggestions enabled */}
                     {!isClosed && allowSuggestions && onRemoveOption && (
                       <div className="w-6 flex-shrink-0 flex justify-center">
-                        {option.addedBy === currentUserKey && (
+                        {option.addedBy && (option.addedBy === currentUserKey || canEdit) && (
                           <button
                             onClick={() => onRemoveOption(option.id)}
-                            className="p-1 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
-                            title="Ta bort ditt förslag"
+                            className="p-1 text-gray-600 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                            title={option.addedBy === currentUserKey ? 'Ta bort ditt förslag' : 'Ta bort förslag'}
                           >
                             <X size={14} />
                           </button>
@@ -524,6 +524,21 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
                           icon={<X size={14} />} 
                           activeClass="bg-red-500/20 text-red-400"
                         />
+                      </div>
+                    )}
+                    
+                    {/* Reserve space for remove button when suggestions enabled */}
+                    {!isClosed && allowSuggestions && onRemoveOption && (
+                      <div className="w-6 flex-shrink-0 flex justify-center">
+                        {option.addedBy && (option.addedBy === currentUserKey || canEdit) && (
+                          <button
+                            onClick={() => onRemoveOption(option.id)}
+                            className="p-1 text-gray-600 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                            title={option.addedBy === currentUserKey ? 'Ta bort ditt förslag' : 'Ta bort förslag'}
+                          >
+                            <X size={14} />
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>

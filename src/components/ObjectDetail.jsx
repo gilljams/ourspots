@@ -791,7 +791,9 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                           onRemoveOption={block.type === 'poll' && block.data?.allowSuggestions ? async (optionId) => {
                             const userKey = effectiveUser?.email ? effectiveUser.email.replace(/\./g, '_DOT_') : null;
                             const optionToRemove = (block.data.options || []).find(o => o.id === optionId);
-                            if (!optionToRemove || optionToRemove.addedBy !== userKey) return;
+                            if (!optionToRemove || !optionToRemove.addedBy) return;
+                            // Allow removal if user owns the suggestion OR is admin/editor
+                            if (optionToRemove.addedBy !== userKey && !canEdit) return;
                             await updateBlockField(actualBlockIndex, (data) => ({
                               ...data,
                               options: (data.options || []).filter(o => o.id !== optionId)
