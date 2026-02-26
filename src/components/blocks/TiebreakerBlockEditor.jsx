@@ -121,7 +121,7 @@ function TiebreakerBlockEditor({ block, onUpdate, onRemove, onMove, index, total
 
           {/* Info */}
           <div className="bg-white/5 rounded-lg p-3 flex items-start gap-3">
-            <Swords size={20} className="text-blue-400 flex-shrink-0 mt-0.5" />
+            <span className="text-sm flex-shrink-0 mt-0.5">✊✌️🖐️</span>
             <p className="text-xs text-gray-500">
               Följare kan utmana varandra till sten-sax-påse direkt i kortet. 
               Perfekt för att avgöra delad placering!
