@@ -71,7 +71,7 @@ export const HeroInfoBlock = ({
       <button
         key="whatsapp"
         onClick={() => window.open(whatsappGroupUrl, '_blank')}
-        className="w-8 h-8 rounded-lg bg-green-500/20 hover:bg-green-500/30 flex items-center justify-center text-green-400 hover:text-green-300 transition-all flex-shrink-0"
+        className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-gray-300 transition-all flex-shrink-0"
         title="WhatsApp-grupp"
       >
         <MessageCircle size={15} />
