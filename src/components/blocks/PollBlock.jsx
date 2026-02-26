@@ -296,8 +296,9 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
   // Only show empty state if no options AND suggestions are not allowed
   if (options.length === 0 && !allowSuggestions) {
     return (
-      <div className="text-gray-500 text-sm py-2">
-        Inga alternativ har lagts till än.
+      <div className="bg-white/[0.03] rounded-xl p-4 flex items-center gap-3">
+        <Vote size={16} className="text-gray-600 flex-shrink-0" />
+        <span className="text-gray-500 text-sm">Inga alternativ har lagts till än.</span>
       </div>
     );
   }
@@ -353,7 +354,7 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
         <div className="bg-white/[0.03] rounded-xl p-4 space-y-2">
           {/* Edit mode panel */}
           {showEditMode && canEdit && (
-            <div className="flex items-center justify-end gap-3 px-4 py-2 border-b border-white/5 -mx-4 -mt-2 mb-2">
+            <div className="flex items-center justify-end gap-3 px-4 py-2 border-b border-white/5 -mx-4 -mt-2 mb-1">
               {!isClosed && onClosePoll && (
                 <button
                   onClick={() => {
