@@ -574,10 +574,7 @@ export function SimpleTableEditorModal({
         {/* Undo delete toast */}
         {deletedRow && (
           <div 
-            className="fixed z-[2001] left-4 right-20 flex items-center gap-3 bg-gray-700 text-white text-sm rounded-xl px-4 py-3 shadow-lg border border-white/10"
-            style={{
-              bottom: `${Math.max(16, viewportHeight - window.innerHeight + 16)}px`
-            }}
+            className="absolute z-[2001] left-4 right-20 bottom-4 flex items-center gap-3 bg-gray-700 text-white text-sm rounded-xl px-4 py-3 shadow-lg border border-white/10"
           >
             <span className="flex-1 truncate">
               "{deletedRow.row.col1 || 'Rad'}" borttagen
@@ -597,10 +594,7 @@ export function SimpleTableEditorModal({
         <button
           type="button"
           onClick={handleSave}
-          className="fixed z-[2001] right-4 w-14 h-14 rounded-full bg-blue-500 text-white shadow-lg shadow-blue-500/30 active:scale-95 transition-all flex items-center justify-center"
-          style={{
-            bottom: `${Math.max(16, viewportHeight - window.innerHeight + 16)}px`
-          }}
+          className="absolute z-[2001] right-4 bottom-4 w-14 h-14 rounded-full bg-blue-500 text-white shadow-lg shadow-blue-500/30 active:scale-95 transition-all flex items-center justify-center"
         >
           <Check size={24} strokeWidth={2.5} />
         </button>
@@ -925,10 +919,7 @@ export function MultiColumnTableEditorModal({
         <button
           type="button"
           onClick={handleSave}
-          className="fixed z-[2001] right-4 w-14 h-14 rounded-full bg-blue-500 text-white shadow-lg shadow-blue-500/30 active:scale-95 transition-all flex items-center justify-center"
-          style={{
-            bottom: `${Math.max(16, viewportHeight - window.innerHeight + 16)}px`
-          }}
+          className="absolute z-[2001] right-4 bottom-4 w-14 h-14 rounded-full bg-blue-500 text-white shadow-lg shadow-blue-500/30 active:scale-95 transition-all flex items-center justify-center"
         >
           <Check size={24} strokeWidth={2.5} />
         </button>
