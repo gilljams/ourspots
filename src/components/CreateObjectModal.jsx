@@ -1120,25 +1120,6 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
               </div>
             </div>
 
-            {/* WhatsApp group link - only for collections */}
-            {isCollection && (
-              <div className="space-y-2">
-                <label className="text-sm text-gray-300 flex items-center gap-2">
-                  <MessageCircle size={16} className="text-green-400" />
-                  WhatsApp-grupplänk
-                </label>
-                <input
-                  type="url"
-                  value={whatsappGroupUrl}
-                  onChange={(e) => { setWhatsappGroupUrl(e.target.value); setFormTouched(true); }}
-                  disabled={saving}
-                  placeholder="https://chat.whatsapp.com/..."
-                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-green-500"
-                />
-                <p className="text-xs text-gray-500">Länk till gruppens WhatsApp-chatt (valfritt)</p>
-              </div>
-            )}
-
             {/* Inherit location checkbox - shown when parent has location */}
             {!hideLocation && parentId && parentHasLocation && (
               <div className="flex items-center gap-2 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
@@ -1375,6 +1356,25 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                     <span className="text-xs text-gray-600 bg-white/5 px-2 py-0.5 rounded">Readonly</span>
                   )}
                 </div>
+              </div>
+            )}
+
+            {/* WhatsApp group link - only for collections */}
+            {isCollection && (
+              <div className="space-y-2">
+                <label className="text-sm text-gray-300 flex items-center gap-2">
+                  <MessageCircle size={16} className="text-green-400" />
+                  WhatsApp-grupplänk
+                </label>
+                <input
+                  type="url"
+                  value={whatsappGroupUrl}
+                  onChange={(e) => { setWhatsappGroupUrl(e.target.value); setFormTouched(true); }}
+                  disabled={saving}
+                  placeholder="https://chat.whatsapp.com/..."
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-green-500"
+                />
+                <p className="text-xs text-gray-500">Länk till gruppens WhatsApp-chatt (valfritt)</p>
               </div>
             )}
 
