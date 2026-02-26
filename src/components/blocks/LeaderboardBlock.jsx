@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Trophy, ChevronDown, ChevronRight, Lock, Edit2, RotateCcw, Target, User } from 'lucide-react';
+import { Trophy, ChevronDown, ChevronRight, Lock, Unlock, Edit2, RotateCcw, Target, User } from 'lucide-react';
 
 // Leaderboard Block - ranking/competition display (golf etc.)
-export const LeaderboardBlock = ({ data, currentUser, shares = {}, canEdit = false, onOpenModal, onCloseLeaderboard, onResetLeaderboard, onExpand }) => {
+export const LeaderboardBlock = ({ data, currentUser, shares = {}, canEdit = false, onOpenModal, onCloseLeaderboard, onReopenLeaderboard, onResetLeaderboard, onExpand }) => {
   const [isCollapsed, setIsCollapsed] = useState(data.defaultCollapsed ?? true);
   const [showEditMode, setShowEditMode] = useState(false);
   const blockRef = useRef(null);
@@ -173,7 +173,7 @@ export const LeaderboardBlock = ({ data, currentUser, shares = {}, canEdit = fal
           <button
             onClick={() => setShowEditMode(!showEditMode)}
             className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
-              showEditMode ? 'bg-amber-500/20 text-amber-400' : 'bg-white/5 text-gray-400 hover:bg-white/10'
+              showEditMode ? 'bg-blue-500/20 text-blue-400' : 'bg-white/5 text-gray-400 hover:bg-white/10'
             }`}
             title="Redigera"
           >
@@ -187,7 +187,7 @@ export const LeaderboardBlock = ({ data, currentUser, shares = {}, canEdit = fal
         <div className="bg-white/[0.03] rounded-xl p-4 space-y-3">
           {/* Edit mode panel */}
           {showEditMode && canEdit && (
-            <div className="flex gap-2 p-2 bg-white/5 rounded-lg border border-white/10 -mt-1">
+            <div className="flex items-center justify-end gap-3 px-4 py-2 border-b border-white/5 -mx-4 -mt-2 mb-1">
               {status !== 'finished' && onCloseLeaderboard && (
                 <button
                   onClick={() => {
@@ -196,10 +196,24 @@ export const LeaderboardBlock = ({ data, currentUser, shares = {}, canEdit = fal
                       setShowEditMode(false);
                     }
                   }}
-                  className="flex-1 py-1.5 text-xs text-amber-400 hover:bg-amber-500/20 rounded flex items-center justify-center gap-1"
+                  className="text-xs text-gray-500 hover:text-gray-300 flex items-center gap-1 transition-colors"
                 >
-                  <Lock size={12} />
+                  <Lock size={11} />
                   Avsluta
+                </button>
+              )}
+              {status === 'finished' && onReopenLeaderboard && (
+                <button
+                  onClick={() => {
+                    if (window.confirm('Vill du öppna leaderboarden igen?')) {
+                      onReopenLeaderboard();
+                      setShowEditMode(false);
+                    }
+                  }}
+                  className="text-xs text-gray-500 hover:text-gray-300 flex items-center gap-1 transition-colors"
+                >
+                  <Unlock size={11} />
+                  Öppna
                 </button>
               )}
               {roundCount > 0 && onResetLeaderboard && (
@@ -210,9 +224,9 @@ export const LeaderboardBlock = ({ data, currentUser, shares = {}, canEdit = fal
                       setShowEditMode(false);
                     }
                   }}
-                  className="flex-1 py-1.5 text-xs text-red-400 hover:bg-red-500/20 rounded flex items-center justify-center gap-1"
+                  className="text-xs text-gray-500 hover:text-red-400 flex items-center gap-1 transition-colors"
                 >
-                  <RotateCcw size={12} />
+                  <RotateCcw size={11} />
                   Nollställ
                 </button>
               )}

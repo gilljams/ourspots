@@ -236,7 +236,7 @@ export const DistributionBlock = ({
           <button
             onClick={() => setShowEditMode(!showEditMode)}
             className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
-              showEditMode ? 'bg-amber-500/20 text-amber-400' : 'bg-white/5 text-gray-400 hover:bg-white/10'
+              showEditMode ? 'bg-blue-500/20 text-blue-400' : 'bg-white/5 text-gray-400 hover:bg-white/10'
             }`}
             title="Redigera"
           >
@@ -250,7 +250,7 @@ export const DistributionBlock = ({
         <div className="bg-white/[0.03] rounded-xl p-4 space-y-3">
           {/* Edit mode panel */}
           {showEditMode && canEdit && slots.length > 0 && onResetDistribution && (
-            <div className="flex gap-2 p-2 bg-white/5 rounded-lg border border-white/10 -mt-1">
+            <div className="flex items-center justify-end gap-3 px-4 py-2 border-b border-white/5 -mx-4 -mt-2 mb-1">
               <button
                 onClick={() => {
                   if (window.confirm(`Vill du nollställa alla ${data.preset === 'carpool' ? 'bilar' : 'uppgifter'}? Detta kan inte ångras.`)) {
@@ -258,9 +258,9 @@ export const DistributionBlock = ({
                     setShowEditMode(false);
                   }
                 }}
-                className="flex-1 py-1.5 text-xs text-red-400 hover:bg-red-500/20 rounded flex items-center justify-center gap-1"
+                className="text-xs text-gray-500 hover:text-red-400 flex items-center gap-1 transition-colors"
               >
-                <RotateCcw size={12} />
+                <RotateCcw size={11} />
                 Nollställ
               </button>
             </div>

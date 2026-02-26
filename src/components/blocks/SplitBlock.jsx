@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Wallet, ChevronDown, Lock, Edit2, RotateCcw, ArrowRight } from 'lucide-react';
+import { Wallet, ChevronDown, Lock, Unlock, Edit2, RotateCcw, ArrowRight } from 'lucide-react';
 
 // Split Block - expense sharing for trips etc.
-export const SplitBlock = ({ data, currentUser, shares = {}, canEdit = false, onUpdateAmount, onCloseSplit, onResetSplit, onExpand }) => {
+export const SplitBlock = ({ data, currentUser, shares = {}, canEdit = false, onUpdateAmount, onCloseSplit, onReopenSplit, onResetSplit, onExpand }) => {
   const [isCollapsed, setIsCollapsed] = useState(data.defaultCollapsed ?? true);
   const [myAmount, setMyAmount] = useState('');
   const [showSaved, setShowSaved] = useState(false);
@@ -210,7 +210,7 @@ export const SplitBlock = ({ data, currentUser, shares = {}, canEdit = false, on
               onBlur={handleAmountBlur}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.target.blur(); } }}
               placeholder="0"
-              className="w-20 px-2 py-1 text-xs bg-white/5 border border-white/10 rounded-md focus:outline-none focus:border-blue-500/50 text-white placeholder-gray-600 text-right tabular-nums transition-colors"
+              className="w-20 px-2 py-1 text-base bg-white/5 border border-white/10 rounded-md focus:outline-none focus:border-blue-500/50 text-white placeholder-gray-600 text-right tabular-nums transition-colors"
             />
             {showSaved && (
               <span className="absolute -right-4 top-1/2 -translate-y-1/2 text-[10px] text-blue-400 pointer-events-none">✓</span>
@@ -298,6 +298,20 @@ export const SplitBlock = ({ data, currentUser, shares = {}, canEdit = false, on
                 >
                   <Lock size={11} />
                   Avsluta
+                </button>
+              )}
+              {isClosed && onReopenSplit && (
+                <button
+                  onClick={() => {
+                    if (window.confirm('Vill du öppna splitten igen? Deltagare kan ändra belopp.')) {
+                      onReopenSplit();
+                      setShowEditMode(false);
+                    }
+                  }}
+                  className="text-xs text-gray-500 hover:text-gray-300 flex items-center gap-1 transition-colors"
+                >
+                  <Unlock size={11} />
+                  Öppna
                 </button>
               )}
               {totalPaid > 0 && onResetSplit && (

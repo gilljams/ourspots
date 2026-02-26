@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Vote, Lock, Check, HelpCircle, X, Trophy, Edit2, RotateCcw, Plus, Users, Link } from 'lucide-react';
+import { ChevronDown, Vote, Lock, Unlock, Check, HelpCircle, X, Trophy, Edit2, RotateCcw, Plus, Users, Link } from 'lucide-react';
 
 // Poll block - allows viewers to vote (date poll or ranked poll)
-export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayName = '', onClosePoll, onResetPoll, canEdit = false, onAddOption, onRemoveOption, onExpand }) => {
+export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayName = '', onClosePoll, onReopenPoll, onResetPoll, canEdit = false, onAddOption, onRemoveOption, onExpand }) => {
   const [isCollapsed, setIsCollapsed] = useState(data.defaultCollapsed ?? false);
   const [showDetails, setShowDetails] = useState(false);
   const [newSuggestion, setNewSuggestion] = useState('');
@@ -155,6 +155,19 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
       }
     };
     onVote(newVotes);
+  };
+  
+  // Handle adding a suggestion (deduplicates URL processing logic)
+  const handleAddSuggestion = () => {
+    if (!newSuggestion.trim()) return;
+    const finalUrl = newSuggestionUrl.trim();
+    const processedUrl = finalUrl && !finalUrl.match(/^https?:\/\//) 
+      ? `https://${finalUrl}` 
+      : finalUrl;
+    onAddOption(newSuggestion.trim(), currentUserKey, pollType === 'ranked' ? processedUrl : null);
+    setNewSuggestion('');
+    setNewSuggestionUrl('');
+    setShowSuggestionInput(false);
   };
   
   // Calculate ranked scores (1st=3p, 2nd=2p, 3rd=1p)
@@ -313,7 +326,7 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
           <button
             onClick={() => setShowEditMode(!showEditMode)}
             className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
-              showEditMode ? 'bg-amber-500/20 text-amber-400' : 'bg-white/5 text-gray-400 hover:bg-white/10'
+              showEditMode ? 'bg-blue-500/20 text-blue-400' : 'bg-white/5 text-gray-400 hover:bg-white/10'
             }`}
             title="Redigera"
           >
@@ -327,7 +340,7 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
         <div className="bg-white/[0.03] rounded-xl p-4 space-y-2">
           {/* Edit mode panel */}
           {showEditMode && canEdit && (
-            <div className="flex gap-2 p-2 bg-white/5 rounded-lg border border-white/10">
+            <div className="flex items-center justify-end gap-3 px-4 py-2 border-b border-white/5 -mx-4 -mt-2 mb-2">
               {!isClosed && onClosePoll && (
                 <button
                   onClick={() => {
@@ -336,10 +349,24 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
                       setShowEditMode(false);
                     }
                   }}
-                  className="flex-1 py-1.5 text-xs text-amber-400 hover:bg-amber-500/20 rounded flex items-center justify-center gap-1"
+                  className="text-xs text-gray-500 hover:text-gray-300 flex items-center gap-1 transition-colors"
                 >
-                  <Lock size={12} />
+                  <Lock size={11} />
                   Avsluta
+                </button>
+              )}
+              {isClosed && onReopenPoll && (
+                <button
+                  onClick={() => {
+                    if (window.confirm('Vill du öppna omröstningen igen?')) {
+                      onReopenPoll();
+                      setShowEditMode(false);
+                    }
+                  }}
+                  className="text-xs text-gray-500 hover:text-gray-300 flex items-center gap-1 transition-colors"
+                >
+                  <Unlock size={11} />
+                  Öppna
                 </button>
               )}
               {voteCount > 0 && onResetPoll && (
@@ -350,9 +377,9 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
                       setShowEditMode(false);
                     }
                   }}
-                  className="flex-1 py-1.5 text-xs text-red-400 hover:bg-red-500/20 rounded flex items-center justify-center gap-1"
+                  className="text-xs text-gray-500 hover:text-red-400 flex items-center gap-1 transition-colors"
                 >
-                  <RotateCcw size={12} />
+                  <RotateCcw size={11} />
                   Nollställ ({voteCount})
                 </button>
               )}
@@ -507,7 +534,7 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
           
           {/* Suggestion input */}
           {allowSuggestions && !isClosed && currentUserKey && onAddOption && showSuggestionInput && (
-            <div className="space-y-2 p-3 bg-white/5 rounded-lg border border-white/10">
+            <div className="flex flex-col gap-2 pt-1">
               <div className="flex items-center gap-2">
                 <input
                   type="text"
@@ -515,14 +542,7 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
                   onChange={(e) => setNewSuggestion(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && newSuggestion.trim()) {
-                      const finalUrl = newSuggestionUrl.trim();
-                      const processedUrl = finalUrl && !finalUrl.match(/^https?:\/\//) 
-                        ? `https://${finalUrl.replace(/^www\./, 'www.')}` 
-                        : finalUrl;
-                      onAddOption(newSuggestion.trim(), currentUserKey, pollType === 'ranked' ? processedUrl : null);
-                      setNewSuggestion('');
-                      setNewSuggestionUrl('');
-                      setShowSuggestionInput(false);
+                      handleAddSuggestion();
                     } else if (e.key === 'Escape') {
                       setNewSuggestion('');
                       setNewSuggestionUrl('');
@@ -530,35 +550,25 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
                     }
                   }}
                   placeholder={pollType === 'ranked' ? "Nytt alternativ" : "Nytt förslag"}
-                  className="flex-1 min-w-0 px-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-blue-500 text-white placeholder-gray-500"
+                  className="flex-1 min-w-0 px-3 py-1.5 text-base bg-white/[0.03] rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500/50 text-white placeholder-gray-600"
                   autoFocus
                 />
-                <button
-                  onClick={() => {
-                    if (newSuggestion.trim()) {
-                      const finalUrl = newSuggestionUrl.trim();
-                      const processedUrl = finalUrl && !finalUrl.match(/^https?:\/\//) 
-                        ? `https://${finalUrl.replace(/^www\./, 'www.')}` 
-                        : finalUrl;
-                      onAddOption(newSuggestion.trim(), currentUserKey, pollType === 'ranked' ? processedUrl : null);
-                      setNewSuggestion('');
-                      setNewSuggestionUrl('');
-                      setShowSuggestionInput(false);
-                    }
-                  }}
-                  disabled={!newSuggestion.trim()}
-                  className="w-8 h-8 flex-shrink-0 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
-                  title="Lägg till"
-                >
-                  <Plus size={16} />
-                </button>
+                {newSuggestion.trim() && (
+                  <button
+                    onClick={handleAddSuggestion}
+                    className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 transition-colors flex-shrink-0"
+                  >
+                    <Plus size={12} />
+                    Lägg till
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     setNewSuggestion('');
                     setNewSuggestionUrl('');
                     setShowSuggestionInput(false);
                   }}
-                  className="w-8 h-8 flex-shrink-0 rounded-lg bg-white/5 text-gray-400 hover:bg-white/10 transition-colors flex items-center justify-center"
+                  className="text-xs text-gray-600 hover:text-gray-400 transition-colors flex-shrink-0"
                   title="Avbryt"
                 >
                   <X size={14} />
@@ -571,56 +581,47 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
                   onChange={(e) => setNewSuggestionUrl(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && newSuggestion.trim()) {
-                      const finalUrl = newSuggestionUrl.trim();
-                      const processedUrl = finalUrl && !finalUrl.match(/^https?:\/\//) 
-                        ? `https://${finalUrl.replace(/^www\./, 'www.')}` 
-                        : finalUrl;
-                      onAddOption(newSuggestion.trim(), currentUserKey, pollType === 'ranked' ? processedUrl : null);
-                      setNewSuggestion('');
-                      setNewSuggestionUrl('');
-                      setShowSuggestionInput(false);
+                      handleAddSuggestion();
                     }
                   }}
-                  placeholder="www.example.com"
-                  className="w-full px-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-blue-500 text-blue-400 placeholder-gray-500"
+                  placeholder="Länk (valfritt)"
+                  className="flex-1 min-w-0 px-3 py-1.5 text-base bg-white/[0.03] rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500/50 text-blue-400 placeholder-gray-600"
                 />
               )}
             </div>
           )}
           
           {/* Footer */}
-          <div className="flex items-center justify-between pt-2 flex-wrap gap-2">
-            <div className="flex items-center gap-3 flex-1">
-              {participants.length > 0 || (pollType === 'ranked' && Object.keys(votes).length > 0) ? (
+          <div className="flex items-center justify-between pt-2">
+            <div className="flex items-center gap-3">
+              {(participants.length > 0 || (pollType === 'ranked' && Object.keys(votes).length > 0)) && (
                 <button
                   onClick={() => setShowDetails(!showDetails)}
-                  className={`relative w-12 h-6 rounded-full transition-colors ${showDetails ? 'bg-blue-500/30' : 'bg-white/10'}`}
-                  title={showDetails ? 'Kompakt vy' : 'Visa namn'}
+                  className={`text-xs flex items-center gap-1 transition-colors ${
+                    showDetails ? 'text-blue-400' : 'text-gray-600 hover:text-gray-400'
+                  }`}
                 >
-                  <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform flex items-center justify-center ${showDetails ? 'translate-x-7' : 'translate-x-1'}`}>
-                    {showDetails ? <Users size={10} className="text-blue-600" /> : <Vote size={10} className="text-gray-600" />}
-                  </div>
-                </button>
-              ) : (
-                <span className="text-xs text-gray-500">Ingen har röstat än</span>
-              )}
-              {allowSuggestions && !isClosed && currentUserKey && onAddOption && !showSuggestionInput && (
-                <button
-                  onClick={() => setShowSuggestionInput(true)}
-                  className="py-1.5 px-3 text-sm text-blue-400 hover:bg-blue-500/10 rounded-lg flex items-center gap-1.5 transition-colors border border-blue-500/20"
-                >
-                  <Plus size={14} />
-                  Föreslå
+                  <Users size={11} />
+                  {showDetails ? 'Dölj namn' : 'Visa namn'}
                 </button>
               )}
             </div>
             
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               {!currentUserKey && !isClosed && (
                 <span className="text-xs text-gray-500 italic">Logga in för att rösta</span>
               )}
               {currentUserKey && isPendingShare && !isClosed && (
                 <span className="text-xs text-amber-500 italic">Acceptera delningen för att rösta</span>
+              )}
+              {allowSuggestions && !isClosed && currentUserKey && onAddOption && !showSuggestionInput && (
+                <button
+                  onClick={() => setShowSuggestionInput(true)}
+                  className="text-xs text-gray-500 hover:text-gray-300 flex items-center gap-1 transition-colors"
+                >
+                  <Plus size={11} />
+                  Föreslå
+                </button>
               )}
             </div>
           </div>

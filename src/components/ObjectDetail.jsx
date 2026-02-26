@@ -776,6 +776,9 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                           onClosePoll={block.type === 'poll' && canEdit ? async () => {
                             await updateBlockField(actualBlockIndex, { closed: true });
                           } : undefined}
+                          onReopenPoll={block.type === 'poll' && canEdit ? async () => {
+                            await updateBlockField(actualBlockIndex, { closed: false });
+                          } : undefined}
                           onResetPoll={block.type === 'poll' && canEdit ? async () => {
                             await updateBlockField(actualBlockIndex, { votes: {} });
                           } : undefined}
@@ -812,6 +815,9 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                           onCloseSplit={block.type === 'split' && canEdit ? async () => {
                             await updateBlockField(actualBlockIndex, { closed: true });
                           } : undefined}
+                          onReopenSplit={block.type === 'split' && canEdit ? async () => {
+                            await updateBlockField(actualBlockIndex, { closed: false });
+                          } : undefined}
                           onResetSplit={block.type === 'split' && canEdit ? async () => {
                             await updateBlockField(actualBlockIndex, (data) => ({
                               ...data,
@@ -827,6 +833,9 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                           } : undefined}
                           onCloseLeaderboard={block.type === 'leaderboard' && canEdit ? async () => {
                             await updateBlockField(actualBlockIndex, { status: 'finished' });
+                          } : undefined}
+                          onReopenLeaderboard={block.type === 'leaderboard' && canEdit ? async () => {
+                            await updateBlockField(actualBlockIndex, { status: 'active' });
                           } : undefined}
                           onResetLeaderboard={block.type === 'leaderboard' && canEdit ? async () => {
                             await updateBlockField(actualBlockIndex, { scores: {}, roundCount: 0, status: 'active' });
@@ -1844,10 +1853,6 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
             const changes = { roundCount: currentRoundCount - 1, scores: newScores, shots: newShots, rounds: newRounds };
             await updateBlockField(leaderboardModalData.blockIndex, changes);
             setLeaderboardModalData(prev => ({ ...prev, data: { ...prev.data, ...changes } }));
-          }}
-          onToggleStatus={async (newStatus) => {
-            await updateBlockField(leaderboardModalData.blockIndex, { status: newStatus });
-            setLeaderboardModalData(prev => ({ ...prev, data: { ...prev.data, status: newStatus } }));
           }}
           onUpdateShots={async (newShots) => {
             await updateBlockField(leaderboardModalData.blockIndex, { shots: newShots });

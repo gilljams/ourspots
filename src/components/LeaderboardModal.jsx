@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, ChevronLeft, ChevronRight, Play, Pause, Edit3, Save, Plus, User, Trophy, Trash2, Lock, Unlock, BarChart2, ChevronDown, MapPin, Target, Check, Crosshair, Map as MapIcon } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Play, Pause, Edit3, Save, Plus, User, Trophy, Trash2, BarChart2, ChevronDown, MapPin, Target, Check, Crosshair, Map as MapIcon } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Polyline, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { useGPSCapture, calculateDistance } from '../utils/useGPSCapture';
@@ -364,7 +364,6 @@ export default function LeaderboardModal({
   onUpdateRounds,
   onAddRound,
   onDeleteRound,
-  onToggleStatus,
   preciseGPS = true
 }) {
   const [currentRound, setCurrentRound] = useState(() => {
@@ -1102,24 +1101,6 @@ export default function LeaderboardModal({
                   title="Redigera"
                 >
                   <Edit3 size={14} />
-                </button>
-              )}
-              
-              {/* Status toggle - finish/reopen */}
-              {canEdit && onToggleStatus && (
-                <button
-                  onClick={() => !isPlaying && onToggleStatus(status === 'finished' ? 'active' : 'finished')}
-                  disabled={isPlaying}
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                    isPlaying 
-                      ? 'bg-white/5 text-gray-600 cursor-not-allowed' 
-                      : status === 'finished'
-                        ? 'bg-green-500/20 hover:bg-green-500/30 text-green-400'
-                        : 'bg-white/5 hover:bg-white/10 text-gray-300'
-                  }`}
-                  title={status === 'finished' ? 'Öppna igen' : 'Avsluta tävlingen'}
-                >
-                  {status === 'finished' ? <Unlock size={14} /> : <Lock size={14} />}
                 </button>
               )}
             </div>
