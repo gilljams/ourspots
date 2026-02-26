@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X, ArrowUp, ArrowDown, ChevronDown, Trophy, Target, Plus, Trash2, RotateCcw, Check } from 'lucide-react';
-import { useConfirm } from '../../utils/useConfirm';
+import { X, ArrowUp, ArrowDown, ChevronDown, Trophy, Target, Plus, Check } from 'lucide-react';
 
 // Leaderboard Block Editor - competition/ranking configuration
 function LeaderboardBlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving, shares = {}, currentUser, currentUserDisplayName }) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const confirm = useConfirm();
   const getDefaultTitle = (type) => type === 'longestdrive' ? 'Longest Drive' : 'Leaderboard';
   const [title, setTitle] = useState(block.title || getDefaultTitle(block.competitionType));
   const [participants, setParticipants] = useState(block.participants || []);
@@ -73,19 +71,6 @@ function LeaderboardBlockEditor({ block, onUpdate, onRemove, onMove, index, tota
       syncToParent({ mode: newMode, participants: updatedParticipants });
     } else {
       syncToParent({ mode: newMode });
-    }
-  };
-
-  const handleReopenLeaderboard = () => {
-    setStatus('active');
-    syncToParent({ status: 'active' });
-  };
-
-  const handleResetScores = async () => {
-    if (await confirm({ title: 'Nollställ poäng?', message: 'Alla poäng raderas. Detta kan inte ångras.', confirmText: 'Nollställ', variant: 'danger' })) {
-      setStatus('active');
-      setRoundCount(0);
-      syncToParent({ scores: {}, roundCount: 0, status: 'active' });
     }
   };
 
@@ -461,31 +446,7 @@ function LeaderboardBlockEditor({ block, onUpdate, onRemove, onMove, index, tota
             </button>
           </div>
 
-          {/* Reopen / Reset buttons */}
-          {(status === 'finished' || roundCount > 0) && (
-            <div className="space-y-2 pt-3 border-t border-white/5">
-              {status === 'finished' && (
-                <button
-                  type="button"
-                  onClick={handleReopenLeaderboard}
-                  className="w-full py-3 text-sm text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg border border-blue-500/20 transition-colors flex items-center justify-center gap-2"
-                >
-                  <RotateCcw size={16} />
-                  Återöppna
-                </button>
-              )}
-              {roundCount > 0 && (
-                <button
-                  type="button"
-                  onClick={handleResetScores}
-                  className="w-full py-3 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg border border-red-500/20 transition-colors flex items-center justify-center gap-2"
-                >
-                  <Trash2 size={16} />
-                  Nollställ
-                </button>
-              )}
-            </div>
-          )}
+
         </div>
       )}
     </div>

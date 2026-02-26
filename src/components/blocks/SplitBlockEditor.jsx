@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ArrowUp, ArrowDown, ChevronDown, Wallet, Plus, Trash2, RotateCcw } from 'lucide-react';
-import { useConfirm } from '../../utils/useConfirm';
+import { X, ArrowUp, ArrowDown, ChevronDown, Wallet, Plus } from 'lucide-react';
 
 // Separate component for weighted participant row (needed for hooks)
 function WeightedParticipantRow({ participant, idx, onUpdateWeight, onRemove }) {
@@ -61,7 +60,6 @@ function WeightedParticipantRow({ participant, idx, onUpdateWeight, onRemove }) 
 // Split Block Editor - expense sharing configuration
 function SplitBlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving, shares = {}, currentUser, currentUserDisplayName }) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const confirm = useConfirm();
   const [title, setTitle] = useState(block.title || 'Splitt');
   const [model, setModel] = useState(block.model || 'individual');
   const [participants, setParticipants] = useState(block.participants || []);
@@ -107,20 +105,6 @@ function SplitBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
   const handleDefaultCollapsedChange = (value) => {
     setDefaultCollapsed(value);
     syncToParent({ defaultCollapsed: value });
-  };
-
-  const handleReopenSplit = () => {
-    setClosed(false);
-    syncToParent({ closed: false });
-  };
-
-  const handleResetAmounts = async () => {
-    if (await confirm({ title: 'Nollställ belopp?', message: 'Alla belopp nollställs. Detta kan inte ångras.', confirmText: 'Nollställ', variant: 'danger' })) {
-      const resetParticipants = participants.map(p => ({ ...p, paid: 0 }));
-      setParticipants(resetParticipants);
-      setClosed(false);
-      syncToParent({ participants: resetParticipants, closed: false });
-    }
   };
 
   // Toggle participant (for individual mode badges)
@@ -350,30 +334,6 @@ function SplitBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
               </div>
             )}
           </div>
-
-          {/* Reopen / Reset buttons */}
-          {(closed || participants.some(p => (parseFloat(p.paid) || 0) > 0)) && (
-            <div className="space-y-2 pt-3 border-t border-white/5">
-              {closed && (
-                <button
-                  type="button"
-                  onClick={handleReopenSplit}
-                  className="w-full py-3 text-sm text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 rounded-lg border border-amber-500/20 transition-colors flex items-center justify-center gap-2"
-                >
-                  <RotateCcw size={16} />
-                  Öppna igen
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={handleResetAmounts}
-                className="w-full py-3 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg border border-red-500/20 transition-colors flex items-center justify-center gap-2"
-              >
-                <Trash2 size={16} />
-                Nollställ belopp
-              </button>
-            </div>
-          )}
 
           {/* Default collapsed toggle */}
           <div className="flex items-center justify-between py-2">

@@ -37,12 +37,6 @@ function PollBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
     syncToParent(title, options, block.votes || {}, pollType, block.closed || false, value);
   };
 
-  const resetVotes = async () => {
-    if (await confirm({ title: 'Nollställ röster?', message: 'Alla röster raderas. Detta kan inte ångras.', confirmText: 'Nollställ', variant: 'danger' })) {
-      syncToParent(title, options, {}, pollType, false);
-    }
-  };
-
   const handlePollTypeChange = async (newType) => {
     if (voteCount > 0) {
       if (!await confirm({ title: 'Byta typ?', message: 'Att byta typ nollställer alla röster.', confirmText: 'Byt typ', variant: 'warning' })) {
@@ -266,23 +260,12 @@ function PollBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
             </button>
           </div>
 
-          {/* Instructions + Reset button */}
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-gray-500">
-              {pollType === 'ranked' 
-                ? 'Deltagare röstar 1:a, 2:a, 3:a (3p, 2p, 1p)' 
-                : 'Deltagare kan rösta Ja/Nej/Kanske'}
-            </p>
-            {voteCount > 0 && (
-              <button
-                type="button"
-                onClick={resetVotes}
-                className="text-xs text-red-400 hover:text-red-300 hover:underline"
-              >
-                Nollställ ({voteCount})
-              </button>
-            )}
-          </div>
+          {/* Instructions */}
+          <p className="text-xs text-gray-500">
+            {pollType === 'ranked' 
+              ? 'Deltagare röstar 1:a, 2:a, 3:a (3p, 2p, 1p)' 
+              : 'Deltagare kan rösta Ja/Nej/Kanske'}
+          </p>
 
           {/* Allow suggestions toggle */}
           <div className="flex items-center justify-between py-2">
