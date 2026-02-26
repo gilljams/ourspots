@@ -1,11 +1,11 @@
 import React from 'react';
 import { MapPin, Map as MapIcon, Play, Pause, Edit2, X, MessageCircle, Calendar } from 'lucide-react';
 import { RatingInline } from './RatingInline';
-import { DateTagBlock } from './DateTagBlock';
 
 // HeroInfoBlock — unified info zone between image/gallery and content blocks.
-// Combines location address, action buttons, rating, dates and planner into
+// Combines location address, action buttons, rating and planner into
 // a single visually cohesive block with left=info, right=actions layout.
+// Date tags are rendered as overlay on the hero image (ImageBlock).
 export const HeroInfoBlock = ({
   // Location props
   locationData,
@@ -26,16 +26,14 @@ export const HeroInfoBlock = ({
   ratingData,
   currentUser,
   onRate,
-  // Metadata: datetag + planner
-  dateTagData,
+  // Metadata: planner
   planningData,
   onShowPlanner,
 }) => {
   const hasLocation = locationData && locationData.lat && locationData.lng;
   const hasRating = !!ratingData;
-  const hasDateTags = dateTagData?.tags?.length > 0;
   const hasPlanner = isCollection && planningData && onShowPlanner;
-  const hasMetadata = hasRating || hasDateTags;
+  const hasMetadata = hasRating || hasPlanner;
 
   if (!hasLocation && !hasMetadata) return null;
 
@@ -214,24 +212,10 @@ export const HeroInfoBlock = ({
                 onRate={onRate}
               />
             )}
-            {hasRating && hasDateTags && (
+            {hasRating && hasPlanner && (
               <span className="text-gray-600 text-xs select-none">·</span>
             )}
-            {hasDateTags && (
-              <div className="flex items-center gap-1.5">
-                <DateTagBlock data={dateTagData} />
-                {hasPlanner && (
-                  <button
-                    onClick={onShowPlanner}
-                    className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-gray-300 transition-all flex-shrink-0"
-                    title={`Visa planering (${planningData.days} dagar)`}
-                  >
-                    <Calendar size={13} />
-                  </button>
-                )}
-              </div>
-            )}
-            {!hasDateTags && hasPlanner && (
+            {hasPlanner && (
               <button
                 onClick={onShowPlanner}
                 className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-gray-300 transition-all flex-shrink-0"

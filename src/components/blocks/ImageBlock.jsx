@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Maximize2, Images } from 'lucide-react';
 import { getTransformedImageUrl, getFocalPointStyles } from '../../utils/imageUtils';
+import { DateTagBlock } from './DateTagBlock';
 import ImageLightbox from '../ImageLightbox';
 
-export const ImageBlock = ({ data, isPlaying = false, animation = 'none', galleryImages = [] }) => {
+export const ImageBlock = ({ data, isPlaying = false, animation = 'none', galleryImages = [], dateTagData }) => {
   const [showLightbox, setShowLightbox] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [imageError, setImageError] = useState(false);
@@ -97,7 +97,10 @@ export const ImageBlock = ({ data, isPlaying = false, animation = 'none', galler
   
   return (
     <>
-      <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden mb-4 border border-white/10 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.7)]">
+      <div
+        className="relative w-full aspect-[4/3] rounded-xl overflow-hidden mb-4 border border-white/10 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.7)] cursor-pointer"
+        onClick={() => openLightbox(0)}
+      >
         {imageError ? (
           <div className="w-full h-full bg-gray-800 flex items-center justify-center">
             <div className="text-center text-gray-500">
@@ -177,21 +180,12 @@ export const ImageBlock = ({ data, isPlaying = false, animation = 'none', galler
           </div>
         )}
         
-        {/* Image count badge (if multiple images) */}
-        {hasMultipleImages && (
-          <div className="absolute bottom-2 left-2 px-2 py-1 rounded-md bg-black/50 text-white/90 text-xs flex items-center gap-1">
-            <Images size={12} />
-            <span>{allImages.length}</span>
+        {/* Date pills overlay */}
+        {dateTagData?.tags?.length > 0 && (
+          <div className="absolute bottom-2 left-2 pointer-events-none">
+            <DateTagBlock data={dateTagData} variant="overlay" />
           </div>
         )}
-        
-        <button
-          onClick={() => openLightbox(0)}
-          className="absolute bottom-2 right-2 p-1.5 rounded-md bg-black/30 text-white/70 hover:text-white hover:bg-black/50 transition-all"
-          title={hasMultipleImages ? 'Visa alla bilder' : 'Visa hela bilden'}
-        >
-          <Maximize2 size={14} />
-        </button>
       </div>
       
       {/* Gallery thumbnails (if multiple images) */}

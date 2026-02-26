@@ -2,7 +2,7 @@ import React from 'react';
 import { Calendar } from 'lucide-react';
 
 // DateTag Block - for marking years or date ranges
-export const DateTagBlock = ({ data }) => {
+export const DateTagBlock = ({ data, variant = 'default' }) => {
   const tags = data.tags || [];
   
   const formatTag = (tag) => {
@@ -52,23 +52,34 @@ export const DateTagBlock = ({ data }) => {
 
   if (tags.length === 0) return null;
 
+  const isOverlay = variant === 'overlay';
+
   return (
     <div className="flex flex-wrap gap-1.5">
       {tags.map((tag, i) => {
         const countdown = getCountdown(tag);
+        const pillClass = isOverlay
+          ? countdown?.highlight
+            ? 'bg-amber-500/50 backdrop-blur-sm text-white border border-amber-400/30'
+            : 'bg-black/40 backdrop-blur-sm text-white/90 border border-white/10'
+          : countdown?.highlight
+            ? 'bg-amber-500/15 text-amber-200 border border-amber-500/20'
+            : 'bg-blue-500/15 text-blue-300 border border-blue-500/20';
         return (
           <div 
             key={i}
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-medium ${
-              countdown?.highlight
-                ? 'bg-amber-500/15 text-amber-200 border border-amber-500/20'
-                : 'bg-blue-500/15 text-blue-300 border border-blue-500/20'
-            }`}
+            className={`inline-flex items-center gap-1.5 rounded-full font-medium ${
+              isOverlay ? 'px-2 py-0.5 text-xs' : 'px-2.5 py-1 text-sm'
+            } ${pillClass}`}
           >
-            <Calendar size={12} />
+            <Calendar size={isOverlay ? 10 : 12} />
             <span>{formatTag(tag)}</span>
             {countdown && (
-              <span className={`text-xs ${countdown.highlight ? 'text-amber-300' : 'text-blue-400'}`}>
+              <span className={`text-xs ${
+                isOverlay
+                  ? countdown.highlight ? 'text-amber-100' : 'text-white/70'
+                  : countdown.highlight ? 'text-amber-300' : 'text-blue-400'
+              }`}>
                 · {countdown.text}
               </span>
             )}

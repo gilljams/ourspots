@@ -753,10 +753,11 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                           hasAudio={block.type === 'location' && !block.inherited && audioIsDiscrete && audioUrl && !audioError}
                           isAudioPlaying={block.type === 'location' ? isAudioPlaying : undefined}
                           onToggleAudio={block.type === 'location' ? toggleAudio : undefined}
-                          // Image block: animation props + gallery images
+                          // Image block: animation props + gallery images + date overlay
                           isPlaying={block.type === 'image' && audioIsDiscrete ? isAudioPlaying : false}
                           animation={block.type === 'image' ? audioAnimation : 'none'}
                           galleryImages={block.type === 'image' ? (blocksToRender.find(b => b.type === 'gallery')?.data?.images || []) : []}
+                          dateTagData={block.type === 'image' ? dateTagBlock?.data : undefined}
                           // Poll-specific props (use effectiveUser for demo identity)
                           currentUser={effectiveUser}
                           userDisplayName={effectiveDisplayName}
