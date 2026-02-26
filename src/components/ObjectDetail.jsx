@@ -9,7 +9,7 @@ import { getIconComponent, PREDEFINED_ICONS, emailToKey } from '../utils/iconHel
 import { getTransformedImageUrl, getFocalPointStyles } from '../utils/imageUtils';
 import { getObjectDistance, formatDistance } from '../utils/geoUtils';
 import { blockComponents } from './blocks';
-import { MetadataRow } from './blocks/MetadataRow';
+import { HeroInfoBlock } from './blocks/HeroInfoBlock';
 import DeleteConfirmModal from './DeleteConfirmModal';
 import LeaderboardModal from './LeaderboardModal';
 import DistributionModal from './DistributionModal';
@@ -662,60 +662,48 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                   await updateBlockField(ratingBlock.objectBlockIndex, { ratings: newRatings });
                 } : undefined;
                 
-                // Helper to render the metadata row (rating · dates · planner)
-                const renderMetadataRow = () => {
-                  if (!ratingBlock && !dateTagBlock) return null;
+                // Primary location edit note handler
+                const primaryEditNote = primaryLocationBlock && canEdit && !primaryLocationBlock.inherited ? () => {
+                  const primaryBlockIndex = primaryLocationBlock.objectBlockIndex;
+                  const currentNote = primaryLocationBlock.data?.note || '';
+                  const newNote = window.prompt('Anteckning för denna position:', currentNote);
+                  if (newNote === null) return;
+                  updateBlockField(primaryBlockIndex, { note: newNote });
+                } : undefined;
+                
+                // Unified hero info: location + rating + dates + planner + actions
+                const renderHeroInfo = () => {
+                  const hasContent = primaryLocationBlock || ratingBlock || dateTagBlock;
+                  if (!hasContent) return null;
                   return (
-                    <MetadataRow
+                    <HeroInfoBlock
+                      locationData={primaryLocationBlock?.data}
+                      onShowOnMap={onShowOnMap ? (coords) => onShowOnMap(coords, object.id) : undefined}
+                      onEditNote={primaryEditNote}
+                      canDelete={false}
+                      hasAudio={audioIsDiscrete && audioUrl && !audioError}
+                      isAudioPlaying={isAudioPlaying}
+                      onToggleAudio={toggleAudio}
+                      isCollection={isCollection}
+                      collectionPlacesCount={isCollection ? linkedObjectsWithCoords.length : 0}
+                      onShowCollectionMap={isCollection && linkedObjectsWithCoords.length > 0 ? () => setShowCollectionMap(true) : undefined}
+                      whatsappGroupUrl={isCollection && linkedObjectsCount > 0 ? object.whatsappGroupUrl : undefined}
                       ratingData={ratingBlock?.data}
-                      dateTagData={dateTagBlock?.data}
                       currentUser={effectiveUser}
                       onRate={handleMetadataRate}
+                      dateTagData={dateTagBlock?.data}
                       planningData={isCollection ? object.planningData : undefined}
                       onShowPlanner={isCollection && object.planningData ? () => setShowPlanner(true) : undefined}
-                      isCollection={isCollection}
                     />
                   );
                 };
                 
-                // Helper to render primary location block
-                const renderPrimaryLocation = () => {
-                  if (!primaryLocationBlock) return null;
-                  const PrimaryLocationComponent = blockComponents['location'];
-                  const primaryBlockIndex = primaryLocationBlock.objectBlockIndex;
-                  
-                  return (
-                    <div className="mt-3">
-                      <PrimaryLocationComponent 
-                        data={primaryLocationBlock.data}
-                        objectId={object.id}
-                        blockIndex={primaryBlockIndex}
-                        onUpdate={onBlockUpdate}
-                        inherited={false}
-                        canDelete={false}
-                        positionNumber={null}
-                        isExtraLocation={false}
-                        onShowOnMap={onShowOnMap ? (coords) => onShowOnMap(coords, object.id) : undefined}
-                        isCollection={isCollection}
-                        collectionPlacesCount={isCollection ? linkedObjectsWithCoords.length : 0}
-                        onShowCollectionMap={isCollection && linkedObjectsWithCoords.length > 0 ? () => setShowCollectionMap(true) : undefined}
-                        whatsappGroupUrl={isCollection && linkedObjectsCount > 0 ? object.whatsappGroupUrl : undefined}
-                        hasAudio={audioIsDiscrete && audioUrl && !audioError}
-                        isAudioPlaying={isAudioPlaying}
-                        onToggleAudio={toggleAudio}
-                      />
-                    </div>
-                  );
-                };
-                
-                // If no image block, render metadata row + primary location at the top
-                const primaryLocationAtTop = !hasImageBlock ? renderPrimaryLocation() : null;
-                const metadataRowAtTop = !hasImageBlock ? renderMetadataRow() : null;
+                // If no image block, render hero info at the top
+                const heroInfoAtTop = !hasImageBlock ? renderHeroInfo() : null;
                 
                 return (
                   <>
-                    {metadataRowAtTop}
-                    {primaryLocationAtTop}
+                    {heroInfoAtTop}
                     {sorted.map((block, index) => {
                 // Use the original index in object.blocks (tracked as objectBlockIndex)
                 const actualBlockIndex = block.objectBlockIndex;
@@ -1014,10 +1002,8 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                         </button>
                       </div>
                     )}
-                    {/* Render metadata row (rating · dates · planner) between image/gallery and location */}
-                    {block.type === 'image' && hasImageBlock && renderMetadataRow()}
-                    {/* Render primary location directly after image block */}
-                    {block.type === 'image' && hasImageBlock && renderPrimaryLocation()}
+                    {/* Render unified hero info (location + metadata) after image block */}
+                    {block.type === 'image' && hasImageBlock && renderHeroInfo()}
                   </div>
                 ) : null;
               })}
