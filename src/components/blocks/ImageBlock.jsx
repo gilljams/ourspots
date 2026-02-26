@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { Play, Pause } from 'lucide-react';
 import { getTransformedImageUrl, getFocalPointStyles } from '../../utils/imageUtils';
 import { DateTagBlock } from './DateTagBlock';
 import ImageLightbox from '../ImageLightbox';
 
-export const ImageBlock = ({ data, isPlaying = false, animation = 'none', galleryImages = [], dateTagData }) => {
+export const ImageBlock = ({ data, isPlaying = false, animation = 'none', galleryImages = [], dateTagData, hasAudio, isAudioPlaying, onToggleAudio }) => {
   const [showLightbox, setShowLightbox] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [imageError, setImageError] = useState(false);
@@ -185,6 +186,22 @@ export const ImageBlock = ({ data, isPlaying = false, animation = 'none', galler
           <div className="absolute bottom-2 left-2 pointer-events-none">
             <DateTagBlock data={dateTagData} variant="overlay" />
           </div>
+        )}
+
+        {/* Audio play/pause button */}
+        {hasAudio && onToggleAudio && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onToggleAudio(); }}
+            className={`absolute bottom-2 right-2 w-9 h-9 rounded-lg flex items-center justify-center transition-all ${
+              isAudioPlaying
+                ? 'bg-blue-500/40 backdrop-blur-sm text-white ring-2 ring-blue-400/50'
+                : 'bg-black/40 backdrop-blur-sm text-white/80 hover:text-white hover:bg-black/50'
+            }`}
+            style={isAudioPlaying ? { animation: 'pulse-glow 1s ease-in-out infinite' } : {}}
+            title={isAudioPlaying ? 'Pausa' : 'Spela'}
+          >
+            {isAudioPlaying ? <Pause size={16} /> : <Play size={16} />}
+          </button>
         )}
       </div>
       

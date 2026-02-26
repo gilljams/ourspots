@@ -1,11 +1,12 @@
 import React from 'react';
-import { MapPin, Map as MapIcon, Play, Pause, Edit2, X, MessageCircle, Calendar } from 'lucide-react';
+import { MapPin, Map as MapIcon, Edit2, X, MessageCircle, Calendar } from 'lucide-react';
 import { RatingInline } from './RatingInline';
 
 // HeroInfoBlock — unified info zone between image/gallery and content blocks.
-// Combines location address, action buttons, rating and planner into
+// Combines location address, action buttons, and rating into
 // a single visually cohesive block with left=info, right=actions layout.
-// Date tags are rendered as overlay on the hero image (ImageBlock).
+// Date tags + audio play rendered on hero image (ImageBlock).
+// Planner button sits in the action buttons row, left of collection map.
 export const HeroInfoBlock = ({
   // Location props
   locationData,
@@ -33,9 +34,9 @@ export const HeroInfoBlock = ({
   const hasLocation = locationData && locationData.lat && locationData.lng;
   const hasRating = !!ratingData;
   const hasPlanner = isCollection && planningData && onShowPlanner;
-  const hasMetadata = hasRating || hasPlanner;
+  const hasMetadata = hasRating;
 
-  if (!hasLocation && !hasMetadata) return null;
+  if (!hasLocation && !hasMetadata && !hasPlanner) return null;
 
   const handleShowOnMap = () => {
     if (onShowOnMap && hasLocation) {
@@ -78,21 +79,16 @@ export const HeroInfoBlock = ({
     );
   }
 
-  // Audio play/pause
-  if (hasAudio) {
+  // Planner button (before collection map)
+  if (hasPlanner) {
     actionButtons.push(
       <button
-        key="audio"
-        onClick={onToggleAudio}
-        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all flex-shrink-0 ${
-          isAudioPlaying 
-            ? 'bg-blue-500/30 text-blue-300 ring-2 ring-blue-500/50 ring-offset-1 ring-offset-transparent' 
-            : 'bg-white/5 hover:bg-blue-500/20 text-gray-400 hover:text-blue-400'
-        }`}
-        style={isAudioPlaying ? { animation: 'pulse-glow 1s ease-in-out infinite' } : {}}
-        title={isAudioPlaying ? 'Pausa' : 'Spela'}
+        key="planner"
+        onClick={onShowPlanner}
+        className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-gray-300 transition-all flex-shrink-0"
+        title={`Visa planering (${planningData.days} dagar)`}
       >
-        {isAudioPlaying ? <Pause size={15} /> : <Play size={15} />}
+        <Calendar size={15} />
       </button>
     );
   }
@@ -202,28 +198,14 @@ export const HeroInfoBlock = ({
           </div>
         )}
 
-        {/* Rating + dates + planner – all on one line, wrapping naturally */}
-        {hasMetadata && (
-          <div className="flex items-center flex-wrap gap-x-2 gap-y-1">
-            {hasRating && (
-              <RatingInline
-                data={ratingData}
-                currentUser={currentUser}
-                onRate={onRate}
-              />
-            )}
-            {hasRating && hasPlanner && (
-              <span className="text-gray-600 text-xs select-none">·</span>
-            )}
-            {hasPlanner && (
-              <button
-                onClick={onShowPlanner}
-                className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-gray-300 transition-all flex-shrink-0"
-                title={`Visa planering (${planningData.days} dagar)`}
-              >
-                <Calendar size={13} />
-              </button>
-            )}
+        {/* Rating */}
+        {hasRating && (
+          <div className="flex items-center">
+            <RatingInline
+              data={ratingData}
+              currentUser={currentUser}
+              onRate={onRate}
+            />
           </div>
         )}
 
