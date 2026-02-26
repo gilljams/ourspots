@@ -169,7 +169,7 @@ function LeaderboardBlockEditor({ block, onUpdate, onRemove, onMove, index, tota
             className={`text-gray-500 transition-transform flex-shrink-0 ${isExpanded ? '' : '-rotate-90'}`} 
           />
           {competitionType === 'longestdrive' ? (
-            <Target size={16} className="text-green-400 flex-shrink-0" />
+            <Target size={16} className="text-blue-400 flex-shrink-0" />
           ) : (
             <Trophy size={16} className="text-blue-400 flex-shrink-0" />
           )}
@@ -224,7 +224,7 @@ function LeaderboardBlockEditor({ block, onUpdate, onRemove, onMove, index, tota
                 }}
                 className={`flex-1 px-3 py-2 text-xs font-medium transition-colors ${
                   competitionType === 'longestdrive'
-                    ? 'bg-green-500/20 text-green-400'
+                    ? 'bg-blue-500/20 text-blue-400'
                     : 'bg-white/5 text-gray-500 hover:text-gray-300'
                 }`}
               >
@@ -419,7 +419,7 @@ function LeaderboardBlockEditor({ block, onUpdate, onRemove, onMove, index, tota
                         onClick={() => toggleParticipant(user.email, user.name)}
                         className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
                           isSelected
-                            ? 'bg-green-500/20 border-green-500/50 text-green-400'
+                            ? 'bg-blue-500/20 border-blue-500/50 text-blue-400'
                             : 'bg-white/5 border-white/10 text-gray-500 hover:text-gray-300 hover:bg-white/10'
                         }`}
                       >
