@@ -467,7 +467,7 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
                   onDragLeave={handleDragLeave}
                   onDrop={(e) => handleDrop(e, row.id)}
                   onDragEnd={handleDragEnd}
-                  className={`flex items-center gap-2 transition-all ${
+                  className={`flex items-center gap-2 transition-all overflow-hidden ${
                     draggedId === row.id ? 'opacity-50' : ''
                   } ${
                     dragOverId === row.id ? 'bg-blue-500/10 border-t-2 border-blue-500' : ''

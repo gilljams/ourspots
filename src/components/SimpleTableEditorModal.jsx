@@ -446,7 +446,7 @@ export function SimpleTableEditorModal({
                   onDragLeave={handleDragLeave}
                   onDrop={(e) => handleDrop(e, row.id)}
                   onDragEnd={handleDragEnd}
-                  className={`flex items-center gap-2 transition-all ${
+                  className={`flex items-center gap-2 transition-all overflow-hidden ${
                     draggedId === row.id ? 'opacity-50' : ''
                   } ${
                     dragOverId === row.id ? 'bg-blue-500/10 border-t-2 border-blue-500' : ''
@@ -459,7 +459,7 @@ export function SimpleTableEditorModal({
                 >
                   {row.isHeader ? (
                     // Header row
-                    <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-blue-500/5">
+                    <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-blue-500/5 min-w-0">
                       {selectMode && (
                         <button
                           type="button"
@@ -498,7 +498,7 @@ export function SimpleTableEditorModal({
                     </div>
                   ) : (
                     // Regular row with 2 columns
-                    <div className={`flex-1 flex items-center gap-2 px-3 py-2.5 ${row.done ? 'bg-white/[0.02]' : ''}`}>
+                    <div className={`flex-1 flex items-center gap-2 px-3 py-2.5 min-w-0 ${row.done ? 'bg-white/[0.02]' : ''}`}>
                       {selectMode && (
                         <button
                           type="button"
@@ -542,7 +542,7 @@ export function SimpleTableEditorModal({
                         onChange={(e) => updateRow(row.id, 'col2', e.target.value)}
                         onKeyDown={(e) => handleKeyDown(e, row.id, 'col2')}
                         placeholder={col2Label}
-                        className="w-28 flex-shrink-0 bg-gray-700/30 rounded px-2 py-1 text-gray-300 text-base placeholder-gray-600 focus:outline-none focus:bg-gray-700/50"
+                        className="w-24 shrink-0 bg-gray-700/30 rounded px-2 py-1 text-gray-300 text-base placeholder-gray-600 focus:outline-none focus:bg-gray-700/50"
                       />
                       
                       <button
