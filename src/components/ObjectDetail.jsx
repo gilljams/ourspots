@@ -662,16 +662,8 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                   await updateBlockField(ratingBlock.objectBlockIndex, { ratings: newRatings });
                 } : undefined;
                 
-                // Primary location edit note handler
-                const primaryEditNote = primaryLocationBlock && canEdit && !primaryLocationBlock.inherited ? () => {
-                  const primaryBlockIndex = primaryLocationBlock.objectBlockIndex;
-                  const currentNote = primaryLocationBlock.data?.note || '';
-                  const newNote = window.prompt('Anteckning för denna position:', currentNote);
-                  if (newNote === null) return;
-                  updateBlockField(primaryBlockIndex, { note: newNote });
-                } : undefined;
-                
                 // Unified hero info: location + rating + dates + planner + actions
+                // Note: onEditNote omitted for primary location — notes are for extra locations only (e.g. mushroom spots)
                 const renderHeroInfo = () => {
                   const hasContent = primaryLocationBlock || ratingBlock || dateTagBlock;
                   if (!hasContent) return null;
@@ -679,7 +671,6 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                     <HeroInfoBlock
                       locationData={primaryLocationBlock?.data}
                       onShowOnMap={onShowOnMap ? (coords) => onShowOnMap(coords, object.id) : undefined}
-                      onEditNote={primaryEditNote}
                       canDelete={false}
                       hasAudio={audioIsDiscrete && audioUrl && !audioError}
                       isAudioPlaying={isAudioPlaying}
