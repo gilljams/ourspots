@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, forwardRef } from 'react';
 import { X, Plus, Check, Trash2, GripVertical, ClipboardPaste, MoreVertical, CheckSquare, Square, RotateCcw, ListX, ArrowDownUp, Undo2, CheckCheck } from 'lucide-react';
 import { useFullscreenModal } from '../utils/useFullscreenModal';
 import { useDragReorder } from '../utils/useDragReorder';
+import { useConfirm } from '../utils/useConfirm';
 
 // Expandable input - shows textarea when focused if text is long
 const ExpandableInput = forwardRef(({ value, onChange, onKeyDown, placeholder, className, isHeader }, ref) => {
@@ -83,6 +84,7 @@ const ExpandableInput = forwardRef(({ value, onChange, onKeyDown, placeholder, c
 
 // Simple list editor modal - optimized for mobile with single-column lists
 export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) {
+  const confirm = useConfirm();
   const [rows, setRows] = useState(() => 
     (initialRows || []).map((row, i) => ({ 
       ...row, 
@@ -348,8 +350,8 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        if (window.confirm('Vill du rensa alla ibockningar?')) {
+                      onClick={async () => {
+                        if (await confirm({ title: 'Rensa ibockningar?', message: 'Alla ibockningar tas bort.', confirmText: 'Rensa', variant: 'warning' })) {
                           setRows(rows.map(r => r.isHeader ? r : { ...r, done: false }));
                         }
                         setShowUtilsMenu(false);
@@ -394,13 +396,13 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={async () => {
                         const checkedCount = rows.filter(r => !r.isHeader && r.done).length;
                         if (checkedCount === 0) {
                           setShowUtilsMenu(false);
                           return;
                         }
-                        if (window.confirm(`Ta bort ${checkedCount} ibockade rad${checkedCount > 1 ? 'er' : ''}?`)) {
+                        if (await confirm({ title: 'Ta bort ibockade?', message: `${checkedCount} ibockade rad${checkedCount > 1 ? 'er' : ''} tas bort.`, confirmText: 'Ta bort', variant: 'danger' })) {
                           setRows(rows.filter(r => r.isHeader || !r.done));
                         }
                         setShowUtilsMenu(false);
@@ -413,8 +415,8 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
                     <div className="border-t border-white/10 my-1" />
                     <button
                       type="button"
-                      onClick={() => {
-                        if (window.confirm('Vill du ta bort alla rader från listan?')) {
+                      onClick={async () => {
+                        if (await confirm({ title: 'Rensa listan?', message: 'Alla rader tas bort från listan.', confirmText: 'Rensa', variant: 'danger' })) {
                           setRows([]);
                         }
                         setShowUtilsMenu(false);

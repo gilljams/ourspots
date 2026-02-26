@@ -1,9 +1,11 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { X, Link2, Trash2, Check } from 'lucide-react';
 import { useFullscreenModal } from '../../utils/useFullscreenModal';
+import { useConfirm } from '../../utils/useConfirm';
 
 // Fullscreen text editor for mobile - iOS Notes-like experience
 function FullscreenTextEditor({ content, title, onSave, onCancel }) {
+  const confirm = useConfirm();
   const [text, setText] = useState(content || '');
   const textareaRef = useRef(null);
   const containerRef = useRef(null);
@@ -76,12 +78,12 @@ function FullscreenTextEditor({ content, title, onSave, onCancel }) {
     onSave(text);
   };
   
-  const handleClear = useCallback(() => {
-    if (text && confirm('Rensa all text?')) {
+  const handleClear = useCallback(async () => {
+    if (text && await confirm({ title: 'Rensa text?', message: 'All text i editorn raderas.', confirmText: 'Rensa', variant: 'danger' })) {
       setText('');
       textareaRef.current?.focus();
     }
-  }, [text]);
+  }, [text, confirm]);
   
   // Toolbar button - use onTouchStart to prevent keyboard dismissal
   const ToolbarButton = ({ onPress, children, title, variant }) => {
@@ -141,13 +143,13 @@ function FullscreenTextEditor({ content, title, onSave, onCancel }) {
         </span>
         <button
           type="button"
-          onTouchEnd={(e) => {
+          onTouchEnd={async (e) => {
             e.preventDefault();
-            if (text !== (content || '') && !window.confirm('Du har osparade ändringar. Vill du kasta dem?')) return;
+            if (text !== (content || '') && !await confirm({ title: 'Osparade ändringar', message: 'Vill du kasta dina ändringar?', confirmText: 'Kasta', variant: 'warning' })) return;
             onCancel();
           }}
-          onClick={() => {
-            if (text !== (content || '') && !window.confirm('Du har osparade ändringar. Vill du kasta dem?')) return;
+          onClick={async () => {
+            if (text !== (content || '') && !await confirm({ title: 'Osparade ändringar', message: 'Vill du kasta dina ändringar?', confirmText: 'Kasta', variant: 'warning' })) return;
             onCancel();
           }}
           className="w-12 h-12 flex items-center justify-center text-gray-400 active:text-white transition-colors touch-manipulation"

@@ -1,5 +1,6 @@
 import React from 'react';
 import { MapPin, Map as MapIcon, Edit2, X, MessageCircle, Calendar } from 'lucide-react';
+import { useConfirm } from '../../utils/useConfirm';
 import { RatingInline } from './RatingInline';
 
 // HeroInfoBlock — unified info zone between image/gallery and content blocks.
@@ -31,6 +32,7 @@ export const HeroInfoBlock = ({
   planningData,
   onShowPlanner,
 }) => {
+  const confirm = useConfirm();
   const hasLocation = locationData && locationData.lat && locationData.lng;
   const hasRating = !!ratingData;
   const hasPlanner = isCollection && planningData && onShowPlanner;
@@ -44,8 +46,8 @@ export const HeroInfoBlock = ({
     }
   };
 
-  const handleDelete = () => {
-    if (window.confirm('Ta bort denna position?')) {
+  const handleDelete = async () => {
+    if (await confirm({ title: 'Ta bort position?', message: 'Positionen tas bort från objektet.', confirmText: 'Ta bort', variant: 'danger' })) {
       onDelete?.();
     }
   };

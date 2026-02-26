@@ -4,6 +4,7 @@ import { getIconComponent } from '../../utils/iconHelpers';
 import { TABLE_TEMPLATES } from './tableTemplates';
 import { ListEditorModal } from '../ListEditorModal';
 import { SimpleTableEditorModal, MultiColumnTableEditorModal } from '../SimpleTableEditorModal';
+import { useConfirm } from '../../utils/useConfirm';
 
 // Table block editor component
 function TableBlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }) {
@@ -16,6 +17,7 @@ function TableBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
   const [defaultCollapsed, setDefaultCollapsed] = useState(block.defaultCollapsed ?? true);
   const [viewerEditable, setViewerEditable] = useState(block.viewerEditable ?? false);
   const [showTableEditor, setShowTableEditor] = useState(false);
+  const confirm = useConfirm();
   
   // Check if this is a legacy template (tasks, shopping, contacts)
   const isLegacyTemplate = ['tasks', 'shopping', 'contacts'].includes(template);
@@ -61,10 +63,10 @@ function TableBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
     syncToParent(title, template, rows, defaultCollapsed, newValue);
   };
 
-  const handleTemplateChange = (newTemplate) => {
+  const handleTemplateChange = async (newTemplate) => {
     // Confirm if there are existing rows
     if (rows.length > 0) {
-      if (!confirm('Byta tabelltyp raderar alla befintliga rader. Fortsätta?')) {
+      if (!await confirm({ title: 'Byta tabelltyp?', message: 'Alla befintliga rader raderas.', confirmText: 'Byt typ', variant: 'warning' })) {
         return;
       }
     }

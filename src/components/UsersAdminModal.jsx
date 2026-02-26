@@ -4,9 +4,11 @@ import { collection, onSnapshot, doc, updateDoc, getDoc, setDoc, Timestamp } fro
 import { db } from '../firebase';
 import { useKeyboardHeight } from '../utils/useKeyboardHeight';
 import { useSwipeToClose } from '../utils/useSwipeToClose';
+import { useConfirm } from '../utils/useConfirm';
 
 function UsersAdminModal({ currentUserId, onClose }) {
   const [users, setUsers] = useState([]);
+  const confirm = useConfirm();
   const [allObjects, setAllObjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -169,7 +171,7 @@ function UsersAdminModal({ currentUserId, onClose }) {
     }
     
     const action = currentStatus ? 'avblockera' : 'blockera';
-    if (!confirm(`Är du säker på att du vill ${action} denna användare?`)) {
+    if (!await confirm({ title: `${currentStatus ? 'Avblockera' : 'Blockera'} användare?`, message: `Är du säker på att du vill ${action} denna användare?`, confirmText: action.charAt(0).toUpperCase() + action.slice(1), variant: currentStatus ? 'info' : 'danger' })) {
       return;
     }
     

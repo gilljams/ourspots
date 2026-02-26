@@ -2,12 +2,14 @@ import { useMemo, useCallback } from 'react';
 import { db } from '../firebase';
 import { doc, updateDoc, deleteField, Timestamp, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { emailToKey } from './iconHelpers';
+import { useConfirm } from './useConfirm';
 
 /**
  * Hook for sharing-related state and handlers.
  * Manages pending invitations, accept/reject/leave share operations.
  */
 export function useSharing(user, objects, displayName, setToast, setSelectedObject) {
+  const confirm = useConfirm();
   const userEmailLower = user?.email?.toLowerCase();
   const userEmailKey = userEmailLower ? emailToKey(userEmailLower) : null;
 
@@ -114,7 +116,7 @@ export function useSharing(user, objects, displayName, setToast, setSelectedObje
   const handleLeaveShare = useCallback(async (obj) => {
     if (!user) return;
 
-    if (!confirm('Är du säker på att du vill lämna denna delning? Du kommer inte längre ha tillgång till objektet.')) {
+    if (!await confirm({ title: 'Lämna delning?', message: 'Du förlorar åtkomst till objektet.', confirmText: 'Lämna', variant: 'warning' })) {
       return;
     }
 
@@ -154,7 +156,7 @@ export function useSharing(user, objects, displayName, setToast, setSelectedObje
       console.error('Error leaving share:', err);
       setToast({ message: 'Kunde inte lämna delningen!', type: 'error' });
     }
-  }, [user, objects, setToast, setSelectedObject]);
+  }, [user, objects, setToast, setSelectedObject, confirm]);
 
   return {
     pendingInvitations,

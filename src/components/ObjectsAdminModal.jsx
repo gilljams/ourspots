@@ -4,8 +4,10 @@ import { collection, onSnapshot, doc, updateDoc, deleteField, arrayUnion } from 
 import { db } from '../firebase';
 import { useKeyboardHeight } from '../utils/useKeyboardHeight';
 import { useSwipeToClose } from '../utils/useSwipeToClose';
+import { useConfirm } from '../utils/useConfirm';
 
 function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onViewObject }) {
+  const confirm = useConfirm();
   const [sortBy, setSortBy] = useState('title'); // title, category, parent
   const [filterUserId, setFilterUserId] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -356,7 +358,7 @@ function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onView
                       {(hasCircularParent || hasInvalidParent) && (
                         <button
                           onClick={async () => {
-                            if (confirm('Ta bort parent-referensen?')) {
+                            if (await confirm({ title: 'Ta bort parent?', message: 'Parent-referensen tas bort från objektet.', confirmText: 'Ta bort', variant: 'danger' })) {
                               try {
                                 await updateDoc(doc(db, 'objects', obj.id), { parentId: deleteField() });
                               } catch (err) {

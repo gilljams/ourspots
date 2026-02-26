@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { X, ArrowUp, ArrowDown, ChevronDown, Plus, Trash2 } from 'lucide-react';
+import { useConfirm } from '../../utils/useConfirm';
 
 // Distribution block editor - for carpool/tasks presets
 function DistributionBlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving, shares = {}, currentUser, currentUserDisplayName }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const confirm = useConfirm();
   const [title, setTitle] = useState(block.title || '');
   const [participants, setParticipants] = useState(block.participants || []);
   const [defaultCollapsed, setDefaultCollapsed] = useState(block.defaultCollapsed ?? true);
@@ -198,8 +200,9 @@ function DistributionBlockEditor({ block, onUpdate, onRemove, onMove, index, tot
           {(block.slots || []).length > 0 && (
             <button
               type="button"
-              onClick={() => {
-                if (window.confirm(`Vill du nollställa alla ${block.preset === 'carpool' ? 'bilar' : 'uppgifter'}? Detta kan inte ångras.`)) {
+              onClick={async () => {
+                const label = block.preset === 'carpool' ? 'bilar' : 'uppgifter';
+                if (await confirm({ title: `Nollställ ${label}?`, message: `Alla ${label} raderas. Detta kan inte ångras.`, confirmText: 'Nollställ', variant: 'danger' })) {
                   syncToParent({ slots: [] });
                 }
               }}

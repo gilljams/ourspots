@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { X, ArrowUp, ArrowDown, ChevronDown, RotateCcw, Star } from 'lucide-react';
+import { useConfirm } from '../../utils/useConfirm';
 
 // Rating Block Editor
 function RatingBlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving, hideReorder }) {
   const [title, setTitle] = useState(block.title || 'Betyg');
   const [isExpanded, setIsExpanded] = useState(false);
+  const confirm = useConfirm();
 
   const syncToParent = (newTitle) => {
     onUpdate(block.id, { 
@@ -13,8 +15,8 @@ function RatingBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sa
     });
   };
 
-  const resetRatings = () => {
-    if (window.confirm('Vill du nollställa alla betyg? Detta kan inte ångras.')) {
+  const resetRatings = async () => {
+    if (await confirm({ title: 'Nollställ betyg?', message: 'Alla betyg raderas. Detta kan inte ångras.', confirmText: 'Nollställ', variant: 'danger' })) {
       onUpdate(block.id, { title, ratings: {} });
     }
   };

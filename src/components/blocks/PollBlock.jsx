@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Vote, Lock, Unlock, X, Trophy, Edit2, RotateCcw, Plus, Users, Link } from 'lucide-react';
+import { useConfirm } from '../../utils/useConfirm';
 
 // Poll block - allows viewers to vote (date poll or ranked poll)
 export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayName = '', onClosePoll, onReopenPoll, onResetPoll, canEdit = false, onAddOption, onRemoveOption, onExpand }) => {
@@ -9,6 +10,7 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
   const [newSuggestionUrl, setNewSuggestionUrl] = useState('');
   const [showSuggestionInput, setShowSuggestionInput] = useState(false);
   const [showEditMode, setShowEditMode] = useState(false);
+  const confirm = useConfirm();
   const blockRef = useRef(null);
   const options = data.options || [];
   const votes = data.votes || {};
@@ -357,8 +359,8 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
             <div className="flex items-center justify-end gap-3 px-4 py-2 border-b border-white/5 -mx-4 -mt-2 mb-1">
               {!isClosed && onClosePoll && (
                 <button
-                  onClick={() => {
-                    if (window.confirm('Vill du avsluta omröstningen? Ingen kan rösta efteråt.')) {
+                  onClick={async () => {
+                    if (await confirm({ title: 'Avsluta omröstning?', message: 'Ingen kan rösta efteråt.', confirmText: 'Avsluta', variant: 'warning' })) {
                       onClosePoll();
                       setShowEditMode(false);
                     }
@@ -371,8 +373,8 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
               )}
               {isClosed && onReopenPoll && (
                 <button
-                  onClick={() => {
-                    if (window.confirm('Vill du öppna omröstningen igen?')) {
+                  onClick={async () => {
+                    if (await confirm({ title: 'Öppna omröstning?', message: 'Användare kan rösta igen.', confirmText: 'Öppna', variant: 'info' })) {
                       onReopenPoll();
                       setShowEditMode(false);
                     }
@@ -385,8 +387,8 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
               )}
               {voteCount > 0 && onResetPoll && (
                 <button
-                  onClick={() => {
-                    if (window.confirm('Vill du nollställa alla röster? Detta kan inte ångras.')) {
+                  onClick={async () => {
+                    if (await confirm({ title: 'Nollställ röster?', message: 'Alla röster raderas. Detta kan inte ångras.', confirmText: 'Nollställ', variant: 'danger' })) {
                       onResetPoll();
                       setShowEditMode(false);
                     }

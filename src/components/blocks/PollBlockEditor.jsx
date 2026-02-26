@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, ArrowUp, ArrowDown, ChevronDown, BarChart3, Calendar, Trophy, Plus } from 'lucide-react';
+import { useConfirm } from '../../utils/useConfirm';
 
 // Poll block editor component - for admin to create poll options
 function PollBlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }) {
@@ -9,6 +10,7 @@ function PollBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
   const [allowSuggestions, setAllowSuggestions] = useState(block.allowSuggestions || false);
   const [defaultCollapsed, setDefaultCollapsed] = useState(block.defaultCollapsed ?? false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const confirm = useConfirm();
 
   // Use refs to always have latest values
   const titleRef = React.useRef(title);
@@ -35,15 +37,15 @@ function PollBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
     syncToParent(title, options, block.votes || {}, pollType, block.closed || false, value);
   };
 
-  const resetVotes = () => {
-    if (window.confirm('Vill du nollställa alla röster? Detta kan inte ångras.')) {
+  const resetVotes = async () => {
+    if (await confirm({ title: 'Nollställ röster?', message: 'Alla röster raderas. Detta kan inte ångras.', confirmText: 'Nollställ', variant: 'danger' })) {
       syncToParent(title, options, {}, pollType, false);
     }
   };
 
-  const handlePollTypeChange = (newType) => {
+  const handlePollTypeChange = async (newType) => {
     if (voteCount > 0) {
-      if (!window.confirm('Att byta typ nollställer alla röster. Fortsätta?')) {
+      if (!await confirm({ title: 'Byta typ?', message: 'Att byta typ nollställer alla röster.', confirmText: 'Byt typ', variant: 'warning' })) {
         return;
       }
     }

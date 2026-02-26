@@ -18,6 +18,7 @@ import { useSharing } from './utils/useSharing';
 import { useDisplayObjects } from './utils/useDisplayObjects';
 import { useSaveObject } from './utils/useSaveObject';
 import { useCollectionActions } from './utils/useCollectionActions';
+import { ConfirmProvider } from './utils/useConfirm';
 import { useContactActions } from './utils/useContactActions';
 import { useDebounce } from './utils/useDebounce';
 
@@ -655,6 +656,7 @@ function App() {
   }
 
   return (
+    <ConfirmProvider>
     <div
       className="min-h-[100dvh] bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950"
       style={{
@@ -1122,6 +1124,7 @@ function App() {
         />
       )}
     </div>
+    </ConfirmProvider>
   );
 }
 

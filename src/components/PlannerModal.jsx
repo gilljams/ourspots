@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { X, ChevronLeft, ChevronRight, Plus, Trash2, Link2, FileText, RotateCcw, Utensils, Wine, Home, Edit2, GripVertical, Move, Maximize2, MoreVertical, Grid3X3, Check } from 'lucide-react';
+import { useConfirm } from '../utils/useConfirm';
 
 const SLOTS = [
   { id: 'morning', label: 'Förmiddag', shortLabel: 'Förm.', Icon: null, tint: 'bg-gray-500/5', activeTint: 'bg-gray-500/15' },
@@ -46,6 +47,7 @@ export default function PlannerModal({
   onOpenUrl // callback to open a linked URL
 }) {
   console.log('PlannerModal render, isOpen:', isOpen, 'planningData:', planningData);
+  const confirm = useConfirm();
   
   // Initialize state from planningData or defaults
   const [startDate, setStartDate] = useState(planningData?.startDate || null);
@@ -474,9 +476,9 @@ export default function PlannerModal({
   };
   
   // Handle close with unsaved changes check
-  const handleClose = () => {
+  const handleClose = async () => {
     if (hasChanges) {
-      if (window.confirm('Du har osparade ändringar. Vill du verkligen stänga utan att spara?')) {
+      if (await confirm({ title: 'Osparade ändringar', message: 'Vill du stänga utan att spara?', confirmText: 'Stäng', variant: 'warning' })) {
         onClose();
       }
     } else {
@@ -579,9 +581,9 @@ export default function PlannerModal({
           {/* Edit mode toggle - just a pen icon */}
           {canEdit && (
             <button
-              onClick={() => {
+              onClick={async () => {
                 if (isEditMode && hasChanges) {
-                  if (window.confirm('Du har osparade ändringar. Vill du spara innan du avslutar redigeringsläget?')) {
+                  if (await confirm({ title: 'Spara ändringar?', message: 'Du har osparade ändringar. Vill du spara?', confirmText: 'Spara', variant: 'info' })) {
                     handleSave();
                   }
                 }
@@ -630,8 +632,8 @@ export default function PlannerModal({
                     <div className="border-t border-white/10 my-1" />
                     <button
                       type="button"
-                      onClick={() => {
-                        if (window.confirm('Vill du rensa all planering? Boende och tidpunkter töms.')) {
+                      onClick={async () => {
+                        if (await confirm({ title: 'Rensa planering?', message: 'Boende och tidpunkter töms.', confirmText: 'Rensa', variant: 'warning' })) {
                           setSlots({});
                           setAccommodation([]);
                           setHasChanges(true);
@@ -646,8 +648,8 @@ export default function PlannerModal({
                     {onDelete && (
                       <button
                         type="button"
-                        onClick={() => {
-                          if (window.confirm('Är du säker på att du vill ta bort planeringen helt? Detta kan inte ångras.')) {
+                        onClick={async () => {
+                          if (await confirm({ title: 'Ta bort planering?', message: 'Planeringen tas bort helt. Detta kan inte ångras.', confirmText: 'Ta bort', variant: 'danger' })) {
                             onDelete();
                             onClose();
                           }

@@ -14,6 +14,7 @@ import MapPicker from './MapPicker';
 import FocalPointPicker from './FocalPointPicker';
 import BlockEditor from './BlockEditor';
 import { useKeyboardHeight } from '../utils/useKeyboardHeight';
+import { useConfirm } from '../utils/useConfirm';
 
 // Demo users available when in demo mode for realistic examples
 const DEMO_USERS = {
@@ -136,6 +137,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
   const isEdit = !!editObject;
   const isDuplicate = !!duplicateFromObject;
   const sourceObject = editObject || duplicateFromObject; // Use either for initial data
+  const confirm = useConfirm();
   
   // Determine default type: source object > default category prop > parent type > first category
   const getDefaultType = () => {
@@ -965,12 +967,12 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
     setFormTouched(true);
   };
 
-  const removeCustomBlock = (id) => {
+  const removeCustomBlock = async (id) => {
     // Find the block to get its type/title for the confirmation message
     const block = customBlocks.find(b => b.id === id);
     const blockName = block?.title || block?.type || 'blocket';
     
-    if (!window.confirm(`Vill du ta bort ${blockName}?`)) {
+    if (!await confirm({ title: 'Ta bort block?', message: `Vill du ta bort ${blockName}?`, confirmText: 'Ta bort', variant: 'danger' })) {
       return;
     }
     

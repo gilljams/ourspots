@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Wallet, ChevronDown, Lock, Unlock, Edit2, RotateCcw, ArrowRight } from 'lucide-react';
+import { useConfirm } from '../../utils/useConfirm';
 
 // Split Block - expense sharing for trips etc.
 export const SplitBlock = ({ data, currentUser, shares = {}, canEdit = false, onUpdateAmount, onCloseSplit, onReopenSplit, onResetSplit, onExpand }) => {
@@ -7,6 +8,7 @@ export const SplitBlock = ({ data, currentUser, shares = {}, canEdit = false, on
   const [myAmount, setMyAmount] = useState('');
   const [showSaved, setShowSaved] = useState(false);
   const [showEditMode, setShowEditMode] = useState(false);
+  const confirm = useConfirm();
   const blockRef = useRef(null);
   const saveTimeoutRef = useRef(null);
   const savedFlashRef = useRef(null);
@@ -288,8 +290,8 @@ export const SplitBlock = ({ data, currentUser, shares = {}, canEdit = false, on
             <div className="flex items-center justify-end gap-3 px-4 py-2 border-b border-white/5">
               {!isClosed && onCloseSplit && totalPaid > 0 && (
                 <button
-                  onClick={() => {
-                    if (window.confirm('Vill du avsluta splitten? Inga ändringar kan göras efteråt.')) {
+                  onClick={async () => {
+                    if (await confirm({ title: 'Avsluta splitten?', message: 'Inga ändringar kan göras efteråt.', confirmText: 'Avsluta', variant: 'warning' })) {
                       onCloseSplit();
                       setShowEditMode(false);
                     }
@@ -302,8 +304,8 @@ export const SplitBlock = ({ data, currentUser, shares = {}, canEdit = false, on
               )}
               {isClosed && onReopenSplit && (
                 <button
-                  onClick={() => {
-                    if (window.confirm('Vill du öppna splitten igen? Deltagare kan ändra belopp.')) {
+                  onClick={async () => {
+                    if (await confirm({ title: 'Öppna splitten?', message: 'Deltagare kan ändra belopp igen.', confirmText: 'Öppna', variant: 'info' })) {
                       onReopenSplit();
                       setShowEditMode(false);
                     }
@@ -316,8 +318,8 @@ export const SplitBlock = ({ data, currentUser, shares = {}, canEdit = false, on
               )}
               {totalPaid > 0 && onResetSplit && (
                 <button
-                  onClick={() => {
-                    if (window.confirm('Vill du nollställa alla belopp? Detta kan inte ångras.')) {
+                  onClick={async () => {
+                    if (await confirm({ title: 'Nollställ belopp?', message: 'Alla belopp nollställs. Detta kan inte ångras.', confirmText: 'Nollställ', variant: 'danger' })) {
                       onResetSplit();
                       setShowEditMode(false);
                     }

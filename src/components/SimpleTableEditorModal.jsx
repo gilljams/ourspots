@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, Plus, Check, Trash2, GripVertical, ClipboardPaste, Phone, Link, Hash, Type, MoreVertical, CheckSquare, Square, RotateCcw, ListX, ArrowDownUp, Undo2, CheckCheck } from 'lucide-react';
 import { useFullscreenModal } from '../utils/useFullscreenModal';
 import { useDragReorder } from '../utils/useDragReorder';
+import { useConfirm } from '../utils/useConfirm';
 
 // Column type labels
 const COL2_TYPE_LABELS = {
@@ -21,6 +22,7 @@ export function SimpleTableEditorModal({
   onSave, 
   onCancel 
 }) {
+  const confirm = useConfirm();
   const [rows, setRows] = useState(() => 
     (initialRows || []).map((row, i) => ({ 
       ...row, 
@@ -338,8 +340,8 @@ export function SimpleTableEditorModal({
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        if (window.confirm('Vill du rensa alla ibockningar?')) {
+                      onClick={async () => {
+                        if (await confirm({ title: 'Rensa ibockningar?', message: 'Alla ibockningar tas bort.', confirmText: 'Rensa', variant: 'warning' })) {
                           setRows(rows.map(r => r.isHeader ? r : { ...r, done: false }));
                         }
                         setShowUtilsMenu(false);
@@ -376,10 +378,10 @@ export function SimpleTableEditorModal({
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={async () => {
                         const checkedCount = rows.filter(r => !r.isHeader && r.done).length;
                         if (checkedCount === 0) { setShowUtilsMenu(false); return; }
-                        if (window.confirm(`Ta bort ${checkedCount} ibockade rad${checkedCount > 1 ? 'er' : ''}?`)) {
+                        if (await confirm({ title: 'Ta bort ibockade?', message: `${checkedCount} ibockade rad${checkedCount > 1 ? 'er' : ''} tas bort.`, confirmText: 'Ta bort', variant: 'danger' })) {
                           setRows(rows.filter(r => r.isHeader || !r.done));
                         }
                         setShowUtilsMenu(false);
@@ -392,8 +394,8 @@ export function SimpleTableEditorModal({
                     <div className="border-t border-white/10 my-1" />
                     <button
                       type="button"
-                      onClick={() => {
-                        if (window.confirm('Vill du ta bort alla rader från tabellen?')) {
+                      onClick={async () => {
+                        if (await confirm({ title: 'Rensa tabellen?', message: 'Alla rader tas bort från tabellen.', confirmText: 'Rensa', variant: 'danger' })) {
                           setRows([]);
                         }
                         setShowUtilsMenu(false);

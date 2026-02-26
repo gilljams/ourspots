@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronDown, ChevronRight, Plus, Edit2, RotateCcw, User, Car, ClipboardList } from 'lucide-react';
+import { useConfirm } from '../../utils/useConfirm';
 
 // Preset configs for different distribution use cases
 const DISTRIBUTION_PRESETS = {
@@ -51,6 +52,7 @@ export const DistributionBlock = ({
   const [isCollapsed, setIsCollapsed] = useState(data.defaultCollapsed ?? true);
   const [showEditMode, setShowEditMode] = useState(false);
   const blockRef = useRef(null);
+  const confirm = useConfirm();
   
   const preset = DISTRIBUTION_PRESETS[data.preset] || DISTRIBUTION_PRESETS.carpool;
   const PresetIcon = preset.icon;
@@ -252,8 +254,9 @@ export const DistributionBlock = ({
           {showEditMode && canEdit && slots.length > 0 && onResetDistribution && (
             <div className="flex items-center justify-end gap-3 px-4 py-2 border-b border-white/5 -mx-4 -mt-2 mb-1">
               <button
-                onClick={() => {
-                  if (window.confirm(`Vill du nollställa alla ${data.preset === 'carpool' ? 'bilar' : 'uppgifter'}? Detta kan inte ångras.`)) {
+                onClick={async () => {
+                  const label = data.preset === 'carpool' ? 'bilar' : 'uppgifter';
+                  if (await confirm({ title: `Nollställ ${label}?`, message: `Alla ${label} raderas. Detta kan inte ångras.`, confirmText: 'Nollställ', variant: 'danger' })) {
                     onResetDistribution();
                     setShowEditMode(false);
                   }

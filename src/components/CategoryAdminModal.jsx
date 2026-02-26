@@ -5,8 +5,10 @@ import { db } from '../firebase';
 import { AVAILABLE_ICONS, getIconComponent } from '../utils/iconHelpers';
 import { useKeyboardHeight } from '../utils/useKeyboardHeight';
 import { useSwipeToClose } from '../utils/useSwipeToClose';
+import { useConfirm } from '../utils/useConfirm';
 
 function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
+  const confirm = useConfirm();
   const [editingCategory, setEditingCategory] = useState(null);
   const [newCategory, setNewCategory] = useState({ label: '', icon: 'Home', color: '#6B7280', hideLocation: false });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
@@ -59,7 +61,7 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
     const objectsWithCategory = objects.filter(obj => obj.type === categoryId);
     
     if (objectsWithCategory.length > 0) {
-      if (!confirm(`${objectsWithCategory.length} objekt använder denna kategori. De kommer att ändras till 'Okategoriserad'. Fortsätt?`)) {
+      if (!await confirm({ title: 'Kategori används', message: `${objectsWithCategory.length} objekt använder denna kategori. De ändras till 'Okategoriserad'.`, confirmText: 'Fortsätt', variant: 'warning' })) {
         setShowDeleteConfirm(null);
         return;
       }

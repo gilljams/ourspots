@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Car, ClipboardList, Plus, User, ChevronLeft, Check, Trash2, Users } from 'lucide-react';
+import { useConfirm } from '../utils/useConfirm';
 
 // Preset configs - same as in blocks/index.jsx
 const DISTRIBUTION_PRESETS = {
@@ -67,6 +68,7 @@ function DistributionModal({
   onDeleteSlot
 }) {
   const [step, setStep] = useState('intent'); // 'intent', 'create', 'join', 'fill', 'confirm-join'
+  const confirm = useConfirm();
   const [slotLabel, setSlotLabel] = useState('');
   const [slotCapacity, setSlotCapacity] = useState('');
   const [slotInfo, setSlotInfo] = useState('');
@@ -263,12 +265,12 @@ function DistributionModal({
   };
   
   // Handle leaving current slot
-  const handleLeaveSlot = () => {
+  const handleLeaveSlot = async () => {
     if (userSlot) {
       // If user is the creator and there are other assignees, don't allow leaving
       // Instead, they must delete the slot
       if (isUserCreator(userSlot) && userSlot.assignees?.length > 1) {
-        if (window.confirm('Du är skapare av denna. Om du lämnar kommer alla andra också att tas bort. Vill du ta bort den helt?')) {
+        if (await confirm({ title: 'Ta bort helt?', message: 'Du är skapare. Om du lämnar tas alla andra bort också.', confirmText: 'Ta bort', variant: 'danger' })) {
           onDeleteSlot(userSlot.id);
         }
       } else if (isUserCreator(userSlot)) {
@@ -789,8 +791,8 @@ function DistributionModal({
                       <div className="flex items-center gap-2">
                         {isUserCreator(slot) && (
                           <button
-                            onClick={() => {
-                              if (window.confirm(`Ta bort uppgiften "${slot.label}"?`)) {
+                            onClick={async () => {
+                              if (await confirm({ title: 'Ta bort uppgift?', message: `"${slot.label}" tas bort.`, confirmText: 'Ta bort', variant: 'danger' })) {
                                 onDeleteSlot(slot.id);
                               }
                             }}

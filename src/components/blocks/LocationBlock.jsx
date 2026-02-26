@@ -1,7 +1,9 @@
 import React from 'react';
 import { MapPin, Map as MapIcon, X, Play, Pause, Edit2, MessageCircle } from 'lucide-react';
+import { useConfirm } from '../../utils/useConfirm';
 
 export const LocationBlock = ({ data, onDelete, canDelete, positionNumber, isPrimaryLocation, onShowOnMap, onEditNote, hasAudio, isAudioPlaying, onToggleAudio, isCollection, collectionPlacesCount, onShowCollectionMap, whatsappGroupUrl, isExtraLocation }) => {
+  const confirm = useConfirm();
 
   const handleShowOnMap = () => {
     if (onShowOnMap && data.lat && data.lng) {
@@ -9,8 +11,8 @@ export const LocationBlock = ({ data, onDelete, canDelete, positionNumber, isPri
     }
   };
   
-  const handleDelete = () => {
-    if (window.confirm('Ta bort denna position?')) {
+  const handleDelete = async () => {
+    if (await confirm({ title: 'Ta bort position?', message: 'Positionen tas bort från objektet.', confirmText: 'Ta bort', variant: 'danger' })) {
       onDelete();
     }
   };

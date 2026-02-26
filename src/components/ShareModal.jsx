@@ -5,8 +5,10 @@ import { db } from '../firebase';
 import { emailToKey, keyToEmail } from '../utils/iconHelpers';
 import { useKeyboardHeight } from '../utils/useKeyboardHeight';
 import { useSwipeToClose } from '../utils/useSwipeToClose';
+import { useConfirm } from '../utils/useConfirm';
 
 function ShareModal({ object, onClose, currentUserEmail, allObjects = [], sharedContacts = [], favoriteContacts = [], onAddContact, onToggleFavoriteContact }) {
+  const askConfirm = useConfirm();
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('viewer');
   const [includeChildren, setIncludeChildren] = useState(false);
@@ -411,7 +413,7 @@ function ShareModal({ object, onClose, currentUserEmail, allObjects = [], shared
       ? `Dela ${toShare.length} objekt med ${userEmail}?\n\n${alreadyShared.length} objekt är redan delade och behålls som de är.\n\nDetta är en engångsåtgärd – framtida ändringar hanteras på respektive objekt.`
       : `Dela alla ${toShare.length} länkade objekt med ${userEmail}?\n\nDetta är en engångsåtgärd – framtida ändringar hanteras på respektive objekt.`;
     
-    if (!confirm(confirmMsg)) return;
+    if (!await askConfirm({ title: 'Dela med länkade?', message: confirmMsg, confirmText: 'Dela', variant: 'info' })) return;
     
     setPushingToLinked(true);
     try {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, ArrowUp, ArrowDown, ChevronDown, Wallet, Plus, Trash2, RotateCcw } from 'lucide-react';
+import { useConfirm } from '../../utils/useConfirm';
 
 // Separate component for weighted participant row (needed for hooks)
 function WeightedParticipantRow({ participant, idx, onUpdateWeight, onRemove }) {
@@ -60,6 +61,7 @@ function WeightedParticipantRow({ participant, idx, onUpdateWeight, onRemove }) 
 // Split Block Editor - expense sharing configuration
 function SplitBlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving, shares = {}, currentUser, currentUserDisplayName }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const confirm = useConfirm();
   const [title, setTitle] = useState(block.title || 'Splitt');
   const [model, setModel] = useState(block.model || 'individual');
   const [participants, setParticipants] = useState(block.participants || []);
@@ -112,8 +114,8 @@ function SplitBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
     syncToParent({ closed: false });
   };
 
-  const handleResetAmounts = () => {
-    if (window.confirm('Vill du nollställa alla belopp? Detta kan inte ångras.')) {
+  const handleResetAmounts = async () => {
+    if (await confirm({ title: 'Nollställ belopp?', message: 'Alla belopp nollställs. Detta kan inte ångras.', confirmText: 'Nollställ', variant: 'danger' })) {
       const resetParticipants = participants.map(p => ({ ...p, paid: 0 }));
       setParticipants(resetParticipants);
       setClosed(false);

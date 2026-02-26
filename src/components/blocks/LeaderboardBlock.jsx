@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Trophy, ChevronDown, ChevronRight, Lock, Unlock, Edit2, RotateCcw, Target, User } from 'lucide-react';
+import { useConfirm } from '../../utils/useConfirm';
 
 // Leaderboard Block - ranking/competition display (golf etc.)
 export const LeaderboardBlock = ({ data, currentUser, shares = {}, canEdit = false, onOpenModal, onCloseLeaderboard, onReopenLeaderboard, onResetLeaderboard, onExpand }) => {
   const [isCollapsed, setIsCollapsed] = useState(data.defaultCollapsed ?? true);
   const [showEditMode, setShowEditMode] = useState(false);
+  const confirm = useConfirm();
   const blockRef = useRef(null);
   
   const title = data.title || (data.competitionType === 'longestdrive' ? 'Longest Drive' : 'Leaderboard');
@@ -190,8 +192,8 @@ export const LeaderboardBlock = ({ data, currentUser, shares = {}, canEdit = fal
             <div className="flex items-center justify-end gap-3 px-4 py-2 border-b border-white/5 -mx-4 -mt-2 mb-1">
               {status !== 'finished' && onCloseLeaderboard && (
                 <button
-                  onClick={() => {
-                    if (window.confirm('Vill du avsluta leaderboarden?')) {
+                  onClick={async () => {
+                    if (await confirm({ title: 'Avsluta leaderboard?', message: 'Inga fler rundor kan läggas till.', confirmText: 'Avsluta', variant: 'warning' })) {
                       onCloseLeaderboard();
                       setShowEditMode(false);
                     }
@@ -204,8 +206,8 @@ export const LeaderboardBlock = ({ data, currentUser, shares = {}, canEdit = fal
               )}
               {status === 'finished' && onReopenLeaderboard && (
                 <button
-                  onClick={() => {
-                    if (window.confirm('Vill du öppna leaderboarden igen?')) {
+                  onClick={async () => {
+                    if (await confirm({ title: 'Öppna leaderboard?', message: 'Rundor kan läggas till igen.', confirmText: 'Öppna', variant: 'info' })) {
                       onReopenLeaderboard();
                       setShowEditMode(false);
                     }
@@ -218,8 +220,8 @@ export const LeaderboardBlock = ({ data, currentUser, shares = {}, canEdit = fal
               )}
               {roundCount > 0 && onResetLeaderboard && (
                 <button
-                  onClick={() => {
-                    if (window.confirm('Vill du nollställa alla poäng? Detta kan inte ångras.')) {
+                  onClick={async () => {
+                    if (await confirm({ title: 'Nollställ poäng?', message: 'Alla poäng raderas. Detta kan inte ångras.', confirmText: 'Nollställ', variant: 'danger' })) {
                       onResetLeaderboard();
                       setShowEditMode(false);
                     }
