@@ -14,7 +14,7 @@ import { useState, useEffect, useRef } from 'react';
  * @returns {{ viewportHeight: number, viewportOffset: number, contentHeight: number }}
  */
 export function useFullscreenModal({
-  bgColor = '#1e293b',
+  bgColor = '#111827',
   headerHeight = 52,
   toolbarHeight = 0,
   useRAF = false,

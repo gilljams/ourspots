@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { List, ChevronDown, RefreshCw, X, AlertTriangle, XCircle, RefreshCcw } from 'lucide-react';
 import { collection, onSnapshot, doc, updateDoc, deleteField, arrayUnion } from 'firebase/firestore';
 import { db } from '../firebase';
+import { useKeyboardHeight } from '../utils/useKeyboardHeight';
 
 function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onViewObject }) {
   const [sortBy, setSortBy] = useState('title'); // title, category, parent
@@ -12,6 +13,9 @@ function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onView
   const [loadingAll, setLoadingAll] = useState(true);
   const [migrating, setMigrating] = useState(false);
   const [migrationResult, setMigrationResult] = useState(null);
+  
+  // Keyboard-aware height for iOS
+  const { viewportHeight, keyboardVisible } = useKeyboardHeight();
   
   // Fetch ALL objects for admin view
   useEffect(() => {
@@ -235,8 +239,8 @@ function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onView
     >
       <div 
         ref={modalRef}
-        className="bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-xl lg:rounded-2xl border-t sm:border border-white/10 sm:border-white/[0.08] w-full sm:max-w-lg lg:max-w-md sm:w-[90%] lg:w-[30%] h-full sm:h-auto sm:max-h-[85vh] lg:h-[calc(100dvh-2rem)] lg:max-h-none overflow-hidden flex flex-col transition-transform duration-200 ease-out relative sm:shadow-2xl sm:shadow-black/50"
-        style={{ transform: `translateX(${touchDelta}px)`, opacity: touchDelta > 0 ? 1 - (touchDelta / 300) : 1 }}
+        className={`bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-xl lg:rounded-2xl border-t sm:border border-white/10 sm:border-white/[0.08] w-full sm:max-w-lg lg:max-w-md sm:w-[90%] lg:w-[30%] ${keyboardVisible ? '' : 'h-full'} sm:h-auto sm:max-h-[85vh] lg:h-[calc(100dvh-2rem)] lg:max-h-none overflow-hidden flex flex-col transition-transform duration-200 ease-out relative sm:shadow-2xl sm:shadow-black/50`}
+        style={{ transform: `translateX(${touchDelta}px)`, opacity: touchDelta > 0 ? 1 - (touchDelta / 300) : 1, ...(keyboardVisible ? { height: `${viewportHeight}px` } : {}) }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}

@@ -2,11 +2,11 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { X, ChevronLeft, ChevronRight, Plus, Trash2, Link2, FileText, RotateCcw, Utensils, Wine, Home, Edit2, GripVertical, Move, Maximize2, MoreVertical, Grid3X3, Check } from 'lucide-react';
 
 const SLOTS = [
-  { id: 'morning', label: 'Förmiddag', shortLabel: 'Förm.', Icon: null, tint: 'bg-slate-500/5', activeTint: 'bg-slate-500/15' },
+  { id: 'morning', label: 'Förmiddag', shortLabel: 'Förm.', Icon: null, tint: 'bg-gray-500/5', activeTint: 'bg-gray-500/15' },
   { id: 'lunch', label: 'Lunch', shortLabel: 'Lunch', Icon: Utensils, tint: 'bg-blue-500/5', activeTint: 'bg-blue-500/15' },
-  { id: 'afternoon', label: 'Eftermiddag', shortLabel: 'Efterm.', Icon: null, tint: 'bg-slate-500/5', activeTint: 'bg-slate-500/15' },
+  { id: 'afternoon', label: 'Eftermiddag', shortLabel: 'Efterm.', Icon: null, tint: 'bg-gray-500/5', activeTint: 'bg-gray-500/15' },
   { id: 'dinner', label: 'Middag', shortLabel: 'Middag', Icon: Wine, tint: 'bg-blue-500/5', activeTint: 'bg-blue-500/15' },
-  { id: 'evening', label: 'Kväll', shortLabel: 'Kväll', Icon: null, tint: 'bg-slate-600/8', activeTint: 'bg-slate-500/20' },
+  { id: 'evening', label: 'Kväll', shortLabel: 'Kväll', Icon: null, tint: 'bg-gray-600/8', activeTint: 'bg-gray-500/20' },
 ];
 
 const formatDate = (startDate, dayIndex) => {
@@ -615,14 +615,14 @@ export default function PlannerModal({
                     className="fixed inset-0 z-[3101]" 
                     onClick={() => setShowMenu(false)}
                   />
-                  <div className="absolute right-0 top-full mt-1 w-48 bg-slate-800 rounded-lg shadow-xl border border-white/10 py-1 z-[3102]">
+                  <div className="absolute right-0 top-full mt-1 w-48 bg-gray-800 rounded-lg shadow-xl border border-white/10 py-1 z-[3102]">
                     <button
                       type="button"
                       onClick={() => {
                         setShowSettings(true);
                         setShowMenu(false);
                       }}
-                      className="w-full px-3 py-2.5 text-left text-sm text-slate-200 hover:bg-slate-700/50 flex items-center gap-2"
+                      className="w-full px-3 py-2.5 text-left text-sm text-gray-200 hover:bg-gray-700/50 flex items-center gap-2"
                     >
                       <Grid3X3 size={14} />
                       Inställningar
@@ -638,7 +638,7 @@ export default function PlannerModal({
                         }
                         setShowMenu(false);
                       }}
-                      className="w-full px-3 py-2.5 text-left text-sm text-slate-200 hover:bg-slate-700/50 flex items-center gap-2"
+                      className="w-full px-3 py-2.5 text-left text-sm text-gray-200 hover:bg-gray-700/50 flex items-center gap-2"
                     >
                       <RotateCcw size={14} />
                       Rensa planering
@@ -912,10 +912,10 @@ export default function PlannerModal({
         const maxHeight = screenHeight - rect.top - 80;
         
         // Get color classes based on slot
-        const bgClass = slot?.activeTint || 'bg-slate-500/15';
+        const bgClass = slot?.activeTint || 'bg-gray-500/15';
         const borderClass = slotId === 'lunch' || slotId === 'dinner' 
           ? 'border-blue-400/30' 
-          : 'border-slate-400/30';
+          : 'border-gray-400/30';
         
         const handleClose = () => {
           setExpandedCell(null);
@@ -1018,7 +1018,7 @@ export default function PlannerModal({
       {canEdit && hasChanges && (
         <button
           onClick={handleSave}
-          className="fixed z-[3150] right-4 bottom-20 w-14 h-14 rounded-full bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 active:scale-95 transition-all flex items-center justify-center touch-manipulation"
+          className="fixed z-[3150] right-4 bottom-20 w-14 h-14 rounded-full bg-blue-500 text-white shadow-lg shadow-blue-500/30 active:scale-95 transition-all flex items-center justify-center touch-manipulation"
         >
           <Check size={24} strokeWidth={2.5} />
         </button>

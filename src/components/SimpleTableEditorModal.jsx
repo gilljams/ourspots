@@ -41,6 +41,7 @@ export function SimpleTableEditorModal({
   const HEADER_HEIGHT = 52;
   
   const { viewportHeight, viewportOffset } = useFullscreenModal({
+    bgColor: '#111827',
     headerHeight: HEADER_HEIGHT,
     onCleanup: () => { if (undoTimerRef.current) clearTimeout(undoTimerRef.current); },
   });
@@ -234,11 +235,11 @@ export function SimpleTableEditorModal({
   return (
     <>
       {/* Backdrop */}
-      <div className="fixed inset-0 z-[1999] bg-slate-800" />
+      <div className="fixed inset-0 z-[1999] bg-gray-900" />
       
       {/* Main modal */}
       <div
-        className="fixed left-0 right-0 z-[2000] bg-slate-800 flex flex-col"
+        className="fixed left-0 right-0 z-[2000] bg-gray-900 flex flex-col"
         style={{
           top: `${viewportOffset}px`,
           height: `${viewportHeight}px`
@@ -246,21 +247,21 @@ export function SimpleTableEditorModal({
       >
         {/* Header */}
         <div 
-          className="flex-shrink-0 flex items-center justify-between px-3 border-b border-white/5 bg-slate-900/50"
+          className="flex-shrink-0 flex items-center justify-between px-3 border-b border-white/5 bg-gray-950/50"
           style={{ height: `${HEADER_HEIGHT}px` }}
         >
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <span className="text-base font-medium text-white truncate">
               {title || 'Redigera tabell'}
             </span>
-            <span className="text-xs text-slate-400 bg-slate-700/50 px-1.5 py-0.5 rounded-full">
+            <span className="text-xs text-gray-400 bg-gray-700/50 px-1.5 py-0.5 rounded-full">
               {rows.filter(r => !r.isHeader).length}
             </span>
             {/* Show col2 type indicator */}
             {col2Type && COL2_TYPE_LABELS[col2Type] && (() => {
               const TypeIcon = COL2_TYPE_LABELS[col2Type].icon;
               return (
-                <span className="text-xs text-slate-500 bg-slate-700/30 px-1.5 py-0.5 rounded-full flex items-center gap-1">
+                <span className="text-xs text-gray-500 bg-gray-700/30 px-1.5 py-0.5 rounded-full flex items-center gap-1">
                   <TypeIcon size={10} />
                   <span className="hidden sm:inline">{COL2_TYPE_LABELS[col2Type].label}</span>
                 </span>
@@ -274,7 +275,7 @@ export function SimpleTableEditorModal({
             <button
               type="button"
               onClick={() => addRow(true)}
-              className="h-9 px-3 rounded-lg bg-slate-700/50 text-slate-400 hover:bg-slate-600/50 hover:text-white flex items-center gap-1.5 transition-colors text-sm"
+              className="h-9 px-3 rounded-lg bg-gray-700/50 text-gray-400 hover:bg-gray-600/50 hover:text-white flex items-center gap-1.5 transition-colors text-sm"
             >
               <Plus size={14} />
               Rubrik
@@ -285,7 +286,7 @@ export function SimpleTableEditorModal({
               <button
                 type="button"
                 onClick={() => setShowUtilsMenu(!showUtilsMenu)}
-                className={`h-9 w-9 rounded-lg ${selectMode ? 'bg-blue-600 text-white' : 'bg-slate-700/50 text-slate-400 hover:bg-slate-600/50 hover:text-white'} flex items-center justify-center transition-colors`}
+                className={`h-9 w-9 rounded-lg ${selectMode ? 'bg-blue-600 text-white' : 'bg-gray-700/50 text-gray-400 hover:bg-gray-600/50 hover:text-white'} flex items-center justify-center transition-colors`}
                 title="Verktyg"
               >
                 <MoreVertical size={16} />
@@ -297,14 +298,14 @@ export function SimpleTableEditorModal({
                     className="fixed inset-0 z-[2001]" 
                     onClick={() => setShowUtilsMenu(false)}
                   />
-                  <div className="absolute right-0 top-full mt-1 w-48 bg-slate-700 rounded-lg shadow-xl border border-white/10 py-1 z-[2002]">
+                  <div className="absolute right-0 top-full mt-1 w-48 bg-gray-700 rounded-lg shadow-xl border border-white/10 py-1 z-[2002]">
                     <button
                       type="button"
                       onClick={() => {
                         handlePaste();
                         setShowUtilsMenu(false);
                       }}
-                      className="w-full px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-600/50 flex items-center gap-2"
+                      className="w-full px-3 py-2 text-left text-sm text-gray-200 hover:bg-gray-600/50 flex items-center gap-2"
                     >
                       <ClipboardPaste size={14} />
                       Klistra in
@@ -318,7 +319,7 @@ export function SimpleTableEditorModal({
                         }
                         setShowUtilsMenu(false);
                       }}
-                      className="w-full px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-600/50 flex items-center gap-2"
+                      className="w-full px-3 py-2 text-left text-sm text-gray-200 hover:bg-gray-600/50 flex items-center gap-2"
                     >
                       <CheckSquare size={14} />
                       {selectMode ? 'Avsluta val' : 'Välj flera'}
@@ -330,7 +331,7 @@ export function SimpleTableEditorModal({
                         setRows(rows.map(r => r.isHeader ? r : { ...r, done: true }));
                         setShowUtilsMenu(false);
                       }}
-                      className="w-full px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-600/50 flex items-center gap-2"
+                      className="w-full px-3 py-2 text-left text-sm text-gray-200 hover:bg-gray-600/50 flex items-center gap-2"
                     >
                       <CheckCheck size={14} />
                       Bocka i alla
@@ -343,7 +344,7 @@ export function SimpleTableEditorModal({
                         }
                         setShowUtilsMenu(false);
                       }}
-                      className="w-full px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-600/50 flex items-center gap-2"
+                      className="w-full px-3 py-2 text-left text-sm text-gray-200 hover:bg-gray-600/50 flex items-center gap-2"
                     >
                       <RotateCcw size={14} />
                       Rensa ibockningar
@@ -368,7 +369,7 @@ export function SimpleTableEditorModal({
                         setRows(result);
                         setShowUtilsMenu(false);
                       }}
-                      className="w-full px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-600/50 flex items-center gap-2"
+                      className="w-full px-3 py-2 text-left text-sm text-gray-200 hover:bg-gray-600/50 flex items-center gap-2"
                     >
                       <ArrowDownUp size={14} />
                       Sortera klara sist
@@ -410,7 +411,7 @@ export function SimpleTableEditorModal({
             <button
               type="button"
               onClick={onCancel}
-              className="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+              className="w-9 h-9 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
             >
               <X size={18} />
             </button>
@@ -424,12 +425,12 @@ export function SimpleTableEditorModal({
           style={{ height: `${contentHeight}px`, paddingBottom: '100px' }}
         >
           {rows.length === 0 ? (
-            <div className="text-center py-16 text-slate-500">
-              <div className="w-12 h-12 rounded-full bg-slate-700/50 flex items-center justify-center mx-auto mb-3">
-                <Plus size={24} className="text-slate-500" />
+            <div className="text-center py-16 text-gray-500">
+              <div className="w-12 h-12 rounded-full bg-gray-700/50 flex items-center justify-center mx-auto mb-3">
+                <Plus size={24} className="text-gray-500" />
               </div>
               <p className="font-medium">Tabellen är tom</p>
-              <p className="text-sm mt-1 text-slate-600">Börja skriva nedan</p>
+              <p className="text-sm mt-1 text-gray-600">Börja skriva nedan</p>
             </div>
           ) : (
             <div className="divide-y divide-white/5">
@@ -461,7 +462,7 @@ export function SimpleTableEditorModal({
                         <button
                           type="button"
                           onClick={() => toggleSelection(row.id)}
-                          className="text-slate-400 hover:text-blue-400 transition-colors"
+                          className="text-gray-400 hover:text-blue-400 transition-colors"
                         >
                           {selectedIds.has(row.id) ? (
                             <CheckSquare size={18} className="text-blue-400" />
@@ -471,7 +472,7 @@ export function SimpleTableEditorModal({
                         </button>
                       )}
                       <div
-                        className="text-slate-500 cursor-grab active:cursor-grabbing touch-none"
+                        className="text-gray-500 cursor-grab active:cursor-grabbing touch-none"
                         onTouchStart={(e) => handleTouchStart(e, row.id)}
                       >
                         <GripVertical size={16} />
@@ -483,12 +484,12 @@ export function SimpleTableEditorModal({
                         onChange={(e) => updateRow(row.id, 'col1', e.target.value)}
                         onKeyDown={(e) => handleKeyDown(e, row.id, 'col1')}
                         placeholder="Rubrik..."
-                        className="flex-1 bg-transparent text-blue-400 text-base font-semibold uppercase tracking-wide placeholder-slate-600 focus:outline-none"
+                        className="flex-1 bg-transparent text-blue-400 text-base font-semibold uppercase tracking-wide placeholder-gray-600 focus:outline-none"
                       />
                       <button
                         type="button"
                         onClick={() => removeRow(row.id)}
-                        className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-red-400 transition-colors"
+                        className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-red-400 transition-colors"
                       >
                         <Trash2 size={14} />
                       </button>
@@ -500,7 +501,7 @@ export function SimpleTableEditorModal({
                         <button
                           type="button"
                           onClick={() => toggleSelection(row.id)}
-                          className="text-slate-400 hover:text-blue-400 transition-colors"
+                          className="text-gray-400 hover:text-blue-400 transition-colors"
                         >
                           {selectedIds.has(row.id) ? (
                             <CheckSquare size={18} className="text-blue-400" />
@@ -513,7 +514,7 @@ export function SimpleTableEditorModal({
                         {row.done && <Check size={10} className="text-emerald-400" />}
                       </div>
                       <div
-                        className="text-slate-600 cursor-grab active:cursor-grabbing touch-none flex-shrink-0"
+                        className="text-gray-600 cursor-grab active:cursor-grabbing touch-none flex-shrink-0"
                         onTouchStart={(e) => handleTouchStart(e, row.id)}
                       >
                         <GripVertical size={16} />
@@ -527,7 +528,7 @@ export function SimpleTableEditorModal({
                         onChange={(e) => updateRow(row.id, 'col1', e.target.value)}
                         onKeyDown={(e) => handleKeyDown(e, row.id, 'col1')}
                         placeholder={col1Label}
-                        className={`flex-1 bg-transparent text-base placeholder-slate-600 focus:outline-none min-w-0 ${row.done ? 'text-slate-500' : 'text-white'}`}
+                        className={`flex-1 bg-transparent text-base placeholder-gray-600 focus:outline-none min-w-0 ${row.done ? 'text-gray-500' : 'text-white'}`}
                       />
                       
                       {/* Column 2 - typed input */}
@@ -539,13 +540,13 @@ export function SimpleTableEditorModal({
                         onChange={(e) => updateRow(row.id, 'col2', e.target.value)}
                         onKeyDown={(e) => handleKeyDown(e, row.id, 'col2')}
                         placeholder={col2Label}
-                        className="w-28 flex-shrink-0 bg-slate-700/30 rounded px-2 py-1 text-slate-300 text-base placeholder-slate-600 focus:outline-none focus:bg-slate-700/50"
+                        className="w-28 flex-shrink-0 bg-gray-700/30 rounded px-2 py-1 text-gray-300 text-base placeholder-gray-600 focus:outline-none focus:bg-gray-700/50"
                       />
                       
                       <button
                         type="button"
                         onClick={() => removeRow(row.id)}
-                        className="w-8 h-8 flex items-center justify-center text-slate-600 hover:text-red-400 transition-colors flex-shrink-0"
+                        className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-red-400 transition-colors flex-shrink-0"
                       >
                         <Trash2 size={14} />
                       </button>
@@ -561,7 +562,7 @@ export function SimpleTableEditorModal({
             <button
               type="button"
               onClick={() => addRow(false)}
-              className="w-full h-11 rounded-xl border border-dashed border-slate-600 text-slate-500 hover:border-blue-500/50 hover:text-blue-400 hover:bg-blue-500/5 flex items-center justify-center gap-2 transition-all text-sm"
+              className="w-full h-11 rounded-xl border border-dashed border-gray-600 text-gray-500 hover:border-blue-500/50 hover:text-blue-400 hover:bg-blue-500/5 flex items-center justify-center gap-2 transition-all text-sm"
             >
               <Plus size={16} />
               Lägg till rad
@@ -573,7 +574,7 @@ export function SimpleTableEditorModal({
         {/* Undo delete toast */}
         {deletedRow && (
           <div 
-            className="fixed z-[2001] left-4 right-20 flex items-center gap-3 bg-slate-700 text-white text-sm rounded-xl px-4 py-3 shadow-lg border border-white/10"
+            className="fixed z-[2001] left-4 right-20 flex items-center gap-3 bg-gray-700 text-white text-sm rounded-xl px-4 py-3 shadow-lg border border-white/10"
             style={{
               bottom: `${Math.max(16, viewportHeight - window.innerHeight + 16)}px`
             }}
@@ -596,7 +597,7 @@ export function SimpleTableEditorModal({
         <button
           type="button"
           onClick={handleSave}
-          className="fixed z-[2001] right-4 w-14 h-14 rounded-full bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 active:scale-95 transition-all flex items-center justify-center"
+          className="fixed z-[2001] right-4 w-14 h-14 rounded-full bg-blue-500 text-white shadow-lg shadow-blue-500/30 active:scale-95 transition-all flex items-center justify-center"
           style={{
             bottom: `${Math.max(16, viewportHeight - window.innerHeight + 16)}px`
           }}
@@ -631,6 +632,7 @@ export function MultiColumnTableEditorModal({
   const HEADER_HEIGHT = 52;
   
   const { viewportHeight, viewportOffset } = useFullscreenModal({
+    bgColor: '#111827',
     headerHeight: HEADER_HEIGHT,
   });
   
@@ -772,11 +774,11 @@ export function MultiColumnTableEditorModal({
   return (
     <>
       {/* Backdrop */}
-      <div className="fixed inset-0 z-[1999] bg-slate-800" />
+      <div className="fixed inset-0 z-[1999] bg-gray-900" />
       
       {/* Main modal */}
       <div
-        className="fixed left-0 right-0 z-[2000] bg-slate-800 flex flex-col"
+        className="fixed left-0 right-0 z-[2000] bg-gray-900 flex flex-col"
         style={{
           top: `${viewportOffset}px`,
           height: `${viewportHeight}px`
@@ -784,14 +786,14 @@ export function MultiColumnTableEditorModal({
       >
         {/* Header */}
         <div 
-          className="flex-shrink-0 flex items-center justify-between px-3 border-b border-white/5 bg-slate-900/50"
+          className="flex-shrink-0 flex items-center justify-between px-3 border-b border-white/5 bg-gray-950/50"
           style={{ height: `${HEADER_HEIGHT}px` }}
         >
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <span className="text-base font-medium text-white truncate">
               {title || 'Redigera'}
             </span>
-            <span className="text-xs text-slate-400 bg-slate-700/50 px-1.5 py-0.5 rounded-full">
+            <span className="text-xs text-gray-400 bg-gray-700/50 px-1.5 py-0.5 rounded-full">
               {rows.filter(r => !r.isHeader).length} rader
             </span>
           </div>
@@ -803,7 +805,7 @@ export function MultiColumnTableEditorModal({
               <button
                 type="button"
                 onClick={() => addRow(true)}
-                className="h-9 px-3 rounded-lg bg-slate-700/50 text-slate-400 hover:bg-slate-600/50 hover:text-white flex items-center gap-1.5 transition-colors text-sm"
+                className="h-9 px-3 rounded-lg bg-gray-700/50 text-gray-400 hover:bg-gray-600/50 hover:text-white flex items-center gap-1.5 transition-colors text-sm"
               >
                 <Plus size={14} />
                 Rubrik
@@ -813,7 +815,7 @@ export function MultiColumnTableEditorModal({
             <button
               type="button"
               onClick={onCancel}
-              className="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+              className="w-9 h-9 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
             >
               <X size={18} />
             </button>
@@ -821,12 +823,12 @@ export function MultiColumnTableEditorModal({
         </div>
         
         {/* Column headers */}
-        <div className="flex-shrink-0 flex items-center px-3 py-2 border-b border-white/10 bg-slate-900/30 gap-2">
+        <div className="flex-shrink-0 flex items-center px-3 py-2 border-b border-white/10 bg-gray-950/30 gap-2">
           <div className="w-8" /> {/* Spacer for grip */}
           {columns.map((col, idx) => (
             <div
               key={col.id}
-              className={`text-xs font-medium text-slate-400 uppercase tracking-wide ${col.width || 'flex-1'} ${col.align === 'center' ? 'text-center' : ''}`}
+              className={`text-xs font-medium text-gray-400 uppercase tracking-wide ${col.width || 'flex-1'} ${col.align === 'center' ? 'text-center' : ''}`}
             >
               {col.label}
             </div>
@@ -841,12 +843,12 @@ export function MultiColumnTableEditorModal({
           style={{ height: `${contentHeight - 40}px`, paddingBottom: '100px' }}
         >
           {rows.length === 0 ? (
-            <div className="text-center py-16 text-slate-500">
-              <div className="w-12 h-12 rounded-full bg-slate-700/50 flex items-center justify-center mx-auto mb-3">
-                <Plus size={24} className="text-slate-500" />
+            <div className="text-center py-16 text-gray-500">
+              <div className="w-12 h-12 rounded-full bg-gray-700/50 flex items-center justify-center mx-auto mb-3">
+                <Plus size={24} className="text-gray-500" />
               </div>
               <p className="font-medium">Tabellen är tom</p>
-              <p className="text-sm mt-1 text-slate-600">Lägg till rader nedan</p>
+              <p className="text-sm mt-1 text-gray-600">Lägg till rader nedan</p>
             </div>
           ) : (
             <div className="divide-y divide-white/5">
@@ -857,7 +859,7 @@ export function MultiColumnTableEditorModal({
                     row.isHeader ? 'bg-blue-500/10' : ''
                   }`}
                 >
-                  <div className="w-6 flex-shrink-0 text-slate-600">
+                  <div className="w-6 flex-shrink-0 text-gray-600">
                     <GripVertical size={16} />
                   </div>
                   
@@ -870,7 +872,7 @@ export function MultiColumnTableEditorModal({
                       onChange={(e) => updateRow(row.id, columns[0]?.id, e.target.value)}
                       onKeyDown={(e) => handleKeyDown(e, row.id, columns[0]?.id)}
                       placeholder="Grupp/rubrik..."
-                      className="flex-1 min-w-0 bg-transparent text-blue-400 text-base font-semibold uppercase tracking-wide placeholder-slate-600 focus:outline-none"
+                      className="flex-1 min-w-0 bg-transparent text-blue-400 text-base font-semibold uppercase tracking-wide placeholder-gray-600 focus:outline-none"
                     />
                   ) : (
                     // Regular row - dynamic columns with flex container
@@ -886,9 +888,9 @@ export function MultiColumnTableEditorModal({
                           onChange={(e) => updateRow(row.id, col.id, e.target.value)}
                           onKeyDown={(e) => handleKeyDown(e, row.id, col.id)}
                           placeholder={col.placeholder || col.label}
-                          className={`${col.width === 'flex-1' ? 'flex-1 min-w-0' : `flex-shrink-0 ${col.width}`} bg-slate-700/30 rounded px-2 py-1.5 text-base placeholder-slate-600 focus:outline-none focus:bg-slate-700/50 ${
+                          className={`${col.width === 'flex-1' ? 'flex-1 min-w-0' : `flex-shrink-0 ${col.width}`} bg-gray-700/30 rounded px-2 py-1.5 text-base placeholder-gray-600 focus:outline-none focus:bg-gray-700/50 ${
                             col.align === 'center' ? 'text-center' : ''
-                          } ${colIdx === columns.length - 1 ? 'text-slate-300' : 'text-white'}`}
+                          } ${colIdx === columns.length - 1 ? 'text-gray-300' : 'text-white'}`}
                         />
                       ))}
                     </div>
@@ -897,7 +899,7 @@ export function MultiColumnTableEditorModal({
                   <button
                     type="button"
                     onClick={() => removeRow(row.id)}
-                    className="w-8 h-8 flex-shrink-0 flex items-center justify-center text-slate-600 hover:text-red-400 transition-colors"
+                    className="w-8 h-8 flex-shrink-0 flex items-center justify-center text-gray-600 hover:text-red-400 transition-colors"
                   >
                     <Trash2 size={14} />
                   </button>
@@ -911,7 +913,7 @@ export function MultiColumnTableEditorModal({
             <button
               type="button"
               onClick={() => addRow(false)}
-              className="w-full h-11 rounded-xl border border-dashed border-slate-600 text-slate-500 hover:border-blue-500/50 hover:text-blue-400 hover:bg-blue-500/5 flex items-center justify-center gap-2 transition-all text-sm"
+              className="w-full h-11 rounded-xl border border-dashed border-gray-600 text-gray-500 hover:border-blue-500/50 hover:text-blue-400 hover:bg-blue-500/5 flex items-center justify-center gap-2 transition-all text-sm"
             >
               <Plus size={16} />
               Lägg till rad
@@ -923,7 +925,7 @@ export function MultiColumnTableEditorModal({
         <button
           type="button"
           onClick={handleSave}
-          className="fixed z-[2001] right-4 w-14 h-14 rounded-full bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 active:scale-95 transition-all flex items-center justify-center"
+          className="fixed z-[2001] right-4 w-14 h-14 rounded-full bg-blue-500 text-white shadow-lg shadow-blue-500/30 active:scale-95 transition-all flex items-center justify-center"
           style={{
             bottom: `${Math.max(16, viewportHeight - window.innerHeight + 16)}px`
           }}
