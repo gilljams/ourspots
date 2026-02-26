@@ -1,7 +1,7 @@
 import React from 'react';
-import { MapPin, Map as MapIcon, X, Calendar, Play, Pause, Edit2, MessageCircle } from 'lucide-react';
+import { MapPin, Map as MapIcon, X, Play, Pause, Edit2, MessageCircle } from 'lucide-react';
 
-export const LocationBlock = ({ data, onDelete, canDelete, positionNumber, isPrimaryLocation, onShowOnMap, onEditNote, hasAudio, isAudioPlaying, onToggleAudio, isCollection, collectionPlacesCount, onShowCollectionMap, whatsappGroupUrl, isExtraLocation, planningData, onShowPlanner }) => {
+export const LocationBlock = ({ data, onDelete, canDelete, positionNumber, isPrimaryLocation, onShowOnMap, onEditNote, hasAudio, isAudioPlaying, onToggleAudio, isCollection, collectionPlacesCount, onShowCollectionMap, whatsappGroupUrl, isExtraLocation }) => {
 
   const handleShowOnMap = () => {
     if (onShowOnMap && data.lat && data.lng) {
@@ -86,16 +86,6 @@ export const LocationBlock = ({ data, onDelete, canDelete, positionNumber, isPri
             >
               <MapIcon size={16} />
               <span className="text-sm font-medium">{collectionPlacesCount} {collectionPlacesCount === 1 ? 'plats' : 'platser'}</span>
-            </button>
-          )}
-          {/* Collection: Show planner button */}
-          {isCollection && planningData && onShowPlanner && (
-            <button
-              onClick={onShowPlanner}
-              className="w-9 h-9 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-gray-300 transition-all flex-shrink-0"
-              title={`Visa planering (${planningData.days} dagar)`}
-            >
-              <Calendar size={16} />
             </button>
           )}
           {/* Non-collection: Show on map button */}

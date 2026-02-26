@@ -9,6 +9,7 @@ import { getIconComponent, PREDEFINED_ICONS, emailToKey } from '../utils/iconHel
 import { getTransformedImageUrl, getFocalPointStyles } from '../utils/imageUtils';
 import { getObjectDistance, formatDistance } from '../utils/geoUtils';
 import { blockComponents } from './blocks';
+import { MetadataRow } from './blocks/MetadataRow';
 import DeleteConfirmModal from './DeleteConfirmModal';
 import LeaderboardModal from './LeaderboardModal';
 import DistributionModal from './DistributionModal';
@@ -649,7 +650,33 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                   .filter(block => blockComponents[block.type] && block.type !== 'title')
                   .filter(block => !(block.type === 'audio' && block.data?.discrete !== false)) // Hide discrete audio blocks
                   .filter(block => !(block.type === 'location' && block.data?.isPrimary === true && !block.inherited)) // Hide primary location from list (rendered separately after image)
-                  .filter(block => !(block.type === 'gallery' && hasImageBlock)); // Hide gallery block if there's an image (shown via ImageBlock thumbnails)
+                  .filter(block => !(block.type === 'gallery' && hasImageBlock)) // Hide gallery block if there's an image (shown via ImageBlock thumbnails)
+                  .filter(block => block.type !== 'rating' && block.type !== 'datetag'); // Rating + datetag rendered in metadata row
+                
+                // Extract rating and datetag blocks for the metadata row
+                const ratingBlock = blocksToRender.find(b => b.type === 'rating');
+                const dateTagBlock = blocksToRender.find(b => b.type === 'datetag');
+                
+                // onRate handler for the inline rating in metadata row
+                const handleMetadataRate = ratingBlock ? async (newRatings) => {
+                  await updateBlockField(ratingBlock.objectBlockIndex, { ratings: newRatings });
+                } : undefined;
+                
+                // Helper to render the metadata row (rating · dates · planner)
+                const renderMetadataRow = () => {
+                  if (!ratingBlock && !dateTagBlock) return null;
+                  return (
+                    <MetadataRow
+                      ratingData={ratingBlock?.data}
+                      dateTagData={dateTagBlock?.data}
+                      currentUser={effectiveUser}
+                      onRate={handleMetadataRate}
+                      planningData={isCollection ? object.planningData : undefined}
+                      onShowPlanner={isCollection && object.planningData ? () => setShowPlanner(true) : undefined}
+                      isCollection={isCollection}
+                    />
+                  );
+                };
                 
                 // Helper to render primary location block
                 const renderPrimaryLocation = () => {
@@ -673,8 +700,6 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                         collectionPlacesCount={isCollection ? linkedObjectsWithCoords.length : 0}
                         onShowCollectionMap={isCollection && linkedObjectsWithCoords.length > 0 ? () => setShowCollectionMap(true) : undefined}
                         whatsappGroupUrl={isCollection && linkedObjectsCount > 0 ? object.whatsappGroupUrl : undefined}
-                        planningData={isCollection ? object.planningData : undefined}
-                        onShowPlanner={isCollection && object.planningData ? () => setShowPlanner(true) : undefined}
                         hasAudio={audioIsDiscrete && audioUrl && !audioError}
                         isAudioPlaying={isAudioPlaying}
                         onToggleAudio={toggleAudio}
@@ -683,11 +708,13 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                   );
                 };
                 
-                // If no image block, render primary location at the top
+                // If no image block, render metadata row + primary location at the top
                 const primaryLocationAtTop = !hasImageBlock ? renderPrimaryLocation() : null;
+                const metadataRowAtTop = !hasImageBlock ? renderMetadataRow() : null;
                 
                 return (
                   <>
+                    {metadataRowAtTop}
                     {primaryLocationAtTop}
                     {sorted.map((block, index) => {
                 // Use the original index in object.blocks (tracked as objectBlockIndex)
@@ -743,8 +770,6 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                           collectionPlacesCount={block.type === 'location' && isCollection ? linkedObjectsWithCoords.length : 0}
                           onShowCollectionMap={block.type === 'location' && isCollection && linkedObjectsWithCoords.length > 0 ? () => setShowCollectionMap(true) : undefined}
                           whatsappGroupUrl={block.type === 'location' && isCollection && linkedObjectsCount > 0 ? object.whatsappGroupUrl : undefined}
-                          planningData={block.type === 'location' && isCollection ? object.planningData : undefined}
-                          onShowPlanner={block.type === 'location' && isCollection && object.planningData ? () => setShowPlanner(true) : undefined}
                           // Location block: centralized audio props
                           hasAudio={block.type === 'location' && !block.inherited && audioIsDiscrete && audioUrl && !audioError}
                           isAudioPlaying={block.type === 'location' ? isAudioPlaying : undefined}
@@ -952,15 +977,6 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                     {/* Show collection map buttons right after image block - only if no location block and there are linked objects with coords */}
                     {block.type === 'image' && isCollection && !blocksToRender.some(b => b.type === 'location') && linkedObjectsCount > 0 && (
                       <div className="flex items-center justify-end gap-2 flex-wrap mt-3">
-                        {object.planningData && (
-                          <button
-                            onClick={() => setShowPlanner(true)}
-                            className="w-9 h-9 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-gray-300 transition-all flex-shrink-0"
-                            title={`Visa planering (${object.planningData.days} dagar)`}
-                          >
-                            <Calendar size={16} />
-                          </button>
-                        )}
                         {object.whatsappGroupUrl && (
                           <button
                             onClick={() => window.open(object.whatsappGroupUrl, '_blank')}
@@ -998,6 +1014,8 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                         </button>
                       </div>
                     )}
+                    {/* Render metadata row (rating · dates · planner) between image/gallery and location */}
+                    {block.type === 'image' && hasImageBlock && renderMetadataRow()}
                     {/* Render primary location directly after image block */}
                     {block.type === 'image' && hasImageBlock && renderPrimaryLocation()}
                   </div>
