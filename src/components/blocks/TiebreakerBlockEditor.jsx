@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ArrowUp, ArrowDown, ChevronDown } from 'lucide-react';
+import { X, ArrowUp, ArrowDown, ChevronDown, Swords } from 'lucide-react';
 
 // Tiebreaker Block Editor - rock-paper-scissors for tie-breaking
 function TiebreakerBlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }) {
@@ -46,7 +46,7 @@ function TiebreakerBlockEditor({ block, onUpdate, onRemove, onMove, index, total
             size={16} 
             className={`text-gray-500 transition-transform flex-shrink-0 ${isExpanded ? '' : '-rotate-90'}`} 
           />
-          <span className="text-base flex-shrink-0">✊</span>
+          <Swords size={16} className="text-blue-400 flex-shrink-0" />
           <span className="text-sm font-medium text-gray-300 truncate">
             {title || 'Tiebreaker'}
           </span>
@@ -121,11 +121,7 @@ function TiebreakerBlockEditor({ block, onUpdate, onRemove, onMove, index, total
 
           {/* Info */}
           <div className="bg-white/5 rounded-lg p-3 flex items-start gap-3">
-            <div className="flex gap-1 text-xl flex-shrink-0">
-              <span>✊</span>
-              <span>✌️</span>
-              <span>🖐️</span>
-            </div>
+            <Swords size={20} className="text-blue-400 flex-shrink-0 mt-0.5" />
             <p className="text-xs text-gray-500">
               Följare kan utmana varandra till sten-sax-påse direkt i kortet. 
               Perfekt för att avgöra delad placering!
