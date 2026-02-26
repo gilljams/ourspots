@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Users, Shield, ShieldOff, Ban, CheckCircle, Search, X, ChevronDown, Mail, Package, Share2, Calendar, UserCheck, Settings, Save, RefreshCw, Check } from 'lucide-react';
 import { collection, onSnapshot, doc, updateDoc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useKeyboardHeight } from '../utils/useKeyboardHeight';
+import { useSwipeToClose } from '../utils/useSwipeToClose';
 
 function UsersAdminModal({ currentUserId, onClose }) {
   const [users, setUsers] = useState([]);
@@ -358,57 +359,7 @@ function UsersAdminModal({ currentUserId, onClose }) {
   };
   
   // Swipe to close
-  const [touchStart, setTouchStart] = useState(null);
-  const [touchStartY, setTouchStartY] = useState(null);
-  const [touchDelta, setTouchDelta] = useState(0);
-  const [isSwipeActive, setIsSwipeActive] = useState(false);
-  const modalRef = useRef(null);
-  
-  const SWIPE_THRESHOLD = 30;
-  const CLOSE_THRESHOLD = 150;
-  const RESISTANCE = 0.5;
-  
-  const handleTouchStart = (e) => {
-    setTouchStart(e.touches[0].clientX);
-    setTouchStartY(e.touches[0].clientY);
-    setIsSwipeActive(false);
-  };
-  
-  const handleTouchMove = (e) => {
-    if (touchStart === null) return;
-    const currentX = e.touches[0].clientX;
-    const currentY = e.touches[0].clientY;
-    const deltaX = currentX - touchStart;
-    const deltaY = currentY - touchStartY;
-    
-    if (!isSwipeActive) {
-      if (deltaX > SWIPE_THRESHOLD && Math.abs(deltaX) > Math.abs(deltaY) * 2) {
-        setIsSwipeActive(true);
-        e.preventDefault();
-      } else if (Math.abs(deltaY) > 10) {
-        setTouchStart(null);
-        return;
-      } else {
-        return;
-      }
-    }
-    
-    if (deltaX > SWIPE_THRESHOLD) {
-      e.preventDefault();
-      const adjustedDelta = (deltaX - SWIPE_THRESHOLD) * RESISTANCE;
-      setTouchDelta(adjustedDelta);
-    }
-  };
-  
-  const handleTouchEnd = () => {
-    if (touchDelta > CLOSE_THRESHOLD * RESISTANCE) {
-      onClose();
-    }
-    setTouchStart(null);
-    setTouchStartY(null);
-    setTouchDelta(0);
-    setIsSwipeActive(false);
-  };
+  const swipe = useSwipeToClose(onClose);
   
   const formatDate = (timestamp) => {
     if (!timestamp?.toDate) return '-';
@@ -426,12 +377,10 @@ function UsersAdminModal({ currentUserId, onClose }) {
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div 
-        ref={modalRef}
-        className={`bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-xl lg:rounded-2xl border-t sm:border border-white/10 w-full sm:max-w-2xl lg:max-w-md sm:w-[90%] lg:w-[30%] ${keyboardVisible ? '' : 'h-full'} sm:h-auto sm:max-h-[85vh] lg:h-[calc(100dvh-2rem)] lg:max-h-none overflow-hidden flex flex-col`}
-        style={{ transform: `translateX(${touchDelta}px)`, opacity: touchDelta > 0 ? 1 - (touchDelta / 300) : 1, ...(keyboardVisible ? { height: `${viewportHeight}px` } : {}) }}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
+        ref={swipe.ref}
+        className={`bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-xl lg:rounded-2xl border-t sm:border border-white/10 w-full sm:max-w-2xl lg:max-w-md sm:w-[90%] lg:w-[30%] ${keyboardVisible ? '' : 'h-full'} sm:h-auto sm:max-h-[85vh] lg:h-[calc(100dvh-2rem)] lg:max-h-none overflow-hidden flex flex-col ${swipe.className}`}
+        style={{ ...swipe.style, ...(keyboardVisible ? { height: `${viewportHeight}px` } : {}) }}
+        {...swipe.handlers}
       >
         {/* Header */}
         <div className="px-4 lg:px-5 py-4 lg:py-3 border-b border-white/10 bg-gray-900/80 backdrop-blur-xl flex items-center justify-between">

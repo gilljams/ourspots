@@ -8,6 +8,7 @@ import { db } from '../firebase';
 import { getIconComponent, PREDEFINED_ICONS, emailToKey } from '../utils/iconHelpers';
 import { getTransformedImageUrl, getFocalPointStyles } from '../utils/imageUtils';
 import { getObjectDistance, formatDistance } from '../utils/geoUtils';
+import { useSwipeToClose } from '../utils/useSwipeToClose';
 import { blockComponents } from './blocks';
 import { HeroInfoBlock } from './blocks/HeroInfoBlock';
 import DeleteConfirmModal from './DeleteConfirmModal';
@@ -168,12 +169,8 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
     }
   }, [object.id, object.blocks]);
   
-  // Swipe to close state
-  const [touchStart, setTouchStart] = useState(null);
-  const [touchStartY, setTouchStartY] = useState(null);
-  const [touchDelta, setTouchDelta] = useState(0);
-  const [isSwipeActive, setIsSwipeActive] = useState(false);
-  const modalRef = useRef(null);
+  // Swipe to close
+  const swipe = useSwipeToClose(onClose, { guardInteractive: true });
   const manageSectionRef = useRef(null);
   
   // Scroll manage section into view when opened
@@ -185,58 +182,6 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
     }
   }, [showManageSection]);
   
-  const SWIPE_THRESHOLD = 30;
-  const CLOSE_THRESHOLD = 150;
-  const RESISTANCE = 0.5;
-  
-  const handleTouchStart = (e) => {
-    // Don't capture swipe if touching interactive elements
-    const target = e.target;
-    if (target.closest('button') || target.closest('a') || target.closest('input') || target.closest('[role="button"]')) {
-      return;
-    }
-    setTouchStart(e.touches[0].clientX);
-    setTouchStartY(e.touches[0].clientY);
-    setIsSwipeActive(false);
-  };
-  
-  const handleTouchMove = (e) => {
-    if (touchStart === null) return;
-    const currentX = e.touches[0].clientX;
-    const currentY = e.touches[0].clientY;
-    const deltaX = currentX - touchStart;
-    const deltaY = currentY - touchStartY;
-    
-    if (!isSwipeActive) {
-      if (deltaX > SWIPE_THRESHOLD && Math.abs(deltaX) > Math.abs(deltaY) * 2) {
-        setIsSwipeActive(true);
-        e.preventDefault();
-      } else if (Math.abs(deltaY) > 10) {
-        setTouchStart(null);
-        return;
-      } else {
-        return;
-      }
-    }
-    
-    if (deltaX > SWIPE_THRESHOLD) {
-      e.preventDefault();
-      const adjustedDelta = (deltaX - SWIPE_THRESHOLD) * RESISTANCE;
-      setTouchDelta(adjustedDelta);
-    }
-  };
-  
-  const handleTouchEnd = () => {
-    if (touchDelta > CLOSE_THRESHOLD * RESISTANCE) {
-      setTouchDelta(200);
-      setTimeout(onClose, 200);
-    } else {
-      setTouchDelta(0);
-    }
-    setTouchStart(null);
-    setTouchStartY(null);
-    setIsSwipeActive(false);
-  };
   
   // Find category to get icon
   const category = categories.find(c => c.id === object.type);
@@ -509,12 +454,10 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
         onClick={(e) => e.target === e.currentTarget && onClose()}
       >
         <div 
-          ref={modalRef}
-          className="bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-xl lg:rounded-2xl border-t sm:border border-white/10 sm:border-white/[0.08] w-full sm:max-w-lg lg:max-w-xl sm:w-[90%] lg:w-[40%] h-full sm:h-auto sm:max-h-[85vh] lg:h-[calc(100dvh-2rem)] lg:max-h-none overflow-hidden flex flex-col transition-transform duration-200 ease-out relative sm:shadow-2xl sm:shadow-black/50"
-          style={{ transform: `translateX(${touchDelta}px)`, opacity: touchDelta > 0 ? 1 - (touchDelta / 300) : 1, touchAction: 'pan-y' }}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
+          ref={swipe.ref}
+          className={`bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-xl lg:rounded-2xl border-t sm:border border-white/10 sm:border-white/[0.08] w-full sm:max-w-lg lg:max-w-xl sm:w-[90%] lg:w-[40%] h-full sm:h-auto sm:max-h-[85vh] lg:h-[calc(100dvh-2rem)] lg:max-h-none overflow-hidden flex flex-col ${swipe.className} relative sm:shadow-2xl sm:shadow-black/50`}
+          style={swipe.style}
+          {...swipe.handlers}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Subtle decorative gradient using category color */}

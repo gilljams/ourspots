@@ -1,9 +1,10 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { Settings, ArrowUp, ArrowDown, Edit2, Trash2, ChevronDown, AlertTriangle, X } from 'lucide-react';
 import { doc, setDoc, updateDoc, deleteDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { AVAILABLE_ICONS, getIconComponent } from '../utils/iconHelpers';
 import { useKeyboardHeight } from '../utils/useKeyboardHeight';
+import { useSwipeToClose } from '../utils/useSwipeToClose';
 
 function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
   const [editingCategory, setEditingCategory] = useState(null);
@@ -15,67 +16,8 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
   // Keyboard-aware height for iOS
   const { viewportHeight, keyboardVisible } = useKeyboardHeight();
   
-  // Swipe to close state
-  const [touchStart, setTouchStart] = useState(null);
-  const [touchStartY, setTouchStartY] = useState(null);
-  const [touchDelta, setTouchDelta] = useState(0);
-  const [isSwipeActive, setIsSwipeActive] = useState(false);
-  const [isClosing, setIsClosing] = useState(false);
-  const modalRef = useRef(null);
-  
-  const SWIPE_THRESHOLD = 30; // Minimum px before swipe activates
-  const CLOSE_THRESHOLD = 150; // px needed to trigger close
-  const RESISTANCE = 0.5; // Friction factor (0.5 = moves half as fast as finger)
-  
-  const handleTouchStart = (e) => {
-    setTouchStart(e.touches[0].clientX);
-    setTouchStartY(e.touches[0].clientY);
-    setIsSwipeActive(false);
-  };
-  
-  const handleTouchMove = (e) => {
-    if (touchStart === null) return;
-    const currentX = e.touches[0].clientX;
-    const currentY = e.touches[0].clientY;
-    const deltaX = currentX - touchStart;
-    const deltaY = currentY - touchStartY;
-    
-    // Check if this is a horizontal swipe (not vertical scrolling)
-    if (!isSwipeActive) {
-      // Only activate if moved past threshold and clearly more horizontal than vertical
-      if (deltaX > SWIPE_THRESHOLD && Math.abs(deltaX) > Math.abs(deltaY) * 2) {
-        setIsSwipeActive(true);
-        e.preventDefault(); // Only prevent default once we're sure it's a swipe
-      } else if (Math.abs(deltaY) > 10) {
-        // User is scrolling vertically, don't activate swipe
-        setTouchStart(null);
-        return;
-      } else {
-        return; // Not yet determined, allow normal behavior
-      }
-    }
-    
-    // Apply resistance and only allow swiping right
-    if (deltaX > SWIPE_THRESHOLD) {
-      e.preventDefault();
-      const adjustedDelta = (deltaX - SWIPE_THRESHOLD) * RESISTANCE;
-      setTouchDelta(adjustedDelta);
-    }
-  };
-  
-  const handleTouchEnd = () => {
-    // If swiped past close threshold, close the modal
-    if (touchDelta > CLOSE_THRESHOLD * RESISTANCE) {
-      setIsClosing(true);
-      setTouchDelta(200); // Animate out
-      setTimeout(onClose, 200);
-    } else {
-      setTouchDelta(0);
-    }
-    setTouchStart(null);
-    setTouchStartY(null);
-    setIsSwipeActive(false);
-  };
+  // Swipe to close
+  const swipe = useSwipeToClose(onClose);
 
   const handleSaveCategory = async () => {
     if (!newCategory.label.trim()) return;
@@ -174,12 +116,10 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div 
-        ref={modalRef}
-        className={`bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-xl lg:rounded-2xl border-t sm:border border-white/10 sm:border-white/[0.08] w-full sm:max-w-lg lg:max-w-md sm:w-[90%] lg:w-[30%] ${keyboardVisible ? '' : 'h-full'} sm:h-auto sm:max-h-[85vh] lg:h-[calc(100dvh-2rem)] lg:max-h-none overflow-hidden flex flex-col transition-transform duration-200 ease-out relative sm:shadow-2xl sm:shadow-black/50`}
-        style={{ transform: `translateX(${touchDelta}px)`, opacity: touchDelta > 0 ? 1 - (touchDelta / 300) : 1, ...(keyboardVisible ? { height: `${viewportHeight}px` } : {}) }}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
+        ref={swipe.ref}
+        className={`bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-xl lg:rounded-2xl border-t sm:border border-white/10 sm:border-white/[0.08] w-full sm:max-w-lg lg:max-w-md sm:w-[90%] lg:w-[30%] ${keyboardVisible ? '' : 'h-full'} sm:h-auto sm:max-h-[85vh] lg:h-[calc(100dvh-2rem)] lg:max-h-none overflow-hidden flex flex-col ${swipe.className} relative sm:shadow-2xl sm:shadow-black/50`}
+        style={{ ...swipe.style, ...(keyboardVisible ? { height: `${viewportHeight}px` } : {}) }}
+        {...swipe.handlers}
       >
         {/* Subtle decorative gradient */}
         <div className="absolute top-0 left-0 right-0 h-72 bg-gradient-to-b from-blue-600/8 via-blue-900/5 to-transparent pointer-events-none" />
