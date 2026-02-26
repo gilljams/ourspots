@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Vote, Lock, Unlock, Check, HelpCircle, X, Trophy, Edit2, RotateCcw, Plus, Users, Link } from 'lucide-react';
+import { ChevronDown, Vote, Lock, Unlock, X, Trophy, Edit2, RotateCcw, Plus, Users, Link } from 'lucide-react';
 
 // Poll block - allows viewers to vote (date poll or ranked poll)
 export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayName = '', onClosePoll, onReopenPoll, onResetPoll, canEdit = false, onAddOption, onRemoveOption, onExpand }) => {
@@ -207,7 +207,7 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
   const bestOptionIds = new Set(bestOptions.map(b => b.option.id));
   const rankedScores = pollType === 'ranked' ? getRankedScores() : null;
   
-  // Sort options by score if closed (for ranked polls)
+  // Sort options by score if closed
   const compareRankedOptions = (a, b) => {
     const scoreA = rankedScores[a.id] || { total: 0, first: 0, second: 0, third: 0 };
     const scoreB = rankedScores[b.id] || { total: 0, first: 0, second: 0, third: 0 };
@@ -217,8 +217,16 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
     return scoreB.third - scoreA.third;
   };
   
-  const sortedOptions = pollType === 'ranked' && isClosed && rankedScores
-    ? [...options].sort(compareRankedOptions)
+  const compareDateOptions = (a, b) => {
+    const ra = getOptionResults(a.id);
+    const rb = getOptionResults(b.id);
+    if (rb.yes !== ra.yes) return rb.yes - ra.yes;
+    if (ra.no !== rb.no) return ra.no - rb.no;
+    return rb.maybe - ra.maybe;
+  };
+  
+  const sortedOptions = isClosed
+    ? [...options].sort(pollType === 'ranked' && rankedScores ? compareRankedOptions : compareDateOptions)
     : options;
   
   // Get winner(s) for ranked poll (considering tiebreaker)
@@ -235,47 +243,52 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
   };
   const rankedWinners = pollType === 'ranked' ? getWinners() : new Set();
   
-  // Compact vote button component (for date poll)
-  const VoteButton = ({ optionId, voteType, icon, activeClass }) => {
+  // Traffic-light vote circles (for date poll)
+  const voteColors = {
+    yes:   { active: 'bg-green-500/50 border-green-500/70', inactive: 'border-green-500/30 hover:border-green-500/50' },
+    maybe: { active: 'bg-amber-500/50 border-amber-500/70', inactive: 'border-amber-500/30 hover:border-amber-500/50' },
+    no:    { active: 'bg-red-500/50 border-red-500/70',     inactive: 'border-red-500/30 hover:border-red-500/50' },
+  };
+  const VoteButton = ({ optionId, voteType }) => {
     const isActive = currentUserVotes[optionId] === voteType;
     const isDisabled = !currentUserKey || !onVote || isClosed;
+    const colors = voteColors[voteType];
     return (
       <button
         onClick={() => handleVote(optionId, voteType)}
         disabled={isDisabled}
-        className={`w-8 h-8 rounded-md flex items-center justify-center transition-all ${
-          isActive 
-            ? activeClass
-            : `bg-white/5 text-gray-500 hover:bg-white/10 ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`
-        }`}
+        className="w-8 h-8 flex items-center justify-center touch-manipulation"
         title={voteType === 'yes' ? 'Kan' : voteType === 'no' ? 'Kan inte' : 'Kanske'}
       >
-        {icon}
+        <div className={`w-5 h-5 rounded-full border-2 transition-all ${
+          isActive 
+            ? colors.active
+            : `${colors.inactive} ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`
+        }`} />
       </button>
     );
   };
   
-  // Rank button component (for ranked poll)
+  // Rank button component (for ranked poll) - filled trophy when active, outline when inactive
+  const rankColors = {
+    1: { active: 'text-amber-400', inactive: 'text-amber-500/30 hover:text-amber-500/50' },
+    2: { active: 'text-gray-300', inactive: 'text-gray-400/30 hover:text-gray-400/50' },
+    3: { active: 'text-orange-500', inactive: 'text-orange-600/30 hover:text-orange-600/50' },
+  };
   const RankButton = ({ optionId, rank }) => {
     const isActive = currentUserVotes[optionId] === rank;
     const isDisabled = !currentUserKey || !onVote || isClosed;
-    const colors = {
-      1: { active: 'bg-amber-500/30 text-amber-400 ring-1 ring-amber-500/50', inactive: 'text-amber-400/50' },
-      2: { active: 'bg-gray-400/30 text-gray-300 ring-1 ring-gray-400/50', inactive: 'text-gray-400/50' },
-      3: { active: 'bg-orange-700/30 text-orange-500 ring-1 ring-orange-600/50', inactive: 'text-orange-500/50' }
-    };
+    const colors = rankColors[rank];
     return (
       <button
         onClick={() => handleRankVote(optionId, rank)}
         disabled={isDisabled}
-        className={`w-8 h-8 rounded-md flex items-center justify-center transition-all ${
-          isActive 
-            ? colors[rank].active
-            : `bg-white/5 ${colors[rank].inactive} hover:bg-white/10 ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`
+        className={`w-8 h-8 flex items-center justify-center touch-manipulation transition-all ${
+          isActive ? colors.active : `${colors.inactive} ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`
         }`}
         title={rank === 1 ? '1:a (3p)' : rank === 2 ? '2:a (2p)' : '3:a (1p)'}
       >
-        <Trophy size={14} />
+        <Trophy size={20} fill={isActive ? 'currentColor' : 'none'} />
       </button>
     );
   };
@@ -506,24 +519,9 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
                     {/* Vote buttons (only if not closed) */}
                     {!isClosed && (
                       <div className="flex items-center gap-1 flex-shrink-0">
-                        <VoteButton 
-                          optionId={option.id} 
-                          voteType="yes" 
-                          icon={<Check size={14} />} 
-                          activeClass="bg-green-500/20 text-green-400"
-                        />
-                        <VoteButton 
-                          optionId={option.id} 
-                          voteType="maybe" 
-                          icon={<HelpCircle size={14} />} 
-                          activeClass="bg-amber-500/20 text-amber-400"
-                        />
-                        <VoteButton 
-                          optionId={option.id} 
-                          voteType="no" 
-                          icon={<X size={14} />} 
-                          activeClass="bg-red-500/20 text-red-400"
-                        />
+                        <VoteButton optionId={option.id} voteType="yes" />
+                        <VoteButton optionId={option.id} voteType="maybe" />
+                        <VoteButton optionId={option.id} voteType="no" />
                       </div>
                     )}
                     
