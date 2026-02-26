@@ -172,7 +172,7 @@ function GalleryBlockEditor({ block, onUpdate, onRemove, onMove, index, total, s
                   }
                 }}
                 onBlur={(e) => updateCaption(editingCaption, e.target.value)}
-                className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500"
                 placeholder="Skriv bildtext..."
                 autoFocus
               />

@@ -590,7 +590,7 @@ function ShareModal({ object, onClose, currentUserEmail, allObjects = [], shared
                               value={contactSearch}
                               onChange={(e) => setContactSearch(e.target.value)}
                               placeholder="Sök kontakter..."
-                              className="w-full pl-8 pr-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500/50 transition-colors"
+                              className="w-full pl-8 pr-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500/50 transition-colors"
                             />
                           </div>
                         </div>
@@ -818,7 +818,7 @@ function ShareModal({ object, onClose, currentUserEmail, allObjects = [], shared
                     <select
                       value={share.role}
                       onChange={(e) => handleUpdateRole(share.key, e.target.value, share)}
-                      className="px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-xs focus:outline-none focus:border-blue-500 appearance-none cursor-pointer"
+                      className="px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-base focus:outline-none focus:border-blue-500 appearance-none cursor-pointer"
                       style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239CA3AF'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 6px center', backgroundSize: '14px', paddingRight: '24px' }}
                     >
                       <option value="viewer" className="bg-gray-800 text-white">Läsare</option>

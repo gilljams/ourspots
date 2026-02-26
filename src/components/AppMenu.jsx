@@ -157,7 +157,7 @@ export default function AppMenu({
                       }
                     }}
                     placeholder={user?.email?.split('@')[0] || 'Ditt namn'}
-                    className="w-full bg-gray-800 border border-white/10 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                    className="w-full bg-gray-800 border border-white/10 rounded-lg px-3 py-2 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500"
                   />
                 </div>
 

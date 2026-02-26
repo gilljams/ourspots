@@ -270,7 +270,7 @@ function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onView
             <select
               value={filterUserId}
               onChange={(e) => setFilterUserId(e.target.value)}
-              className="w-full px-4 lg:px-3 py-3 lg:py-2 bg-gray-800 border border-white/10 rounded-xl lg:rounded-lg text-white text-sm lg:text-xs focus:outline-none focus:border-blue-400/50 appearance-none cursor-pointer"
+              className="w-full px-4 lg:px-3 py-3 lg:py-2 bg-gray-800 border border-white/10 rounded-xl lg:rounded-lg text-white text-base lg:text-xs focus:outline-none focus:border-blue-400/50 appearance-none cursor-pointer"
               style={{ colorScheme: 'dark' }}
             >
               <option value="">Välj användare...</option>
@@ -307,7 +307,7 @@ function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onView
                     placeholder="Sök på titel..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full px-4 lg:px-3 py-2.5 lg:py-1.5 bg-white/5 border border-white/10 rounded-xl lg:rounded-lg text-white placeholder-gray-500 text-sm lg:text-xs focus:outline-none focus:border-blue-400/50"
+                    className="w-full px-4 lg:px-3 py-2.5 lg:py-1.5 bg-white/5 border border-white/10 rounded-xl lg:rounded-lg text-white placeholder-gray-500 text-base lg:text-xs focus:outline-none focus:border-blue-400/50"
                   />
                   <div className="flex gap-2 lg:gap-1.5">
                     <button

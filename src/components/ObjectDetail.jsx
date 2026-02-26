@@ -1166,7 +1166,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                         value={newUrlTitle}
                         onChange={e => setNewUrlTitle(e.target.value)}
                         placeholder="Titel (t.ex. Restaurang Bolaget)"
-                        className="w-full px-3 py-2 text-sm bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-400"
+                        className="w-full px-3 py-2 text-base bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-400"
                         autoFocus
                       />
                       <input
@@ -1174,14 +1174,14 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                         value={newUrlValue}
                         onChange={e => setNewUrlValue(e.target.value)}
                         placeholder="URL (https://...)"
-                        className="w-full px-3 py-2 text-sm bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-400"
+                        className="w-full px-3 py-2 text-base bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-400"
                       />
                       <input
                         type="text"
                         value={newUrlNote}
                         onChange={e => setNewUrlNote(e.target.value)}
                         placeholder="Anteckning (valfritt, t.ex. Middag fredag 20:00)"
-                        className="w-full px-3 py-2 text-sm bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-400"
+                        className="w-full px-3 py-2 text-base bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-400"
                       />
                       <div className="flex gap-2">
                         <button
@@ -1707,7 +1707,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                   value={objectSearchQuery}
                   onChange={e => setObjectSearchQuery(e.target.value)}
                   placeholder="Sök objekt..."
-                  className="w-full pl-9 pr-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                  className="w-full pl-9 pr-3 py-2 bg-white/5 border border-white/10 rounded-lg text-base text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
                   autoFocus
                 />
               </div>

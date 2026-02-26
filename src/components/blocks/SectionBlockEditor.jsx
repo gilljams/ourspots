@@ -61,7 +61,7 @@ function SectionBlockEditor({ block, onUpdate, onRemove, onMove, index, total, s
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               onBlur={syncTitle}
-              className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500"
+              className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500"
               placeholder="Sektionsrubrik..."
             />
           </div>

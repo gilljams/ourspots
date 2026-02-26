@@ -509,7 +509,7 @@ function UsersAdminModal({ currentUserId, onClose }) {
                   min="1"
                   value={appSettings.defaultObjectLimit}
                   onChange={(e) => setAppSettings(prev => ({ ...prev, defaultObjectLimit: parseInt(e.target.value) || 5 }))}
-                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
+                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-base focus:outline-none focus:border-indigo-500"
                 />
               </div>
               <div>
@@ -519,7 +519,7 @@ function UsersAdminModal({ currentUserId, onClose }) {
                   min="1"
                   value={appSettings.approvedObjectLimit}
                   onChange={(e) => setAppSettings(prev => ({ ...prev, approvedObjectLimit: parseInt(e.target.value) || 100 }))}
-                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
+                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-base focus:outline-none focus:border-indigo-500"
                 />
               </div>
             </div>
@@ -568,14 +568,14 @@ function UsersAdminModal({ currentUserId, onClose }) {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Sök på namn eller email..."
-              className="w-full pl-9 lg:pl-7 pr-3 py-2 lg:py-1.5 bg-white/5 border border-white/10 rounded-lg text-white text-sm lg:text-xs placeholder-gray-500 focus:outline-none focus:border-purple-500/50"
+              className="w-full pl-9 lg:pl-7 pr-3 py-2 lg:py-1.5 bg-white/5 border border-white/10 rounded-lg text-white text-base lg:text-xs placeholder-gray-500 focus:outline-none focus:border-purple-500/50"
             />
           </div>
           <div className="relative">
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="appearance-none bg-white/5 border border-white/10 rounded-lg px-3 lg:px-2 py-2 lg:py-1.5 pr-8 lg:pr-6 text-white text-sm lg:text-xs focus:outline-none focus:border-purple-500/50"
+              className="appearance-none bg-white/5 border border-white/10 rounded-lg px-3 lg:px-2 py-2 lg:py-1.5 pr-8 lg:pr-6 text-white text-base lg:text-xs focus:outline-none focus:border-purple-500/50"
             >
               <option value="name">Namn</option>
               <option value="objects">Flest objekt</option>

@@ -483,7 +483,7 @@ export function SimpleTableEditorModal({
                         onChange={(e) => updateRow(row.id, 'col1', e.target.value)}
                         onKeyDown={(e) => handleKeyDown(e, row.id, 'col1')}
                         placeholder="Rubrik..."
-                        className="flex-1 bg-transparent text-blue-400 text-sm font-semibold uppercase tracking-wide placeholder-slate-600 focus:outline-none"
+                        className="flex-1 bg-transparent text-blue-400 text-base font-semibold uppercase tracking-wide placeholder-slate-600 focus:outline-none"
                       />
                       <button
                         type="button"
@@ -527,7 +527,7 @@ export function SimpleTableEditorModal({
                         onChange={(e) => updateRow(row.id, 'col1', e.target.value)}
                         onKeyDown={(e) => handleKeyDown(e, row.id, 'col1')}
                         placeholder={col1Label}
-                        className={`flex-1 bg-transparent text-sm placeholder-slate-600 focus:outline-none min-w-0 ${row.done ? 'text-slate-500' : 'text-white'}`}
+                        className={`flex-1 bg-transparent text-base placeholder-slate-600 focus:outline-none min-w-0 ${row.done ? 'text-slate-500' : 'text-white'}`}
                       />
                       
                       {/* Column 2 - typed input */}
@@ -539,7 +539,7 @@ export function SimpleTableEditorModal({
                         onChange={(e) => updateRow(row.id, 'col2', e.target.value)}
                         onKeyDown={(e) => handleKeyDown(e, row.id, 'col2')}
                         placeholder={col2Label}
-                        className="w-28 flex-shrink-0 bg-slate-700/30 rounded px-2 py-1 text-slate-300 text-sm placeholder-slate-600 focus:outline-none focus:bg-slate-700/50"
+                        className="w-28 flex-shrink-0 bg-slate-700/30 rounded px-2 py-1 text-slate-300 text-base placeholder-slate-600 focus:outline-none focus:bg-slate-700/50"
                       />
                       
                       <button
@@ -870,7 +870,7 @@ export function MultiColumnTableEditorModal({
                       onChange={(e) => updateRow(row.id, columns[0]?.id, e.target.value)}
                       onKeyDown={(e) => handleKeyDown(e, row.id, columns[0]?.id)}
                       placeholder="Grupp/rubrik..."
-                      className="flex-1 min-w-0 bg-transparent text-blue-400 text-sm font-semibold uppercase tracking-wide placeholder-slate-600 focus:outline-none"
+                      className="flex-1 min-w-0 bg-transparent text-blue-400 text-base font-semibold uppercase tracking-wide placeholder-slate-600 focus:outline-none"
                     />
                   ) : (
                     // Regular row - dynamic columns with flex container
@@ -886,7 +886,7 @@ export function MultiColumnTableEditorModal({
                           onChange={(e) => updateRow(row.id, col.id, e.target.value)}
                           onKeyDown={(e) => handleKeyDown(e, row.id, col.id)}
                           placeholder={col.placeholder || col.label}
-                          className={`${col.width === 'flex-1' ? 'flex-1 min-w-0' : `flex-shrink-0 ${col.width}`} bg-slate-700/30 rounded px-2 py-1.5 text-sm placeholder-slate-600 focus:outline-none focus:bg-slate-700/50 ${
+                          className={`${col.width === 'flex-1' ? 'flex-1 min-w-0' : `flex-shrink-0 ${col.width}`} bg-slate-700/30 rounded px-2 py-1.5 text-base placeholder-slate-600 focus:outline-none focus:bg-slate-700/50 ${
                             col.align === 'center' ? 'text-center' : ''
                           } ${colIdx === columns.length - 1 ? 'text-slate-300' : 'text-white'}`}
                         />

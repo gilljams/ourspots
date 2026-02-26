@@ -77,7 +77,7 @@ function TiebreakerBlockEditor({ block, onUpdate, onRemove, onMove, index, total
               type="text"
               value={title}
               onChange={(e) => handleTitleChange(e.target.value)}
-              className="w-full px-3 py-2 text-sm bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-blue-500 text-white placeholder-gray-500"
+              className="w-full px-3 py-2 text-base bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-blue-500 text-white placeholder-gray-500"
               placeholder="T.ex. Avgörande"
             />
           </div>

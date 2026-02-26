@@ -909,7 +909,7 @@ function DistributionModal({
                   e.stopPropagation();
                   if (extraSeats === 0) setExtraSeats(1);
                 }}
-                className="ml-auto px-3 py-1 rounded-lg bg-white/10 border border-white/10 text-white text-sm focus:outline-none focus:border-blue-500"
+                className="ml-auto px-3 py-1 rounded-lg bg-white/10 border border-white/10 text-white text-base focus:outline-none focus:border-blue-500"
               >
                 {[2, 3, 4, 5, 6].map(n => (
                   <option key={n} value={n}>{n} personer</option>

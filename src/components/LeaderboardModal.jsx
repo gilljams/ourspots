@@ -1275,7 +1275,7 @@ export default function LeaderboardModal({
                       value={getCurrentHoleNumber() || ''}
                       onChange={(e) => handleSetHoleNumber(e.target.value)}
                       placeholder="#"
-                      className="w-16 px-3 py-2 text-center text-sm bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-green-500 text-white placeholder-gray-600"
+                      className="w-16 px-3 py-2 text-center text-base bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-green-500 text-white placeholder-gray-600"
                     />
                   </div>
                   
@@ -1585,7 +1585,7 @@ export default function LeaderboardModal({
                     onChange={(e) => handleScoreChange(participant.email, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(e, participant.email, index)}
                     placeholder="0"
-                    className="w-20 px-3 py-2 text-sm text-right bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-blue-500 text-white placeholder-gray-600"
+                    className="w-20 px-3 py-2 text-base text-right bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-blue-500 text-white placeholder-gray-600"
                   />
                 </div>
               );

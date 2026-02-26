@@ -164,7 +164,7 @@ export default function AppHeader({
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       onBlur={() => { if (!searchQuery) setSearchExpanded(false); }}
-                      className="w-full h-9 bg-white/10 text-white text-sm placeholder:text-gray-500 rounded-full pl-9 pr-8 border border-white/10 focus:border-blue-400 focus:bg-white/15 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                      className="w-full h-9 bg-white/10 text-white text-base placeholder:text-gray-500 rounded-full pl-9 pr-8 border border-white/10 focus:border-blue-400 focus:bg-white/15 focus:ring-2 focus:ring-blue-500/20 transition-all"
                       placeholder="Sök..."
                       autoFocus
                     />

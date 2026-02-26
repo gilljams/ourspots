@@ -213,7 +213,7 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
                   value={newCategory.label}
                   onChange={(e) => setNewCategory({ ...newCategory, label: e.target.value })}
                   placeholder="T.ex. Restauranger"
-                  className="w-full px-3 py-2 lg:py-1.5 lg:text-sm rounded-lg bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-400"
+                  className="w-full px-3 py-2 lg:py-1.5 text-base lg:text-sm rounded-lg bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-400"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3 lg:gap-2">

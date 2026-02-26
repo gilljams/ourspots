@@ -504,7 +504,7 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
                         onChange={(e) => updateRow(row.id, e.target.value)}
                         onKeyDown={(e) => handleKeyDown(e, row.id)}
                         placeholder="Rubrik..."
-                        className="flex-1 bg-transparent text-blue-400 text-sm font-semibold uppercase tracking-wide placeholder-slate-600 focus:outline-none"
+                        className="flex-1 bg-transparent text-blue-400 text-base font-semibold uppercase tracking-wide placeholder-slate-600 focus:outline-none"
                       />
                       <button
                         type="button"
@@ -545,7 +545,7 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
                         onChange={(e) => updateRow(row.id, e.target.value)}
                         onKeyDown={(e) => handleKeyDown(e, row.id)}
                         placeholder="Skriv här..."
-                        className={`flex-1 bg-transparent text-sm placeholder-slate-600 focus:outline-none ${row.done ? 'text-slate-500' : 'text-white'}`}
+                        className={`flex-1 bg-transparent text-base placeholder-slate-600 focus:outline-none ${row.done ? 'text-slate-500' : 'text-white'}`}
                       />
                       <button
                         type="button"

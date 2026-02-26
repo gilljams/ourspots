@@ -72,7 +72,7 @@ export default function QuickCaptureObjectPicker({
               value={quickCaptureSearchQuery}
               onChange={e => onSearchChange(e.target.value)}
               placeholder="Sök objekt..."
-              className="w-full pl-9 pr-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-orange-500"
+              className="w-full pl-9 pr-3 py-2 bg-white/5 border border-white/10 rounded-lg text-base text-white placeholder-gray-500 focus:outline-none focus:border-orange-500"
               autoFocus
             />
           </div>
