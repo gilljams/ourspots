@@ -192,7 +192,7 @@ export const ImageBlock = ({ data, isPlaying = false, animation = 'none', galler
         {hasAudio && onToggleAudio && (
           <button
             onClick={(e) => { e.stopPropagation(); onToggleAudio(); }}
-            className={`absolute bottom-2 right-2 w-9 h-9 rounded-lg flex items-center justify-center transition-all ${
+            className={`absolute bottom-2 right-2 w-7 h-7 rounded-lg flex items-center justify-center transition-all ${
               isAudioPlaying
                 ? 'bg-blue-500/40 backdrop-blur-sm text-white ring-2 ring-blue-400/50'
                 : 'bg-black/40 backdrop-blur-sm text-white/80 hover:text-white hover:bg-black/50'
@@ -200,7 +200,7 @@ export const ImageBlock = ({ data, isPlaying = false, animation = 'none', galler
             style={isAudioPlaying ? { animation: 'pulse-glow 1s ease-in-out infinite' } : {}}
             title={isAudioPlaying ? 'Pausa' : 'Spela'}
           >
-            {isAudioPlaying ? <Pause size={16} /> : <Play size={16} />}
+            {isAudioPlaying ? <Pause size={13} /> : <Play size={13} />}
           </button>
         )}
       </div>
