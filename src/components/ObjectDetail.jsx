@@ -749,18 +749,15 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                           collectionPlacesCount={block.type === 'location' && isCollection ? linkedObjectsWithCoords.length : 0}
                           onShowCollectionMap={block.type === 'location' && isCollection && linkedObjectsWithCoords.length > 0 ? () => setShowCollectionMap(true) : undefined}
                           whatsappGroupUrl={block.type === 'location' && isCollection && linkedObjectsCount > 0 ? object.whatsappGroupUrl : undefined}
-                          // Location block: centralized audio props
-                          hasAudio={block.type === 'location' && !block.inherited && audioIsDiscrete && audioUrl && !audioError}
-                          isAudioPlaying={block.type === 'location' ? isAudioPlaying : undefined}
-                          onToggleAudio={block.type === 'location' ? toggleAudio : undefined}
-                          // Image block: animation props + gallery images + date overlay + audio
+                          // Location & Image block: centralized audio props
+                          hasAudio={(block.type === 'location' && !block.inherited || block.type === 'image') && audioIsDiscrete && audioUrl && !audioError}
+                          isAudioPlaying={(block.type === 'location' || block.type === 'image') ? isAudioPlaying : undefined}
+                          onToggleAudio={(block.type === 'location' || block.type === 'image') ? toggleAudio : undefined}
+                          // Image block: animation props + gallery images + date overlay
                           isPlaying={block.type === 'image' && audioIsDiscrete ? isAudioPlaying : false}
                           animation={block.type === 'image' ? audioAnimation : 'none'}
                           galleryImages={block.type === 'image' ? (blocksToRender.find(b => b.type === 'gallery')?.data?.images || []) : []}
                           dateTagData={block.type === 'image' ? dateTagBlock?.data : undefined}
-                          hasAudio={block.type === 'image' && audioIsDiscrete && audioUrl && !audioError}
-                          isAudioPlaying={block.type === 'image' ? isAudioPlaying : undefined}
-                          onToggleAudio={block.type === 'image' ? toggleAudio : undefined}
                           // Poll-specific props (use effectiveUser for demo identity)
                           currentUser={effectiveUser}
                           userDisplayName={effectiveDisplayName}

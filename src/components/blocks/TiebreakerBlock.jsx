@@ -1026,12 +1026,12 @@ const TiebreakerBlock = ({
           <div className="w-7 h-7 rounded-lg bg-white/5 group-hover:bg-white/10 flex items-center justify-center transition-colors">
             <ChevronDown 
               size={16} 
-              className={`text-gray-400 transition-transform duration-200 ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} 
+              className={`text-gray-400 group-hover:text-white transition-all ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} 
             />
           </div>
           <div className="flex items-center gap-2.5 flex-1 min-w-0">
             <Swords size={16} className="text-gray-400 flex-shrink-0" />
-            <span className="text-sm font-medium text-gray-300 truncate">{title}</span>
+            <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors truncate">{title}</span>
           </div>
         </button>
         
