@@ -445,9 +445,9 @@ function UsersAdminModal({ currentUserId, onClose }) {
               <p className="text-xs text-gray-400">{users.length} användare totalt</p>
             </div>
           </div>
-          <button onClick={onClose} className="w-11 h-11 lg:w-8 lg:h-8 flex items-center justify-center rounded-xl lg:rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
-            <X size={20} className="lg:hidden text-gray-400" />
-            <X size={16} className="hidden lg:block text-gray-400" />
+          <button onClick={onClose} className="w-10 h-10 lg:w-8 lg:h-8 flex items-center justify-center rounded-xl lg:rounded-lg bg-white/5 hover:bg-white/10 active:bg-white/20 text-gray-400 hover:text-white transition-all touch-manipulation" aria-label="Stäng">
+            <X size={20} className="lg:hidden" />
+            <X size={16} className="hidden lg:block" />
           </button>
         </div>
         

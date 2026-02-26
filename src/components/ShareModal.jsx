@@ -526,11 +526,11 @@ function ShareModal({ object, onClose, currentUserEmail, allObjects = [], shared
           </div>
           <button 
             onClick={onClose} 
-            className="w-11 h-11 lg:w-8 lg:h-8 flex items-center justify-center rounded-xl lg:rounded-lg bg-white/5 hover:bg-white/10 active:bg-white/20 text-gray-400 hover:text-white transition-all touch-manipulation flex-shrink-0 ml-2"
+            className="w-10 h-10 lg:w-8 lg:h-8 flex items-center justify-center rounded-xl lg:rounded-lg bg-white/5 hover:bg-white/10 active:bg-white/20 text-gray-400 hover:text-white transition-all touch-manipulation flex-shrink-0 ml-2"
             aria-label="Stäng"
           >
-            <X size={24} className="lg:hidden" />
-            <X size={18} className="hidden lg:block" />
+            <X size={20} className="lg:hidden" />
+            <X size={16} className="hidden lg:block" />
           </button>
         </div>
 

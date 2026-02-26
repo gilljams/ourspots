@@ -50,7 +50,8 @@ function FocalPointPicker({ imageUrl, currentFocalPoint, onSelect, onClose }) {
         </div>
         <button
           onClick={onClose}
-          className="w-11 h-11 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors"
+          className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 active:bg-white/20 text-gray-400 hover:text-white transition-all touch-manipulation"
+          aria-label="Stäng"
         >
           <X size={20} />
         </button>

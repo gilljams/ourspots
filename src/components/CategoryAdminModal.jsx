@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Settings, ArrowUp, ArrowDown, Edit2, Trash2, ChevronDown, AlertTriangle } from 'lucide-react';
+import { Settings, ArrowUp, ArrowDown, Edit2, Trash2, ChevronDown, AlertTriangle, X } from 'lucide-react';
 import { doc, setDoc, updateDoc, deleteDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { AVAILABLE_ICONS, getIconComponent } from '../utils/iconHelpers';
@@ -195,13 +195,11 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
           </div>
           <button
             onClick={onClose}
-            className="w-11 h-11 lg:w-8 lg:h-8 flex items-center justify-center rounded-xl lg:rounded-lg bg-white/5 hover:bg-white/10 active:bg-white/20 text-gray-400 hover:text-white transition-all touch-manipulation"
+            className="w-10 h-10 lg:w-8 lg:h-8 flex items-center justify-center rounded-xl lg:rounded-lg bg-white/5 hover:bg-white/10 active:bg-white/20 text-gray-400 hover:text-white transition-all touch-manipulation"
             aria-label="Stäng"
           >
-            <svg className="w-6 h-6 lg:w-5 lg:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
+            <X size={20} className="lg:hidden" />
+            <X size={16} className="hidden lg:block" />
           </button>
         </div>
 

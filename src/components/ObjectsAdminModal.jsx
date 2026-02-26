@@ -234,7 +234,7 @@ function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onView
 
   return (
     <div 
-      className="fixed inset-0 bg-black/80 sm:bg-black/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center lg:justify-start sm:p-8 lg:p-6"
+      className="fixed inset-0 bg-black/80 sm:bg-black/70 backdrop-blur-sm z-[1000] flex items-end sm:items-center justify-center lg:justify-start sm:p-8 lg:p-6"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div 
@@ -259,11 +259,11 @@ function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onView
           </div>
           <button 
             onClick={onClose} 
-            className="w-11 h-11 lg:w-8 lg:h-8 flex items-center justify-center rounded-xl lg:rounded-lg bg-white/5 hover:bg-white/10 active:bg-white/20 text-gray-400 hover:text-white transition-all touch-manipulation"
+            className="w-10 h-10 lg:w-8 lg:h-8 flex items-center justify-center rounded-xl lg:rounded-lg bg-white/5 hover:bg-white/10 active:bg-white/20 text-gray-400 hover:text-white transition-all touch-manipulation"
             aria-label="Stäng"
           >
-            <X size={24} className="lg:hidden" />
-            <X size={18} className="hidden lg:block" />
+            <X size={20} className="lg:hidden" />
+            <X size={16} className="hidden lg:block" />
           </button>
         </div>
         
