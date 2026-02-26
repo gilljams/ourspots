@@ -160,7 +160,7 @@ export const TimerBlock = ({ data }) => {
               onClick={() => setExpandedIndex(index)}
               className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/[0.08] transition-all text-left group"
             >
-              <Timer size={16} className="text-gray-400 group-hover:text-orange-400 transition-colors flex-shrink-0" />
+              <Timer size={16} className="text-gray-400 flex-shrink-0" />
               <span className="text-sm font-medium text-gray-200 truncate flex-1">{timer.label || 'Timer'}</span>
               <span className="text-sm text-gray-500 tabular-nums">({formatTime(state.remaining)})</span>
             </button>

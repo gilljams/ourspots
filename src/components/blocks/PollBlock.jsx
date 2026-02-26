@@ -324,7 +324,7 @@ export const PollBlock = ({ data, currentUser, onVote, shares = {}, userDisplayN
       
       {/* Collapsible content */}
       {!isCollapsed && (
-        <div className="space-y-2">
+        <div className="bg-white/[0.03] rounded-xl p-4 space-y-2">
           {/* Edit mode panel */}
           {showEditMode && canEdit && (
             <div className="flex gap-2 p-2 bg-white/5 rounded-lg border border-white/10">

@@ -88,14 +88,14 @@ export const AudioBlock = ({ data }) => {
 
   if (!url) {
     return (
-      <div className="p-3 bg-white/5 rounded-lg text-gray-500 text-sm">
+      <div className="p-4 bg-white/[0.03] rounded-xl text-gray-500 text-sm">
         Ingen ljudfil angiven
       </div>
     );
   }
 
   return (
-    <div className="p-3 bg-white/5 rounded-lg">
+    <div className="p-4 bg-white/[0.03] rounded-xl">
       <audio ref={audioRef} src={url} preload="metadata" />
       
       <div className="flex items-center gap-3">
@@ -103,26 +103,26 @@ export const AudioBlock = ({ data }) => {
         <button
           onClick={togglePlay}
           disabled={isLoading || error}
-          className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all ${
+          className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${
             error 
               ? 'bg-red-500/20 text-red-400 cursor-not-allowed'
               : isLoading
                 ? 'bg-white/10 text-gray-500'
-                : 'bg-purple-500/20 text-purple-400 hover:bg-purple-500/30'
+                : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
           }`}
         >
           {isLoading ? (
             <div className="w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
           ) : isPlaying ? (
-            <Pause size={18} />
+            <Pause size={15} />
           ) : (
-            <Play size={18} className="ml-0.5" />
+            <Play size={15} className="ml-0.5" />
           )}
         </button>
 
         <div className="flex-1 min-w-0">
           {/* Title */}
-          <div className="text-sm text-white font-medium truncate mb-1">
+          <div className="text-sm text-gray-300 font-medium truncate mb-1">
             {title}
           </div>
 
@@ -132,7 +132,7 @@ export const AudioBlock = ({ data }) => {
             onClick={handleSeek}
           >
             <div 
-              className="h-full bg-purple-500 rounded-full transition-all duration-100"
+              className="h-full bg-blue-500 rounded-full transition-all duration-100"
               style={{ width: `${progress}%` }}
             />
           </div>

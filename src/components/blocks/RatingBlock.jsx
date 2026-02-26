@@ -74,7 +74,7 @@ export const RatingBlock = ({ data, currentUser, shares = {}, onRate, canEdit = 
   };
   
   return (
-    <div className="bg-white/5 rounded-xl overflow-hidden">
+    <div className="bg-white/[0.03] rounded-xl overflow-hidden">
       {/* Compact header - always visible */}
       <button
         type="button"
@@ -82,8 +82,8 @@ export const RatingBlock = ({ data, currentUser, shares = {}, onRate, canEdit = 
         className={`w-full flex items-center justify-between p-3 ${currentUserKey ? 'hover:bg-white/5 cursor-pointer' : ''}`}
       >
         <div className="flex items-center gap-2">
-          <Star size={16} className="text-yellow-400 flex-shrink-0" />
-          <span className="text-sm font-medium text-white">{title}</span>
+          <Star size={16} className="text-gray-400 flex-shrink-0" />
+          <span className="text-sm font-medium text-gray-300">{title}</span>
         </div>
         <div className="flex items-center gap-2">
           {/* Show average stars */}

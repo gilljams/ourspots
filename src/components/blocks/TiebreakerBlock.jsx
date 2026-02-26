@@ -1021,7 +1021,7 @@ const TiebreakerBlock = ({
       <div className="flex items-center gap-2">
         <button
           onClick={handleToggleCollapse}
-          className="flex-1 flex items-center gap-2.5 py-0.5 group"
+          className="flex-1 flex items-center gap-2.5 py-2 group touch-manipulation"
         >
           <div className="w-7 h-7 rounded-lg bg-white/5 group-hover:bg-white/10 flex items-center justify-center transition-colors">
             <ChevronDown 
@@ -1030,7 +1030,7 @@ const TiebreakerBlock = ({
             />
           </div>
           <div className="flex items-center gap-2.5 flex-1 min-w-0">
-            <span className="text-lg">✊</span>
+            <Swords size={16} className="text-gray-400 flex-shrink-0" />
             <span className="text-sm font-medium text-gray-300 truncate">{title}</span>
           </div>
         </button>

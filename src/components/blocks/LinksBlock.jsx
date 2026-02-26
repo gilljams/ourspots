@@ -37,10 +37,10 @@ export const LinksBlock = ({ data, onExpand }) => {
         rel="noopener noreferrer"
         className="flex items-center gap-2.5 py-1 hover:bg-white/[0.02] transition-colors group"
       >
-        <div className="w-6 h-6 rounded-lg bg-white/5 group-hover:bg-white/10 flex items-center justify-center flex-shrink-0">
-          <IconComponent size={14} className="text-purple-400" />
+        <div className="w-7 h-7 rounded-lg bg-white/5 group-hover:bg-white/10 flex items-center justify-center flex-shrink-0">
+          <IconComponent size={14} className="text-gray-400" />
         </div>
-        <span className="text-sm font-medium text-gray-200 flex-1 truncate group-hover:text-white transition-colors">
+        <span className="text-sm font-medium text-gray-300 flex-1 truncate group-hover:text-white transition-colors">
           {item.title || item.url}
         </span>
       </a>

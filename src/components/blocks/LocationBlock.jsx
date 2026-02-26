@@ -52,28 +52,28 @@ export const LocationBlock = ({ data, onDelete, canDelete, positionNumber, isPri
           {isCollection && whatsappGroupUrl && (
             <button
               onClick={() => window.open(whatsappGroupUrl, '_blank')}
-              className="w-9 h-9 rounded-lg bg-green-500/20 hover:bg-green-500/30 flex items-center justify-center text-green-400 hover:text-green-300 transition-all flex-shrink-0"
+              className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-gray-300 transition-all flex-shrink-0"
               title="WhatsApp-grupp"
             >
-              <MessageCircle size={16} />
+              <MessageCircle size={15} />
             </button>
           )}
           {/* Audio play button - shown if audio exists (centralized playback) */}
           {hasAudio && (
             <button
               onClick={onToggleAudio}
-              className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all flex-shrink-0 ${
+              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all flex-shrink-0 ${
                 isAudioPlaying 
                   ? 'bg-blue-500/30 text-blue-300 ring-2 ring-blue-500/50 ring-offset-1 ring-offset-transparent' 
-                  : 'bg-white/5 hover:bg-blue-500/20 text-gray-400 hover:text-blue-400'
+                  : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-gray-300'
               }`}
               style={isAudioPlaying ? { animation: 'pulse-glow 1s ease-in-out infinite' } : {}}
               title={isAudioPlaying ? 'Pausa' : 'Spela'}
             >
               {isAudioPlaying ? (
-                <Pause size={16} />
+                <Pause size={15} />
               ) : (
-                <Play size={16} />
+                <Play size={15} />
               )}
             </button>
           )}
@@ -81,10 +81,10 @@ export const LocationBlock = ({ data, onDelete, canDelete, positionNumber, isPri
           {isCollection && collectionPlacesCount > 0 && onShowCollectionMap && (
             <button
               onClick={onShowCollectionMap}
-              className="h-9 px-3 rounded-lg bg-white/5 hover:bg-blue-500/20 flex items-center gap-2 text-gray-400 hover:text-blue-400 transition-all"
+              className="h-8 px-2.5 rounded-lg bg-white/5 hover:bg-white/10 flex items-center gap-1.5 text-gray-400 hover:text-gray-300 transition-all"
               title="Visa alla platser på karta"
             >
-              <MapIcon size={16} />
+              <MapIcon size={15} />
               <span className="text-sm font-medium">{collectionPlacesCount} {collectionPlacesCount === 1 ? 'plats' : 'platser'}</span>
             </button>
           )}
@@ -92,20 +92,20 @@ export const LocationBlock = ({ data, onDelete, canDelete, positionNumber, isPri
           {!isCollection && onShowOnMap && (
             <button
               onClick={handleShowOnMap}
-              className="w-9 h-9 rounded-lg bg-white/5 hover:bg-blue-500/20 flex items-center justify-center text-gray-400 hover:text-blue-400 transition-all"
+              className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-gray-300 transition-all"
               title="Visa på karta"
             >
-              <MapIcon size={16} />
+              <MapIcon size={15} />
             </button>
           )}
           {/* Google Maps button - only for primary location, not extras */}
           {!isCollection && !isExtraLocation && (
             <button
               onClick={openGoogleMaps}
-              className="w-9 h-9 rounded-lg bg-white/5 hover:bg-blue-500/20 flex items-center justify-center text-gray-400 hover:text-blue-400 transition-all"
+              className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-gray-300 transition-all"
               title="Google Maps"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10"/>
                 <line x1="2" y1="12" x2="22" y2="12"/>
                 <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
@@ -116,10 +116,10 @@ export const LocationBlock = ({ data, onDelete, canDelete, positionNumber, isPri
           {!isCollection && !isExtraLocation && (
             <button
               onClick={openWaze}
-              className="w-9 h-9 rounded-lg bg-white/5 hover:bg-blue-500/20 flex items-center justify-center text-gray-400 hover:text-blue-400 transition-all"
+              className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-gray-300 transition-all"
               title="Waze"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9L18 10l-1.8-3.2c-.3-.5-.8-.8-1.4-.8H9.2c-.6 0-1.1.3-1.4.8L6 10l-2.5 1.1C2.7 11.3 2 12.1 2 13v3c0 .6.4 1 1 1h2"/>
                 <circle cx="7" cy="17" r="2"/>
                 <circle cx="17" cy="17" r="2"/>
@@ -130,20 +130,20 @@ export const LocationBlock = ({ data, onDelete, canDelete, positionNumber, isPri
           {onEditNote && (
             <button
               onClick={onEditNote}
-              className="w-9 h-9 rounded-lg bg-white/5 hover:bg-blue-500/20 flex items-center justify-center text-gray-400 hover:text-blue-400 transition-all"
+              className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-gray-300 transition-all"
               title={data.note ? 'Redigera anteckning' : 'Lägg till anteckning'}
             >
-              <Edit2 size={16} />
+              <Edit2 size={14} />
             </button>
           )}
           {/* Delete button */}
           {canDelete && onDelete && (
             <button
               onClick={handleDelete}
-              className="w-9 h-9 rounded-lg bg-white/5 hover:bg-red-500/20 flex items-center justify-center text-gray-400 hover:text-red-400 transition-all"
+              className="w-8 h-8 rounded-lg bg-white/5 hover:bg-red-500/20 flex items-center justify-center text-gray-400 hover:text-red-400 transition-all"
               title="Ta bort position"
             >
-              <X size={16} />
+              <X size={15} />
             </button>
           )}
         </div>
