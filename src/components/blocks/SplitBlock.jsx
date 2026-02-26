@@ -1,13 +1,15 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Wallet, ChevronDown, Lock, Edit2, RotateCcw } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { Wallet, ChevronDown, Lock, Edit2, RotateCcw, ArrowRight } from 'lucide-react';
 
 // Split Block - expense sharing for trips etc.
 export const SplitBlock = ({ data, currentUser, shares = {}, canEdit = false, onUpdateAmount, onCloseSplit, onResetSplit, onExpand }) => {
   const [isCollapsed, setIsCollapsed] = useState(data.defaultCollapsed ?? true);
   const [myAmount, setMyAmount] = useState('');
-  const [hasEdited, setHasEdited] = useState(false);
+  const [showSaved, setShowSaved] = useState(false);
   const [showEditMode, setShowEditMode] = useState(false);
   const blockRef = useRef(null);
+  const saveTimeoutRef = useRef(null);
+  const savedFlashRef = useRef(null);
   
   const title = data.title || 'Splitt';
   const model = data.model || 'individual'; // 'individual' or 'family'
@@ -52,13 +54,21 @@ export const SplitBlock = ({ data, currentUser, shares = {}, canEdit = false, on
     }
   };
   
-  // Sync myAmount with saved value (but only if user hasn't edited)
+  // Sync myAmount with saved value (only when not focused)
   useEffect(() => {
-    if (!hasEdited && myParticipant) {
+    if (myParticipant && document.activeElement?.dataset?.splitInput !== 'true') {
       const savedPaid = parseFloat(myParticipant.paid) || 0;
       setMyAmount(savedPaid > 0 ? savedPaid.toString() : '');
     }
-  }, [myParticipant?.paid, hasEdited]);
+  }, [myParticipant?.paid]);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      if (savedFlashRef.current) clearTimeout(savedFlashRef.current);
+    };
+  }, []);
   
   // Calculate per-participant data
   const getParticipantData = (participant) => {
@@ -106,29 +116,49 @@ export const SplitBlock = ({ data, currentUser, shares = {}, canEdit = false, on
     return settlements;
   };
   
-  const handleSaveMyAmount = () => {
+  const doSave = useCallback((value) => {
     if (onUpdateAmount && myParticipant) {
-      const evaluated = evaluateMathExpression(myAmount);
-      onUpdateAmount(myParticipant.email, evaluated);
-      setMyAmount(evaluated > 0 ? evaluated.toString() : '');
-      setHasEdited(false);
+      const evaluated = evaluateMathExpression(value);
+      const currentSaved = parseFloat(myParticipant.paid) || 0;
+      if (evaluated !== currentSaved) {
+        onUpdateAmount(myParticipant.email, evaluated);
+        setMyAmount(evaluated > 0 ? evaluated.toString() : '');
+        // Show saved flash
+        setShowSaved(true);
+        if (savedFlashRef.current) clearTimeout(savedFlashRef.current);
+        savedFlashRef.current = setTimeout(() => setShowSaved(false), 1200);
+      }
     }
+  }, [onUpdateAmount, myParticipant]);
+
+  const handleAmountChange = (value) => {
+    setMyAmount(value);
+    // Debounced save after 800ms
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => doSave(value), 800);
+  };
+
+  const handleAmountBlur = () => {
+    // Immediate save on blur
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    doSave(myAmount);
   };
   
   const formatAmount = (amount) => {
     return Math.round(amount).toLocaleString('sv-SE');
   };
-  
-  // Check if my amount has changed from saved
-  const myPaid = myParticipant ? (parseFloat(myParticipant.paid) || 0) : 0;
-  const myAmountNum = parseFloat(myAmount) || 0;
-  const hasUnsavedChanges = myParticipant && myAmountNum !== myPaid;
+
+  // Get initials from name or email
+  const getInitials = (participant) => {
+    const name = participant.name || participant.email?.split('@')[0] || '?';
+    return name.charAt(0).toUpperCase();
+  };
   
   if (participants.length === 0) {
     return (
       <div className="bg-white/[0.03] rounded-xl p-4">
         <div className="flex items-center gap-2 text-gray-400">
-          <Wallet size={18} className="text-green-400" />
+          <Wallet size={18} className="text-gray-400" />
           <span className="text-sm">{title} – inga deltagare tillagda än</span>
         </div>
       </div>
@@ -137,6 +167,70 @@ export const SplitBlock = ({ data, currentUser, shares = {}, canEdit = false, on
   
   // Count how many have paid
   const paidCount = participants.filter(p => (parseFloat(p.paid) || 0) > 0).length;
+  
+  // Render a participant row
+  const renderParticipantRow = (participant, isMe = false) => {
+    const { paid, balance } = getParticipantData(participant);
+    const displayName = isMe 
+      ? (participant.name || 'Jag')
+      : (participant.name || participant.email?.split('@')[0]);
+    
+    return (
+      <div className={`flex items-center gap-3 px-4 py-2.5 ${isMe ? 'bg-white/[0.03]' : ''}`}>
+        {/* Avatar */}
+        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-medium flex-shrink-0 ${
+          isMe ? 'bg-blue-500/20 text-blue-400' : 'bg-white/[0.06] text-gray-500'
+        }`}>
+          {getInitials(participant)}
+        </div>
+        
+        {/* Name + paid amount */}
+        <div className="flex-1 min-w-0">
+          <div className="text-xs text-gray-300 truncate">
+            {displayName}
+            {model === 'family' && <span className="text-gray-600 ml-1">×{participant.weight || 1}</span>}
+          </div>
+          {paid > 0 && (
+            <div className="text-[11px] text-gray-500 tabular-nums">
+              betalade {formatAmount(paid)} {currency}
+            </div>
+          )}
+        </div>
+        
+        {/* Inline input for my row */}
+        {isMe && !isClosed && onUpdateAmount ? (
+          <div className="relative flex-shrink-0">
+            <input
+              data-split-input="true"
+              type="text"
+              inputMode="decimal"
+              value={myAmount}
+              onChange={(e) => handleAmountChange(e.target.value)}
+              onFocus={(e) => e.target.select()}
+              onBlur={handleAmountBlur}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.target.blur(); } }}
+              placeholder="0"
+              className="w-20 px-2 py-1 text-xs bg-white/5 border border-white/10 rounded-md focus:outline-none focus:border-blue-500/50 text-white placeholder-gray-600 text-right tabular-nums transition-colors"
+            />
+            {showSaved && (
+              <span className="absolute -right-4 top-1/2 -translate-y-1/2 text-[10px] text-blue-400 pointer-events-none">✓</span>
+            )}
+          </div>
+        ) : (
+          /* Balance */
+          <div className="flex-shrink-0 text-right">
+            {Math.abs(balance) >= 0.5 ? (
+              <div className={`text-xs font-medium tabular-nums ${balance > 0 ? 'text-emerald-400' : 'text-orange-400'}`}>
+                {balance > 0 ? '+' : ''}{formatAmount(balance)} {currency}
+              </div>
+            ) : (
+              <div className="text-xs text-gray-600 tabular-nums">±0</div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
   
   return (
     <div ref={blockRef} className="space-y-2">
@@ -177,7 +271,7 @@ export const SplitBlock = ({ data, currentUser, shares = {}, canEdit = false, on
           <button
             onClick={() => setShowEditMode(!showEditMode)}
             className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
-              showEditMode ? 'bg-amber-500/20 text-amber-400' : 'bg-white/5 text-gray-400 hover:bg-white/10'
+              showEditMode ? 'bg-blue-500/20 text-blue-400' : 'bg-white/5 text-gray-400 hover:bg-white/10'
             }`}
             title="Redigera"
           >
@@ -188,10 +282,10 @@ export const SplitBlock = ({ data, currentUser, shares = {}, canEdit = false, on
       
       {/* Collapsible content */}
       {!isCollapsed && (
-        <div className="bg-white/[0.03] rounded-xl p-4 space-y-4">
-          {/* Edit mode panel */}
+        <div className="bg-white/[0.03] rounded-xl overflow-hidden">
+          {/* Edit mode actions */}
           {showEditMode && canEdit && (
-            <div className="flex gap-2 p-2 bg-white/5 rounded-lg border border-white/10 -mt-2">
+            <div className="flex items-center justify-end gap-3 px-4 py-2 border-b border-white/5">
               {!isClosed && onCloseSplit && totalPaid > 0 && (
                 <button
                   onClick={() => {
@@ -200,10 +294,10 @@ export const SplitBlock = ({ data, currentUser, shares = {}, canEdit = false, on
                       setShowEditMode(false);
                     }
                   }}
-                  className="flex-1 py-1.5 text-xs text-amber-400 hover:bg-amber-500/20 rounded flex items-center justify-center gap-1"
+                  className="text-xs text-gray-500 hover:text-gray-300 flex items-center gap-1 transition-colors"
                 >
-                  <Lock size={12} />
-                  Avsluta & visa swish
+                  <Lock size={11} />
+                  Avsluta
                 </button>
               )}
               {totalPaid > 0 && onResetSplit && (
@@ -214,133 +308,56 @@ export const SplitBlock = ({ data, currentUser, shares = {}, canEdit = false, on
                       setShowEditMode(false);
                     }
                   }}
-                  className="flex-1 py-1.5 text-xs text-red-400 hover:bg-red-500/20 rounded flex items-center justify-center gap-1"
+                  className="text-xs text-gray-500 hover:text-red-400 flex items-center gap-1 transition-colors"
                 >
-                  <RotateCcw size={12} />
+                  <RotateCcw size={11} />
                   Nollställ
                 </button>
               )}
             </div>
           )}
           
-          {/* My input section */}
-          {myParticipant && !isClosed && onUpdateAmount && (
-            <div className="space-y-1.5">
-              <div className="text-xs text-gray-400">Jag har lagt ut:</div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={myAmount}
-                  onChange={(e) => { setMyAmount(e.target.value); setHasEdited(true); }}
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleSaveMyAmount(); }}
-                  placeholder="0"
-                  className="flex-1 px-3 py-1.5 text-sm bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-green-500 text-white placeholder-gray-600 text-right"
-                />
-                <button
-                  onClick={handleSaveMyAmount}
-                  disabled={!hasUnsavedChanges}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                    hasUnsavedChanges 
-                      ? 'bg-green-500 text-white hover:bg-green-600' 
-                      : 'bg-white/5 text-gray-500 cursor-not-allowed'
-                  }`}
-                >
-                  Spara
-                </button>
-              </div>
+          {/* Participant rows */}
+          <div className="divide-y divide-white/[0.04]">
+            {myParticipant && renderParticipantRow(myParticipant, true)}
+            {otherParticipants.map((participant, idx) => (
+              <React.Fragment key={idx}>
+                {renderParticipantRow(participant, false)}
+              </React.Fragment>
+            ))}
+          </div>
+          
+          {/* Total summary */}
+          {totalPaid > 0 && (
+            <div className="flex items-center justify-between px-4 py-2.5 border-t border-white/5 bg-white/[0.02]">
+              <span className="text-[11px] text-gray-500 uppercase tracking-wider">Totalt</span>
+              <span className="text-xs text-gray-300 font-medium tabular-nums">{formatAmount(totalPaid)} {currency}</span>
             </div>
           )}
-          
-          {/* Participants table */}
-          <div>
-            {/* Column headers */}
-            <div className="flex items-center justify-between px-2 pb-1 mb-1 border-b border-white/5">
-              <span className="text-xs text-gray-500">Deltagare</span>
-              <div className="flex items-center gap-2">
-                <span className="w-16 text-right text-xs text-gray-500">Utlägg</span>
-                <span className="w-16 text-right text-xs text-gray-500">Saldo</span>
-              </div>
-            </div>
-            
-            {/* All participants list */}
-            <div className="space-y-0.5">
-              {/* My row first */}
-              {myParticipant && (() => {
-                const { paid, balance } = getParticipantData(myParticipant);
-                return (
-                  <div className="flex items-center justify-between py-1 px-2 text-sm">
-                    <span className="text-gray-300 truncate">
-                      {myParticipant.name || 'Jag'}
-                      {model === 'family' && <span className="text-gray-600 ml-1">×{myParticipant.weight || 1}</span>}
-                    </span>
-                    <div className="flex items-center gap-2 tabular-nums">
-                      <span className={`w-16 text-right ${paid > 0 ? 'text-gray-400' : 'text-gray-600'}`}>
-                        {paid > 0 ? formatAmount(paid) : '–'}
-                      </span>
-                      <span className={`w-16 text-right ${balance > 0.5 ? 'text-green-400' : balance < -0.5 ? 'text-red-400' : 'text-gray-600'}`}>
-                        {balance > 0.5 ? '+' : ''}{formatAmount(balance)}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })()}
-              {/* Other participants */}
-              {otherParticipants.map((participant, idx) => {
-                const { paid, balance } = getParticipantData(participant);
-                return (
-                  <div 
-                    key={idx}
-                    className="flex items-center justify-between py-1 px-2 text-sm"
-                  >
-                    <span className="text-gray-400 truncate">
-                      {participant.name || participant.email?.split('@')[0]}
-                      {model === 'family' && <span className="text-gray-600 ml-1">×{participant.weight || 1}</span>}
-                    </span>
-                    <div className="flex items-center gap-2 tabular-nums">
-                      <span className={`w-16 text-right ${paid > 0 ? 'text-gray-400' : 'text-gray-600'}`}>
-                        {paid > 0 ? formatAmount(paid) : '–'}
-                      </span>
-                      <span className={`w-16 text-right ${balance > 0.5 ? 'text-green-400' : balance < -0.5 ? 'text-red-400' : 'text-gray-600'}`}>
-                        {balance > 0.5 ? '+' : ''}{formatAmount(balance)}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            
-            {/* Total row */}
-            {totalPaid > 0 && (
-              <div className="flex items-center justify-between py-1 px-2 text-sm mt-1 pt-1 border-t border-white/10">
-                <span className="text-gray-500">Totalt</span>
-                <div className="flex items-center gap-2 tabular-nums">
-                  <span className="w-16 text-right text-gray-300">{formatAmount(totalPaid)}</span>
-                  <span className="w-16"></span>
-                </div>
-              </div>
-            )}
-          </div>
       
-          {/* Settlement suggestions (when closed or has amounts) */}
-          {isClosed && totalPaid > 0 && (
-            <div className="pt-3 border-t border-white/10">
-              {getSettlements().length > 0 ? (
-                <div className="space-y-1.5">
-                  {getSettlements().map((s, idx) => (
-                    <div key={idx} className="text-sm text-gray-400">
-                      <span className="text-gray-300">{s.from}</span>
-                      {' swishar '}
-                      <span className="text-gray-300">{s.to}</span>
-                      {' '}
-                      <span className="text-white font-medium tabular-nums">{formatAmount(s.amount)}</span>
-                    </div>
-                  ))}
+          {/* Settlement suggestions (when closed) */}
+          {isClosed && totalPaid > 0 && getSettlements().length > 0 && (
+            <div className="border-t border-white/5">
+              <div className="px-4 py-2 text-[11px] text-gray-500 uppercase tracking-wider">Gör upp</div>
+              {getSettlements().map((s, idx) => (
+                <div key={idx} className="flex items-center gap-2.5 px-4 py-2.5 border-t border-white/[0.03]">
+                  <div className="w-6 h-6 rounded-full bg-white/[0.06] flex items-center justify-center text-[10px] text-gray-500 font-medium flex-shrink-0">
+                    {s.from.charAt(0).toUpperCase()}
+                  </div>
+                  <ArrowRight size={12} className="text-gray-600 flex-shrink-0" />
+                  <div className="w-6 h-6 rounded-full bg-white/[0.06] flex items-center justify-center text-[10px] text-gray-500 font-medium flex-shrink-0">
+                    {s.to.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="text-xs text-gray-400 flex-1 min-w-0 truncate">
+                    {s.from} → {s.to}
+                  </span>
+                  <span className="text-xs text-white font-medium tabular-nums flex-shrink-0">{formatAmount(s.amount)} {currency}</span>
                 </div>
-              ) : (
-                <div className="text-sm text-gray-500">Alla är kvitt!</div>
-              )}
+              ))}
             </div>
+          )}
+          {isClosed && totalPaid > 0 && getSettlements().length === 0 && (
+            <div className="px-4 py-3 border-t border-white/5 text-xs text-gray-500 text-center">Alla är kvitt! ✓</div>
           )}
         </div>
       )}
