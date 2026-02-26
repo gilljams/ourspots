@@ -191,84 +191,70 @@ export const HeroInfoBlock = ({
   }
 
   return (
-    <div className="mt-3 space-y-1.5">
-      {/* Row 1: Location address (left) + action buttons (right) */}
-      {hasLocation && (
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            <MapPin size={15} className="text-gray-400 flex-shrink-0" />
+    <div className="mt-3 flex items-start gap-2">
+      {/* Left: info column */}
+      <div className="flex-1 min-w-0 space-y-1">
+        {/* Address */}
+        {hasLocation && (
+          <div className="flex items-center gap-1.5 min-w-0">
+            <MapPin size={14} className="text-gray-400 flex-shrink-0" />
             <span className="text-sm text-gray-300 truncate">
               {locationData.address || `${locationData.lat.toFixed(5)}, ${locationData.lng.toFixed(5)}`}
             </span>
           </div>
-          {actionButtons.length > 0 && (
-            <div className="flex items-center gap-1 flex-shrink-0">
-              {actionButtons}
-            </div>
-          )}
-        </div>
-      )}
+        )}
 
-      {/* Row 2: Rating + dates + planner (left), right-aligned when no location */}
-      {hasMetadata && (
-        <div className={`flex items-center flex-wrap gap-x-2.5 gap-y-1 ${hasLocation ? 'pl-[23px]' : ''}`}>
-          {/* Rating */}
-          {hasRating && (
-            <RatingInline
-              data={ratingData}
-              currentUser={currentUser}
-              onRate={onRate}
-            />
-          )}
-
-          {/* Separator */}
-          {hasRating && hasDateTags && (
-            <span className="text-gray-600 text-xs select-none">·</span>
-          )}
-
-          {/* Date pills + planner */}
-          {hasDateTags && (
-            <div className="flex items-center gap-1.5">
-              <DateTagBlock data={dateTagData} />
-              {hasPlanner && (
-                <button
-                  onClick={onShowPlanner}
-                  className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-gray-300 transition-all flex-shrink-0"
-                  title={`Visa planering (${planningData.days} dagar)`}
-                >
-                  <Calendar size={13} />
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Planner without dates */}
-          {!hasDateTags && hasPlanner && (
-            <button
-              onClick={onShowPlanner}
-              className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-gray-300 transition-all flex-shrink-0"
-              title={`Visa planering (${planningData.days} dagar)`}
-            >
-              <Calendar size={13} />
-            </button>
-          )}
-
-          {/* When no location row, push action buttons to the right of metadata row */}
-          {!hasLocation && actionButtons.length > 0 && (
-            <>
-              <div className="flex-1" />
-              <div className="flex items-center gap-1 flex-shrink-0">
-                {actionButtons}
+        {/* Rating + dates + planner – all on one line, wrapping naturally */}
+        {hasMetadata && (
+          <div className="flex items-center flex-wrap gap-x-2 gap-y-1">
+            {hasRating && (
+              <RatingInline
+                data={ratingData}
+                currentUser={currentUser}
+                onRate={onRate}
+              />
+            )}
+            {hasRating && hasDateTags && (
+              <span className="text-gray-600 text-xs select-none">·</span>
+            )}
+            {hasDateTags && (
+              <div className="flex items-center gap-1.5">
+                <DateTagBlock data={dateTagData} />
+                {hasPlanner && (
+                  <button
+                    onClick={onShowPlanner}
+                    className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-gray-300 transition-all flex-shrink-0"
+                    title={`Visa planering (${planningData.days} dagar)`}
+                  >
+                    <Calendar size={13} />
+                  </button>
+                )}
               </div>
-            </>
-          )}
-        </div>
-      )}
+            )}
+            {!hasDateTags && hasPlanner && (
+              <button
+                onClick={onShowPlanner}
+                className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-gray-300 transition-all flex-shrink-0"
+                title={`Visa planering (${planningData.days} dagar)`}
+              >
+                <Calendar size={13} />
+              </button>
+            )}
+          </div>
+        )}
 
-      {/* Note */}
-      {locationData?.note && (
-        <div className={`text-xs text-gray-500 italic ${hasLocation ? 'pl-[23px]' : ''}`}>
-          "{locationData.note}"
+        {/* Note */}
+        {locationData?.note && (
+          <div className="text-xs text-gray-500 italic">
+            "{locationData.note}"
+          </div>
+        )}
+      </div>
+
+      {/* Right: action buttons – vertically centered, right-aligned */}
+      {actionButtons.length > 0 && (
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {actionButtons}
         </div>
       )}
     </div>
