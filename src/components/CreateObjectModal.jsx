@@ -159,7 +159,8 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
   const [inheritLocation, setInheritLocation] = useState(false);
   const [isCollection, setIsCollection] = useState(sourceObject?.isCollection || false);
   const [whatsappGroupUrl, setWhatsappGroupUrl] = useState(sourceObject?.whatsappGroupUrl || '');
-  const [showWhatsappEditor, setShowWhatsappEditor] = useState(!!sourceObject?.whatsappGroupUrl);
+  const [whatsappAdded, setWhatsappAdded] = useState(!!sourceObject?.whatsappGroupUrl);
+  const [whatsappExpanded, setWhatsappExpanded] = useState(false);
   
   // Collection fields - copy structure but NOT notes (linkedObjectNotes is time-specific)
   const linkedObjectIds = sourceObject?.linkedObjectIds || [];
@@ -1366,7 +1367,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
               const hasRating = metadataBlocks.some(b => b.type === 'rating');
               const hasDateTag = metadataBlocks.some(b => b.type === 'datetag');
               const hasGallery = metadataBlocks.some(b => b.type === 'gallery');
-              const hasWhatsapp = isCollection && showWhatsappEditor;
+              const hasWhatsapp = isCollection && whatsappAdded;
               // Always show section so add buttons are accessible
               return (
                 <div className="space-y-2">
@@ -1391,33 +1392,35 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                       <div className="flex items-center gap-2 p-3">
                         <button
                           type="button"
-                          onClick={() => setShowWhatsappEditor(prev => !prev || !whatsappGroupUrl)}
+                          onClick={() => setWhatsappExpanded(prev => !prev)}
                           className="flex items-center gap-2 flex-1 min-w-0"
                         >
-                          <ChevronDown size={16} className="text-gray-500 transition-transform flex-shrink-0" />
+                          <ChevronDown size={16} className={`text-gray-500 transition-transform flex-shrink-0 ${whatsappExpanded ? '' : '-rotate-90'}`} />
                           <MessageCircle size={16} className="text-blue-400 flex-shrink-0" />
                           <span className="text-sm font-medium text-gray-300 truncate">
                             WhatsApp
                           </span>
-                          {whatsappGroupUrl && (
-                            <span className="text-xs text-gray-500 truncate flex-shrink min-w-0">{whatsappGroupUrl.replace(/^https?:\/\//, '').slice(0, 24)}...</span>
+                          {!whatsappExpanded && whatsappGroupUrl && (
+                            <span className="text-xs text-gray-500 truncate flex-shrink min-w-0">{whatsappGroupUrl.replace(/^https?:\/\//, '').slice(0, 30)}</span>
                           )}
                         </button>
-                        <button type="button" onClick={() => { setWhatsappGroupUrl(''); setShowWhatsappEditor(false); setFormTouched(true); }} className="w-7 h-7 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center flex-shrink-0">
+                        <button type="button" onClick={() => { setWhatsappGroupUrl(''); setWhatsappAdded(false); setWhatsappExpanded(false); setFormTouched(true); }} className="w-7 h-7 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center flex-shrink-0">
                           <X size={14} />
                         </button>
                       </div>
-                      <div className="px-3 pb-3 space-y-2">
-                        <input
-                          type="url"
-                          value={whatsappGroupUrl}
-                          onChange={(e) => { setWhatsappGroupUrl(e.target.value); setFormTouched(true); }}
-                          disabled={saving}
-                          placeholder="https://chat.whatsapp.com/..."
-                          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                        />
-                        <p className="text-xs text-gray-500">Länk till gruppens WhatsApp-chatt</p>
-                      </div>
+                      {whatsappExpanded && (
+                        <div className="px-3 pb-3 space-y-2">
+                          <input
+                            type="url"
+                            value={whatsappGroupUrl}
+                            onChange={(e) => { setWhatsappGroupUrl(e.target.value); setFormTouched(true); }}
+                            disabled={saving}
+                            placeholder="https://chat.whatsapp.com/..."
+                            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                          />
+                          <p className="text-xs text-gray-500">Länk till gruppens WhatsApp-chatt</p>
+                        </div>
+                      )}
                     </div>
                   )}
                   {/* Quick-add buttons for missing metadata types */}
@@ -1439,7 +1442,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                         </button>
                       )}
                       {isCollection && !hasWhatsapp && (
-                        <button type="button" onClick={() => setShowWhatsappEditor(true)} disabled={saving} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 border border-dashed border-white/10 text-gray-500 hover:text-gray-300 hover:bg-white/10 text-xs transition-colors">
+                        <button type="button" onClick={() => { setWhatsappAdded(true); setWhatsappExpanded(true); }} disabled={saving} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 border border-dashed border-white/10 text-gray-500 hover:text-gray-300 hover:bg-white/10 text-xs transition-colors">
                           <MessageCircle size={12} /> + WhatsApp
                         </button>
                       )}
