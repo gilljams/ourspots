@@ -6,9 +6,11 @@ import { emailToKey, keyToEmail } from '../utils/iconHelpers';
 import { useKeyboardHeight } from '../utils/useKeyboardHeight';
 import { useSwipeToClose } from '../utils/useSwipeToClose';
 import { useConfirm } from '../utils/useConfirm';
+import { useToast } from '../utils/useToast';
 
 function ShareModal({ object, onClose, currentUserEmail, allObjects = [], sharedContacts = [], favoriteContacts = [], onAddContact, onToggleFavoriteContact }) {
   const askConfirm = useConfirm();
+  const toast = useToast();
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('viewer');
   const [includeChildren, setIncludeChildren] = useState(false);
@@ -202,7 +204,7 @@ function ShareModal({ object, onClose, currentUserEmail, allObjects = [], shared
       setConfirmDialog(null);
     } catch (err) {
       console.error('Error removing share:', err);
-      alert('Kunde inte ta bort delningen');
+      toast.error('Kunde inte ta bort delningen');
     } finally {
       setProcessing(false);
     }
@@ -273,7 +275,7 @@ function ShareModal({ object, onClose, currentUserEmail, allObjects = [], shared
       setConfirmDialog(null);
     } catch (err) {
       console.error('Error purging user data:', err);
-      alert('Kunde inte rensa data');
+      toast.error('Kunde inte rensa data');
     } finally {
       setProcessing(false);
     }
@@ -388,7 +390,7 @@ function ShareModal({ object, onClose, currentUserEmail, allObjects = [], shared
       setConfirmDialog(null);
     } catch (err) {
       console.error('Error excluding inherited share:', err);
-      alert('Kunde inte ta bort den ärvda delningen');
+      toast.error('Kunde inte ta bort den ärvda delningen');
     } finally {
       setProcessing(false);
     }
@@ -405,7 +407,7 @@ function ShareModal({ object, onClose, currentUserEmail, allObjects = [], shared
     const toShare = linkedObjects.filter(obj => !obj.shares?.[emailKey]);
     
     if (toShare.length === 0) {
-      alert(`Alla ${linkedObjects.length} länkade objekt är redan delade med ${userEmail}.`);
+      toast.info(`Alla ${linkedObjects.length} länkade objekt är redan delade med ${userEmail}.`);
       return;
     }
     
@@ -433,10 +435,10 @@ function ShareModal({ object, onClose, currentUserEmail, allObjects = [], shared
         })
       ));
       
-      alert(`✓ Delat ${toShare.length} objekt med ${userEmail}!`);
+      toast.success(`Delat ${toShare.length} objekt med ${userEmail}!`);
     } catch (err) {
       console.error('Error pushing to linked objects:', err);
-      alert('Kunde inte dela alla länkade objekt. Försök igen.');
+      toast.error('Kunde inte dela alla länkade objekt. Försök igen.');
     } finally {
       setPushingToLinked(false);
     }

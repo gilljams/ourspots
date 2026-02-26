@@ -5,10 +5,12 @@ import { db } from '../firebase';
 import { useKeyboardHeight } from '../utils/useKeyboardHeight';
 import { useSwipeToClose } from '../utils/useSwipeToClose';
 import { useConfirm } from '../utils/useConfirm';
+import { useToast } from '../utils/useToast';
 
 function UsersAdminModal({ currentUserId, onClose }) {
   const [users, setUsers] = useState([]);
   const confirm = useConfirm();
+  const toast = useToast();
   const [allObjects, setAllObjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -61,7 +63,7 @@ function UsersAdminModal({ currentUserId, onClose }) {
       setTimeout(() => setSettingsSaved(false), 2000);
     } catch (err) {
       console.error('Error saving settings:', err);
-      alert('Kunde inte spara inställningar');
+      toast.error('Kunde inte spara inställningar');
     }
     setSavingSettings(false);
   };
@@ -146,7 +148,7 @@ function UsersAdminModal({ currentUserId, onClose }) {
   // Toggle admin status
   const toggleAdmin = async (userId, currentStatus) => {
     if (userId === currentUserId) {
-      alert('Du kan inte ändra din egen admin-status!');
+      toast.error('Du kan inte ändra din egen admin-status!');
       return;
     }
     
@@ -158,7 +160,7 @@ function UsersAdminModal({ currentUserId, onClose }) {
       });
     } catch (err) {
       console.error('Error updating admin status:', err);
-      alert('Kunde inte uppdatera admin-status');
+      toast.error('Kunde inte uppdatera admin-status');
     }
     setUpdating(null);
   };
@@ -166,7 +168,7 @@ function UsersAdminModal({ currentUserId, onClose }) {
   // Toggle blocked status
   const toggleBlocked = async (userId, currentStatus) => {
     if (userId === currentUserId) {
-      alert('Du kan inte blockera dig själv!');
+      toast.error('Du kan inte blockera dig själv!');
       return;
     }
     
@@ -184,7 +186,7 @@ function UsersAdminModal({ currentUserId, onClose }) {
       });
     } catch (err) {
       console.error('Error updating blocked status:', err);
-      alert('Kunde inte uppdatera blockerad-status');
+      toast.error('Kunde inte uppdatera blockerad-status');
     }
     setUpdating(null);
   };
@@ -200,7 +202,7 @@ function UsersAdminModal({ currentUserId, onClose }) {
       });
     } catch (err) {
       console.error('Error updating approved status:', err);
-      alert('Kunde inte uppdatera godkännande-status');
+      toast.error('Kunde inte uppdatera godkännande-status');
     }
     setUpdating(null);
   };

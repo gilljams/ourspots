@@ -15,6 +15,7 @@ import FocalPointPicker from './FocalPointPicker';
 import BlockEditor from './BlockEditor';
 import { useKeyboardHeight } from '../utils/useKeyboardHeight';
 import { useConfirm } from '../utils/useConfirm';
+import { useToast } from '../utils/useToast';
 
 // Demo users available when in demo mode for realistic examples
 const DEMO_USERS = {
@@ -138,6 +139,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
   const isDuplicate = !!duplicateFromObject;
   const sourceObject = editObject || duplicateFromObject; // Use either for initial data
   const confirm = useConfirm();
+  const toast = useToast();
   
   // Determine default type: source object > default category prop > parent type > first category
   const getDefaultType = () => {
@@ -476,7 +478,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
 
   const handleGPSCapture = () => {
     if (!navigator.geolocation) {
-      alert('GPS stöds inte av din enhet');
+      toast.error('GPS stöds inte av din enhet');
       return;
     }
     if (capturingGPS) return;
@@ -511,7 +513,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             setLng(bestPosition.coords.longitude);
             setFormTouched(true);
           } else {
-            alert('Kunde inte hämta position: ' + error.message);
+            toast.error('Kunde inte hämta position: ' + error.message);
           }
           setCapturingGPS(false);
           setGpsAccuracy(null);
@@ -540,7 +542,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
           setFormTouched(true);
         },
         (error) => {
-          alert('Kunde inte hämta position: ' + error.message);
+          toast.error('Kunde inte hämta position: ' + error.message);
           setCapturingGPS(false);
         },
         { enableHighAccuracy: false, timeout: 10000 }
@@ -566,10 +568,10 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
         setLng(gpsData.lng);
         setFormTouched(true);
       } else {
-        alert('Ingen platsdata hittades i bilden.');
+        toast.info('Ingen platsdata hittades i bilden.');
       }
     } catch (e) {
-      alert('Kunde inte läsa platsdata från bilden.');
+      toast.error('Kunde inte läsa platsdata från bilden.');
     } finally {
       setExtractingGPS(false);
     }
@@ -606,7 +608,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
       if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (err) {
       console.error('Upload error:', err);
-      alert('Kunde inte ladda upp bild. Försök igen!');
+      toast.error('Kunde inte ladda upp bild. Försök igen!');
     } finally {
       setUploadingImage(false);
     }
@@ -614,7 +616,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
 
   const handleSubmit = async () => {
     if (!title || !title.trim()) {
-      alert('Titel måste fyllas i!');
+      toast.error('Titel måste fyllas i!');
       return;
     }
 

@@ -18,6 +18,7 @@ import { useSharing } from './utils/useSharing';
 import { useDisplayObjects } from './utils/useDisplayObjects';
 import { useSaveObject } from './utils/useSaveObject';
 import { useCollectionActions } from './utils/useCollectionActions';
+import { useToast } from './utils/useToast';
 import { useContactActions } from './utils/useContactActions';
 import { useDebounce } from './utils/useDebounce';
 
@@ -64,9 +65,9 @@ L.Icon.Default.mergeOptions({
 });
 
 function App() {
-  const [toast, setToastInternal] = useState(null); // { message, type: 'success' | 'error' | 'info', key }
-  // Wrapper to add unique key for proper timer reset on repeated toasts
-  const setToast = (value) => setToastInternal(value ? { ...value, key: Date.now() } : null);
+  // Global toast via context — setToast shim for backwards-compat with hooks
+  const toast = useToast();
+  const setToast = (value) => { if (value) toast.show(value.message, value.type); };
 
   // --- Extracted hooks ---
   const {
@@ -187,14 +188,6 @@ function App() {
     }
     setIsGlobalTracking(false);
   };
-
-  // Auto-dismiss toast after 3 seconds (key ensures timer resets on repeated toasts)
-  useEffect(() => {
-    if (toast) {
-      const timer = setTimeout(() => setToastInternal(null), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [toast?.key]);
 
   // Scroll to top when category changes to avoid white screen
   useEffect(() => {
@@ -665,8 +658,6 @@ function App() {
       }}
     >
       <AppHeader
-        toast={toast}
-        setToast={setToast}
         pendingTiebreakerChallenges={pendingTiebreakerChallenges}
         selectedObject={selectedObject}
         objects={objects}

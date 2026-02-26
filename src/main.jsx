@@ -3,11 +3,14 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 import { ConfirmProvider } from './utils/useConfirm'
+import { ToastProvider } from './utils/useToast'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <ConfirmProvider>
-      <App />
-    </ConfirmProvider>
+    <ToastProvider>
+      <ConfirmProvider>
+        <App />
+      </ConfirmProvider>
+    </ToastProvider>
   </StrictMode>,
 )

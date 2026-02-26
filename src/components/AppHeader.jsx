@@ -1,8 +1,8 @@
 import React, { useRef, useState } from 'react';
 import {
-  X, Check, Search, Menu, Mail, LogIn, User, Eye,
+  X, Search, Menu, Mail, LogIn, User, Eye,
   SlidersHorizontal, Star, Navigation,
-  AlertTriangle, Swords,
+  Swords,
   LayoutGrid, LayoutList, ArrowUpDown
 } from 'lucide-react';
 import { getIconComponent } from '../utils/iconHelpers';
@@ -16,8 +16,6 @@ import InvitationsDropdown from './InvitationsDropdown';
  * passes `headerRef` / `headerHeight` so the filter bar can stick correctly.
  */
 export default function AppHeader({
-  // toast
-  toast, setToast,
   // tiebreaker
   pendingTiebreakerChallenges, selectedObject, objects, setSelectedObject,
   // header bar
@@ -46,27 +44,6 @@ export default function AppHeader({
 
   return (
     <>
-      {/* Toast notification */}
-      {toast && (
-        <div
-          key={toast.key}
-          className={`fixed top-4 left-1/2 -translate-x-1/2 z-[9999] px-4 py-3 rounded-xl shadow-lg backdrop-blur-sm flex items-center gap-3 transition-all ${
-            toast.type === 'success' ? 'bg-green-500/90 text-white' :
-            toast.type === 'error' ? 'bg-red-500/90 text-white' :
-            'bg-gray-800/90 text-white border border-white/10'
-          }`}
-          style={{
-            marginTop: 'env(safe-area-inset-top)',
-            animation: 'toast-slide-in 0.3s ease-out'
-          }}
-          onClick={() => setToast(null)}
-        >
-          {toast.type === 'success' && <Check size={18} />}
-          {toast.type === 'error' && <AlertTriangle size={18} />}
-          <span className="text-sm font-medium">{toast.message}</span>
-        </div>
-      )}
-
       {/* Tiebreaker challenge banner */}
       {pendingTiebreakerChallenges.length > 0 && selectedObject?.id !== pendingTiebreakerChallenges[0].objectId && (
         <div

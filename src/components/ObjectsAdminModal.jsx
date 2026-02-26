@@ -5,9 +5,11 @@ import { db } from '../firebase';
 import { useKeyboardHeight } from '../utils/useKeyboardHeight';
 import { useSwipeToClose } from '../utils/useSwipeToClose';
 import { useConfirm } from '../utils/useConfirm';
+import { useToast } from '../utils/useToast';
 
 function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onViewObject }) {
   const confirm = useConfirm();
+  const toast = useToast();
   const [sortBy, setSortBy] = useState('title'); // title, category, parent
   const [filterUserId, setFilterUserId] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -363,7 +365,7 @@ function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onView
                                 await updateDoc(doc(db, 'objects', obj.id), { parentId: deleteField() });
                               } catch (err) {
                                 console.error('Error removing parent:', err);
-                                alert('Kunde inte ta bort parent');
+                                toast.error('Kunde inte ta bort parent');
                               }
                             }
                           }}

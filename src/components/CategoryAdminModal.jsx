@@ -6,9 +6,11 @@ import { AVAILABLE_ICONS, getIconComponent } from '../utils/iconHelpers';
 import { useKeyboardHeight } from '../utils/useKeyboardHeight';
 import { useSwipeToClose } from '../utils/useSwipeToClose';
 import { useConfirm } from '../utils/useConfirm';
+import { useToast } from '../utils/useToast';
 
 function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
   const confirm = useConfirm();
+  const toast = useToast();
   const [editingCategory, setEditingCategory] = useState(null);
   const [newCategory, setNewCategory] = useState({ label: '', icon: 'Home', color: '#6B7280', hideLocation: false });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
@@ -39,7 +41,7 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
       setNewCategory({ label: '', icon: 'Home', color: '#6B7280', hideLocation: false });
     } catch (err) {
       console.error('Error saving category:', err);
-      alert('Kunde inte spara kategori');
+      toast.error('Kunde inte spara kategori');
     }
     setSaving(false);
   };
@@ -51,7 +53,7 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
       setEditingCategory(null);
     } catch (err) {
       console.error('Error updating category:', err);
-      alert('Kunde inte uppdatera kategori');
+      toast.error('Kunde inte uppdatera kategori');
     }
     setSaving(false);
   };
@@ -73,7 +75,7 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
         }
       } catch (err) {
         console.error('Error updating objects:', err);
-        alert('Kunde inte uppdatera objekt');
+        toast.error('Kunde inte uppdatera objekt');
         setShowDeleteConfirm(null);
         return;
       }
@@ -85,7 +87,7 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
       setShowDeleteConfirm(null);
     } catch (err) {
       console.error('Error deleting category:', err);
-      alert('Kunde inte radera kategori');
+      toast.error('Kunde inte radera kategori');
     }
     setSaving(false);
   };
@@ -107,7 +109,7 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
       await updateDoc(doc(db, 'categories', swapCat.id), { order: currentCat.order });
     } catch (err) {
       console.error('Error moving category:', err);
-      alert('Kunde inte flytta kategori');
+      toast.error('Kunde inte flytta kategori');
     }
     setSaving(false);
   };

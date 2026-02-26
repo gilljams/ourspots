@@ -3,6 +3,7 @@ import { X, ChevronLeft, ChevronRight, Play, Pause, Edit3, Save, Plus, User, Tro
 import { MapContainer, TileLayer, Marker, Polyline, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { useGPSCapture, calculateDistance } from '../utils/useGPSCapture';
+import { useToast } from '../utils/useToast';
 
 // Custom marker icons for longest drive
 const createTeeIcon = () => L.divIcon({
@@ -366,6 +367,7 @@ export default function LeaderboardModal({
   onDeleteRound,
   preciseGPS = true
 }) {
+  const toast = useToast();
   const [currentRound, setCurrentRound] = useState(() => {
     // Start at last round if there are rounds, otherwise 0
     const rc = data.roundCount || 0;
@@ -743,7 +745,7 @@ export default function LeaderboardModal({
       onUpdateRounds(newRounds);
     } catch (err) {
       console.error('Failed to capture tee position:', err);
-      alert(err.message);
+      toast.error(err.message);
     } finally {
       setCapturingFor(null);
     }
@@ -767,14 +769,14 @@ export default function LeaderboardModal({
     
     if (!onUpdateShots) {
       console.error('onUpdateShots is not defined');
-      alert('Fel: onUpdateShots saknas');
+      toast.error('Fel: onUpdateShots saknas');
       return;
     }
     const tee = getCurrentTeePosition();
     console.log('[handleCaptureBall] teePosition:', tee);
     
     if (!tee) {
-      alert('Sätt tee-position först!');
+      toast.error('Sätt tee-position först!');
       return;
     }
     
@@ -812,7 +814,7 @@ export default function LeaderboardModal({
       console.log('[handleCaptureBall] Success!');
     } catch (err) {
       console.error('[handleCaptureBall] Failed:', err);
-      alert('Fel vid positionshämtning: ' + err.message);
+      toast.error('Fel vid positionshämtning: ' + err.message);
     } finally {
       setCapturingFor(null);
     }

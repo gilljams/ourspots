@@ -24,6 +24,7 @@ import { TileLayer, Marker, Tooltip, Polyline, Circle, useMap, useMapEvents } fr
 import L from 'leaflet';
 import { createUserIcon } from '../../utils/mapIcons';
 import { getDistanceMeters, formatDistanceMeters } from '../../utils/geoUtils';
+import { useToast } from '../../utils/useToast';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -231,6 +232,7 @@ export function FitAllButton({ positions }) {
 
 export function CenterOnLocationButton({ onLocationFound, enableWatch = false, onWatchStateChange }) {
   const map = useMap();
+  const toast = useToast();
   const [isLocating, setIsLocating] = useState(false);
   const [isWatching, setIsWatching] = useState(false);
   const [isFollowing, setIsFollowing] = useState(true);
@@ -274,7 +276,7 @@ export function CenterOnLocationButton({ onLocationFound, enableWatch = false, o
   
   const handleClick = async () => {
     if (!('geolocation' in navigator)) {
-      alert('Din enhet stöder inte platsåtkomst');
+      toast.error('Din enhet stöder inte platsåtkomst');
       return;
     }
 
@@ -283,7 +285,7 @@ export function CenterOnLocationButton({ onLocationFound, enableWatch = false, o
       try {
         const result = await navigator.permissions.query({ name: 'geolocation' });
         if (result.state === 'denied') {
-          alert('Platsåtkomst är blockerad. Aktivera i webbläsarens inställningar.');
+          toast.error('Platsåtkomst är blockerad. Aktivera i webbläsarens inställningar.');
           return;
         }
       } catch (e) { /* continue */ }
@@ -355,7 +357,7 @@ export function CenterOnLocationButton({ onLocationFound, enableWatch = false, o
         } else if (error.code === 3) {
           message += 'Timeout – försök igen.';
         }
-        alert(message);
+        toast.error(message);
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
     );
@@ -389,10 +391,11 @@ export function CenterOnLocationButton({ onLocationFound, enableWatch = false, o
 
 export function TrackingToggleButton({ isTracking, onStart, onStop }) {
   const map = useMap();
+  const toast = useToast();
   
   const handleToggle = () => {
     if (!('geolocation' in navigator)) {
-      alert('Din enhet stöder inte platsåtkomst');
+      toast.error('Din enhet stöder inte platsåtkomst');
       return;
     }
 
@@ -432,11 +435,12 @@ export function TrackingToggleButton({ isTracking, onStart, onStop }) {
 
 export function AddLocationButton({ onAddLocation, onLocationUpdate, pendingCount = 0 }) {
   const map = useMap();
+  const toast = useToast();
   const [isAdding, setIsAdding] = useState(false);
   
   const handleAdd = () => {
     if (!('geolocation' in navigator)) {
-      alert('Din enhet stöder inte platsåtkomst');
+      toast.error('Din enhet stöder inte platsåtkomst');
       return;
     }
     
@@ -455,7 +459,7 @@ export function AddLocationButton({ onAddLocation, onLocationUpdate, pendingCoun
         setIsAdding(false);
         let message = 'Kunde inte hämta din position. ';
         if (error.code === 1) message = 'Du nekade platsåtkomst.';
-        alert(message);
+        toast.error(message);
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );

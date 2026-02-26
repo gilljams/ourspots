@@ -2,8 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Search, Loader, X } from 'lucide-react';
 import { MapContainer, Marker, useMapEvents } from 'react-leaflet';
 import { BaseTileLayer, UserLocationMarker } from './map/SharedMapComponents';
+import { useToast } from '../utils/useToast';
 
 function MapPicker({ onSelect, onClose, initialPosition, userLocation }) {
+  const toast = useToast();
   const [position, setPosition] = useState(initialPosition || [59.33, 18.06]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searching, setSearching] = useState(false);
@@ -32,11 +34,11 @@ function MapPicker({ onSelect, onClose, initialPosition, userLocation }) {
       }));
       setSearchResults(results);
       if (results.length === 0) {
-        alert('Inga resultat hittades för "' + searchQuery + '"');
+        toast.info('Inga resultat hittades för "' + searchQuery + '"');
       }
     } catch (err) {
       console.error('Search error:', err);
-      alert('Kunde inte söka. Försök igen!');
+      toast.error('Kunde inte söka. Försök igen!');
     } finally {
       setSearching(false);
     }

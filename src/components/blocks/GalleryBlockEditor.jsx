@@ -1,9 +1,11 @@
 import React, { useState, useRef } from 'react';
 import { X, ArrowUp, ArrowDown, ChevronDown, Images, Upload, Loader, Edit2 } from 'lucide-react';
 import { CLOUDINARY_CLOUD_NAME, CLOUDINARY_UPLOAD_PRESET, resizeImage } from '../../utils/imageUtils';
+import { useToast } from '../../utils/useToast';
 
 // Gallery block editor component - upload multiple images
 function GalleryBlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }) {
+  const toast = useToast();
   const [images, setImages] = useState(block.images || []);
   const [isExpanded, setIsExpanded] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -25,7 +27,7 @@ function GalleryBlockEditor({ block, onUpdate, onRemove, onMove, index, total, s
     const filesToUpload = files.slice(0, remainingSlots);
     
     if (filesToUpload.length === 0) {
-      alert(`Max ${MAX_IMAGES} bilder tillåtna`);
+      toast.error(`Max ${MAX_IMAGES} bilder tillåtna`);
       return;
     }
     
@@ -63,7 +65,7 @@ function GalleryBlockEditor({ block, onUpdate, onRemove, onMove, index, total, s
       syncImages([...images, ...uploadedImages]);
     } catch (err) {
       console.error('Upload error:', err);
-      alert('Kunde inte ladda upp bild. Försök igen!');
+      toast.error('Kunde inte ladda upp bild. Försök igen!');
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
