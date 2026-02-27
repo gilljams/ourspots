@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   X, LogOut, ChevronDown, Settings, Target, Users, Share2, Check, AlertTriangle, Eye,
-  MapPin, Navigation, Trash2, ExternalLink, Wrench, HelpCircle
+  MapPin, Navigation, Trash2, ExternalLink, Wrench, HelpCircle, Pencil
 } from 'lucide-react';
 import { db } from '../firebase';
 import { doc, updateDoc } from 'firebase/firestore';
@@ -59,6 +59,9 @@ export default function AppMenu({
   // Location
   userLocation
 }) {
+  // Editing display name state
+  const [editingName, setEditingName] = useState(false);
+
   // Mark my spot state
   const confirm = useConfirm();
   const [markedSpot, setMarkedSpot] = useState(() => {
@@ -66,6 +69,7 @@ export default function AppMenu({
   });
   const [spotNote, setSpotNote] = useState('');
   const [spotSaving, setSpotSaving] = useState(false);
+  const [spotEditingNote, setSpotEditingNote] = useState(false);
 
   const saveSpot = () => {
     setSpotSaving(true);
@@ -75,13 +79,13 @@ export default function AppMenu({
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
           accuracy: Math.round(pos.coords.accuracy),
-          note: spotNote.trim(),
+          note: '',
           timestamp: Date.now()
         };
         localStorage.setItem(STORAGE_KEYS.MARKED_SPOT, JSON.stringify(spot));
         setMarkedSpot(spot);
-        setSpotNote('');
         setSpotSaving(false);
+        setSpotEditingNote(true);
       },
       () => setSpotSaving(false),
       { enableHighAccuracy: true, timeout: 15000 }
@@ -136,24 +140,6 @@ export default function AppMenu({
 
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
-          {/* Contacts & Sharing overview */}
-          {user && (
-            <button
-              onClick={() => {
-                onShowContacts();
-                onClose();
-              }}
-              className="w-full flex items-center gap-3 p-3 rounded-xl bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500/20 text-white transition-all"
-            >
-              <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
-                <Users size={18} className="text-blue-400" />
-              </div>
-              <div className="flex-1 text-left">
-                <div className="text-sm font-medium">Kontakter & delningar</div>
-              </div>
-              <Share2 size={16} className="text-blue-400" />
-            </button>
-          )}
 
           {/* === VERKTYG === */}
           <div className="rounded-xl border border-white/10 overflow-hidden">
@@ -165,21 +151,52 @@ export default function AppMenu({
               <span className="text-xs text-gray-400 uppercase tracking-wide font-medium">Verktyg</span>
             </button>
             {menuToolsExpanded && (
-              <div className="p-2 space-y-2">
+              <div className="p-2 space-y-1">
+                {/* Contacts & Sharing — simple row */}
+                {user && (
+                  <button
+                    onClick={() => { onShowContacts(); onClose(); }}
+                    className="w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-white/5 text-gray-300 hover:text-white transition-all"
+                  >
+                    <Users size={16} className="text-blue-400" />
+                    <span className="text-sm">Kontakter & delningar</span>
+                  </button>
+                )}
+
                 {/* Mark my spot */}
-                <div className="rounded-lg border border-white/5 overflow-hidden">
+                <div className="rounded-lg overflow-hidden">
                   <div className="p-2.5 space-y-2">
-                    <div className="flex items-center gap-2 mb-1">
-                      <MapPin size={14} className="text-blue-400" />
-                      <span className="text-xs text-gray-400 font-medium">Markera plats</span>
-                    </div>
                     {markedSpot ? (
                       <>
                         <div className="flex items-center gap-2 p-2 rounded-lg bg-white/5">
+                          <MapPin size={14} className="text-blue-400 flex-shrink-0" />
                           <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium text-white truncate">
-                              {markedSpot.note || 'Markerad plats'}
-                            </div>
+                            {spotEditingNote ? (
+                              <input
+                                type="text"
+                                autoFocus
+                                value={spotNote}
+                                onChange={(e) => setSpotNote(e.target.value)}
+                                onBlur={() => {
+                                  const updated = { ...markedSpot, note: spotNote.trim() };
+                                  localStorage.setItem(STORAGE_KEYS.MARKED_SPOT, JSON.stringify(updated));
+                                  setMarkedSpot(updated);
+                                  setSpotEditingNote(false);
+                                }}
+                                onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }}
+                                placeholder="Lägg till notering..."
+                                className="w-full bg-transparent text-sm text-white placeholder-gray-500 focus:outline-none"
+                              />
+                            ) : (
+                              <button
+                                onClick={() => { setSpotNote(markedSpot.note || ''); setSpotEditingNote(true); }}
+                                className="w-full text-left"
+                              >
+                                <div className="text-sm font-medium text-white truncate">
+                                  {markedSpot.note || 'Markerad plats'}
+                                </div>
+                              </button>
+                            )}
                             <div className="text-xs text-gray-400">
                               {new Date(markedSpot.timestamp).toLocaleString('sv-SE', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}
                               {spotDistance != null && ` · ${formatDistance(spotDistance)}`}
@@ -202,32 +219,23 @@ export default function AppMenu({
                         </div>
                       </>
                     ) : (
-                      <>
-                        <input
-                          type="text"
-                          value={spotNote}
-                          onChange={(e) => setSpotNote(e.target.value)}
-                          placeholder="Notering (valfritt)..."
-                          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-400/50"
-                        />
-                        <button
-                          onClick={saveSpot}
-                          disabled={spotSaving}
-                          className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:bg-blue-500/30 text-sm font-medium transition-colors disabled:opacity-50"
-                        >
-                          <MapPin size={14} />
-                          {spotSaving ? 'Hämtar GPS...' : 'Markera min plats'}
-                        </button>
-                      </>
+                      <button
+                        onClick={saveSpot}
+                        disabled={spotSaving}
+                        className="w-full flex items-center gap-3 p-0.5 rounded-lg text-gray-300 hover:text-white text-sm transition-colors disabled:opacity-50"
+                      >
+                        <MapPin size={16} className="text-blue-400" />
+                        {spotSaving ? 'Hämtar GPS...' : 'Markera min plats'}
+                      </button>
                     )}
                   </div>
                 </div>
 
                 {/* Quick Capture (sub-section within Verktyg) */}
-                <div className="rounded-lg border border-white/5 overflow-hidden">
+                <div className="rounded-lg overflow-hidden">
                   <button
                     onClick={() => setMenuQuickCaptureExpanded(v => !v)}
-                    className="w-full flex items-center gap-2 p-2.5 hover:bg-white/5 transition-colors"
+                    className="w-full flex items-center gap-2 p-2.5 rounded-lg hover:bg-white/5 transition-colors"
                   >
                     <ChevronDown size={14} className={`text-gray-500 transition-transform ${menuQuickCaptureExpanded ? '' : '-rotate-90'}`} />
                     <Target size={14} className="text-orange-400" />
@@ -239,25 +247,21 @@ export default function AppMenu({
                     )}
                   </button>
                   {menuQuickCaptureExpanded && (
-                    <div className="p-2.5 pt-0 space-y-2">
-                      <div className="p-2.5 rounded-lg bg-white/5">
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <div className="text-sm font-medium text-white">Visa snabbpinning</div>
-                          </div>
-                          <button
-                            onClick={() => setShowQuickCapture(!showQuickCapture)}
-                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                              showQuickCapture ? 'bg-orange-500' : 'bg-white/20'
+                    <div className="p-2.5 pt-1 space-y-2">
+                      <div className="flex items-center justify-between p-2.5 rounded-lg bg-white/5">
+                        <div className="text-sm font-medium text-white">Visa snabbpinning</div>
+                        <button
+                          onClick={() => setShowQuickCapture(!showQuickCapture)}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                            showQuickCapture ? 'bg-orange-500' : 'bg-white/20'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                              showQuickCapture ? 'translate-x-6' : 'translate-x-1'
                             }`}
-                          >
-                            <span
-                              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                showQuickCapture ? 'translate-x-6' : 'translate-x-1'
-                              }`}
-                            />
-                          </button>
-                        </div>
+                          />
+                        </button>
                       </div>
                       {showQuickCapture && (
                         <>
@@ -316,26 +320,41 @@ export default function AppMenu({
               <div className="p-2 space-y-2">
                 {/* Profile / Nickname */}
                 <div className="p-2.5 rounded-lg bg-white/5">
-                  <div className="flex-1 mb-2">
-                    <div className="text-sm font-medium text-white">Visningsnamn</div>
-                    <div className="text-xs text-gray-400 mt-0.5">Hur andra ser dig vid delning</div>
-                  </div>
-                  <input
-                    type="text"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    onBlur={async () => {
-                      if (user) {
-                        try {
-                          await updateDoc(doc(db, 'users', user.uid), { displayName: displayName.trim() });
-                        } catch (err) {
-                          console.error('Error saving displayName:', err);
-                        }
-                      }
-                    }}
-                    placeholder={user?.email?.split('@')[0] || 'Ditt namn'}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                  />
+                  {editingName ? (
+                    <>
+                      <div className="text-xs text-gray-400 mb-1.5">Visningsnamn</div>
+                      <input
+                        type="text"
+                        autoFocus
+                        value={displayName}
+                        onChange={(e) => setDisplayName(e.target.value)}
+                        onBlur={async () => {
+                          if (user) {
+                            try {
+                              await updateDoc(doc(db, 'users', user.uid), { displayName: displayName.trim() });
+                            } catch (err) {
+                              console.error('Error saving displayName:', err);
+                            }
+                          }
+                          setEditingName(false);
+                        }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }}
+                        placeholder={user?.email?.split('@')[0] || 'Ditt namn'}
+                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                      />
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => setEditingName(true)}
+                      className="w-full flex items-center justify-between"
+                    >
+                      <div>
+                        <div className="text-xs text-gray-400">Visningsnamn</div>
+                        <div className="text-sm font-medium text-white mt-0.5">{displayName || user?.email?.split('@')[0] || 'Ej angivet'}</div>
+                      </div>
+                      <Pencil size={14} className="text-gray-500" />
+                    </button>
+                  )}
                 </div>
 
                 <ToggleSetting
@@ -444,7 +463,7 @@ export default function AppMenu({
                 <span className="text-sm font-medium">Logga ut</span>
               </button>
             </div>
-            <div className="text-center mt-2 text-[10px] text-gray-600">OurSpots v2.9.36ap</div>
+            <div className="text-center mt-2 text-[10px] text-gray-600">OurSpots v2.9.36as</div>
           </div>
         )}
       </div>
