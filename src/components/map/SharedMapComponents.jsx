@@ -105,7 +105,7 @@ export function DirectionLine({ from, to }) {
   );
 }
 
-// ─── Navigation Info Panel (top-left) ─────────────────────────────────────────
+// ─── Navigation Info Panel (top-center) ───────────────────────────────────────
 
 export function NavigationInfoPanel({ target, userLocation, onClose }) {
   if (!target || !userLocation) return null;
@@ -117,7 +117,7 @@ export function NavigationInfoPanel({ target, userLocation, onClose }) {
   const accuracy = userLocation.accuracy;
   
   return (
-    <div className="absolute top-3 left-3 z-[1000] bg-black/60 text-white px-3.5 py-2.5 rounded-2xl shadow-lg flex items-center gap-3">
+    <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] bg-black/60 text-white px-3.5 py-2.5 rounded-2xl shadow-lg flex items-center gap-3">
       <div>
         <div className="text-[11px] text-gray-300 leading-tight">Till {target.name}</div>
         <div className="text-lg font-bold text-emerald-400 leading-tight">{formatDistanceMeters(distance)}</div>

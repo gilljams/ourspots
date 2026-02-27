@@ -260,7 +260,7 @@ function MapView({ objects, onSelectObject, currentUser, userLocation, categorie
         <InvalidateSizeOnChange deps={showFilters} />
       </MapContainer>
       
-      {/* Navigation info panel – top-left, outside MapContainer */}
+      {/* Navigation info panel – top-center, outside MapContainer */}
       <NavigationInfoPanel 
         target={navigationTarget} 
         userLocation={displayUserLocation} 

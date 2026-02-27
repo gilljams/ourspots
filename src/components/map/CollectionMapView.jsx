@@ -335,7 +335,7 @@ function CollectionMapView({ objects, categories, onSelectObject, userLocation, 
         />
       )}
       
-      {/* Navigation info panel – top-left overlay */}
+      {/* Navigation info panel – top-center overlay */}
       <NavigationInfoPanel 
         target={navigationTarget} 
         userLocation={currentUserLocation} 
