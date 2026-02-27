@@ -164,72 +164,68 @@ export default function AppMenu({
                 )}
 
                 {/* Mark my spot */}
-                <div className="rounded-lg overflow-hidden">
-                  <div className="p-2.5 space-y-2">
-                    {markedSpot ? (
-                      <>
-                        <div className="flex items-center gap-2 p-2 rounded-lg bg-white/5">
-                          <MapPin size={14} className="text-blue-400 flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            {spotEditingNote ? (
-                              <input
-                                type="text"
-                                autoFocus
-                                value={spotNote}
-                                onChange={(e) => setSpotNote(e.target.value)}
-                                onBlur={() => {
-                                  const updated = { ...markedSpot, note: spotNote.trim() };
-                                  localStorage.setItem(STORAGE_KEYS.MARKED_SPOT, JSON.stringify(updated));
-                                  setMarkedSpot(updated);
-                                  setSpotEditingNote(false);
-                                }}
-                                onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }}
-                                placeholder="Lägg till notering..."
-                                className="w-full bg-transparent text-sm text-white placeholder-gray-500 focus:outline-none"
-                              />
-                            ) : (
-                              <button
-                                onClick={() => { setSpotNote(markedSpot.note || ''); setSpotEditingNote(true); }}
-                                className="w-full text-left"
-                              >
-                                <div className="text-sm font-medium text-white truncate">
-                                  {markedSpot.note || 'Markerad plats'}
-                                </div>
-                              </button>
-                            )}
-                            <div className="text-xs text-gray-400">
-                              {new Date(markedSpot.timestamp).toLocaleString('sv-SE', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}
-                              {spotDistance != null && ` · ${formatDistance(spotDistance)}`}
-                              {markedSpot.accuracy > 0 && ` · ±${markedSpot.accuracy}m`}
+                {markedSpot ? (
+                  <div className="rounded-lg bg-white/5 p-2.5 space-y-2">
+                    <div className="flex items-center gap-2 p-2 rounded-lg bg-white/5">
+                      <MapPin size={14} className="text-blue-400 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        {spotEditingNote ? (
+                          <input
+                            type="text"
+                            autoFocus
+                            value={spotNote}
+                            onChange={(e) => setSpotNote(e.target.value)}
+                            onBlur={() => {
+                              const updated = { ...markedSpot, note: spotNote.trim() };
+                              localStorage.setItem(STORAGE_KEYS.MARKED_SPOT, JSON.stringify(updated));
+                              setMarkedSpot(updated);
+                              setSpotEditingNote(false);
+                            }}
+                            onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }}
+                            placeholder="Lägg till notering..."
+                            className="w-full bg-transparent text-sm text-white placeholder-gray-500 focus:outline-none"
+                          />
+                        ) : (
+                          <button
+                            onClick={() => { setSpotNote(markedSpot.note || ''); setSpotEditingNote(true); }}
+                            className="w-full text-left"
+                          >
+                            <div className="text-sm font-medium text-white truncate">
+                              {markedSpot.note || 'Markerad plats'}
                             </div>
-                          </div>
+                          </button>
+                        )}
+                        <div className="text-xs text-gray-400">
+                          {new Date(markedSpot.timestamp).toLocaleString('sv-SE', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}
+                          {spotDistance != null && ` · ${formatDistance(spotDistance)}`}
+                          {markedSpot.accuracy > 0 && ` · ±${markedSpot.accuracy}m`}
                         </div>
-                        <div className="flex gap-2">
-                          <button onClick={navigateToSpot} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 text-xs font-medium transition-colors">
-                            <Navigation size={12} />
-                            Navigera
-                          </button>
-                          <button onClick={handleNewSpot} disabled={spotSaving} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-white/5 text-gray-300 hover:bg-white/10 text-xs font-medium transition-colors disabled:opacity-50">
-                            <MapPin size={12} />
-                            Ny
-                          </button>
-                          <button onClick={clearSpot} className="w-8 flex items-center justify-center py-2 rounded-lg bg-white/5 text-gray-400 hover:bg-red-500/20 hover:text-red-400 transition-colors">
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
-                      </>
-                    ) : (
-                      <button
-                        onClick={saveSpot}
-                        disabled={spotSaving}
-                        className="w-full flex items-center gap-3 p-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white text-sm transition-colors disabled:opacity-50"
-                      >
-                        <MapPin size={16} className="text-blue-400" />
-                        {spotSaving ? 'Hämtar GPS...' : 'Markera min plats'}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={navigateToSpot} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 text-xs font-medium transition-colors">
+                        <Navigation size={12} />
+                        Navigera
                       </button>
-                    )}
+                      <button onClick={handleNewSpot} disabled={spotSaving} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-white/5 text-gray-300 hover:bg-white/10 text-xs font-medium transition-colors disabled:opacity-50">
+                        <MapPin size={12} />
+                        Ny
+                      </button>
+                      <button onClick={clearSpot} className="w-8 flex items-center justify-center py-2 rounded-lg bg-white/5 text-gray-400 hover:bg-red-500/20 hover:text-red-400 transition-colors">
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <button
+                    onClick={saveSpot}
+                    disabled={spotSaving}
+                    className="w-full flex items-center gap-3 p-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white text-sm transition-colors disabled:opacity-50"
+                  >
+                    <MapPin size={16} className="text-blue-400" />
+                    {spotSaving ? 'Hämtar GPS...' : 'Markera min plats'}
+                  </button>
+                )}
 
                 {/* Quick Capture (sub-section within Verktyg) */}
                 <div className="rounded-lg overflow-hidden">
