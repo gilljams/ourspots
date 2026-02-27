@@ -60,7 +60,7 @@ function WeightedParticipantRow({ participant, idx, onUpdateWeight, onRemove }) 
 // Split Block Editor - expense sharing configuration
 function SplitBlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving, shares = {}, currentUser, currentUserDisplayName }) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [title, setTitle] = useState(block.title || 'Splitt');
+  const [title, setTitle] = useState(block.title ?? '');
   const [model, setModel] = useState(block.model || 'individual');
   const [participants, setParticipants] = useState(block.participants || []);
   const [defaultCollapsed, setDefaultCollapsed] = useState(block.defaultCollapsed ?? true);
@@ -68,7 +68,7 @@ function SplitBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
 
   // Sync with block changes
   useEffect(() => {
-    setTitle(block.title || 'Splitt');
+    setTitle(block.title ?? '');
     setModel(block.model || 'individual');
     setParticipants(block.participants || []);
     setDefaultCollapsed(block.defaultCollapsed ?? true);

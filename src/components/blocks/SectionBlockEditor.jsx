@@ -3,7 +3,7 @@ import { X, ArrowUp, ArrowDown, ChevronDown, Minus } from 'lucide-react';
 
 // Section block editor component - simple title separator
 function SectionBlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }) {
-  const [title, setTitle] = useState(block.title || 'Sektion');
+  const [title, setTitle] = useState(block.title ?? '');
   const [uppercase, setUppercase] = useState(block.uppercase !== false);
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -34,7 +34,7 @@ function SectionBlockEditor({ block, onUpdate, onRemove, onMove, index, total, s
           />
           <Minus size={16} className="text-blue-400 flex-shrink-0" />
           <span className="text-sm font-medium text-gray-300 truncate">
-            Sektion: {title}
+            Sektion: {title || 'Sektion'}
           </span>
         </button>
         <div className="flex gap-1 flex-shrink-0">

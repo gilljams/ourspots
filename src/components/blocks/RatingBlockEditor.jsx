@@ -4,7 +4,7 @@ import { useConfirm } from '../../utils/useConfirm';
 
 // Rating Block Editor
 function RatingBlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving, hideReorder }) {
-  const [title, setTitle] = useState(block.title || 'Betyg');
+  const [title, setTitle] = useState(block.title ?? '');
   const [isExpanded, setIsExpanded] = useState(false);
   const confirm = useConfirm();
 

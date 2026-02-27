@@ -5,7 +5,7 @@ import { X, ArrowUp, ArrowDown, ChevronDown, Trophy, Target, Plus, Check } from 
 function LeaderboardBlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving, shares = {}, currentUser, currentUserDisplayName }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const getDefaultTitle = (type) => type === 'longestdrive' ? 'Longest Drive' : 'Leaderboard';
-  const [title, setTitle] = useState(block.title || getDefaultTitle(block.competitionType));
+  const [title, setTitle] = useState(block.title ?? '');
   const [participants, setParticipants] = useState(block.participants || []);
   const [roundCount, setRoundCount] = useState(block.roundCount || 0);
   const [defaultCollapsed, setDefaultCollapsed] = useState(block.defaultCollapsed ?? true);
@@ -20,8 +20,7 @@ function LeaderboardBlockEditor({ block, onUpdate, onRemove, onMove, index, tota
 
   // Sync with block changes
   useEffect(() => {
-    const defaultTitle = getDefaultTitle(block.competitionType);
-    setTitle(block.title || defaultTitle);
+    setTitle(block.title ?? '');
     setParticipants(block.participants || []);
     setRoundCount(block.roundCount || 0);
     setDefaultCollapsed(block.defaultCollapsed ?? true);
@@ -205,8 +204,7 @@ function LeaderboardBlockEditor({ block, onUpdate, onRemove, onMove, index, tota
                 type="button"
                 onClick={() => {
                   setCompetitionType('score');
-                  setTitle('Leaderboard');
-                  syncToParent({ competitionType: 'score', title: 'Leaderboard' });
+                  syncToParent({ competitionType: 'score' });
                 }}
                 className={`flex-1 px-3 py-2 text-xs font-medium transition-colors ${
                   competitionType === 'score'
@@ -220,8 +218,7 @@ function LeaderboardBlockEditor({ block, onUpdate, onRemove, onMove, index, tota
                 type="button"
                 onClick={() => {
                   setCompetitionType('longestdrive');
-                  setTitle('Longest Drive');
-                  syncToParent({ competitionType: 'longestdrive', title: 'Longest Drive' });
+                  syncToParent({ competitionType: 'longestdrive' });
                 }}
                 className={`flex-1 px-3 py-2 text-xs font-medium transition-colors ${
                   competitionType === 'longestdrive'

@@ -4,12 +4,12 @@ import { X, ArrowUp, ArrowDown, ChevronDown, Swords } from 'lucide-react';
 // Tiebreaker Block Editor - rock-paper-scissors for tie-breaking
 function TiebreakerBlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [title, setTitle] = useState(block.title || 'Tiebreaker');
+  const [title, setTitle] = useState(block.title ?? '');
   const [bestOf, setBestOf] = useState(block.bestOf || 3);
   const [defaultCollapsed, setDefaultCollapsed] = useState(block.defaultCollapsed ?? false);
 
   useEffect(() => {
-    setTitle(block.title || 'Tiebreaker');
+    setTitle(block.title ?? '');
     setBestOf(block.bestOf || 3);
     setDefaultCollapsed(block.defaultCollapsed ?? false);
   }, [block.id, block.title, block.bestOf, block.defaultCollapsed]);
