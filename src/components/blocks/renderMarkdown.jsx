@@ -70,13 +70,13 @@ export const renderMarkdown = (text) => {
     if (listItems.length > 0) {
       if (listType === 'ol') {
         elements.push(
-          <ol key={`ol-${elements.length}`} className="list-decimal list-inside space-y-1 my-2">
+          <ol key={`ol-${elements.length}`} className="list-decimal list-outside pl-5 space-y-1 my-2">
             {listItems}
           </ol>
         );
       } else {
         elements.push(
-          <ul key={`ul-${elements.length}`} className="list-disc list-inside space-y-1 my-2">
+          <ul key={`ul-${elements.length}`} className="list-disc list-outside pl-5 space-y-1 my-2">
             {listItems}
           </ul>
         );
