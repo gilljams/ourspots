@@ -227,75 +227,63 @@ export default function AppMenu({
                   </button>
                 )}
 
-                {/* Quick Capture (sub-section within Verktyg) */}
-                <div className="rounded-lg overflow-hidden">
-                  <button
-                    onClick={() => setMenuQuickCaptureExpanded(v => !v)}
-                    className="w-full flex items-center gap-2 p-2.5 rounded-lg hover:bg-white/5 transition-colors"
-                  >
-                    <ChevronDown size={14} className={`text-gray-500 transition-transform ${menuQuickCaptureExpanded ? '' : '-rotate-90'}`} />
-                    <Target size={14} className="text-orange-400" />
-                    <span className="text-xs text-gray-400 font-medium">Snabbpinningar</span>
-                    {captures.length > 0 && (
-                      <span className="bg-orange-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-auto">
-                        {captures.length}
-                      </span>
-                    )}
-                  </button>
-                  {menuQuickCaptureExpanded && (
-                    <div className="p-2.5 pt-1 space-y-2">
-                      <div className="flex items-center justify-between p-2.5 rounded-lg bg-white/5">
-                        <div className="text-sm font-medium text-white">Visa snabbpinning</div>
+                {/* Snabbpinningar — toggle activates + expands */}
+                <div className="rounded-lg bg-white/5 overflow-hidden">
+                  <div className="flex items-center justify-between p-2.5">
+                    <div className="flex items-center gap-3">
+                      <Target size={16} className="text-orange-400" />
+                      <span className="text-sm text-gray-300">Snabbpinningar</span>
+                      {captures.length > 0 && (
+                        <span className="bg-orange-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                          {captures.length}
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => setShowQuickCapture(!showQuickCapture)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        showQuickCapture ? 'bg-orange-500' : 'bg-white/20'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          showQuickCapture ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                  {showQuickCapture && (
+                    <div className="px-2.5 pb-2.5 space-y-2">
+                      <div className="p-2.5 rounded-lg bg-white/5">
+                        <div className="text-xs text-gray-400 mb-1.5">Går till objekt</div>
                         <button
-                          onClick={() => setShowQuickCapture(!showQuickCapture)}
-                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                            showQuickCapture ? 'bg-orange-500' : 'bg-white/20'
-                          }`}
+                          onClick={onOpenQuickCapturePicker}
+                          className="w-full flex items-center justify-between bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm hover:border-orange-500/50 transition-colors"
                         >
-                          <span
-                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                              showQuickCapture ? 'translate-x-6' : 'translate-x-1'
-                            }`}
-                          />
+                          {quickCaptureObjectId ? (
+                            <span className="text-white truncate">
+                              {objects?.find(o => o.id === quickCaptureObjectId)?.blocks?.find(b => b.type === 'title')?.data?.text || 'Namnlöst objekt'}
+                            </span>
+                          ) : (
+                            <span className="text-gray-500">Ingen (spara i lista)</span>
+                          )}
+                          <ChevronDown size={16} className="text-gray-400 flex-shrink-0" />
                         </button>
                       </div>
-                      {showQuickCapture && (
-                        <>
-                          <div className="p-2.5 rounded-lg bg-white/5">
-                            <div className="flex-1 mb-2">
-                              <div className="text-sm font-medium text-white">Går till objekt</div>
-                              <div className="text-xs text-gray-400 mt-0.5">Lägg till positioner direkt</div>
-                            </div>
-                            <button
-                              onClick={onOpenQuickCapturePicker}
-                              className="w-full flex items-center justify-between bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm hover:border-orange-500/50 transition-colors"
-                            >
-                              {quickCaptureObjectId ? (
-                                <span className="text-white truncate">
-                                  {objects?.find(o => o.id === quickCaptureObjectId)?.blocks?.find(b => b.type === 'title')?.data?.text || 'Namnlöst objekt'}
-                                </span>
-                              ) : (
-                                <span className="text-gray-500">Ingen (spara i lista)</span>
-                              )}
-                              <ChevronDown size={16} className="text-gray-400 flex-shrink-0" />
-                            </button>
-                          </div>
-                          <button
-                            onClick={() => { onClose(); onShowCaptures(); }}
-                            className="w-full flex items-center justify-between p-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-all"
-                          >
-                            <div className="flex items-center gap-3">
-                              <Target size={16} className="text-orange-400" />
-                              <span className="text-sm">Visa pinningar</span>
-                            </div>
-                            {captures.length > 0 && (
-                              <span className="bg-orange-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                                {captures.length}
-                              </span>
-                            )}
-                          </button>
-                        </>
-                      )}
+                      <button
+                        onClick={() => { onClose(); onShowCaptures(); }}
+                        className="w-full flex items-center justify-between p-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-all"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Target size={16} className="text-orange-400" />
+                          <span className="text-sm">Visa pinningar</span>
+                        </div>
+                        {captures.length > 0 && (
+                          <span className="bg-orange-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                            {captures.length}
+                          </span>
+                        )}
+                      </button>
                     </div>
                   )}
                 </div>
