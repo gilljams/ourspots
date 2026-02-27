@@ -1399,10 +1399,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                 {(canEdit || object.planningData) && (
                 <button
                   type="button"
-                  onClick={() => {
-                    console.log('Planner button clicked, showPlanner:', showPlanner);
-                    setShowPlanner(true);
-                  }}
+                  onClick={() => setShowPlanner(true)}
                   className={`w-full mt-4 py-3 rounded-xl flex items-center justify-center gap-2 text-sm font-medium transition-all ${
                     object.planningData 
                       ? 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-gray-300 border border-white/10' 

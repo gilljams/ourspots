@@ -46,7 +46,6 @@ export default function PlannerModal({
   onNavigateToObject, // callback to navigate to a linked object
   onOpenUrl // callback to open a linked URL
 }) {
-  console.log('PlannerModal render, isOpen:', isOpen, 'planningData:', planningData);
   const confirm = useConfirm();
   
   // Initialize state from planningData or defaults

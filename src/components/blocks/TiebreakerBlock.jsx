@@ -175,7 +175,6 @@ const TiebreakerBlock = ({
       const elapsed = (Date.now() - roundStartedAt) / 1000;
       if (elapsed > 30) {
         // Match is stale, clear it and sync to Firestore
-        console.log('Clearing stale match, elapsed:', elapsed);
         const newData = { ...localData, activeMatch: null };
         setLocalData(newData);
         if (onUpdateTiebreaker) {
@@ -198,7 +197,6 @@ const TiebreakerBlock = ({
       if ((match.status === 'countdown' || match.status === 'choosing') && roundStartedAt) {
         const elapsed = (Date.now() - roundStartedAt) / 1000;
         if (elapsed > 30) {
-          console.log('Periodic cleanup: clearing stale match');
           const newData = { ...localData, activeMatch: null };
           setLocalData(newData);
           if (onUpdateTiebreaker) {
@@ -349,15 +347,11 @@ const TiebreakerBlock = ({
     if (!currentMatch || currentMatch.status !== 'choosing') return;
     if (!isPlayer) return;
     
-    console.log(isPlayer1 ? 'Player1 handling timeout' : 'Player2 handling timeout');
-    
     const updatedMatch = { ...currentMatch };
     
     // Check what each player has chosen from CURRENT match state
     const p1HasChosen = !!currentMatch.player1?.choice;
     const p2HasChosen = !!currentMatch.player2?.choice;
-    
-    console.log('Timeout check - p1 choice:', currentMatch.player1?.choice, 'p2 choice:', currentMatch.player2?.choice);
     
     // For demo mode, auto-pick for demo opponent
     if (currentMatch.player2?.uid === 'demo' && !p2HasChosen) {
@@ -417,7 +411,6 @@ const TiebreakerBlock = ({
               const latestData = localDataRef.current;
               const currentMatch = latestData.activeMatch;
               if (currentMatch?.status === 'countdown') {
-                console.log(isPlayer1 ? 'Player1: transitioning to choosing' : 'Player2 fallback: transitioning to choosing');
                 const updatedMatch = {
                   ...currentMatch,
                   status: 'choosing',
@@ -436,7 +429,6 @@ const TiebreakerBlock = ({
         setTimeout(() => {
           const latestData = localDataRef.current;
           if (latestData.activeMatch?.status === 'countdown') {
-            console.log('Countdown already done - transitioning to choosing');
             const updatedMatch = {
               ...latestData.activeMatch,
               status: 'choosing',
@@ -562,8 +554,6 @@ const TiebreakerBlock = ({
     if (!isPlayer || currentMatch?.status !== 'choosing') return;
     setMyChoice(choice);
     
-    console.log('makeChoice:', choice, 'for player:', myPlayerKey);
-    
     // Update the match with my choice only
     const updatedMatch = {
       ...currentMatch,
@@ -572,8 +562,6 @@ const TiebreakerBlock = ({
         choice
       }
     };
-    
-    console.log('Saving match with player1 choice:', updatedMatch.player1?.choice, 'player2 choice:', updatedMatch.player2?.choice);
     
     // Sync to Firestore for real-time updates
     await saveData({ ...latestData, activeMatch: updatedMatch });
@@ -585,12 +573,7 @@ const TiebreakerBlock = ({
     // Use ref to get latest data (avoids stale closure)
     const latestData = localDataRef.current;
     const currentMatch = latestData.activeMatch;
-    if (!currentMatch || currentMatch.status !== 'revealing') {
-      console.log('processRoundResult: skipping, status is', currentMatch?.status);
-      return;
-    }
-    
-    console.log('processRoundResult: processing round with choices:', currentMatch.player1?.choice, 'vs', currentMatch.player2?.choice);
+    if (!currentMatch || currentMatch.status !== 'revealing') return;
     
     const winner = determineWinner(currentMatch.player1.choice, currentMatch.player2.choice);
     const newScores = [...currentMatch.scores];

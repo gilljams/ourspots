@@ -754,12 +754,6 @@ export default function LeaderboardModal({
   // Capture ball position for a participant
   // Editors can capture anyone's ball, viewers only their own
   const handleCaptureBall = async (email) => {
-    console.log('[handleCaptureBall] Starting for:', email);
-    console.log('[handleCaptureBall] onUpdateShots:', !!onUpdateShots);
-    console.log('[handleCaptureBall] currentRound:', currentRound);
-    console.log('[handleCaptureBall] rounds:', rounds);
-    console.log('[handleCaptureBall] shots:', shots);
-    
     // Permission check: editors can do all, viewers only their own
     const targetEmail = email?.toLowerCase();
     if (!canEdit && targetEmail !== currentUserEmail) {
@@ -773,8 +767,6 @@ export default function LeaderboardModal({
       return;
     }
     const tee = getCurrentTeePosition();
-    console.log('[handleCaptureBall] teePosition:', tee);
-    
     if (!tee) {
       toast.error('Sätt tee-position först!');
       return;
@@ -782,7 +774,6 @@ export default function LeaderboardModal({
     
     // Cancel any previous capture in progress
     if (gpsCapture.isCapturing) {
-      console.log('[handleCaptureBall] Cancelling previous capture');
       gpsCapture.cancel();
       // Wait a tick for state to clear
       await new Promise(r => setTimeout(r, 100));
@@ -791,12 +782,8 @@ export default function LeaderboardModal({
     setCapturingFor(email);
     
     try {
-      console.log('[handleCaptureBall] Starting GPS capture...');
       const pos = await gpsCapture.capture();
-      console.log('[handleCaptureBall] Got position:', pos);
-      
       const distance = calculateDistance(tee.lat, tee.lng, pos.lat, pos.lng);
-      console.log('[handleCaptureBall] Calculated distance:', distance);
       
       const newShots = { ...shots };
       if (!newShots[email]) {
@@ -809,9 +796,7 @@ export default function LeaderboardModal({
         fairway: newShots[email]?.[currentRound]?.fairway ?? true
       };
       
-      console.log('[handleCaptureBall] Calling onUpdateShots with:', newShots);
       await onUpdateShots(newShots);
-      console.log('[handleCaptureBall] Success!');
     } catch (err) {
       console.error('[handleCaptureBall] Failed:', err);
       toast.error('Fel vid positionshämtning: ' + err.message);

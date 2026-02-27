@@ -174,7 +174,7 @@ function App() {
         setLiveUserLocation({ lat: latitude, lng: longitude });
       },
       (error) => {
-        console.log('Global tracking error:', error);
+        console.warn('Global tracking error:', error);
       },
       { enableHighAccuracy: true, timeout: 30000, maximumAge: 5000 }
     );
@@ -265,8 +265,7 @@ function App() {
   useEffect(() => {
     const handlePageShow = (event) => {
       if (event.persisted) {
-        // Page was restored from bfcache - reload to get fresh state
-        console.log('Page restored from bfcache, reloading...');
+        // Page was restored from bfcache – reload to get fresh state
         window.location.reload();
       }
     };

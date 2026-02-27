@@ -71,8 +71,8 @@ export const TimerBlock = ({ data }) => {
       playBeep(0);
       playBeep(0.35);
       playBeep(0.7);
-    } catch (e) {
-      console.log('Audio not supported:', e);
+    } catch {
+      // Audio not supported – silent fallback
     }
   };
 
