@@ -47,13 +47,6 @@ function TextBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
   };
   
   const hasContent = content && content.trim().length > 0;
-
-  // Summary for collapsed state
-  const getSummary = () => {
-    if (!hasContent) return 'Ingen text';
-    const firstLine = content.split('\n')[0];
-    return firstLine.length > 30 ? firstLine.substring(0, 30) + '...' : firstLine;
-  };
   
   return (
     <div className="rounded-xl border border-white/10 bg-white/5 overflow-hidden">
@@ -72,11 +65,6 @@ function TextBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
           <span className="text-sm font-medium text-gray-300 truncate">
             {title || 'Anteckning'}
           </span>
-          {!isExpanded && hasContent && (
-            <span className="text-xs text-gray-500 truncate ml-1">
-              {getSummary()}
-            </span>
-          )}
         </button>
         <div className="flex gap-1 flex-shrink-0">
           <button type="button" onClick={() => onMove(block.id, -1)} disabled={index === 0} className="w-7 h-7 rounded bg-white/5 text-gray-400 hover:bg-white/10 flex items-center justify-center disabled:opacity-30">
