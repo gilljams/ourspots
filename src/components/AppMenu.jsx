@@ -150,7 +150,6 @@ export default function AppMenu({
               </div>
               <div className="flex-1 text-left">
                 <div className="text-sm font-medium">Kontakter & delningar</div>
-                <div className="text-xs text-gray-400">Se vem du delar med</div>
               </div>
               <Share2 size={16} className="text-blue-400" />
             </button>
@@ -245,7 +244,6 @@ export default function AppMenu({
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
                             <div className="text-sm font-medium text-white">Visa snabbpinning</div>
-                            <div className="text-xs text-gray-400 mt-0.5">Orange snabb-pinning för offline</div>
                           </div>
                           <button
                             onClick={() => setShowQuickCapture(!showQuickCapture)}
@@ -342,21 +340,18 @@ export default function AppMenu({
 
                 <ToggleSetting
                   label="Håll skärmen påslagen"
-                  description="Förhindrar att skärmen släcks"
                   value={keepScreenOn}
                   onChange={() => setKeepScreenOn(!keepScreenOn)}
                   color="blue"
-                  warning={!('wakeLock' in navigator) ? 'Din webbläsare stöder inte denna funktion' : null}
-                  activeNote={keepScreenOn && 'wakeLock' in navigator ? 'Aktiv - skärmen ska förbli påslagen' : null}
+                  warning={!('wakeLock' in navigator) ? 'Stöds ej i din webbläsare' : null}
                 />
 
                 <ToggleSetting
                   label="Precis GPS"
-                  description="Väntar på bättre GPS-signal"
+                  description="±10m noggrannhet, max 15 sek"
                   value={preciseGPS}
                   onChange={() => setPreciseGPS(!preciseGPS)}
                   color="blue"
-                  activeNote={preciseGPS ? 'Väntar tills GPS är ±10m eller max 15 sek' : null}
                 />
               </div>
             )}
@@ -375,7 +370,6 @@ export default function AppMenu({
               <div className="p-2 space-y-2">
                 <ToggleSetting
                   label="Visa demoexempel"
-                  description="Se exempel på hur appen kan användas"
                   value={showDemoObjects}
                   onChange={() => {
                     const newValue = !showDemoObjects;
@@ -386,7 +380,7 @@ export default function AppMenu({
                     }
                   }}
                   color="blue"
-                  activeNote={showDemoObjects ? 'Visar endast demoexempel (skrivskyddat)' : null}
+                  activeNote={showDemoObjects ? 'Skrivskyddat läge' : null}
                 />
               </div>
             )}
