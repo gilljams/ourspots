@@ -92,16 +92,17 @@ export default function AppMenu({
     );
   };
 
-  const handleNewSpot = async () => {
-    if (await confirm({ title: 'Ny markering?', message: 'Den befintliga markeringen skrivs över.', confirmText: 'Markera', variant: 'default' })) {
+  const handleToggleSpot = async () => {
+    if (markedSpot) {
+      // Toggle off — confirm and clear
+      if (await confirm({ title: 'Rensa markering?', message: 'Platsen tas bort.', confirmText: 'Rensa', variant: 'danger' })) {
+        localStorage.removeItem(STORAGE_KEYS.MARKED_SPOT);
+        setMarkedSpot(null);
+        setSpotEditingNote(false);
+      }
+    } else {
+      // Toggle on — capture GPS
       saveSpot();
-    }
-  };
-
-  const clearSpot = async () => {
-    if (await confirm({ title: 'Rensa markering?', message: 'Platsen tas bort.', confirmText: 'Rensa', variant: 'danger' })) {
-      localStorage.removeItem(STORAGE_KEYS.MARKED_SPOT);
-      setMarkedSpot(null);
     }
   };
 
@@ -163,69 +164,71 @@ export default function AppMenu({
                   </button>
                 )}
 
-                {/* Mark my spot */}
-                {markedSpot ? (
-                  <div className="rounded-lg bg-white/5 p-2.5 space-y-2">
-                    <div className="flex items-center gap-2 p-2 rounded-lg bg-white/5">
-                      <MapPin size={14} className="text-gray-400 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        {spotEditingNote ? (
-                          <input
-                            type="text"
-                            autoFocus
-                            value={spotNote}
-                            onChange={(e) => setSpotNote(e.target.value)}
-                            onBlur={() => {
-                              const updated = { ...markedSpot, note: spotNote.trim() };
-                              localStorage.setItem(STORAGE_KEYS.MARKED_SPOT, JSON.stringify(updated));
-                              setMarkedSpot(updated);
-                              setSpotEditingNote(false);
-                            }}
-                            onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }}
-                            placeholder="Lägg till notering..."
-                            className="w-full bg-transparent text-sm text-white placeholder-gray-500 focus:outline-none"
-                          />
-                        ) : (
-                          <button
-                            onClick={() => { setSpotNote(markedSpot.note || ''); setSpotEditingNote(true); }}
-                            className="w-full text-left"
-                          >
-                            <div className="text-sm font-medium text-white truncate">
-                              {markedSpot.note || 'Markerad plats'}
-                            </div>
-                          </button>
-                        )}
-                        <div className="text-xs text-gray-400">
-                          {new Date(markedSpot.timestamp).toLocaleString('sv-SE', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}
-                          {spotDistance != null && ` · ${formatDistance(spotDistance)}`}
-                          {markedSpot.accuracy > 0 && ` · ±${markedSpot.accuracy}m`}
+                {/* Mark my spot — toggle activates + expands */}
+                <div className="rounded-lg bg-white/5 overflow-hidden">
+                  <div className="flex items-center justify-between p-2.5">
+                    <div className="flex items-center gap-3">
+                      <MapPin size={16} className="text-gray-400" />
+                      <span className="text-sm text-gray-300">{spotSaving ? 'Hämtar GPS...' : 'Markera min plats'}</span>
+                    </div>
+                    <button
+                      onClick={handleToggleSpot}
+                      disabled={spotSaving}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${
+                        markedSpot ? 'bg-blue-500' : 'bg-white/20'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          markedSpot ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                  {markedSpot && (
+                    <div className="px-2.5 pb-2.5 space-y-2">
+                      <div className="flex items-center gap-2 p-2 rounded-lg bg-white/5">
+                        <div className="flex-1 min-w-0">
+                          {spotEditingNote ? (
+                            <input
+                              type="text"
+                              autoFocus
+                              value={spotNote}
+                              onChange={(e) => setSpotNote(e.target.value)}
+                              onBlur={() => {
+                                const updated = { ...markedSpot, note: spotNote.trim() };
+                                localStorage.setItem(STORAGE_KEYS.MARKED_SPOT, JSON.stringify(updated));
+                                setMarkedSpot(updated);
+                                setSpotEditingNote(false);
+                              }}
+                              onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }}
+                              placeholder="Lägg till notering..."
+                              className="w-full bg-transparent text-sm text-white placeholder-gray-500 focus:outline-none"
+                            />
+                          ) : (
+                            <button
+                              onClick={() => { setSpotNote(markedSpot.note || ''); setSpotEditingNote(true); }}
+                              className="w-full text-left"
+                            >
+                              <div className="text-sm text-white truncate">
+                                {markedSpot.note || 'Lägg till notering...'}
+                              </div>
+                            </button>
+                          )}
+                          <div className="text-xs text-gray-400 mt-0.5">
+                            {new Date(markedSpot.timestamp).toLocaleString('sv-SE', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}
+                            {spotDistance != null && ` · ${formatDistance(spotDistance)}`}
+                            {markedSpot.accuracy > 0 && ` · ±${markedSpot.accuracy}m`}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex gap-2">
-                        <button onClick={navigateToSpot} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-white/10 text-gray-300 hover:bg-white/20 text-xs font-medium transition-colors">
+                      <button onClick={navigateToSpot} className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 text-xs font-medium transition-colors">
                         <Navigation size={12} />
-                        Navigera
-                      </button>
-                      <button onClick={handleNewSpot} disabled={spotSaving} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-white/5 text-gray-300 hover:bg-white/10 text-xs font-medium transition-colors disabled:opacity-50">
-                        <MapPin size={12} />
-                        Ny
-                      </button>
-                      <button onClick={clearSpot} className="w-8 flex items-center justify-center py-2 rounded-lg bg-white/5 text-gray-400 hover:bg-red-500/20 hover:text-red-400 transition-colors">
-                        <Trash2 size={12} />
+                        Navigera hit
                       </button>
                     </div>
-                  </div>
-                ) : (
-                  <button
-                    onClick={saveSpot}
-                    disabled={spotSaving}
-                    className="w-full flex items-center gap-3 p-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white text-sm transition-colors disabled:opacity-50"
-                  >
-                    <MapPin size={16} className="text-gray-400" />
-                    {spotSaving ? 'Hämtar GPS...' : 'Markera min plats'}
-                  </button>
-                )}
+                  )}
+                </div>
 
                 {/* Snabbpinningar — toggle activates + expands */}
                 <div className="rounded-lg bg-white/5 overflow-hidden">
