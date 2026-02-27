@@ -22,6 +22,9 @@ export function useDisplayObjects({
       const locationBlock = obj.blocks?.find(b => b.type === 'location');
       if (locationBlock?.data?.address) values.push(locationBlock.data.address);
       obj.blocks?.forEach(block => {
+        // Block title (section, rating, split, leaderboard, distribution, tiebreaker, audio, poll)
+        if (block.title) values.push(block.title);
+
         if (block.type === 'text' && block.data?.text) {
           values.push(block.data.text);
         }
@@ -41,6 +44,26 @@ export function useDisplayObjects({
               values.push(tag.end);
             }
           });
+        }
+        if (block.type === 'contact') {
+          if (block.data?.name) values.push(block.data.name);
+          if (block.data?.email) values.push(block.data.email);
+          if (block.data?.phone) values.push(block.data.phone);
+        }
+        if (block.type === 'links' && Array.isArray(block.data?.links)) {
+          block.data.links.forEach(link => {
+            if (link.title) values.push(link.title);
+            if (link.url) values.push(link.url);
+          });
+        }
+        if (block.type === 'poll') {
+          if (block.data?.question) values.push(block.data.question);
+          if (Array.isArray(block.data?.options)) {
+            block.data.options.forEach(opt => {
+              if (typeof opt === 'string') values.push(opt);
+              else if (opt?.text) values.push(opt.text);
+            });
+          }
         }
       });
       return values.some(v => v.toString().toLowerCase().includes(searchTerm));
