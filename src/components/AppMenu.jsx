@@ -158,7 +158,7 @@ export default function AppMenu({
                     onClick={() => { onShowContacts(); onClose(); }}
                     className="w-full flex items-center gap-3 p-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-all"
                   >
-                    <Users size={16} className="text-blue-400" />
+                    <Users size={16} className="text-gray-400" />
                     <span className="text-sm">Kontakter & delningar</span>
                   </button>
                 )}
@@ -167,7 +167,7 @@ export default function AppMenu({
                 {markedSpot ? (
                   <div className="rounded-lg bg-white/5 p-2.5 space-y-2">
                     <div className="flex items-center gap-2 p-2 rounded-lg bg-white/5">
-                      <MapPin size={14} className="text-blue-400 flex-shrink-0" />
+                      <MapPin size={14} className="text-gray-400 flex-shrink-0" />
                       <div className="flex-1 min-w-0">
                         {spotEditingNote ? (
                           <input
@@ -203,7 +203,7 @@ export default function AppMenu({
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={navigateToSpot} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 text-xs font-medium transition-colors">
+                        <button onClick={navigateToSpot} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-white/10 text-gray-300 hover:bg-white/20 text-xs font-medium transition-colors">
                         <Navigation size={12} />
                         Navigera
                       </button>
@@ -222,7 +222,7 @@ export default function AppMenu({
                     disabled={spotSaving}
                     className="w-full flex items-center gap-3 p-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white text-sm transition-colors disabled:opacity-50"
                   >
-                    <MapPin size={16} className="text-blue-400" />
+                    <MapPin size={16} className="text-gray-400" />
                     {spotSaving ? 'Hämtar GPS...' : 'Markera min plats'}
                   </button>
                 )}
@@ -274,10 +274,7 @@ export default function AppMenu({
                         onClick={() => { onClose(); onShowCaptures(); }}
                         className="w-full flex items-center justify-between p-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-all"
                       >
-                        <div className="flex items-center gap-3">
-                          <Target size={16} className="text-orange-400" />
-                          <span className="text-sm">Visa pinningar</span>
-                        </div>
+                        <span className="text-sm">Visa pinningar</span>
                         {captures.length > 0 && (
                           <span className="bg-orange-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
                             {captures.length}
