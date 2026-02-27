@@ -7,6 +7,7 @@ import { db } from '../firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { STORAGE_KEYS } from '../utils/storageKeys';
 import { getDistance, formatDistance } from '../utils/geoUtils';
+import { useConfirm } from '../utils/useConfirm';
 
 /**
  * Slide-out sidebar menu with admin, settings, and quick capture sections.
@@ -55,6 +56,7 @@ export default function AppMenu({
   userLocation
 }) {
   // Mark my spot state
+  const confirm = useConfirm();
   const [markedSpot, setMarkedSpot] = useState(() => {
     try { return JSON.parse(localStorage.getItem(STORAGE_KEYS.MARKED_SPOT)); } catch { return null; }
   });
@@ -82,9 +84,17 @@ export default function AppMenu({
     );
   };
 
-  const clearSpot = () => {
-    localStorage.removeItem(STORAGE_KEYS.MARKED_SPOT);
-    setMarkedSpot(null);
+  const handleNewSpot = async () => {
+    if (await confirm({ title: 'Ny markering?', message: 'Den befintliga markeringen skrivs över.', confirmText: 'Markera', variant: 'default' })) {
+      saveSpot();
+    }
+  };
+
+  const clearSpot = async () => {
+    if (await confirm({ title: 'Rensa markering?', message: 'Platsen tas bort.', confirmText: 'Rensa', variant: 'danger' })) {
+      localStorage.removeItem(STORAGE_KEYS.MARKED_SPOT);
+      setMarkedSpot(null);
+    }
   };
 
   const navigateToSpot = () => {
@@ -163,7 +173,7 @@ export default function AppMenu({
                       <Navigation size={12} />
                       Navigera
                     </button>
-                    <button onClick={saveSpot} disabled={spotSaving} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-white/5 text-gray-300 hover:bg-white/10 text-xs font-medium transition-colors disabled:opacity-50">
+                    <button onClick={handleNewSpot} disabled={spotSaving} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-white/5 text-gray-300 hover:bg-white/10 text-xs font-medium transition-colors disabled:opacity-50">
                       <MapPin size={12} />
                       Ny
                     </button>
