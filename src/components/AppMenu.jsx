@@ -140,10 +140,13 @@ export default function AppMenu({
           {/* Mark my spot */}
           <div className="rounded-xl border border-white/10 overflow-hidden">
             <div className="p-3 space-y-2">
+              <div className="flex items-center gap-2 mb-1">
+                <MapPin size={14} className="text-red-400" />
+                <span className="text-xs text-gray-400 uppercase tracking-wide font-medium">Markera plats</span>
+              </div>
               {markedSpot ? (
                 <>
-                  <div className="flex items-center gap-2">
-                    <MapPin size={16} className="text-red-400 flex-shrink-0" />
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-white/5">
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium text-white truncate">
                         {markedSpot.note || 'Markerad plats'}
@@ -162,7 +165,7 @@ export default function AppMenu({
                     </button>
                     <button onClick={saveSpot} disabled={spotSaving} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-white/5 text-gray-300 hover:bg-white/10 text-xs font-medium transition-colors disabled:opacity-50">
                       <MapPin size={12} />
-                      Ny markering
+                      Ny
                     </button>
                     <button onClick={clearSpot} className="w-8 flex items-center justify-center py-2 rounded-lg bg-white/5 text-gray-400 hover:bg-red-500/20 hover:text-red-400 transition-colors">
                       <Trash2 size={12} />
@@ -171,23 +174,21 @@ export default function AppMenu({
                 </>
               ) : (
                 <>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={spotNote}
-                      onChange={(e) => setSpotNote(e.target.value)}
-                      placeholder="Notering (valfritt)..."
-                      className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-red-400/50"
-                    />
-                    <button
-                      onClick={saveSpot}
-                      disabled={spotSaving}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30 text-sm font-medium transition-colors disabled:opacity-50"
-                    >
-                      <MapPin size={14} />
-                      {spotSaving ? '...' : 'Markera'}
-                    </button>
-                  </div>
+                  <input
+                    type="text"
+                    value={spotNote}
+                    onChange={(e) => setSpotNote(e.target.value)}
+                    placeholder="Notering (valfritt)..."
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-red-400/50"
+                  />
+                  <button
+                    onClick={saveSpot}
+                    disabled={spotSaving}
+                    className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30 text-sm font-medium transition-colors disabled:opacity-50"
+                  >
+                    <MapPin size={14} />
+                    {spotSaving ? 'Hämtar GPS...' : 'Markera min plats'}
+                  </button>
                 </>
               )}
             </div>
