@@ -616,7 +616,7 @@ export default function PlannerModal({
                     className="fixed inset-0 z-[3101]" 
                     onClick={() => setShowMenu(false)}
                   />
-                  <div className="absolute right-0 top-full mt-1 w-48 bg-gray-800 rounded-lg shadow-xl border border-white/10 py-1 z-[3102]">
+                  <div className="absolute right-0 top-full mt-1 w-48 bg-gray-900 rounded-lg shadow-xl border border-white/10 py-1 z-[3102]">
                     <button
                       type="button"
                       onClick={() => {

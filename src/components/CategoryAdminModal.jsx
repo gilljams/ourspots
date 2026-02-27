@@ -173,7 +173,7 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
                     <ChevronDown size={16} className={`text-gray-400 transition-transform lg:w-3 lg:h-3 ${showIconPicker === 'new' ? 'rotate-180' : ''}`} />
                   </button>
                   {showIconPicker === 'new' && (
-                    <div className="absolute z-50 top-full left-0 right-0 mt-1 p-2 rounded-lg bg-gray-800 border border-white/20 shadow-xl max-h-48 overflow-y-auto">
+                    <div className="absolute z-50 top-full left-0 right-0 mt-1 p-2 rounded-lg bg-gray-900 border border-white/20 shadow-xl max-h-48 overflow-y-auto">
                       <div className="grid grid-cols-4 gap-1">
                         {AVAILABLE_ICONS.map(icon => {
                           const IconComp = getIconComponent(icon.name);
@@ -274,7 +274,7 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
                               <ChevronDown size={16} className={`text-gray-400 transition-transform ${showIconPicker === 'edit' ? 'rotate-180' : ''}`} />
                             </button>
                             {showIconPicker === 'edit' && (
-                              <div className="absolute z-50 top-full left-0 right-0 mt-1 p-2 rounded-lg bg-gray-800 border border-white/20 shadow-xl max-h-48 overflow-y-auto">
+                              <div className="absolute z-50 top-full left-0 right-0 mt-1 p-2 rounded-lg bg-gray-900 border border-white/20 shadow-xl max-h-48 overflow-y-auto">
                                 <div className="grid grid-cols-4 gap-1">
                                   {AVAILABLE_ICONS.map(icon => {
                                     const IconComp = getIconComponent(icon.name);

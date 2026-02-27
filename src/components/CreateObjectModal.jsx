@@ -1091,7 +1091,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             </div>
 
             {/* Collection toggle */}
-            <div className={`flex items-center gap-3 p-3 rounded-xl border ${hasChildren ? 'bg-gray-800/50 border-white/5' : 'bg-white/5 border-white/10'}`}>
+            <div className={`flex items-center gap-3 p-3 rounded-xl border ${hasChildren ? 'bg-white/[0.03] border-white/5' : 'bg-white/5 border-white/10'}`}>
               <button
                 type="button"
                 onClick={() => { 
@@ -1169,7 +1169,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                       value={parentId} 
                       onChange={(e) => { setParentId(e.target.value); setFormTouched(true); }} 
                       disabled={saving}
-                      className="w-full px-4 py-3 rounded-xl bg-gray-800 border border-white/10 text-white focus:outline-none focus:border-blue-500 appearance-none"
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-blue-500 appearance-none"
                       style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
                     >
                       <option value="">- Inget parent-objekt -</option>

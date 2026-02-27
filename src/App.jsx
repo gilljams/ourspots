@@ -866,7 +866,7 @@ function App() {
                       setMapCenter(null);
                     }
                   }}
-                  className={`absolute right-2 w-14 h-14 bg-gray-800/90 hover:bg-gray-700 backdrop-blur-sm rounded-2xl shadow-xl flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 border border-white/10 pointer-events-auto ${
+                  className={`absolute right-2 w-14 h-14 bg-gray-900/90 hover:bg-gray-800 backdrop-blur-sm rounded-2xl shadow-xl flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 border border-white/10 pointer-events-auto ${
                     viewMode === 'map' && returnToObjectId ? 'bottom-[10.5rem]' : 'bottom-24'
                   }`}
                   title={viewMode === 'list' ? 'Visa karta' : 'Visa lista'}

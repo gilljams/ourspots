@@ -168,7 +168,7 @@ function LinksBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
                           onClick={(e) => { e.stopPropagation(); setShowIconPicker(null); }}
                         />
                         <div 
-                          className="absolute top-12 left-0 z-[101] bg-gray-800 border border-white/10 rounded-xl p-2 shadow-xl grid grid-cols-6 gap-1 w-64 max-h-48 overflow-y-auto"
+                          className="absolute top-12 left-0 z-[101] bg-gray-900 border border-white/10 rounded-xl p-2 shadow-xl grid grid-cols-6 gap-1 w-64 max-h-48 overflow-y-auto"
                           onClick={(e) => e.stopPropagation()}
                         >
                           {LINK_ICONS.map(({ name, label }) => {

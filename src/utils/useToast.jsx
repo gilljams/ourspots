@@ -51,7 +51,7 @@ export function ToastProvider({ children }) {
           className={`fixed top-4 left-1/2 -translate-x-1/2 z-[9999] px-4 py-3 rounded-xl shadow-lg backdrop-blur-sm flex items-center gap-3 transition-all max-w-[90vw] ${
             current.type === 'success' ? 'bg-green-500/90 text-white' :
             current.type === 'error'   ? 'bg-red-500/90 text-white' :
-            'bg-gray-800/90 text-white border border-white/10'
+            'bg-gray-900/90 text-white border border-white/10'
           }`}
           style={{
             marginTop: 'env(safe-area-inset-top)',

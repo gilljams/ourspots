@@ -106,7 +106,7 @@ function MapPicker({ onSelect, onClose, initialPosition, userLocation }) {
           
           {/* Search results dropdown */}
           {searchResults.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-2 bg-gray-800 border border-white/10 rounded-xl overflow-hidden z-[1200] shadow-xl">
+            <div className="absolute top-full left-0 right-0 mt-2 bg-gray-900 border border-white/10 rounded-xl overflow-hidden z-[1200] shadow-xl">
               {searchResults.map((result, i) => (
                 <button
                   key={i}

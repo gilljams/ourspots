@@ -279,7 +279,7 @@ export const TableBlock = ({ data, objectId, blockIndex, onUpdate, onExpand, onE
       {/* Progress bar if has checkboxes */}
       {checkboxCol && totalCount > 0 && (
         <div className="flex items-center gap-3 px-4 py-2 border-b border-white/5">
-          <div className="h-1.5 w-20 bg-gray-800 rounded-full overflow-hidden">
+          <div className="h-1.5 w-20 bg-white/10 rounded-full overflow-hidden">
             <div 
               className="h-full bg-gradient-to-r from-blue-500 to-blue-400 transition-all duration-300"
               style={{ width: `${(checkedCount / totalCount) * 100}%` }}

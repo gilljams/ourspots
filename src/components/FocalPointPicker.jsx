@@ -144,7 +144,7 @@ function FocalPointPicker({ imageUrl, currentFocalPoint, onSelect, onClose }) {
         <div className="flex items-center gap-4">
           <div className="flex-shrink-0">
             <p className="text-xs text-gray-500 mb-1.5">Resultat</p>
-            <div className="w-28 h-20 rounded-lg overflow-hidden border border-white/20 bg-gray-800">
+            <div className="w-28 h-20 rounded-lg overflow-hidden border border-white/20 bg-gray-900">
               <img 
                 src={originalImageUrl} 
                 alt="Preview" 
