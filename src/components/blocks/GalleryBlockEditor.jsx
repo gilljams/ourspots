@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { X, ArrowUp, ArrowDown, ChevronDown, Images, Upload, Loader, Edit2 } from 'lucide-react';
+import { X, ArrowUp, ArrowDown, ChevronDown, Images, Upload, Loader } from 'lucide-react';
 import { CLOUDINARY_CLOUD_NAME, CLOUDINARY_UPLOAD_PRESET, resizeImage } from '../../utils/imageUtils';
 import { useToast } from '../../utils/useToast';
 
@@ -9,7 +9,6 @@ function GalleryBlockEditor({ block, onUpdate, onRemove, onMove, index, total, s
   const [images, setImages] = useState(block.images || []);
   const [isExpanded, setIsExpanded] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [editingCaption, setEditingCaption] = useState(null);
   const fileInputRef = useRef(null);
   
   const MAX_IMAGES = 4;
@@ -57,8 +56,7 @@ function GalleryBlockEditor({ block, onUpdate, onRemove, onMove, index, total, s
         const data = await response.json();
         
         uploadedImages.push({
-          url: data.secure_url,
-          caption: ''
+          url: data.secure_url
         });
       }
       
@@ -75,13 +73,6 @@ function GalleryBlockEditor({ block, onUpdate, onRemove, onMove, index, total, s
   const removeImage = (idx) => {
     const newImages = images.filter((_, i) => i !== idx);
     syncImages(newImages);
-  };
-  
-  const updateCaption = (idx, caption) => {
-    const newImages = [...images];
-    newImages[idx] = { ...newImages[idx], caption };
-    syncImages(newImages);
-    setEditingCaption(null);
   };
   
   return (
@@ -128,56 +119,19 @@ function GalleryBlockEditor({ block, onUpdate, onRemove, onMove, index, total, s
                       ? img.url.replace('/upload/', '/upload/c_fill,w_128,h_128,q_auto/') 
                       : img.url
                     }
-                    alt={img.caption || ''}
+                    alt=""
                     className="w-full aspect-square object-cover"
                   />
-                  {/* Always-visible action buttons */}
-                  <div className="absolute top-1 right-1 flex gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setEditingCaption(idx)}
-                      className="w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center"
-                      title="Bildtext"
-                    >
-                      <Edit2 size={10} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => removeImage(idx)}
-                      className="w-6 h-6 rounded-full bg-black/60 text-red-400 flex items-center justify-center"
-                      title="Ta bort"
-                    >
-                      <X size={10} />
-                    </button>
-                  </div>
-                  {/* Caption indicator */}
-                  {img.caption && (
-                    <div className="absolute bottom-0 left-0 right-0 bg-black/70 px-1.5 py-0.5">
-                      <span className="text-[10px] text-white truncate block">{img.caption}</span>
-                    </div>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => removeImage(idx)}
+                    className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 text-red-400 flex items-center justify-center"
+                    title="Ta bort"
+                  >
+                    <X size={10} />
+                  </button>
                 </div>
               ))}
-            </div>
-          )}
-          
-          {/* Caption edit modal */}
-          {editingCaption !== null && (
-            <div className="p-3 bg-white/5 rounded-lg border border-white/10">
-              <label className="text-xs text-gray-400 mb-1 block">Bildtext</label>
-              <input
-                type="text"
-                defaultValue={images[editingCaption]?.caption || ''}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    updateCaption(editingCaption, e.target.value);
-                  }
-                }}
-                onBlur={(e) => updateCaption(editingCaption, e.target.value)}
-                className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                placeholder="Skriv bildtext..."
-                autoFocus
-              />
             </div>
           )}
           
@@ -211,7 +165,7 @@ function GalleryBlockEditor({ block, onUpdate, onRemove, onMove, index, total, s
           
           {/* Info text */}
           <p className="text-xs text-gray-500">
-            Galleribilderna visas som miniatyrer under huvudbilden. Klicka för att öppna i karusell.
+            Visas som miniatyrer under huvudbilden.
           </p>
         </div>
       )}
