@@ -118,42 +118,42 @@ function GalleryBlockEditor({ block, onUpdate, onRemove, onMove, index, total, s
       {/* Expandable content */}
       {isExpanded && (
         <div className="px-3 pb-3 space-y-3">
-          {/* Image grid */}
+          {/* Image grid – compact thumbnails for editor */}
           {images.length > 0 && (
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               {images.map((img, idx) => (
-                <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-white/10 group">
+                <div key={idx} className="relative rounded-lg overflow-hidden border border-white/10">
                   <img 
                     src={img.url.includes('cloudinary.com') 
-                      ? img.url.replace('/upload/', '/upload/c_fill,w_256,h_256,q_auto/') 
+                      ? img.url.replace('/upload/', '/upload/c_fill,w_128,h_128,q_auto/') 
                       : img.url
                     }
                     alt={img.caption || ''}
-                    className="w-full h-full object-cover"
+                    className="w-full aspect-square object-cover"
                   />
-                  {/* Overlay with actions */}
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                  {/* Always-visible action buttons */}
+                  <div className="absolute top-1 right-1 flex gap-1">
                     <button
                       type="button"
                       onClick={() => setEditingCaption(idx)}
-                      className="p-2 rounded-full bg-white/20 hover:bg-white/30 text-white"
-                      title="Lägg till bildtext"
+                      className="w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center"
+                      title="Bildtext"
                     >
-                      <Edit2 size={14} />
+                      <Edit2 size={10} />
                     </button>
                     <button
                       type="button"
                       onClick={() => removeImage(idx)}
-                      className="p-2 rounded-full bg-red-500/30 hover:bg-red-500/50 text-white"
+                      className="w-6 h-6 rounded-full bg-black/60 text-red-400 flex items-center justify-center"
                       title="Ta bort"
                     >
-                      <X size={14} />
+                      <X size={10} />
                     </button>
                   </div>
-                  {/* Caption */}
+                  {/* Caption indicator */}
                   {img.caption && (
-                    <div className="absolute bottom-0 left-0 right-0 bg-black/70 px-2 py-1">
-                      <span className="text-xs text-white truncate block">{img.caption}</span>
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/70 px-1.5 py-0.5">
+                      <span className="text-[10px] text-white truncate block">{img.caption}</span>
                     </div>
                   )}
                 </div>
