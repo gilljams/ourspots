@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { db, auth, googleProvider } from '../firebase';
+import { useToast } from './useToast';
 import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
 import { signInWithPopup, signOut, onAuthStateChanged, GoogleAuthProvider, getRedirectResult } from 'firebase/auth';
 
@@ -12,7 +13,8 @@ import { signInWithPopup, signOut, onAuthStateChanged, GoogleAuthProvider, getRe
  *   favoriteContacts, setFavoriteContacts,
  *   handleLogin, handleLogout, handleSwitchAccount
  */
-export function useAuth(setToast) {
+export function useAuth() {
+  const toast = useToast();
   const [user, setUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [userApproved, setUserApproved] = useState(false);
@@ -64,7 +66,7 @@ export function useAuth(setToast) {
 
             // Check if user is blocked
             if (userData?.blocked) {
-              setToast({ message: 'Ditt konto har blivit blockerat. Kontakta administratören.', type: 'error' });
+              toast.error('Ditt konto har blivit blockerat. Kontakta administratören.');
               await signOut(auth);
               return;
             }
@@ -131,10 +133,10 @@ export function useAuth(setToast) {
     } catch (err) {
       if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
         console.error('Login error:', err);
-        setToast({ message: 'Kunde inte logga in. Försök igen!', type: 'error' });
+        toast.error('Kunde inte logga in. Försök igen!');
       }
     }
-  }, [setToast]);
+  }, [toast]);
 
   const handleLogout = useCallback(async () => {
     try {
@@ -152,10 +154,10 @@ export function useAuth(setToast) {
     } catch (err) {
       if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
         console.error('Switch account error:', err);
-        setToast({ message: 'Kunde inte byta konto. Försök igen!', type: 'error' });
+        toast.error('Kunde inte byta konto. Försök igen!');
       }
     }
-  }, [setToast]);
+  }, [toast]);
 
   return {
     user,

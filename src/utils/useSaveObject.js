@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { db } from '../firebase';
+import { useToast } from './useToast';
 import {
   collection, addDoc, updateDoc, doc, Timestamp,
   getDoc, deleteField, arrayUnion, arrayRemove
@@ -20,13 +21,14 @@ import {
  */
 export function useSaveObject({
   user, isAdmin, userApproved, appSettings,
-  objects, showDemoObjects, setToast, setSelectedObject
+  objects, showDemoObjects, setSelectedObject
 }) {
+  const toast = useToast();
   const [saving, setSaving] = useState(false);
 
   const saveObject = useCallback(async (objectData, editId) => {
     if (!user) {
-      setToast({ message: 'Du måste vara inloggad!', type: 'error' });
+      toast.error('Du måste vara inloggad!');
       return;
     }
 
@@ -37,9 +39,9 @@ export function useSaveObject({
 
       if (ownedObjectsCount >= limit) {
         if (!userApproved) {
-          setToast({ message: `Du har nått gränsen på ${limit} objekt. Kontakta en administratör för att få ditt konto godkänt och utökat.`, type: 'error' });
+          toast.error(`Du har nått gränsen på ${limit} objekt. Kontakta en administratör för att få ditt konto godkänt och utökat.`);
         } else {
-          setToast({ message: `Du har nått din gräns på ${limit} objekt.`, type: 'error' });
+          toast.error(`Du har nått din gräns på ${limit} objekt.`);
         }
         return;
       }
@@ -367,12 +369,12 @@ export function useSaveObject({
       return savedObjectId;
     } catch (err) {
       console.error('Save error:', err);
-      setToast({ message: err.message === 'Timeout' ? 'Sparningen tog för lång tid. Försök igen.' : 'Kunde inte spara!', type: 'error' });
+      toast.error(err.message === 'Timeout' ? 'Sparningen tog för lång tid. Försök igen.' : 'Kunde inte spara!');
       return null;
     } finally {
       setSaving(false);
     }
-  }, [user, isAdmin, userApproved, appSettings, objects, showDemoObjects, setToast, setSelectedObject]);
+  }, [user, isAdmin, userApproved, appSettings, objects, showDemoObjects, toast, setSelectedObject]);
 
   return { saving, saveObject };
 }

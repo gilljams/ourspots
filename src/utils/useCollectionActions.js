@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { db } from '../firebase';
+import { useToast } from './useToast';
 import { updateDoc, doc, Timestamp } from 'firebase/firestore';
 
 /**
@@ -9,19 +10,21 @@ import { updateDoc, doc, Timestamp } from 'firebase/firestore';
  * Each handler takes a collectionId and performs the Firestore update,
  * showing a toast on error.
  */
-export function useCollectionActions(objects, setToast) {
+export function useCollectionActions(objects) {
+  const toast = useToast();
+
   const addToCollection = useCallback(async (objectId, collectionId) => {
     try {
       // Prevent circular linking
       if (objectId === collectionId) {
-        setToast({ message: 'En samlingsvy kan inte länka till sig själv', type: 'error' });
+        toast.error('En samlingsvy kan inte länka till sig själv');
         return;
       }
       const coll = objects.find(o => o.id === collectionId);
       if (!coll) return;
       const currentLinked = coll.linkedObjectIds || [];
       if (currentLinked.includes(objectId)) {
-        setToast({ message: 'Objektet finns redan i samlingsvyn', type: 'info' });
+        toast.info('Objektet finns redan i samlingsvyn');
         return;
       }
       const currentOrder = coll.linkedOrder || [];
@@ -31,12 +34,12 @@ export function useCollectionActions(objects, setToast) {
         updatedAt: Timestamp.now()
       });
       const collectionTitle = coll.blocks?.find(b => b.type === 'title')?.data?.text || 'samlingsvyn';
-      setToast({ message: `Tillagt i "${collectionTitle}"!`, type: 'success' });
+      toast.success(`Tillagt i "${collectionTitle}"!`);
     } catch (err) {
       console.error('Error adding to collection:', err);
-      setToast({ message: 'Kunde inte lägga till i samlingsvyn', type: 'error' });
+      toast.error('Kunde inte lägga till i samlingsvyn');
     }
-  }, [objects, setToast]);
+  }, [objects, toast]);
 
   const removeFromCollection = useCallback(async (collectionId, objectId) => {
     try {
@@ -51,9 +54,9 @@ export function useCollectionActions(objects, setToast) {
       });
     } catch (err) {
       console.error('Error removing from collection:', err);
-      setToast({ message: 'Kunde inte ta bort från samlingsvyn', type: 'error' });
+      toast.error('Kunde inte ta bort från samlingsvyn');
     }
-  }, [objects, setToast]);
+  }, [objects, toast]);
 
   const updateLinkedNote = useCallback(async (collectionId, linkedObjectId, note) => {
     try {
@@ -94,9 +97,9 @@ export function useCollectionActions(objects, setToast) {
       });
     } catch (err) {
       console.error('Error adding linked URL:', err);
-      setToast({ message: 'Kunde inte lägga till länken', type: 'error' });
+      toast.error('Kunde inte lägga till länken');
     }
-  }, [objects, setToast]);
+  }, [objects, toast]);
 
   const updateLinkedUrl = useCallback(async (collectionId, urlId, urlData) => {
     try {

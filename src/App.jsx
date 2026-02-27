@@ -65,9 +65,8 @@ L.Icon.Default.mergeOptions({
 });
 
 function App() {
-  // Global toast via context — setToast shim for backwards-compat with hooks
+  // Global toast via context
   const toast = useToast();
-  const setToast = (value) => { if (value) toast.show(value.message, value.type); };
 
   // --- Extracted hooks ---
   const {
@@ -75,7 +74,7 @@ function App() {
     displayName, setDisplayName, sharedContacts, setSharedContacts,
     favoriteContacts, setFavoriteContacts, initialFavorites,
     handleLogin, handleLogout, handleSwitchAccount
-  } = useAuth(setToast);
+  } = useAuth();
 
   const [showDemoObjects, setShowDemoObjects] = usePersistedState(STORAGE_KEYS.SHOW_DEMO_OBJECTS, false);
 
@@ -91,17 +90,17 @@ function App() {
   const {
     pendingInvitations, userEmailKey, userEmailLower,
     handleAcceptInvitation, handleRejectInvitation, handleLeaveShare
-  } = useSharing(user, objects, displayName, setToast, setSelectedObject);
+  } = useSharing(user, objects, displayName, setSelectedObject);
 
   const { saving, saveObject } = useSaveObject({
     user, isAdmin, userApproved, appSettings,
-    objects, showDemoObjects, setToast, setSelectedObject
+    objects, showDemoObjects, setSelectedObject
   });
 
   const {
     addToCollection, removeFromCollection, updateLinkedNote,
     addLinkedUrl, updateLinkedUrl, removeLinkedUrl, reorderLinked
-  } = useCollectionActions(objects, setToast);
+  } = useCollectionActions(objects);
 
   const { addContact, toggleFavoriteContact } = useContactActions(
     user, sharedContacts, setSharedContacts, favoriteContacts, setFavoriteContacts
@@ -473,7 +472,7 @@ function App() {
   // Quick capture functions
   const handleQuickCapture = async () => {
     if (!userLocation) {
-      setToast({ message: 'Ingen GPS-position! Vänta tills GPS har hittats.', type: 'error' });
+      toast.error('Ingen GPS-position! Vänta tills GPS har hittats.');
       return;
     }
 
@@ -495,15 +494,15 @@ function App() {
             blocks: updatedBlocks
           });
           const objectName = targetObject.blocks?.find(b => b.type === 'title')?.data?.text || 'objektet';
-          setToast({ message: `Position tillagd till "${objectName}"!`, type: 'success' });
+          toast.success(`Position tillagd till "${objectName}"!`);
           return;
         } catch (err) {
           console.error('Error adding location:', err);
-          setToast({ message: 'Kunde inte lägga till position', type: 'error' });
+          toast.error('Kunde inte lägga till position');
           return;
         }
       } else {
-        setToast({ message: 'Valt objekt finns inte längre. Välj ett nytt i inställningar.', type: 'error' });
+        toast.error('Valt objekt finns inte längre. Välj ett nytt i inställningar.');
         return;
       }
     }
@@ -521,7 +520,7 @@ function App() {
     setCaptures(newCaptures);
     
     // Visual feedback
-    setToast({ message: `Position sparad! (${newCaptures.length} st)`, type: 'success' });
+    toast.success(`Position sparad! (${newCaptures.length} st)`);
   };
 
   const handleDeleteCapture = (captureId) => {
@@ -597,13 +596,13 @@ function App() {
       ]);
     } catch (err) {
       console.error('Error deleting objects:', err);
-      setToast({ message: 'Kunde inte ta bort!', type: 'error' });
+      toast.error('Kunde inte ta bort!');
     }
-  }, [objects, setToast]);
+  }, [objects, toast]);
 
   const handleEdit = useCallback((obj) => {
     if (!user) {
-      setToast({ message: 'Du måste vara inloggad för att redigera!', type: 'error' });
+      toast.error('Du måste vara inloggad för att redigera!');
       return;
     }
     
@@ -614,7 +613,7 @@ function App() {
     const canEditObj = isOwner || isAdmin || shareRole === 'editor';
     
     if (obj.id && !canEditObj) {
-      setToast({ message: 'Du har inte behörighet att redigera detta objekt!', type: 'error' });
+      toast.error('Du har inte behörighet att redigera detta objekt!');
       return;
     }
     if (obj.parentId) {
@@ -623,18 +622,18 @@ function App() {
     setEditingObject(obj.id ? obj : null);
     setShowCreateModal(true);
     setSelectedObject(null);
-  }, [user, isAdmin, setToast]);
+  }, [user, isAdmin, toast]);
 
   const handleDuplicate = useCallback((obj) => {
     if (!user) {
-      setToast({ message: 'Du måste vara inloggad för att kopiera!', type: 'error' });
+      toast.error('Du måste vara inloggad för att kopiera!');
       return;
     }
     setDuplicatingObject(obj);
     setDefaultParentId(obj.parentId || null);
     setShowCreateModal(true);
     setSelectedObject(null);
-  }, [user, setToast]);
+  }, [user, toast]);
 
   if (loading || !categoriesLoaded) {
     return (
@@ -918,7 +917,6 @@ function App() {
             showQuickCapture={showQuickCapture}
             preciseGPS={preciseGPS}
             allObjects={objects} 
-            setToast={setToast}
             onNavigate={(obj, options = {}) => {
               if (options.fromPlanner) {
                 setOpenPlannerOnReturn(true);

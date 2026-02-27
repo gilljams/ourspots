@@ -22,6 +22,7 @@ import PlannerModal from './PlannerModal';
 import CollectionMapView from './map/CollectionMapView';
 import { STORAGE_KEYS } from '../utils/storageKeys';
 import { usePrompt } from '../utils/usePrompt';
+import { useToast } from '../utils/useToast';
 
 // Folder icon - we'll define it locally since it's only used here
 const Folder = ({ size = 24, ...props }) => (
@@ -70,8 +71,9 @@ function clearPendingLocations(objectId) {
   }
 }
 
-function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockUpdate, currentUser, userDisplayName, userLocation, showQuickCapture, allObjects, onNavigate, onGoBack, previousObject, categories, isAdmin, onShowOnMap, onShare, onLeaveShare, collections, onAddToCollection, onRemoveFromCollection, onUpdateLinkedNote, onAddLinkedUrl, onUpdateLinkedUrl, onRemoveLinkedUrl, onReorderLinked, preciseGPS = true, openPlannerOnReturn, onClearPlannerReturn, setToast }) {
+function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockUpdate, currentUser, userDisplayName, userLocation, showQuickCapture, allObjects, onNavigate, onGoBack, previousObject, categories, isAdmin, onShowOnMap, onShare, onLeaveShare, collections, onAddToCollection, onRemoveFromCollection, onUpdateLinkedNote, onAddLinkedUrl, onUpdateLinkedUrl, onRemoveLinkedUrl, onReorderLinked, preciseGPS = true, openPlannerOnReturn, onClearPlannerReturn }) {
   const prompt = usePrompt();
+  const toast = useToast();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showManageSection, setShowManageSection] = useState(false);
   const [showCollectionPicker, setShowCollectionPicker] = useState(false);
@@ -138,7 +140,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
         setPendingLocations([]);
         
         if (pending.length > 0) {
-          setToast?.({ message: `${pending.length} sparade platser synkade!`, type: 'success' });
+          toast.success(`${pending.length} sparade platser synkade!`);
         }
       } catch (err) {
         console.error('Failed to sync pending locations:', err);
@@ -663,7 +665,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                     });
                   } catch (err) {
                     console.error('Error deleting block:', err);
-                    setToast?.({ message: 'Kunde inte ta bort position', type: 'error' });
+                    toast.error('Kunde inte ta bort position');
                   }
                 };
                 
@@ -1823,7 +1825,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
               setTextEditModalData(null);
             } catch (err) {
               console.error('Error saving text content:', err);
-              setToast?.({ message: 'Kunde inte spara texten', type: 'error' });
+              toast.error('Kunde inte spara texten');
             }
           }}
           onCancel={() => setTextEditModalData(null)}
@@ -1850,7 +1852,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
               setTableEditModalData(null);
             } catch (err) {
               console.error('Error saving list content:', err);
-              setToast?.({ message: 'Kunde inte spara listan', type: 'error' });
+              toast.error('Kunde inte spara listan');
             }
           }}
           onCancel={() => setTableEditModalData(null)}
@@ -1873,7 +1875,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
               setTableEditModalData(null);
             } catch (err) {
               console.error('Error saving table content:', err);
-              setToast?.({ message: 'Kunde inte spara tabellen', type: 'error' });
+              toast.error('Kunde inte spara tabellen');
             }
           }}
           onCancel={() => setTableEditModalData(null)}
@@ -1898,7 +1900,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
               setTableEditModalData(null);
             } catch (err) {
               console.error('Error saving table content:', err);
-              setToast?.({ message: 'Kunde inte spara tabellen', type: 'error' });
+              toast.error('Kunde inte spara tabellen');
             }
           }}
           onCancel={() => setTableEditModalData(null)}
@@ -2063,13 +2065,13 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                     await updateDoc(doc(db, 'objects', object.id), {
                       blocks: updatedBlocks
                     });
-                    setToast?.({ message: `Plats #${ownLocationBlocks.length + pendingLocations.length + 1} tillagd!`, type: 'success' });
+                    toast.success(`Plats #${ownLocationBlocks.length + pendingLocations.length + 1} tillagd!`);
                   } catch (err) {
                     console.error('Error adding location, saving locally:', err);
                     // Fallback: Save to localStorage for later sync
                     const newPending = savePendingLocation(object.id, coords);
                     setPendingLocations(newPending);
-                    setToast?.({ message: `Plats #${ownLocationBlocks.length + newPending.length} sparad lokalt (synkas när nät finns)`, type: 'info' });
+                    toast.info(`Plats #${ownLocationBlocks.length + newPending.length} sparad lokalt (synkas när nät finns)`);
                   }
                 } : undefined}
                 onSelectObject={() => {
@@ -2105,7 +2107,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
               });
             } catch (err) {
               console.error('Error saving planning data:', err);
-              setToast?.({ message: 'Kunde inte spara planeringen', type: 'error' });
+              toast.error('Kunde inte spara planeringen');
             }
           }}
           onDelete={async () => {
@@ -2115,7 +2117,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
               });
             } catch (err) {
               console.error('Error deleting planning data:', err);
-              setToast?.({ message: 'Kunde inte ta bort planeringen', type: 'error' });
+              toast.error('Kunde inte ta bort planeringen');
             }
           }}
         />

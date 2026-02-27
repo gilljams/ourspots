@@ -1,5 +1,6 @@
 import { useMemo, useCallback } from 'react';
 import { db } from '../firebase';
+import { useToast } from './useToast';
 import { doc, updateDoc, deleteField, Timestamp, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { emailToKey } from './iconHelpers';
 import { useConfirm } from './useConfirm';
@@ -8,8 +9,9 @@ import { useConfirm } from './useConfirm';
  * Hook for sharing-related state and handlers.
  * Manages pending invitations, accept/reject/leave share operations.
  */
-export function useSharing(user, objects, displayName, setToast, setSelectedObject) {
+export function useSharing(user, objects, displayName, setSelectedObject) {
   const confirm = useConfirm();
+  const toast = useToast();
   const userEmailLower = user?.email?.toLowerCase();
   const userEmailKey = userEmailLower ? emailToKey(userEmailLower) : null;
 
@@ -66,10 +68,10 @@ export function useSharing(user, objects, displayName, setToast, setSelectedObje
       return true;
     } catch (err) {
       console.error('Error accepting invitation:', err);
-      setToast({ message: 'Kunde inte acceptera', type: 'error' });
+      toast.error('Kunde inte acceptera');
       return false;
     }
-  }, [user, objects, displayName, setToast]);
+  }, [user, objects, displayName, toast]);
 
   // Reject a share invitation
   const handleRejectInvitation = useCallback(async (obj) => {
@@ -107,10 +109,10 @@ export function useSharing(user, objects, displayName, setToast, setSelectedObje
       return true;
     } catch (err) {
       console.error('Error declining invitation:', err);
-      setToast({ message: 'Kunde inte neka', type: 'error' });
+      toast.error('Kunde inte neka');
       return false;
     }
-  }, [user, objects, setToast]);
+  }, [user, objects, toast]);
 
   // Leave a shared object
   const handleLeaveShare = useCallback(async (obj) => {
@@ -154,9 +156,9 @@ export function useSharing(user, objects, displayName, setToast, setSelectedObje
       setSelectedObject(null);
     } catch (err) {
       console.error('Error leaving share:', err);
-      setToast({ message: 'Kunde inte lämna delningen!', type: 'error' });
+      toast.error('Kunde inte lämna delningen!');
     }
-  }, [user, objects, setToast, setSelectedObject, confirm]);
+  }, [user, objects, toast, setSelectedObject, confirm]);
 
   return {
     pendingInvitations,
