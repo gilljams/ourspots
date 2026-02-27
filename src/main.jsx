@@ -4,12 +4,15 @@ import './index.css'
 import App from './App.jsx'
 import { ConfirmProvider } from './utils/useConfirm'
 import { ToastProvider } from './utils/useToast'
+import { PromptProvider } from './utils/usePrompt'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <ToastProvider>
       <ConfirmProvider>
-        <App />
+        <PromptProvider>
+          <App />
+        </PromptProvider>
       </ConfirmProvider>
     </ToastProvider>
   </StrictMode>,

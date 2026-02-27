@@ -2,10 +2,12 @@ import React, { useState, useRef, useCallback } from 'react';
 import { X, Link2, Trash2, Check } from 'lucide-react';
 import { useFullscreenModal } from '../../utils/useFullscreenModal';
 import { useConfirm } from '../../utils/useConfirm';
+import { usePrompt } from '../../utils/usePrompt';
 
 // Fullscreen text editor for mobile - iOS Notes-like experience
 function FullscreenTextEditor({ content, title, onSave, onCancel }) {
   const confirm = useConfirm();
+  const prompt = usePrompt();
   const [text, setText] = useState(content || '');
   const textareaRef = useRef(null);
   const containerRef = useRef(null);
@@ -53,14 +55,14 @@ function FullscreenTextEditor({ content, title, onSave, onCancel }) {
     });
   }, [text]);
   
-  const insertLink = useCallback(() => {
+  const insertLink = useCallback(async () => {
     // Save selection before prompt steals focus
     const textarea = textareaRef.current;
     const start = textarea?.selectionStart || 0;
     const end = textarea?.selectionEnd || 0;
     const selectedText = text.substring(start, end);
     
-    const url = prompt('Ange URL:');
+    const url = await prompt({ title: 'Infoga länk', placeholder: 'https://...' });
     if (url) {
       const linkText = selectedText || 'länktext';
       const before = text.substring(0, start);

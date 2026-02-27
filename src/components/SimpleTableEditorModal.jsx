@@ -3,6 +3,7 @@ import { X, Plus, Check, Trash2, GripVertical, ClipboardPaste, Phone, Link, Hash
 import { useFullscreenModal } from '../utils/useFullscreenModal';
 import { useDragReorder } from '../utils/useDragReorder';
 import { useConfirm } from '../utils/useConfirm';
+import { usePrompt } from '../utils/usePrompt';
 
 // Column type labels
 const COL2_TYPE_LABELS = {
@@ -23,6 +24,7 @@ export function SimpleTableEditorModal({
   onCancel 
 }) {
   const confirm = useConfirm();
+  const prompt = usePrompt();
   const [rows, setRows] = useState(() => 
     (initialRows || []).map((row, i) => ({ 
       ...row, 
@@ -206,7 +208,7 @@ export function SimpleTableEditorModal({
         listRef.current?.scrollTo({ top: 99999, behavior: 'smooth' });
       }, 50);
     } catch (err) {
-      const text = prompt('Klistra in text här (en rad per punkt, tab-separerat för två kolumner):');
+      const text = await prompt({ title: 'Klistra in', message: 'En rad per punkt, tab-separerat för två kolumner', placeholder: 'Klistra in text här...', multiline: true });
       if (text && text.trim()) {
         const lines = text.split(/\r?\n/).filter(line => line.trim());
         const newRows = lines.map(line => {

@@ -3,6 +3,7 @@ import { X, Plus, Check, Trash2, GripVertical, ClipboardPaste, MoreVertical, Che
 import { useFullscreenModal } from '../utils/useFullscreenModal';
 import { useDragReorder } from '../utils/useDragReorder';
 import { useConfirm } from '../utils/useConfirm';
+import { usePrompt } from '../utils/usePrompt';
 
 // Expandable input - shows textarea when focused if text is long
 const ExpandableInput = forwardRef(({ value, onChange, onKeyDown, placeholder, className, isHeader }, ref) => {
@@ -85,6 +86,7 @@ const ExpandableInput = forwardRef(({ value, onChange, onKeyDown, placeholder, c
 // Simple list editor modal - optimized for mobile with single-column lists
 export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) {
   const confirm = useConfirm();
+  const prompt = usePrompt();
   const [rows, setRows] = useState(() => 
     (initialRows || []).map((row, i) => ({ 
       ...row, 
@@ -239,7 +241,7 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
       }, 50);
     } catch (err) {
       // Fallback: prompt user to paste
-      const text = prompt('Klistra in text här (en rad per punkt):');
+      const text = await prompt({ title: 'Klistra in', message: 'En rad per punkt', placeholder: 'Klistra in text här...', multiline: true });
       if (text && text.trim()) {
         const lines = text.split(/\r?\n/).filter(line => line.trim());
         const newRows = lines.map(line => ({

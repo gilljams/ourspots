@@ -21,6 +21,7 @@ import { TABLE_TEMPLATES } from './blocks';
 import PlannerModal from './PlannerModal';
 import CollectionMapView from './map/CollectionMapView';
 import { STORAGE_KEYS } from '../utils/storageKeys';
+import { usePrompt } from '../utils/usePrompt';
 
 // Folder icon - we'll define it locally since it's only used here
 const Folder = ({ size = 24, ...props }) => (
@@ -70,6 +71,7 @@ function clearPendingLocations(objectId) {
 }
 
 function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockUpdate, currentUser, userDisplayName, userLocation, showQuickCapture, allObjects, onNavigate, onGoBack, previousObject, categories, isAdmin, onShowOnMap, onShare, onLeaveShare, collections, onAddToCollection, onRemoveFromCollection, onUpdateLinkedNote, onAddLinkedUrl, onUpdateLinkedUrl, onRemoveLinkedUrl, onReorderLinked, preciseGPS = true, openPlannerOnReturn, onClearPlannerReturn, setToast }) {
+  const prompt = usePrompt();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showManageSection, setShowManageSection] = useState(false);
   const [showCollectionPicker, setShowCollectionPicker] = useState(false);
@@ -665,9 +667,9 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                   }
                 };
                 
-                const handleEditNote = block.type === 'location' && canEdit && !block.inherited ? () => {
+                const handleEditNote = block.type === 'location' && canEdit && !block.inherited ? async () => {
                   const currentNote = block.data?.note || '';
-                  const newNote = window.prompt('Anteckning för denna position:', currentNote);
+                  const newNote = await prompt({ title: 'Anteckning', placeholder: 'Skriv en anteckning...', defaultValue: currentNote });
                   if (newNote === null) return;
                   updateBlockField(actualBlockIndex, { note: newNote });
                 } : undefined;

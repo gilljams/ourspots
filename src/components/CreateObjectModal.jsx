@@ -16,6 +16,7 @@ import BlockEditor from './BlockEditor';
 import { useKeyboardHeight } from '../utils/useKeyboardHeight';
 import { useConfirm } from '../utils/useConfirm';
 import { useToast } from '../utils/useToast';
+import { usePrompt } from '../utils/usePrompt';
 
 // Demo users available when in demo mode for realistic examples
 const DEMO_USERS = {
@@ -140,6 +141,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
   const sourceObject = editObject || duplicateFromObject; // Use either for initial data
   const confirm = useConfirm();
   const toast = useToast();
+  const prompt = usePrompt();
   
   // Determine default type: source object > default category prop > parent type > first category
   const getDefaultType = () => {
@@ -1299,8 +1301,8 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                         </button>
                         <button
                           type="button"
-                          onClick={() => {
-                            const url = prompt('Klistra in bild-URL:');
+                          onClick={async () => {
+                            const url = await prompt({ title: 'Bild-URL', placeholder: 'https://...' });
                             if (url?.trim()) { setImageUrl(url.trim()); setFormTouched(true); }
                           }}
                           disabled={uploadingImage || saving}
