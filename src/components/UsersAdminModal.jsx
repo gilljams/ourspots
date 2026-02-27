@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Users, Shield, ShieldOff, Ban, CheckCircle, Search, X, ChevronDown, Mail, Package, Share2, Calendar, UserCheck, Settings, Save, RefreshCw, Check } from 'lucide-react';
 import { collection, onSnapshot, doc, updateDoc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
-import { useKeyboardHeight } from '../utils/useKeyboardHeight';
 import { useSwipeToClose } from '../utils/useSwipeToClose';
 import { useConfirm } from '../utils/useConfirm';
 import { useToast } from '../utils/useToast';
@@ -18,8 +17,6 @@ function UsersAdminModal({ currentUserId, onClose }) {
   const [sortBy, setSortBy] = useState('name'); // name, objects, created
   const [updating, setUpdating] = useState(null);
   
-  // Keyboard-aware height for iOS
-  const { viewportHeight, keyboardVisible } = useKeyboardHeight();
   const [showSettings, setShowSettings] = useState(false);
   const [appSettings, setAppSettings] = useState({
     defaultObjectLimit: 5,
@@ -382,8 +379,8 @@ function UsersAdminModal({ currentUserId, onClose }) {
     >
       <div 
         ref={swipe.ref}
-        className={`bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-xl lg:rounded-2xl border-t sm:border border-white/10 w-full sm:max-w-2xl lg:max-w-md sm:w-[90%] lg:w-[30%] ${keyboardVisible ? '' : 'h-full'} sm:h-auto sm:max-h-[85vh] lg:h-[calc(100dvh-2rem)] lg:max-h-none overflow-hidden flex flex-col ${swipe.className}`}
-        style={{ ...swipe.style, ...(keyboardVisible ? { height: `${viewportHeight}px` } : {}) }}
+        className={`bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-xl lg:rounded-2xl border-t sm:border border-white/10 w-full sm:max-w-2xl lg:max-w-md sm:w-[90%] lg:w-[30%] h-full sm:h-auto sm:max-h-[85vh] lg:h-[calc(100dvh-2rem)] lg:max-h-none overflow-hidden flex flex-col ${swipe.className}`}
+        style={swipe.style}
         {...swipe.handlers}
       >
         {/* Header */}

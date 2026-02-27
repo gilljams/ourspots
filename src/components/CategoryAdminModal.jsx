@@ -3,7 +3,6 @@ import { Settings, ArrowUp, ArrowDown, Edit2, Trash2, ChevronDown, AlertTriangle
 import { doc, setDoc, updateDoc, deleteDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { AVAILABLE_ICONS, getIconComponent } from '../utils/iconHelpers';
-import { useKeyboardHeight } from '../utils/useKeyboardHeight';
 import { useSwipeToClose } from '../utils/useSwipeToClose';
 import { useConfirm } from '../utils/useConfirm';
 import { useToast } from '../utils/useToast';
@@ -16,9 +15,6 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
   const [saving, setSaving] = useState(false);
   const [showIconPicker, setShowIconPicker] = useState(null); // 'new' or 'edit'
-  
-  // Keyboard-aware height for iOS
-  const { viewportHeight, keyboardVisible } = useKeyboardHeight();
   
   // Swipe to close
   const swipe = useSwipeToClose(onClose);
@@ -121,8 +117,8 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
     >
       <div 
         ref={swipe.ref}
-        className={`bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-xl lg:rounded-2xl border-t sm:border border-white/10 sm:border-white/[0.08] w-full sm:max-w-lg lg:max-w-md sm:w-[90%] lg:w-[30%] ${keyboardVisible ? '' : 'h-full'} sm:h-auto sm:max-h-[85vh] lg:h-[calc(100dvh-2rem)] lg:max-h-none overflow-hidden flex flex-col ${swipe.className} relative sm:shadow-2xl sm:shadow-black/50`}
-        style={{ ...swipe.style, ...(keyboardVisible ? { height: `${viewportHeight}px` } : {}) }}
+        className={`bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-xl lg:rounded-2xl border-t sm:border border-white/10 sm:border-white/[0.08] w-full sm:max-w-lg lg:max-w-md sm:w-[90%] lg:w-[30%] h-full sm:h-auto sm:max-h-[85vh] lg:h-[calc(100dvh-2rem)] lg:max-h-none overflow-hidden flex flex-col ${swipe.className} relative sm:shadow-2xl sm:shadow-black/50`}
+        style={swipe.style}
         {...swipe.handlers}
       >
         {/* Subtle decorative gradient */}

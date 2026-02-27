@@ -3,7 +3,6 @@ import { Share2, X, Mail, Loader, UserPlus, UserMinus, Users, Clock, Check, Corn
 import { doc, updateDoc, onSnapshot, Timestamp, deleteField, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from '../firebase';
 import { emailToKey, keyToEmail } from '../utils/iconHelpers';
-import { useKeyboardHeight } from '../utils/useKeyboardHeight';
 import { useSwipeToClose } from '../utils/useSwipeToClose';
 import { useConfirm } from '../utils/useConfirm';
 import { useToast } from '../utils/useToast';
@@ -21,9 +20,6 @@ function ShareModal({ object, onClose, currentUserEmail, allObjects = [], shared
   const [processing, setProcessing] = useState(false);
   const [showContactPicker, setShowContactPicker] = useState(false);
   const [contactSearch, setContactSearch] = useState('');
-  
-  // Keyboard-aware height for iOS
-  const { viewportHeight, keyboardVisible } = useKeyboardHeight();
   
   // Get all descendants using ancestorIds for fast O(n) lookup, or fallback to recursive
   const allDescendants = useMemo(() => {
@@ -453,8 +449,8 @@ function ShareModal({ object, onClose, currentUserEmail, allObjects = [], shared
     >
       <div 
         ref={swipe.ref}
-        className={`bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-xl lg:rounded-2xl border-t sm:border border-white/10 sm:border-white/[0.08] w-full sm:max-w-md lg:max-w-sm sm:w-[90%] lg:w-[28%] ${keyboardVisible ? '' : 'h-full'} sm:h-auto sm:max-h-[85vh] lg:h-[calc(100dvh-2rem)] lg:max-h-none overflow-hidden flex flex-col ${swipe.className} relative sm:shadow-2xl sm:shadow-black/50`}
-        style={{ ...swipe.style, ...(keyboardVisible ? { height: `${viewportHeight}px` } : {}) }}
+        className={`bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-xl lg:rounded-2xl border-t sm:border border-white/10 sm:border-white/[0.08] w-full sm:max-w-md lg:max-w-sm sm:w-[90%] lg:w-[28%] h-full sm:h-auto sm:max-h-[85vh] lg:h-[calc(100dvh-2rem)] lg:max-h-none overflow-hidden flex flex-col ${swipe.className} relative sm:shadow-2xl sm:shadow-black/50`}
+        style={swipe.style}
         {...swipe.handlers}
         onClick={(e) => e.stopPropagation()}
       >
