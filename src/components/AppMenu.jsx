@@ -156,7 +156,7 @@ export default function AppMenu({
                 {user && (
                   <button
                     onClick={() => { onShowContacts(); onClose(); }}
-                    className="w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-white/5 text-gray-300 hover:text-white transition-all"
+                    className="w-full flex items-center gap-3 p-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-all"
                   >
                     <Users size={16} className="text-blue-400" />
                     <span className="text-sm">Kontakter & delningar</span>
@@ -222,7 +222,7 @@ export default function AppMenu({
                       <button
                         onClick={saveSpot}
                         disabled={spotSaving}
-                        className="w-full flex items-center gap-3 p-0.5 rounded-lg text-gray-300 hover:text-white text-sm transition-colors disabled:opacity-50"
+                        className="w-full flex items-center gap-3 p-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white text-sm transition-colors disabled:opacity-50"
                       >
                         <MapPin size={16} className="text-blue-400" />
                         {spotSaving ? 'Hämtar GPS...' : 'Markera min plats'}
@@ -348,9 +348,9 @@ export default function AppMenu({
                       onClick={() => setEditingName(true)}
                       className="w-full flex items-center justify-between"
                     >
-                      <div>
+                      <div className="text-left">
                         <div className="text-xs text-gray-400">Visningsnamn</div>
-                        <div className="text-sm font-medium text-white mt-0.5">{displayName || user?.email?.split('@')[0] || 'Ej angivet'}</div>
+                        <div className="text-sm text-white mt-0.5">{displayName || user?.email?.split('@')[0] || 'Ej angivet'}</div>
                       </div>
                       <Pencil size={14} className="text-gray-500" />
                     </button>
