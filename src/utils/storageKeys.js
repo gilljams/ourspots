@@ -26,6 +26,8 @@ export const STORAGE_KEYS = {
   MENU_ADMIN_EXPANDED: 'menuAdminExpanded',
   MENU_SETTINGS_EXPANDED: 'menuSettingsExpanded',
   MENU_QUICK_CAPTURE_EXPANDED: 'menuQuickCaptureExpanded',
+  MENU_TOOLS_EXPANDED: 'menuToolsExpanded',
+  MENU_HELP_EXPANDED: 'menuHelpExpanded',
 
   // Offline data
   PENDING_LOCATIONS: 'ourspots_pending_locations',
