@@ -146,7 +146,7 @@ function App() {
   const [preciseGPS, setPreciseGPS] = usePersistedState(STORAGE_KEYS.PRECISE_GPS, false);
   // Menu section collapse states with localStorage
   const [menuAdminExpanded, setMenuAdminExpanded] = usePersistedState(STORAGE_KEYS.MENU_ADMIN_EXPANDED, false);
-  const [menuSettingsExpanded, setMenuSettingsExpanded] = usePersistedState(STORAGE_KEYS.MENU_SETTINGS_EXPANDED, true, { defaultTrue: true });
+  const [menuSettingsExpanded, setMenuSettingsExpanded] = usePersistedState(STORAGE_KEYS.MENU_SETTINGS_EXPANDED, false);
   const [menuQuickCaptureExpanded, setMenuQuickCaptureExpanded] = usePersistedState(STORAGE_KEYS.MENU_QUICK_CAPTURE_EXPANDED, true, { defaultTrue: true });
   const [menuToolsExpanded, setMenuToolsExpanded] = usePersistedState(STORAGE_KEYS.MENU_TOOLS_EXPANDED, true, { defaultTrue: true });
   const [menuHelpExpanded, setMenuHelpExpanded] = usePersistedState(STORAGE_KEYS.MENU_HELP_EXPANDED, false);
