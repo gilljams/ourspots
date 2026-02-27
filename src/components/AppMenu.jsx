@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  X, LogOut, ChevronDown, Settings, Target, Users, Share2, Check, AlertTriangle, Eye
+  X, LogOut, ChevronDown, Settings, Target, Users, Share2, Check, AlertTriangle, Eye,
+  MapPin, Navigation, Trash2, ExternalLink
 } from 'lucide-react';
 import { db } from '../firebase';
 import { doc, updateDoc } from 'firebase/firestore';
+import { STORAGE_KEYS } from '../utils/storageKeys';
+import { getDistance, formatDistance } from '../utils/geoUtils';
 
 /**
  * Slide-out sidebar menu with admin, settings, and quick capture sections.
@@ -47,8 +50,53 @@ export default function AppMenu({
   setMenuQuickCaptureExpanded,
   // Auth
   handleSwitchAccount,
-  handleLogout
+  handleLogout,
+  // Location
+  userLocation
 }) {
+  // Mark my spot state
+  const [markedSpot, setMarkedSpot] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEYS.MARKED_SPOT)); } catch { return null; }
+  });
+  const [spotNote, setSpotNote] = useState('');
+  const [spotSaving, setSpotSaving] = useState(false);
+
+  const saveSpot = () => {
+    setSpotSaving(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const spot = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy: Math.round(pos.coords.accuracy),
+          note: spotNote.trim(),
+          timestamp: Date.now()
+        };
+        localStorage.setItem(STORAGE_KEYS.MARKED_SPOT, JSON.stringify(spot));
+        setMarkedSpot(spot);
+        setSpotNote('');
+        setSpotSaving(false);
+      },
+      () => setSpotSaving(false),
+      { enableHighAccuracy: true, timeout: 15000 }
+    );
+  };
+
+  const clearSpot = () => {
+    localStorage.removeItem(STORAGE_KEYS.MARKED_SPOT);
+    setMarkedSpot(null);
+  };
+
+  const navigateToSpot = () => {
+    if (!markedSpot) return;
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${markedSpot.lat},${markedSpot.lng}&travelmode=walking`;
+    window.open(url, '_blank');
+  };
+
+  const spotDistance = markedSpot && userLocation
+    ? getDistance(userLocation.lat, userLocation.lng, markedSpot.lat, markedSpot.lng)
+    : null;
+
   return (
     <>
       <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[2000]" onClick={onClose} />
@@ -88,6 +136,62 @@ export default function AppMenu({
               <Share2 size={16} className="text-blue-400" />
             </button>
           )}
+
+          {/* Mark my spot */}
+          <div className="rounded-xl border border-white/10 overflow-hidden">
+            <div className="p-3 space-y-2">
+              {markedSpot ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    <MapPin size={16} className="text-red-400 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-white truncate">
+                        {markedSpot.note || 'Markerad plats'}
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        {new Date(markedSpot.timestamp).toLocaleString('sv-SE', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}
+                        {spotDistance != null && ` · ${formatDistance(spotDistance)}`}
+                        {markedSpot.accuracy > 0 && ` · ±${markedSpot.accuracy}m`}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={navigateToSpot} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 text-xs font-medium transition-colors">
+                      <Navigation size={12} />
+                      Navigera
+                    </button>
+                    <button onClick={saveSpot} disabled={spotSaving} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-white/5 text-gray-300 hover:bg-white/10 text-xs font-medium transition-colors disabled:opacity-50">
+                      <MapPin size={12} />
+                      Ny markering
+                    </button>
+                    <button onClick={clearSpot} className="w-8 flex items-center justify-center py-2 rounded-lg bg-white/5 text-gray-400 hover:bg-red-500/20 hover:text-red-400 transition-colors">
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={spotNote}
+                      onChange={(e) => setSpotNote(e.target.value)}
+                      placeholder="Notering (valfritt)..."
+                      className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-red-400/50"
+                    />
+                    <button
+                      onClick={saveSpot}
+                      disabled={spotSaving}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30 text-sm font-medium transition-colors disabled:opacity-50"
+                    >
+                      <MapPin size={14} />
+                      {spotSaving ? '...' : 'Markera'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
 
           {isAdmin && (
             <div className="rounded-xl border border-white/10 overflow-hidden">

@@ -29,4 +29,7 @@ export const STORAGE_KEYS = {
 
   // Offline data
   PENDING_LOCATIONS: 'ourspots_pending_locations',
+
+  // Mark my spot
+  MARKED_SPOT: 'ourspots_marked_spot',
 };

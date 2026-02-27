@@ -1090,6 +1090,7 @@ function App() {
           setMenuQuickCaptureExpanded={setMenuQuickCaptureExpanded}
           handleSwitchAccount={handleSwitchAccount}
           handleLogout={handleLogout}
+          userLocation={userLocation}
         />
       )}
       
