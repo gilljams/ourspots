@@ -238,7 +238,7 @@ export default function AppHeader({
 
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`w-9 h-9 flex items-center justify-center rounded-full transition-all flex-shrink-0 ${showFilters ? 'bg-amber-500 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20'}`}
+              className={`w-9 h-9 flex items-center justify-center rounded-full transition-all flex-shrink-0 ${showFilters ? 'bg-violet-500 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20'}`}
               title={showFilters ? 'Dölj filter' : 'Visa filter'}
             >
               <SlidersHorizontal size={16} />
@@ -266,7 +266,7 @@ export default function AppHeader({
                 {user && (
                   <button
                     onClick={() => setShowOnlyOwned(!showOnlyOwned)}
-                    className={`h-8 flex items-center justify-center gap-1 px-2.5 rounded-lg transition-all text-sm font-medium ${showOnlyOwned ? 'bg-amber-500 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20'}`}
+                    className={`h-8 flex items-center justify-center gap-1 px-2.5 rounded-lg transition-all text-sm font-medium ${showOnlyOwned ? 'bg-violet-500 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20'}`}
                   >
                     <User size={14} />
                     <span className="text-xs">Mina</span>
@@ -276,19 +276,19 @@ export default function AppHeader({
                 <div className="flex h-8 rounded-lg overflow-hidden border border-white/10">
                   <button
                     onClick={() => setViewFilter('all')}
-                    className={`px-2 transition-all text-xs font-medium border-r border-white/10 ${viewFilter === 'all' ? 'bg-amber-500 text-white' : 'bg-white/5 text-gray-300 hover:bg-white/10'}`}
+                    className={`px-2 transition-all text-xs font-medium border-r border-white/10 ${viewFilter === 'all' ? 'bg-violet-500 text-white' : 'bg-white/5 text-gray-300 hover:bg-white/10'}`}
                   >
                     Alla
                   </button>
                   <button
                     onClick={() => setViewFilter('collections')}
-                    className={`px-2 transition-all text-xs font-medium border-r border-white/10 ${viewFilter === 'collections' ? 'bg-amber-500 text-white' : 'bg-white/5 text-gray-300 hover:bg-white/10'}`}
+                    className={`px-2 transition-all text-xs font-medium border-r border-white/10 ${viewFilter === 'collections' ? 'bg-violet-500 text-white' : 'bg-white/5 text-gray-300 hover:bg-white/10'}`}
                   >
                     Samlingar
                   </button>
                   <button
                     onClick={() => setViewFilter('objects')}
-                    className={`px-2 transition-all text-xs font-medium ${viewFilter === 'objects' ? 'bg-amber-500 text-white' : 'bg-white/5 text-gray-300 hover:bg-white/10'}`}
+                    className={`px-2 transition-all text-xs font-medium ${viewFilter === 'objects' ? 'bg-violet-500 text-white' : 'bg-white/5 text-gray-300 hover:bg-white/10'}`}
                   >
                     Objekt
                   </button>
@@ -296,7 +296,7 @@ export default function AppHeader({
 
                 <button
                   onClick={() => setCompactCards(v => !v)}
-                  className={`ml-auto h-8 w-8 flex items-center justify-center rounded-lg transition-all flex-shrink-0 ${compactCards ? 'bg-amber-500 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20'}`}
+                  className={`ml-auto h-8 w-8 flex items-center justify-center rounded-lg transition-all flex-shrink-0 ${compactCards ? 'bg-violet-500 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20'}`}
                   title={compactCards ? 'Stora kort' : 'Kompakta kort'}
                 >
                   {compactCards ? <LayoutGrid size={14} /> : <LayoutList size={14} />}
@@ -314,7 +314,7 @@ export default function AppHeader({
                     step="1"
                     value={maxDistanceKm ?? 50}
                     onChange={(e) => setMaxDistanceKm(Number(e.target.value))}
-                    className="flex-1 h-1.5 accent-amber-500"
+                    className="flex-1 h-1.5 accent-violet-500"
                   />
                   <span className="text-xs text-gray-300 w-14 text-right tabular-nums">
                     {maxDistanceKm ? `≤${maxDistanceKm} km` : 'Alla'}
@@ -330,7 +330,7 @@ export default function AppHeader({
                   )}
                   <button
                     onClick={() => setSortByDistance(!sortByDistance)}
-                    className={`h-8 flex items-center gap-1 px-2.5 rounded-lg transition-all text-xs font-medium ${sortByDistance ? 'bg-amber-500 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20'}`}
+                    className={`h-8 flex items-center gap-1 px-2.5 rounded-lg transition-all text-xs font-medium ${sortByDistance ? 'bg-violet-500 text-white' : 'bg-white/10 text-gray-300 hover:bg-white/20'}`}
                   >
                     <ArrowUpDown size={12} />
                     <span>Närmast</span>
