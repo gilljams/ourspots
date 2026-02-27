@@ -274,7 +274,7 @@ function PollBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
               type="button"
               onClick={() => handleAllowSuggestionsChange(!allowSuggestions)}
               className={`relative w-10 h-5 rounded-full transition-colors ${
-                allowSuggestions ? 'bg-blue-500' : 'bg-gray-600'
+                allowSuggestions ? 'bg-blue-500' : 'bg-white/20'
               }`}
             >
               <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
@@ -290,7 +290,7 @@ function PollBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
               type="button"
               onClick={() => handleDefaultCollapsedChange(!defaultCollapsed)}
               className={`relative w-10 h-5 rounded-full transition-colors ${
-                defaultCollapsed ? 'bg-blue-500' : 'bg-gray-600'
+                defaultCollapsed ? 'bg-blue-500' : 'bg-white/20'
               }`}
             >
               <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${

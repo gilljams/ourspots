@@ -301,7 +301,7 @@ export const DistributionBlock = ({
                   </div>
                   <div className="flex items-center gap-1.5">
                     {isFull ? (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-gray-600/50 text-gray-400">
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-white/10 text-gray-400">
                         {preset.fullLabel}
                       </span>
                     ) : (

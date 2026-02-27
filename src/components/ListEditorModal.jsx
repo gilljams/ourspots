@@ -278,7 +278,7 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
             <span className="text-base font-medium text-white truncate">
               {title || 'Redigera lista'}
             </span>
-            <span className="text-xs text-gray-400 bg-gray-700/50 px-1.5 py-0.5 rounded-full">
+            <span className="text-xs text-gray-400 bg-white/10 px-1.5 py-0.5 rounded-full">
               {rows.filter(r => !r.isHeader).length}
             </span>
           </div>
@@ -289,7 +289,7 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
             <button
               type="button"
               onClick={() => addRow(true)}
-              className="h-9 px-3 rounded-lg bg-gray-700/50 text-gray-400 hover:bg-gray-600/50 hover:text-white flex items-center gap-1.5 transition-colors text-sm"
+              className="h-9 px-3 rounded-lg bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white flex items-center gap-1.5 transition-colors text-sm"
             >
               <Plus size={14} />
               Rubrik
@@ -300,7 +300,7 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
               <button
                 type="button"
                 onClick={() => setShowUtilsMenu(!showUtilsMenu)}
-                className={`h-9 w-9 rounded-lg ${selectMode ? 'bg-blue-600 text-white' : 'bg-gray-700/50 text-gray-400 hover:bg-gray-600/50 hover:text-white'} flex items-center justify-center transition-colors`}
+                className={`h-9 w-9 rounded-lg ${selectMode ? 'bg-blue-600 text-white' : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'} flex items-center justify-center transition-colors`}
                 title="Verktyg"
               >
                 <MoreVertical size={16} />
@@ -312,14 +312,14 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
                     className="fixed inset-0 z-[2001]" 
                     onClick={() => setShowUtilsMenu(false)}
                   />
-                  <div className="absolute right-0 top-full mt-1 w-44 bg-gray-700 rounded-lg shadow-xl border border-white/10 py-1 z-[2002]">
+                  <div className="absolute right-0 top-full mt-1 w-44 bg-gray-900 rounded-lg shadow-xl border border-white/10 py-1 z-[2002]">
                     <button
                       type="button"
                       onClick={() => {
                         handlePaste();
                         setShowUtilsMenu(false);
                       }}
-                      className="w-full px-3 py-2 text-left text-sm text-gray-200 hover:bg-gray-600/50 flex items-center gap-2"
+                      className="w-full px-3 py-2 text-left text-sm text-gray-200 hover:bg-white/10 flex items-center gap-2"
                     >
                       <ClipboardPaste size={14} />
                       Klistra in
@@ -333,7 +333,7 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
                         }
                         setShowUtilsMenu(false);
                       }}
-                      className="w-full px-3 py-2 text-left text-sm text-gray-200 hover:bg-gray-600/50 flex items-center gap-2"
+                      className="w-full px-3 py-2 text-left text-sm text-gray-200 hover:bg-white/10 flex items-center gap-2"
                     >
                       <CheckSquare size={14} />
                       {selectMode ? 'Avsluta val' : 'Välj flera'}
@@ -345,7 +345,7 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
                         setRows(rows.map(r => r.isHeader ? r : { ...r, done: true }));
                         setShowUtilsMenu(false);
                       }}
-                      className="w-full px-3 py-2 text-left text-sm text-gray-200 hover:bg-gray-600/50 flex items-center gap-2"
+                      className="w-full px-3 py-2 text-left text-sm text-gray-200 hover:bg-white/10 flex items-center gap-2"
                     >
                       <CheckCheck size={14} />
                       Bocka i alla
@@ -358,7 +358,7 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
                         }
                         setShowUtilsMenu(false);
                       }}
-                      className="w-full px-3 py-2 text-left text-sm text-gray-200 hover:bg-gray-600/50 flex items-center gap-2"
+                      className="w-full px-3 py-2 text-left text-sm text-gray-200 hover:bg-white/10 flex items-center gap-2"
                     >
                       <RotateCcw size={14} />
                       Rensa ibockningar
@@ -391,7 +391,7 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
                         setRows(result);
                         setShowUtilsMenu(false);
                       }}
-                      className="w-full px-3 py-2 text-left text-sm text-gray-200 hover:bg-gray-600/50 flex items-center gap-2"
+                      className="w-full px-3 py-2 text-left text-sm text-gray-200 hover:bg-white/10 flex items-center gap-2"
                     >
                       <ArrowDownUp size={14} />
                       Sortera klara sist
@@ -451,7 +451,7 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
         >
           {rows.length === 0 ? (
             <div className="text-center py-16 text-gray-500">
-              <div className="w-12 h-12 rounded-full bg-gray-700/50 flex items-center justify-center mx-auto mb-3">
+              <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-3">
                 <Plus size={24} className="text-gray-500" />
               </div>
               <p className="font-medium">Listan är tom</p>
@@ -582,7 +582,7 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
         {/* Undo delete toast */}
         {deletedRow && (
           <div 
-            className="absolute z-[2001] left-4 right-20 bottom-4 flex items-center gap-3 bg-gray-700 text-white text-sm rounded-xl px-4 py-3 shadow-lg border border-white/10"
+            className="absolute z-[2001] left-4 right-20 bottom-4 flex items-center gap-3 bg-gray-900 text-white text-sm rounded-xl px-4 py-3 shadow-lg border border-white/10"
           >
             <span className="flex-1 truncate">
               "{deletedRow.row.item || 'Rad'}" borttagen

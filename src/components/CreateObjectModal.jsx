@@ -1101,7 +1101,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   }
                 }}
                 disabled={saving || hasChildren}
-                className={`relative w-11 h-6 rounded-full transition-colors ${hasChildren ? 'bg-gray-700 cursor-not-allowed' : isCollection ? 'bg-blue-500' : 'bg-gray-600'}`}
+                className={`relative w-11 h-6 rounded-full transition-colors ${hasChildren ? 'bg-white/10 cursor-not-allowed' : isCollection ? 'bg-blue-500' : 'bg-white/20'}`}
               >
                 <span 
                   className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${isCollection && !hasChildren ? 'translate-x-5' : 'translate-x-0'}`} 
@@ -1594,7 +1594,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                 disabled={saving || (isEdit && !hasChanges)} 
                 className={`flex-1 px-6 lg:px-4 py-3 lg:py-2 rounded-xl lg:rounded-lg font-medium lg:text-sm flex items-center justify-center gap-2 touch-manipulation ${
                   isEdit && !hasChanges 
-                    ? 'bg-gray-600 text-gray-400' 
+                    ? 'bg-white/10 text-gray-400' 
                     : 'bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white'
                 }`}
               >

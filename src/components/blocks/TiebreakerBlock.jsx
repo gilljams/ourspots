@@ -76,7 +76,7 @@ const CountdownDisplay = ({ seconds, label }) => {
             className={`w-10 h-10 rounded-full border-2 transition-all duration-300 ${
               seconds !== null && seconds >= lightNum
                 ? 'bg-red-500 border-red-400 shadow-[0_0_15px_rgba(239,68,68,0.7)]'
-                : 'bg-gray-700 border-gray-600'
+                : 'bg-white/10 border-white/15'
             }`}
           />
         ))}

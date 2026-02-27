@@ -264,7 +264,7 @@ function TableBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
               }}
               disabled={saving}
               className={`relative w-10 h-5 rounded-full transition-colors ${
-                defaultCollapsed ? 'bg-blue-500' : 'bg-gray-600'
+                defaultCollapsed ? 'bg-blue-500' : 'bg-white/20'
               }`}
             >
               <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
@@ -286,7 +286,7 @@ function TableBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
                 }}
                 disabled={saving}
                 className={`relative w-10 h-5 rounded-full transition-colors ${
-                  showCheckbox ? 'bg-green-500' : 'bg-gray-600'
+                  showCheckbox ? 'bg-green-500' : 'bg-white/20'
                 }`}
               >
                 <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
@@ -304,7 +304,7 @@ function TableBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
               onClick={() => handleViewerEditableChange(!viewerEditable)}
               disabled={saving}
               className={`relative w-10 h-5 rounded-full transition-colors ${
-                viewerEditable ? 'bg-green-500' : 'bg-gray-600'
+                viewerEditable ? 'bg-green-500' : 'bg-white/20'
               }`}
             >
               <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${

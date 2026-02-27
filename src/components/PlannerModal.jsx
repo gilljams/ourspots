@@ -623,7 +623,7 @@ export default function PlannerModal({
                         setShowSettings(true);
                         setShowMenu(false);
                       }}
-                      className="w-full px-3 py-2.5 text-left text-sm text-gray-200 hover:bg-gray-700/50 flex items-center gap-2"
+                      className="w-full px-3 py-2.5 text-left text-sm text-gray-200 hover:bg-white/10 flex items-center gap-2"
                     >
                       <Grid3X3 size={14} />
                       Inställningar
@@ -639,7 +639,7 @@ export default function PlannerModal({
                         }
                         setShowMenu(false);
                       }}
-                      className="w-full px-3 py-2.5 text-left text-sm text-gray-200 hover:bg-gray-700/50 flex items-center gap-2"
+                      className="w-full px-3 py-2.5 text-left text-sm text-gray-200 hover:bg-white/10 flex items-center gap-2"
                     >
                       <RotateCcw size={14} />
                       Rensa planering

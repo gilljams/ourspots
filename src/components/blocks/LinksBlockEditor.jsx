@@ -248,7 +248,7 @@ function LinksBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
                 type="button"
                 onClick={() => handleDefaultCollapsedChange(!defaultCollapsed)}
                 className={`relative w-10 h-5 rounded-full transition-colors ${
-                  defaultCollapsed ? 'bg-blue-500' : 'bg-gray-600'
+                  defaultCollapsed ? 'bg-blue-500' : 'bg-white/20'
                 }`}
               >
                 <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${

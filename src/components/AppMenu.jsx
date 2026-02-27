@@ -219,7 +219,7 @@ export default function AppMenu({
                     <button
                       onClick={() => setShowQuickCapture(!showQuickCapture)}
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        showQuickCapture ? 'bg-orange-500' : 'bg-gray-600'
+                        showQuickCapture ? 'bg-orange-500' : 'bg-white/20'
                       }`}
                     >
                       <span
@@ -316,7 +316,7 @@ function ToggleSetting({ label, description, value, onChange, color = 'blue', wa
         <button
           onClick={onChange}
           className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-            value ? c.bg : 'bg-gray-600'
+            value ? c.bg : 'bg-white/20'
           }`}
         >
           <span
