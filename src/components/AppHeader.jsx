@@ -106,7 +106,7 @@ export default function AppHeader({
           <div className="flex items-center gap-2 flex-shrink-0">
             <button
               onClick={onOpenMenu}
-              className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-all"
+              className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/15 flex items-center justify-center text-gray-400 hover:text-white transition-all"
               title="Meny"
             >
               <Menu size={18} />
