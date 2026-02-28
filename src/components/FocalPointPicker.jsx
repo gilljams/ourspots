@@ -41,7 +41,7 @@ function FocalPointPicker({ imageUrl, currentFocalPoint, onSelect, onClose }) {
     : imageUrl;
   
   return (
-    <div className="fixed inset-0 bg-black/95 z-[2000] flex flex-col">
+    <div className="fixed inset-0 bg-black/95 z-[2000] flex flex-col pt-[var(--sat)]">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-white/10 bg-gray-900/80">
         <div>

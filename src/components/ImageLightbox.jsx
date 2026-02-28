@@ -92,7 +92,7 @@ const ImageLightbox = ({
   return (
     <div 
       ref={containerRef}
-      className="fixed inset-0 z-[2000] bg-black/95 flex flex-col"
+      className="fixed inset-0 z-[2000] bg-black/95 flex flex-col pt-[var(--sat)]"
       onClick={onClose}
     >
       {/* Header */}

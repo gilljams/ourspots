@@ -119,7 +119,7 @@ export default function AppMenu({
   return (
     <>
       <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[2000]" onClick={onClose} />
-      <div className="fixed top-0 left-0 h-full w-80 bg-gray-950/98 backdrop-blur-xl border-r border-white/10 z-[2001] shadow-2xl animate-in slide-in-from-left duration-300 flex flex-col">
+      <div className="fixed top-0 left-0 h-full w-80 bg-gray-950/98 backdrop-blur-xl border-r border-white/10 z-[2001] shadow-2xl animate-in slide-in-from-left duration-300 flex flex-col pt-[var(--sat)]">
         {/* Sticky header with user identity */}
         <div className="flex-shrink-0 p-4 border-b border-white/10">
           <div className="flex items-center justify-between">

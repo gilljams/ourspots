@@ -265,8 +265,8 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
       <div
         className="fixed left-0 right-0 z-[2000] bg-gray-900 flex flex-col"
         style={{
-          top: `${viewportOffset}px`,
-          height: `${viewportHeight}px`
+          top: `calc(${viewportOffset}px + env(safe-area-inset-top))`,
+          height: `calc(${viewportHeight}px - env(safe-area-inset-top))`
         }}
       >
         {/* Header */}

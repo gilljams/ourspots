@@ -488,7 +488,7 @@ export default function PlannerModal({
   // Setup screen
   if (showSetup) {
     return (
-      <div className="fixed inset-0 z-[3100] bg-gray-950 flex flex-col">
+      <div className="fixed inset-0 z-[3100] bg-gray-950 flex flex-col pt-[var(--sat)]">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-white/10">
           <h2 className="text-lg font-semibold text-white">Skapa planering</h2>
@@ -567,7 +567,7 @@ export default function PlannerModal({
   
   // Main planner view
   return (
-    <div className="fixed inset-0 z-[3100] bg-gray-950 flex flex-col">
+    <div className="fixed inset-0 z-[3100] bg-gray-950 flex flex-col pt-[var(--sat)]">
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b border-white/10 bg-gray-900">
         <div className="flex items-center gap-3 flex-1 min-w-0">
