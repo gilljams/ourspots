@@ -108,12 +108,17 @@ export const ColorBlock = ({ data, onExpand, onEditColor }) => {
                         : [entry.colorName, entry.brand, entry.product].filter(Boolean).join(' · ')}
                     </div>
                   )}
-                  {entry.years && entry.years.length > 0 && (
-                    <div className="text-xs text-gray-600 mt-0.5">
-                      {entry.years.sort((a, b) => b - a).join(', ')}
-                    </div>
-                  )}
                 </div>
+                {/* Year badges */}
+                {entry.years && entry.years.length > 0 && (
+                  <div className="flex flex-wrap gap-0.5 flex-shrink-0 justify-end max-w-[5.5rem]">
+                    {entry.years.sort((a, b) => b - a).map(y => (
+                      <span key={y} className="px-1.5 py-0.5 rounded bg-white/5 text-[10px] text-gray-500 font-medium leading-none">
+                        {y}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 {/* Copy button */}
                 <button
                   onClick={(e) => { e.stopPropagation(); handleCopy(entry); }}
