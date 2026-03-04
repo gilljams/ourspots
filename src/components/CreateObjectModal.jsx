@@ -1255,26 +1255,9 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                 {/* Country picker for Land template */}
                 {selectedTemplate === 'country' && (
                   <div className="mt-3">
-                    <div className="relative">
-                      <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-                      <input
-                        type="text"
-                        value={selectedCountry ? `${selectedCountry.flag} ${selectedCountry.name}` : countrySearch}
-                        onChange={(e) => {
-                          setCountrySearch(e.target.value);
-                          if (selectedCountry) setSelectedCountry(null);
-                        }}
-                        onFocus={() => { if (selectedCountry) { setSelectedCountry(null); setCountrySearch(''); } }}
-                        placeholder="Sök land..."
-                        disabled={saving || loadingCountry}
-                        className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                      />
-                      {loadingCountry && (
-                        <Loader size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-400 animate-spin" />
-                      )}
-                    </div>
+                    {/* Results shown ABOVE the input so they aren't hidden by the iOS keyboard */}
                     {countrySearch && !selectedCountry && countryList.length > 0 && (
-                      <div className="mt-1 max-h-48 overflow-y-auto bg-gray-800 border border-white/10 rounded-lg shadow-xl">
+                      <div className="mb-1 max-h-48 overflow-y-auto bg-gray-800 border border-white/10 rounded-lg shadow-xl">
                         {countryList
                           .filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase()))
                           .slice(0, 20)
@@ -1295,6 +1278,24 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                         )}
                       </div>
                     )}
+                    <div className="relative">
+                      <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                      <input
+                        type="text"
+                        value={selectedCountry ? `${selectedCountry.flag} ${selectedCountry.name}` : countrySearch}
+                        onChange={(e) => {
+                          setCountrySearch(e.target.value);
+                          if (selectedCountry) setSelectedCountry(null);
+                        }}
+                        onFocus={() => { if (selectedCountry) { setSelectedCountry(null); setCountrySearch(''); } }}
+                        placeholder="Sök land..."
+                        disabled={saving || loadingCountry}
+                        className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                      />
+                      {loadingCountry && (
+                        <Loader size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-400 animate-spin" />
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
