@@ -3,7 +3,8 @@ import { ChevronDown, Palette, Copy, Edit2 } from 'lucide-react';
 
 /**
  * ColorBlock – displays a list of room/surface colors with swatches.
- * Data model: { entries: [{ id, room, colorName, colorCode, hex, brand, product }] }
+ * Data model: { entries: [{ id, room, colorName, colorCode, hex, note, years }] }
+ * Legacy fields brand/product are supported for backwards compat.
  */
 export const ColorBlock = ({ data, onExpand, onEditColor }) => {
   const entries = data.entries || [];
@@ -28,8 +29,11 @@ export const ColorBlock = ({ data, onExpand, onEditColor }) => {
     const parts = [entry.room];
     if (entry.colorName) parts.push(entry.colorName);
     if (entry.colorCode) parts.push(entry.colorCode);
-    if (entry.brand) parts.push(entry.brand);
-    if (entry.product) parts.push(entry.product);
+    if (entry.note) parts.push(entry.note);
+    // Legacy fields
+    if (entry.brand && !entry.note) parts.push(entry.brand);
+    if (entry.product && !entry.note) parts.push(entry.product);
+    if (entry.years && entry.years.length) parts.push(entry.years.join(', '));
     navigator.clipboard?.writeText(parts.join(' – ')).then(() => {
       setCopiedId(entry.id);
       setTimeout(() => setCopiedId(null), 1500);
@@ -100,9 +104,16 @@ export const ColorBlock = ({ data, onExpand, onEditColor }) => {
                       </span>
                     )}
                   </div>
-                  {(entry.colorName || entry.brand || entry.product) && (
+                  {(entry.colorName || entry.brand || entry.product || entry.note) && (
                     <div className="text-xs text-gray-500 truncate mt-0.5">
-                      {[entry.colorName, entry.brand, entry.product].filter(Boolean).join(' · ')}
+                      {entry.note
+                        ? entry.note
+                        : [entry.colorName, entry.brand, entry.product].filter(Boolean).join(' · ')}
+                    </div>
+                  )}
+                  {entry.years && entry.years.length > 0 && (
+                    <div className="text-xs text-gray-600 mt-0.5">
+                      {entry.years.sort((a, b) => b - a).join(', ')}
                     </div>
                   )}
                 </div>

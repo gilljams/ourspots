@@ -4,16 +4,34 @@ import { useFullscreenModal } from '../utils/useFullscreenModal';
 
 const ROOM_SUGGESTIONS = ['Fasad', 'Kök', 'Vardagsrum', 'Sovrum', 'Badrum', 'Hall', 'Tak', 'Garage'];
 
+// Generate year options: current year down to 1950
+const CURRENT_YEAR = new Date().getFullYear();
+const YEAR_OPTIONS = Array.from({ length: CURRENT_YEAR - 1949 }, (_, i) => CURRENT_YEAR - i);
+
 /**
  * ColorEditorModal – fullscreen modal for editing color/paint entries.
  * Follows the same pattern as ListEditorModal / SimpleTableEditorModal.
+ *
+ * Data model per entry:
+ *   { id, room, colorName, colorCode, hex, note, years: [2024, 2020, ...] }
+ *
+ * Legacy fields brand/product are migrated into note on load.
  */
 export function ColorEditorModal({ entries: initialEntries, title, onSave, onCancel }) {
   const [entries, setEntries] = useState(() =>
-    (initialEntries || []).map((e, i) => ({
-      ...e,
-      id: e.id || `entry-${i}-${Date.now()}`,
-    }))
+    (initialEntries || []).map((e, i) => {
+      // Migrate legacy brand/product → note
+      let note = e.note || '';
+      if (!note && (e.brand || e.product)) {
+        note = [e.brand, e.product].filter(Boolean).join(', ');
+      }
+      return {
+        ...e,
+        note,
+        years: e.years || [],
+        id: e.id || `entry-${i}-${Date.now()}`,
+      };
+    })
   );
   const [editingId, setEditingId] = useState(null);
   const scrollRef = useRef(null);
@@ -26,22 +44,42 @@ export function ColorEditorModal({ entries: initialEntries, title, onSave, onCan
   });
 
   const addEntry = (roomName = '') => {
+    const newId = `entry-${Date.now()}`;
     const newEntry = {
-      id: `entry-${Date.now()}`,
+      id: newId,
       room: roomName,
       colorName: '',
       colorCode: '',
       hex: '#888888',
-      brand: '',
-      product: '',
+      note: '',
+      years: [],
     };
     setEntries(prev => [...prev, newEntry]);
-    setEditingId(newEntry.id);
-    setTimeout(() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }), 100);
+    setEditingId(newId);
+    // Scroll so the new entry's top (Room field) is visible, not the very bottom
+    setTimeout(() => {
+      const el = scrollRef.current?.querySelector(`[data-entry-id="${newId}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
   };
 
   const updateEntry = (entryId, field, value) => {
     setEntries(prev => prev.map(e => e.id === entryId ? { ...e, [field]: value } : e));
+  };
+
+  const toggleYear = (entryId, year) => {
+    setEntries(prev => prev.map(e => {
+      if (e.id !== entryId) return e;
+      const years = e.years || [];
+      return {
+        ...e,
+        years: years.includes(year)
+          ? years.filter(y => y !== year)
+          : [...years, year].sort((a, b) => b - a),
+      };
+    }));
   };
 
   const removeEntry = (entryId) => {
@@ -61,7 +99,11 @@ export function ColorEditorModal({ entries: initialEntries, title, onSave, onCan
     });
   };
 
-  const handleSave = () => onSave(entries);
+  // Strip legacy fields before saving
+  const handleSave = () => {
+    const cleaned = entries.map(({ brand, product, ...rest }) => rest);
+    onSave(cleaned);
+  };
 
   const contentHeight = viewportHeight - HEADER_HEIGHT;
 
@@ -108,7 +150,7 @@ export function ColorEditorModal({ entries: initialEntries, title, onSave, onCan
           className="flex-1 overflow-y-auto"
           style={{ height: `${contentHeight}px`, paddingBottom: '100px' }}
         >
-          {/* Quick-add suggestions when empty */}
+          {/* Empty state */}
           {entries.length === 0 ? (
             <div className="text-center py-16 text-gray-500">
               <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-3">
@@ -132,28 +174,31 @@ export function ColorEditorModal({ entries: initialEntries, title, onSave, onCan
           ) : (
             <div className="divide-y divide-white/5">
               {entries.map((entry, i) => (
-                <div key={entry.id}>
+                <div key={entry.id} data-entry-id={entry.id}>
                   {/* Compact row – tap to expand */}
                   <div
                     className="flex items-center gap-3 px-3 py-2.5 cursor-pointer active:bg-white/[0.02]"
                     onClick={() => setEditingId(editingId === entry.id ? null : entry.id)}
                   >
-                    {/* Color swatch */}
                     <div
                       className="w-8 h-8 rounded-lg border border-white/10 flex-shrink-0 shadow-inner"
                       style={{ backgroundColor: entry.hex || '#888' }}
                     />
-                    {/* Info */}
                     <div className="flex-1 min-w-0">
                       <span className="text-sm font-medium text-gray-200 truncate block">
                         {entry.room || 'Namnlös yta'}
                       </span>
-                      {(entry.colorCode || entry.colorName || entry.brand) && (
+                      {(entry.colorCode || entry.colorName || entry.note) && (
                         <span className="text-xs text-gray-500 truncate block">
-                          {[entry.colorName, entry.colorCode, entry.brand].filter(Boolean).join(' · ')}
+                          {[entry.colorName, entry.colorCode, entry.note].filter(Boolean).join(' · ')}
                         </span>
                       )}
                     </div>
+                    {entry.years && entry.years.length > 0 && (
+                      <span className="text-xs text-gray-600 flex-shrink-0">
+                        {entry.years[0]}{entry.years.length > 1 ? ` +${entry.years.length - 1}` : ''}
+                      </span>
+                    )}
                     <ChevronDown
                       size={14}
                       className={`text-gray-500 transition-transform flex-shrink-0 ${editingId === entry.id ? '' : '-rotate-90'}`}
@@ -162,7 +207,7 @@ export function ColorEditorModal({ entries: initialEntries, title, onSave, onCan
 
                   {/* Expanded edit fields */}
                   {editingId === entry.id && (
-                    <div className="px-3 pb-3 pt-1 space-y-3 border-t border-white/5">
+                    <div className="px-3 pb-3 pt-1 space-y-2.5 border-t border-white/5">
                       {/* Room name */}
                       <div>
                         <label className="text-xs text-gray-500 mb-1 block">Rum / Yta</label>
@@ -170,11 +215,10 @@ export function ColorEditorModal({ entries: initialEntries, title, onSave, onCan
                           type="text"
                           value={entry.room}
                           onChange={(e) => updateEntry(entry.id, 'room', e.target.value)}
-                          placeholder="T.ex. Fasad, Kök..."
+                          placeholder="Fasad, Kök..."
                           autoFocus
-                          className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                          className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500"
                         />
-                        {/* Quick room suggestions */}
                         {!entry.room && (
                           <div className="flex flex-wrap gap-1 mt-1.5">
                             {ROOM_SUGGESTIONS.filter(r => !entries.some(e => e.room === r)).map((room) => (
@@ -191,62 +235,77 @@ export function ColorEditorModal({ entries: initialEntries, title, onSave, onCan
                         )}
                       </div>
 
-                      {/* Color picker + color name */}
-                      <div className="flex gap-2">
+                      {/* Color picker + name + code — all on one row */}
+                      <div className="flex gap-2 items-end">
                         <div className="flex-shrink-0">
                           <label className="text-xs text-gray-500 mb-1 block">Färg</label>
                           <input
                             type="color"
                             value={entry.hex || '#888888'}
                             onChange={(e) => updateEntry(entry.id, 'hex', e.target.value)}
-                            className="w-12 h-12 rounded-lg border border-white/10 bg-transparent cursor-pointer"
+                            className="w-10 h-10 rounded-lg border border-white/10 bg-transparent cursor-pointer"
                           />
                         </div>
-                        <div className="flex-1">
-                          <label className="text-xs text-gray-500 mb-1 block">Färgnamn</label>
+                        <div className="flex-1 min-w-0">
+                          <label className="text-xs text-gray-500 mb-1 block">Namn</label>
                           <input
                             type="text"
                             value={entry.colorName}
                             onChange={(e) => updateEntry(entry.id, 'colorName', e.target.value)}
-                            placeholder="T.ex. Dimgrön, Äggskal..."
-                            className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                            placeholder="Äggskal..."
+                            className="w-full px-2.5 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <label className="text-xs text-gray-500 mb-1 block">Kod</label>
+                          <input
+                            type="text"
+                            value={entry.colorCode}
+                            onChange={(e) => updateEntry(entry.id, 'colorCode', e.target.value)}
+                            placeholder="S 3020-Y30R"
+                            className="w-full px-2.5 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm font-mono placeholder-gray-500 focus:outline-none focus:border-blue-500"
                           />
                         </div>
                       </div>
 
-                      {/* Color code (NCS/RAL) */}
+                      {/* Note (merged brand + product) */}
                       <div>
-                        <label className="text-xs text-gray-500 mb-1 block">Färgkod (NCS/RAL)</label>
+                        <label className="text-xs text-gray-500 mb-1 block">Notering</label>
                         <input
                           type="text"
-                          value={entry.colorCode}
-                          onChange={(e) => updateEntry(entry.id, 'colorCode', e.target.value)}
-                          placeholder="T.ex. S 3020-Y30R"
-                          className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-base font-mono placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                          value={entry.note}
+                          onChange={(e) => updateEntry(entry.id, 'note', e.target.value)}
+                          placeholder="Fabrikat, glans, typ..."
+                          className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500"
                         />
                       </div>
 
-                      {/* Brand + product */}
-                      <div className="flex gap-2">
-                        <div className="flex-1">
-                          <label className="text-xs text-gray-500 mb-1 block">Fabrikat</label>
-                          <input
-                            type="text"
-                            value={entry.brand}
-                            onChange={(e) => updateEntry(entry.id, 'brand', e.target.value)}
-                            placeholder="T.ex. Beckers"
-                            className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                          />
-                        </div>
-                        <div className="flex-1">
-                          <label className="text-xs text-gray-500 mb-1 block">Produkt / Glans</label>
-                          <input
-                            type="text"
-                            value={entry.product}
-                            onChange={(e) => updateEntry(entry.id, 'product', e.target.value)}
-                            placeholder="T.ex. Elegant, matt"
-                            className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-base placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                          />
+                      {/* Years (multi-select chips) */}
+                      <div>
+                        <label className="text-xs text-gray-500 mb-1 block">Målad år</label>
+                        <div className="flex flex-wrap gap-1">
+                          {(entry.years || []).map(y => (
+                            <button
+                              key={y}
+                              type="button"
+                              onClick={() => toggleYear(entry.id, y)}
+                              className="px-2 py-0.5 rounded-md bg-blue-500/20 text-blue-300 text-xs font-medium hover:bg-blue-500/30 transition-colors"
+                            >
+                              {y} ×
+                            </button>
+                          ))}
+                          <select
+                            value=""
+                            onChange={(e) => {
+                              if (e.target.value) toggleYear(entry.id, Number(e.target.value));
+                            }}
+                            className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-xs text-gray-400 focus:outline-none focus:border-blue-500 cursor-pointer"
+                          >
+                            <option value="">+ År</option>
+                            {YEAR_OPTIONS.filter(y => !(entry.years || []).includes(y)).map(y => (
+                              <option key={y} value={y}>{y}</option>
+                            ))}
+                          </select>
                         </div>
                       </div>
 
