@@ -97,7 +97,7 @@ const OBJECT_TEMPLATES = [
     blocks: [
       { type: 'rating', title: 'Betyg', ratings: {} },
       { type: 'table', title: 'Ingredienser', template: 'tasks', columns: [], rows: [], showCheckbox: true, col2Type: 'text', viewerEditable: false, defaultCollapsed: false },
-      { type: 'text', title: 'Gör så här', content: '', defaultCollapsed: false, viewerEditable: false },
+      { type: 'table', title: 'Gör så här', template: 'tasks', columns: [], rows: [], showCheckbox: true, col2Type: 'text', viewerEditable: false, defaultCollapsed: false },
       { type: 'timer', timers: [], defaultCollapsed: false },
     ]
   },
