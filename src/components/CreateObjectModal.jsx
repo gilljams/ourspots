@@ -1806,27 +1806,9 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
               {/* Country block picker - inline search */}
               {showCountryBlockPicker && (
                 <div ref={countryBlockPickerRef} className="mt-2 pt-2 border-t border-white/5">
-                  <div className="relative">
-                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-                    <input
-                      ref={countryBlockInputRef}
-                      type="text"
-                      value={countryBlockSearch}
-                      onChange={(e) => setCountryBlockSearch(e.target.value)}
-                      placeholder="Sök land för fakta-block..."
-                      disabled={saving || loadingCountry}
-                      className="w-full pl-9 pr-10 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => { setShowCountryBlockPicker(false); setCountryBlockSearch(''); }}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white/10 text-gray-400 hover:text-white flex items-center justify-center"
-                    >
-                      <X size={12} />
-                    </button>
-                  </div>
+                  {/* Results shown ABOVE the input so they aren't hidden by the iOS keyboard */}
                   {countryBlockSearch && countryList.length > 0 && (
-                    <div className="mt-1 max-h-48 overflow-y-auto bg-gray-800 border border-white/10 rounded-lg shadow-xl">
+                    <div className="mb-1 max-h-48 overflow-y-auto bg-gray-800 border border-white/10 rounded-lg shadow-xl">
                       {countryList
                         .filter(c => c.name.toLowerCase().includes(countryBlockSearch.toLowerCase()))
                         .slice(0, 20)
@@ -1847,6 +1829,25 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                       )}
                     </div>
                   )}
+                  <div className="relative">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                    <input
+                      ref={countryBlockInputRef}
+                      type="text"
+                      value={countryBlockSearch}
+                      onChange={(e) => setCountryBlockSearch(e.target.value)}
+                      placeholder="Sök land för fakta-block..."
+                      disabled={saving || loadingCountry}
+                      className="w-full pl-9 pr-10 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => { setShowCountryBlockPicker(false); setCountryBlockSearch(''); }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white/10 text-gray-400 hover:text-white flex items-center justify-center"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
