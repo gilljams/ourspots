@@ -96,8 +96,8 @@ const OBJECT_TEMPLATES = [
     requireHideLocation: true, // Only show for location-independent categories
     blocks: [
       { type: 'rating', title: 'Betyg', ratings: {} },
-      { type: 'table', title: 'Ingredienser', template: 'tasks', columns: [], rows: [], showCheckbox: true, col2Type: 'text', viewerEditable: false, defaultCollapsed: false },
-      { type: 'table', title: 'Gör så här', template: 'tasks', columns: [], rows: [], showCheckbox: true, col2Type: 'text', viewerEditable: false, defaultCollapsed: false },
+      { type: 'table', title: 'Ingredienser', template: 'list', columns: [], rows: [], showCheckbox: true, col2Type: 'text', viewerEditable: false, defaultCollapsed: false },
+      { type: 'table', title: 'Gör så här', template: 'list', columns: [], rows: [], showCheckbox: true, col2Type: 'text', viewerEditable: false, defaultCollapsed: false },
       { type: 'timer', timers: [], defaultCollapsed: false },
     ]
   },
