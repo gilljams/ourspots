@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   X, Plus, Upload, Loader, Navigation, ChevronDown, ChevronUp,
-  Map as MapIcon, FileText, CheckSquare, ClipboardList, Link2, Table2, Image as ImageIcon, Calendar, Phone, Timer, BarChart3, Folder, MapPin, Music, Wallet, Trophy, Car, Users, Minus, MessageCircle, Swords, Zap, Images, Star 
+  Map as MapIcon, FileText, CheckSquare, ClipboardList, Link2, Table2, Image as ImageIcon, Calendar, Phone, Timer, BarChart3, Folder, MapPin, Music, Wallet, Trophy, Car, Users, Minus, MessageCircle, Swords, Zap, Images, Star, Search, Globe 
 } from 'lucide-react';
 import { 
   CLOUDINARY_CLOUD_NAME, 
@@ -16,6 +16,7 @@ import BlockEditor from './BlockEditor';
 import { useConfirm } from '../utils/useConfirm';
 import { useToast } from '../utils/useToast';
 import { usePrompt } from '../utils/usePrompt';
+import { fetchCountryList, fetchCountryFacts } from '../utils/countryData';
 
 // Demo users available when in demo mode for realistic examples
 const DEMO_USERS = {
@@ -101,6 +102,17 @@ const OBJECT_TEMPLATES = [
       { type: 'timer', timers: [], defaultCollapsed: false },
     ]
   },
+  {
+    id: 'country',
+    label: 'Land',
+    icon: 'Globe',
+    description: 'Fakta om ett land – valuta, el, språk m.m.',
+    matchCategoryIcon: 'Plane', // Show for travel-type categories
+    hasCountryPicker: true,
+    blocks: [
+      { type: 'text', title: 'Fakta', content: '', defaultCollapsed: false, viewerEditable: false },
+    ]
+  },
 ];
 
 // Helper to get smaller thumbnail version
@@ -178,6 +190,10 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
   const [inheritLocation, setInheritLocation] = useState(false);
   const [isCollection, setIsCollection] = useState(sourceObject?.isCollection || false);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [countryList, setCountryList] = useState([]);
+  const [countrySearch, setCountrySearch] = useState('');
+  const [loadingCountry, setLoadingCountry] = useState(false);
+  const [selectedCountry, setSelectedCountry] = useState(null);
   const [whatsappGroupUrl, setWhatsappGroupUrl] = useState(sourceObject?.whatsappGroupUrl || '');
   const [whatsappAdded, setWhatsappAdded] = useState(!!sourceObject?.whatsappGroupUrl);
   const [whatsappExpanded, setWhatsappExpanded] = useState(false);
@@ -502,6 +518,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
     return OBJECT_TEMPLATES.filter(t => {
       if (t.requireHideLocation && !cat?.hideLocation) return false;
       if (t.requireCategory && t.requireCategory !== selectedType) return false;
+      if (t.matchCategoryIcon && cat?.icon !== t.matchCategoryIcon) return false;
       return true;
     });
   }, [selectedType, categories]);
@@ -513,17 +530,57 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
       // Deselect: clear template blocks
       setSelectedTemplate(null);
       setCustomBlocks([]);
+      setSelectedCountry(null);
+      setCountrySearch('');
       setFormTouched(true);
       return;
     }
     setSelectedTemplate(templateId);
+    setSelectedCountry(null);
+    setCountrySearch('');
     if (template) {
+      // For country template, don't populate blocks yet — wait for country selection
+      if (template.hasCountryPicker) {
+        // Load country list if not already loaded
+        if (countryList.length === 0) {
+          fetchCountryList().then(list => setCountryList(list)).catch(() => toast.error('Kunde inte läsa länderlistan'));
+        }
+        const blocks = template.blocks.map(b => ({
+          ...b,
+          id: Math.random().toString(36).substr(2, 9),
+        }));
+        setCustomBlocks(blocks);
+        setFormTouched(true);
+        return;
+      }
       const blocks = template.blocks.map(b => ({
         ...b,
         id: Math.random().toString(36).substr(2, 9),
       }));
       setCustomBlocks(blocks);
       setFormTouched(true);
+    }
+  };
+
+  const handleCountrySelect = async (country) => {
+    setSelectedCountry(country);
+    setCountrySearch('');
+    setLoadingCountry(true);
+    try {
+      const facts = await fetchCountryFacts(country.code);
+      setTitle(facts.title);
+      // Update the text block with fact content
+      setCustomBlocks(prev => prev.map(b => 
+        b.type === 'text' && b.title === 'Fakta' 
+          ? { ...b, content: facts.content }
+          : b
+      ));
+      setFormTouched(true);
+    } catch (err) {
+      console.error('Country fetch error:', err);
+      toast.error('Kunde inte hämta landsdata');
+    } finally {
+      setLoadingCountry(false);
     }
   };
 
@@ -1158,6 +1215,52 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   <p className="text-xs text-gray-500 mt-1.5">
                     {OBJECT_TEMPLATES.find(t => t.id === selectedTemplate)?.description}
                   </p>
+                )}
+
+                {/* Country picker for Land template */}
+                {selectedTemplate === 'country' && (
+                  <div className="mt-3">
+                    <div className="relative">
+                      <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                      <input
+                        type="text"
+                        value={selectedCountry ? `${selectedCountry.flag} ${selectedCountry.name}` : countrySearch}
+                        onChange={(e) => {
+                          setCountrySearch(e.target.value);
+                          if (selectedCountry) setSelectedCountry(null);
+                        }}
+                        onFocus={() => { if (selectedCountry) { setSelectedCountry(null); setCountrySearch(''); } }}
+                        placeholder="Sök land..."
+                        disabled={saving || loadingCountry}
+                        className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                      />
+                      {loadingCountry && (
+                        <Loader size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-400 animate-spin" />
+                      )}
+                    </div>
+                    {countrySearch && !selectedCountry && countryList.length > 0 && (
+                      <div className="mt-1 max-h-48 overflow-y-auto bg-gray-800 border border-white/10 rounded-lg shadow-xl">
+                        {countryList
+                          .filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase()))
+                          .slice(0, 20)
+                          .map(c => (
+                            <button
+                              key={c.code}
+                              type="button"
+                              onClick={() => handleCountrySelect(c)}
+                              className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2"
+                            >
+                              <span className="text-lg">{c.flag}</span>
+                              <span>{c.name}</span>
+                            </button>
+                          ))
+                        }
+                        {countryList.filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase())).length === 0 && (
+                          <div className="px-3 py-2 text-sm text-gray-500">Inget land matchade</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             )}
