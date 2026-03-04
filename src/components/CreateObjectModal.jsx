@@ -194,6 +194,8 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
   const [countrySearch, setCountrySearch] = useState('');
   const [loadingCountry, setLoadingCountry] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState(null);
+  const [showCountryBlockPicker, setShowCountryBlockPicker] = useState(false);
+  const [countryBlockSearch, setCountryBlockSearch] = useState('');
   const [whatsappGroupUrl, setWhatsappGroupUrl] = useState(sourceObject?.whatsappGroupUrl || '');
   const [whatsappAdded, setWhatsappAdded] = useState(!!sourceObject?.whatsappGroupUrl);
   const [whatsappExpanded, setWhatsappExpanded] = useState(false);
@@ -578,6 +580,31 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
       setFormTouched(true);
     } catch (err) {
       console.error('Country fetch error:', err);
+      toast.error('Kunde inte hämta landsdata');
+    } finally {
+      setLoadingCountry(false);
+    }
+  };
+
+  const handleCountryBlockSelect = async (country) => {
+    setCountryBlockSearch('');
+    setShowCountryBlockPicker(false);
+    setLoadingCountry(true);
+    try {
+      const facts = await fetchCountryFacts(country.code);
+      const newBlock = {
+        id: Math.random().toString(36).substr(2, 9),
+        type: 'text',
+        title: `Fakta ${facts.title}`,
+        content: facts.content,
+        defaultCollapsed: false,
+        viewerEditable: false,
+      };
+      setCustomBlocks(prev => [...prev, newBlock]);
+      setFormTouched(true);
+      toast.success(`Landfakta för ${facts.title} tillagt!`);
+    } catch (err) {
+      console.error('Country block fetch error:', err);
       toast.error('Kunde inte hämta landsdata');
     } finally {
       setLoadingCountry(false);
@@ -1749,10 +1776,64 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   <button type="button" onClick={() => addCustomBlock('table', 'fusebox')} disabled={saving} className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-500 hover:bg-white/5 hover:text-gray-300 text-xs transition-colors">
                     <Zap size={14} className="text-gray-500 group-hover:text-blue-400 transition-colors" /> Proppskåp
                   </button>
+                  <button type="button" onClick={() => { 
+                    setShowCountryBlockPicker(true);
+                    if (countryList.length === 0) {
+                      fetchCountryList().then(list => setCountryList(list)).catch(() => toast.error('Kunde inte läsa länderlistan'));
+                    }
+                  }} disabled={saving || loadingCountry} className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-500 hover:bg-white/5 hover:text-gray-300 text-xs transition-colors">
+                    {loadingCountry ? <Loader size={14} className="animate-spin text-blue-400" /> : <Globe size={14} className="text-gray-500 group-hover:text-blue-400 transition-colors" />} Landfakta
+                  </button>
                   {isAdmin && (
                     <button type="button" onClick={() => addCustomBlock('audio')} disabled={saving} className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-500 hover:bg-white/5 hover:text-gray-300 text-xs transition-colors">
                       <Music size={14} className="text-gray-500 group-hover:text-blue-400 transition-colors" /> Ljud
                     </button>
+                  )}
+                </div>
+              )}
+              {/* Country block picker - inline search */}
+              {showCountryBlockPicker && (
+                <div className="mt-2 pt-2 border-t border-white/5">
+                  <div className="relative">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                    <input
+                      type="text"
+                      value={countryBlockSearch}
+                      onChange={(e) => setCountryBlockSearch(e.target.value)}
+                      placeholder="Sök land för fakta-block..."
+                      autoFocus
+                      disabled={saving || loadingCountry}
+                      className="w-full pl-9 pr-10 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => { setShowCountryBlockPicker(false); setCountryBlockSearch(''); }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white/10 text-gray-400 hover:text-white flex items-center justify-center"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                  {countryBlockSearch && countryList.length > 0 && (
+                    <div className="mt-1 max-h-48 overflow-y-auto bg-gray-800 border border-white/10 rounded-lg shadow-xl">
+                      {countryList
+                        .filter(c => c.name.toLowerCase().includes(countryBlockSearch.toLowerCase()))
+                        .slice(0, 20)
+                        .map(c => (
+                          <button
+                            key={c.code}
+                            type="button"
+                            onClick={() => handleCountryBlockSelect(c)}
+                            className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2"
+                          >
+                            <span className="text-lg">{c.flag}</span>
+                            <span>{c.name}</span>
+                          </button>
+                        ))
+                      }
+                      {countryList.filter(c => c.name.toLowerCase().includes(countryBlockSearch.toLowerCase())).length === 0 && (
+                        <div className="px-3 py-2 text-sm text-gray-500">Inget land matchade</div>
+                      )}
+                    </div>
                   )}
                 </div>
               )}
