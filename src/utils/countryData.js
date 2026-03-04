@@ -216,6 +216,8 @@ export async function fetchCountryFacts(countryCode) {
     `**Körsida:** ${driveSide}`,
     `**El:** ${elecStr}`,
     `**Adapter från Sverige:** ${adapterStr}`,
+    '',
+    `[Läs mer på Wikipedia](https://en.wikipedia.org/wiki/${encodeURIComponent(name)})`,
   ].filter(line => line !== null);
 
   if (nativeName && nativeName !== name) {
