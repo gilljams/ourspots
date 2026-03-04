@@ -83,7 +83,7 @@ export function ColorEditorModal({ entries: initialEntries, title, onSave, onCan
           style={{ height: `${HEADER_HEIGHT}px` }}
         >
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            <Palette size={18} className="text-amber-400 flex-shrink-0" />
+            <Palette size={18} className="text-blue-400 flex-shrink-0" />
             <span className="text-base font-medium text-white truncate">
               {title || 'Kolör'}
             </span>

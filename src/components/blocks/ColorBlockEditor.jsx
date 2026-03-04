@@ -45,7 +45,7 @@ function ColorBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
             size={16}
             className={`text-gray-500 transition-transform flex-shrink-0 ${isExpanded ? '' : '-rotate-90'}`}
           />
-          <Palette size={16} className="text-amber-400 flex-shrink-0" />
+          <Palette size={16} className="text-blue-400 flex-shrink-0" />
           <span className="text-sm font-medium text-gray-300 truncate">
             Kolör
           </span>

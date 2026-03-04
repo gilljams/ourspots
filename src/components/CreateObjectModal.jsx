@@ -1128,7 +1128,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
     if (type === 'color') {
       newBlock.title = 'Kolör';
       newBlock.entries = [];
-      newBlock.defaultCollapsed = false;
+      newBlock.defaultCollapsed = true;
     }
     setCustomBlocks(prev => [...prev, newBlock]);
     setFormTouched(true);
@@ -1813,7 +1813,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                     <Zap size={14} className="text-gray-500 group-hover:text-blue-400 transition-colors" /> Proppskåp
                   </button>
                   <button type="button" onClick={() => addCustomBlock('color')} disabled={saving} className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-500 hover:bg-white/5 hover:text-gray-300 text-xs transition-colors">
-                    <Palette size={14} className="text-gray-500 group-hover:text-amber-400 transition-colors" /> Kolör
+                    <Palette size={14} className="text-gray-500 group-hover:text-blue-400 transition-colors" /> Kolör
                   </button>
                   <button type="button" onClick={() => { 
                     setShowCountryBlockPicker(true);

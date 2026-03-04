@@ -17,6 +17,7 @@ import DistributionModal from './DistributionModal';
 import { FullscreenTextEditor } from './BlockEditor';
 import { ListEditorModal } from './ListEditorModal';
 import { SimpleTableEditorModal, MultiColumnTableEditorModal } from './SimpleTableEditorModal';
+import { ColorEditorModal } from './ColorEditorModal';
 import { TABLE_TEMPLATES } from './blocks';
 import PlannerModal from './PlannerModal';
 import CollectionMapView from './map/CollectionMapView';
@@ -95,6 +96,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
   const [textEditModalData, setTextEditModalData] = useState(null); // { blockIndex, content, title }
   const [tableEditModalData, setTableEditModalData] = useState(null); // { blockIndex, rows, columns, template, title }
   const [distributionModalData, setDistributionModalData] = useState(null); // { blockIndex, data }
+  const [colorEditModalData, setColorEditModalData] = useState(null); // { blockIndex, entries }
   const [showCollectionMap, setShowCollectionMap] = useState(false); // For collection map modal
   const [showMultiLocationMap, setShowMultiLocationMap] = useState(false); // For multi-location objects map
   const [showParentCollections, setShowParentCollections] = useState(false); // For showing which collections contain this object
@@ -837,6 +839,13 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                               blockIndex: actualBlockIndex, 
                               content: block.data.content || '', 
                               title: block.data.title || 'Anteckning' 
+                            });
+                          } : undefined}
+                          // Color block edit - for owners/editors
+                          onEditColor={(block.type === 'color' && canEdit) ? () => {
+                            setColorEditModalData({
+                              blockIndex: actualBlockIndex,
+                              entries: block.data.entries || []
                             });
                           } : undefined}
                           // Table block inline edit - for owners/editors OR when viewerEditable
@@ -1939,6 +1948,26 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
             }
           }}
           onCancel={() => setTableEditModalData(null)}
+        />
+      )}
+      {colorEditModalData && (
+        <ColorEditorModal
+          entries={colorEditModalData.entries}
+          title="Kolör"
+          onSave={async (newEntries) => {
+            try {
+              const blockData = {
+                ...object.blocks[colorEditModalData.blockIndex].data,
+                entries: newEntries
+              };
+              await onBlockUpdate(object.id, colorEditModalData.blockIndex, blockData);
+              setColorEditModalData(null);
+            } catch (err) {
+              console.error('Error saving color block:', err);
+              toast.error('Kunde inte spara färger');
+            }
+          }}
+          onCancel={() => setColorEditModalData(null)}
         />
       )}
       {distributionModalData && (
