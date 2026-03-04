@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   X, Plus, Upload, Loader, Navigation, ChevronDown, ChevronUp,
-  Map as MapIcon, FileText, CheckSquare, ClipboardList, Link2, Table2, Image as ImageIcon, Calendar, Phone, Timer, BarChart3, Folder, MapPin, Music, Wallet, Trophy, Car, Users, Minus, MessageCircle, Swords, Zap, Images, Star, Search, Globe 
+  Map as MapIcon, FileText, CheckSquare, ClipboardList, Link2, Table2, Image as ImageIcon, Calendar, Phone, Timer, BarChart3, Folder, MapPin, Music, Wallet, Trophy, Car, Users, Minus, MessageCircle, Swords, Zap, Images, Star, Search, Globe, Palette 
 } from 'lucide-react';
 import { 
   CLOUDINARY_CLOUD_NAME, 
@@ -1107,6 +1107,11 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
     if (type === 'gallery') {
       newBlock.images = [];
     }
+    if (type === 'color') {
+      newBlock.title = 'Kolör';
+      newBlock.entries = [];
+      newBlock.defaultCollapsed = false;
+    }
     setCustomBlocks(prev => [...prev, newBlock]);
     setFormTouched(true);
   };
@@ -1788,6 +1793,9 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   </button>
                   <button type="button" onClick={() => addCustomBlock('table', 'fusebox')} disabled={saving} className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-500 hover:bg-white/5 hover:text-gray-300 text-xs transition-colors">
                     <Zap size={14} className="text-gray-500 group-hover:text-blue-400 transition-colors" /> Proppskåp
+                  </button>
+                  <button type="button" onClick={() => addCustomBlock('color')} disabled={saving} className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-500 hover:bg-white/5 hover:text-gray-300 text-xs transition-colors">
+                    <Palette size={14} className="text-gray-500 group-hover:text-amber-400 transition-colors" /> Kolör
                   </button>
                   <button type="button" onClick={() => { 
                     setShowCountryBlockPicker(true);
