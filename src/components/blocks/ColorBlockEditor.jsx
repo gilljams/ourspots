@@ -47,16 +47,11 @@ function ColorBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
           />
           <Palette size={16} className="text-blue-400 flex-shrink-0" />
           <span className="text-sm font-medium text-gray-300 truncate">
-            Kolör
+            Kulör
           </span>
           {entries.length > 0 && (
             <span className="text-xs text-gray-500 flex-shrink-0">
               ({entries.length})
-            </span>
-          )}
-          {!isExpanded && (
-            <span className="text-xs text-gray-500 truncate ml-1">
-              {getSummary()}
             </span>
           )}
         </button>
@@ -129,7 +124,7 @@ function ColorBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
       {showEditor && (
         <ColorEditorModal
           entries={entries}
-          title="Kolör"
+          title="Kulör"
           onSave={(newEntries) => {
             syncToParent(newEntries);
             setShowEditor(false);

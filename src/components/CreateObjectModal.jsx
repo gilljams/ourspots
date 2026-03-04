@@ -392,7 +392,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
           return {
             id: Math.random().toString(36).substr(2, 9),
             type: 'color',
-            title: b.data.title || 'Kolör',
+            title: b.data.title || 'Kulör',
             entries: b.data.entries || [],
             defaultCollapsed: b.data.defaultCollapsed ?? false
           };
@@ -1006,7 +1006,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
         blocks.push({
           type: 'color',
           data: {
-            title: (block.title || 'Kolör').trim(),
+            title: (block.title || 'Kulör').trim(),
             entries: block.entries || [],
             defaultCollapsed: block.defaultCollapsed ?? false
           }
@@ -1126,7 +1126,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
       newBlock.images = [];
     }
     if (type === 'color') {
-      newBlock.title = 'Kolör';
+      newBlock.title = 'Kulör';
       newBlock.entries = [];
       newBlock.defaultCollapsed = true;
     }
@@ -1813,7 +1813,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                     <Zap size={14} className="text-gray-500 group-hover:text-blue-400 transition-colors" /> Proppskåp
                   </button>
                   <button type="button" onClick={() => addCustomBlock('color')} disabled={saving} className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-500 hover:bg-white/5 hover:text-gray-300 text-xs transition-colors">
-                    <Palette size={14} className="text-gray-500 group-hover:text-blue-400 transition-colors" /> Kolör
+                    <Palette size={14} className="text-gray-500 group-hover:text-blue-400 transition-colors" /> Kulör
                   </button>
                   <button type="button" onClick={() => { 
                     setShowCountryBlockPicker(true);

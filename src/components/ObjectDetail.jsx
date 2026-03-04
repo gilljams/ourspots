@@ -1953,7 +1953,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
       {colorEditModalData && (
         <ColorEditorModal
           entries={colorEditModalData.entries}
-          title="Kolör"
+          title="Kulör"
           onSave={async (newEntries) => {
             try {
               const blockData = {

@@ -10,7 +10,7 @@ export const ColorBlock = ({ data, onExpand, onEditColor }) => {
   const entries = data.entries || [];
   const [isCollapsed, setIsCollapsed] = useState(data.defaultCollapsed ?? true);
   const blockRef = useRef(null);
-  const title = data.title || 'Kolör';
+  const title = data.title || 'Kulör';
   const [copiedId, setCopiedId] = useState(null);
 
   useEffect(() => {
