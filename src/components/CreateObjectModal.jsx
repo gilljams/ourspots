@@ -425,6 +425,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
   // Refs
   const fileInputRef = useRef(null);
   const gpsWatchRef = useRef(null);
+  const countryBlockPickerRef = useRef(null);
   
   // Calculate effective shares for block editors
   // Combines sourceObject shares with parent's inheritable shares (for new objects under shared parent)
@@ -1787,6 +1788,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                     if (countryList.length === 0) {
                       fetchCountryList().then(list => setCountryList(list)).catch(() => toast.error('Kunde inte läsa länderlistan'));
                     }
+                    setTimeout(() => countryBlockPickerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
                   }} disabled={saving || loadingCountry} className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-500 hover:bg-white/5 hover:text-gray-300 text-xs transition-colors">
                     {loadingCountry ? <Loader size={14} className="animate-spin text-blue-400" /> : <Globe size={14} className="text-gray-500 group-hover:text-blue-400 transition-colors" />} Landfakta
                   </button>
@@ -1799,13 +1801,16 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
               )}
               {/* Country block picker - inline search */}
               {showCountryBlockPicker && (
-                <div className="mt-2 pt-2 border-t border-white/5">
+                <div ref={countryBlockPickerRef} className="mt-2 pt-2 border-t border-white/5">
                   <div className="relative">
                     <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                     <input
                       type="text"
                       value={countryBlockSearch}
-                      onChange={(e) => setCountryBlockSearch(e.target.value)}
+                      onChange={(e) => {
+                        setCountryBlockSearch(e.target.value);
+                        setTimeout(() => countryBlockPickerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+                      }}
                       placeholder="Sök land för fakta-block..."
                       autoFocus
                       disabled={saving || loadingCountry}
