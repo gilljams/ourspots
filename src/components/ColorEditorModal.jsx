@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { X, Plus, Check, Trash2, GripVertical, ChevronDown } from 'lucide-react';
 import { useFullscreenModal } from '../utils/useFullscreenModal';
 import { useDragReorder } from '../utils/useDragReorder';
+import { ncsToHex } from '../utils/ncsToHex';
 
 const ROOM_SUGGESTIONS = ['Fasad', 'Kök', 'Vardagsrum', 'Sovrum', 'Badrum', 'Hall', 'Tak', 'Garage'];
 
@@ -67,7 +68,16 @@ export function ColorEditorModal({ entries: initialEntries, title, onSave, onCan
   };
 
   const updateEntry = (entryId, field, value) => {
-    setEntries(prev => prev.map(e => e.id === entryId ? { ...e, [field]: value } : e));
+    setEntries(prev => prev.map(e => {
+      if (e.id !== entryId) return e;
+      const updated = { ...e, [field]: value };
+      // Auto-derive hex from NCS color code
+      if (field === 'colorCode') {
+        const hex = ncsToHex(value);
+        if (hex) updated.hex = hex;
+      }
+      return updated;
+    }));
   };
 
   const toggleYear = (entryId, year) => {
@@ -283,7 +293,12 @@ export function ColorEditorModal({ entries: initialEntries, title, onSave, onCan
                           />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <label className="text-xs text-gray-500 mb-1 block">Kod</label>
+                          <label className="text-xs text-gray-500 mb-1 flex items-center gap-1.5">
+                            Kod
+                            {ncsToHex(entry.colorCode) && (
+                              <span className="text-[10px] text-green-400/70 font-medium">NCS ✓</span>
+                            )}
+                          </label>
                           <input
                             type="text"
                             value={entry.colorCode}
