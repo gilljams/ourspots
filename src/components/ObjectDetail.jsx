@@ -870,7 +870,9 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                                 columns: block.data.columns || template.columns,
                                 template: 'list',
                                 title: block.data.title || template.name,
-                                col2Type: block.data.col2Type || 'text'
+                                col2Type: block.data.col2Type || 'text',
+                                yearMode: block.data.yearMode || false,
+                                yearData: block.data.yearData || {}
                               });
                               return;
                             }
@@ -1879,7 +1881,9 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
         <ListEditorModal
           rows={tableEditModalData.rows}
           title={tableEditModalData.title}
-          onSave={async (newRows) => {
+          yearMode={tableEditModalData.yearMode}
+          yearData={tableEditModalData.yearData}
+          onSave={async (newRows, newYearData) => {
             try {
               // Clean rows: only keep item, done, isHeader (remove any legacy col1/col2 fields)
               const cleanedRows = newRows.map(row => {
@@ -1892,6 +1896,21 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                 ...object.blocks[tableEditModalData.blockIndex].data,
                 rows: cleanedRows
               };
+              if (tableEditModalData.yearMode && newYearData) {
+                // Clean yearData rows too
+                const cleanYearData = {};
+                Object.entries(newYearData).forEach(([year, yearRows]) => {
+                  if (yearRows && yearRows.length > 0) {
+                    cleanYearData[year] = yearRows.map(row => {
+                      const cleanRow = { item: row.item || '' };
+                      if (row.isHeader) cleanRow.isHeader = true;
+                      if (row.done) cleanRow.done = true;
+                      return cleanRow;
+                    });
+                  }
+                });
+                blockData.yearData = cleanYearData;
+              }
               await onBlockUpdate(object.id, tableEditModalData.blockIndex, blockData);
               setTableEditModalData(null);
             } catch (err) {

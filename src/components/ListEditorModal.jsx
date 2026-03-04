@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, forwardRef } from 'react';
-import { X, Plus, Check, Trash2, GripVertical, ClipboardPaste, MoreVertical, CheckSquare, Square, RotateCcw, ListX, ArrowDownUp, Undo2, CheckCheck } from 'lucide-react';
+import { X, Plus, Check, Trash2, GripVertical, ClipboardPaste, MoreVertical, CheckSquare, Square, RotateCcw, ListX, ArrowDownUp, Undo2, CheckCheck, ChevronLeft, ChevronRight, Copy } from 'lucide-react';
 import { useFullscreenModal } from '../utils/useFullscreenModal';
 import { useDragReorder } from '../utils/useDragReorder';
 import { useConfirm } from '../utils/useConfirm';
@@ -84,15 +84,52 @@ const ExpandableInput = forwardRef(({ value, onChange, onKeyDown, placeholder, c
 });
 
 // Simple list editor modal - optimized for mobile with single-column lists
-export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) {
+export function ListEditorModal({ rows: initialRows, title, onSave, onCancel, yearMode = false, yearData: initialYearData }) {
   const confirm = useConfirm();
   const prompt = usePrompt();
-  const [rows, setRows] = useState(() => 
-    (initialRows || []).map((row, i) => ({ 
-      ...row, 
-      id: row.id || `row-${i}-${Date.now()}` 
-    }))
-  );
+
+  const CURRENT_YEAR = new Date().getFullYear();
+  const [activeYear, setActiveYear] = useState(CURRENT_YEAR);
+
+  // Year data: { "2026": [...rows], "2025": [...rows] }
+  const [yearData, setYearData] = useState(() => {
+    if (!yearMode) return {};
+    if (initialYearData && Object.keys(initialYearData).length > 0) {
+      // Add ids to all rows in all years
+      const data = {};
+      Object.entries(initialYearData).forEach(([year, yearRows]) => {
+        data[year] = (yearRows || []).map((row, i) => ({
+          ...row,
+          id: row.id || `row-${i}-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
+        }));
+      });
+      return data;
+    }
+    // Migration: if yearMode but no yearData, put initialRows in current year
+    if (initialRows && initialRows.length > 0) {
+      return {
+        [CURRENT_YEAR]: initialRows.map((row, i) => ({
+          ...row,
+          id: row.id || `row-${i}-${Date.now()}`
+        }))
+      };
+    }
+    return {};
+  });
+
+  // For yearMode, rows = the active year's rows; otherwise flat list
+  const [rows, setRows] = useState(() => {
+    if (yearMode) {
+      return (yearData[CURRENT_YEAR] || []).map((row, i) => ({
+        ...row,
+        id: row.id || `row-${i}-${Date.now()}`
+      }));
+    }
+    return (initialRows || []).map((row, i) => ({
+      ...row,
+      id: row.id || `row-${i}-${Date.now()}`
+    }));
+  });
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [showUtilsMenu, setShowUtilsMenu] = useState(false);
@@ -101,6 +138,62 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
   const listRef = useRef(null);
   const inputRefs = useRef({});
   const lastAddedRef = useRef(null);
+
+  // Keep yearData in sync when rows change (yearMode)
+  useEffect(() => {
+    if (yearMode) {
+      setYearData(prev => ({ ...prev, [activeYear]: rows }));
+    }
+  }, [rows, yearMode, activeYear]);
+
+  // Switch year: save current rows, load target year
+  const switchYear = (targetYear) => {
+    if (targetYear === activeYear) return;
+    // Save current
+    setYearData(prev => {
+      const updated = { ...prev, [activeYear]: rows };
+      // Load target year
+      const targetRows = (updated[targetYear] || []).map((row, i) => ({
+        ...row,
+        id: row.id || `row-${i}-${Date.now()}`
+      }));
+      setRows(targetRows);
+      return updated;
+    });
+    setActiveYear(targetYear);
+    setEditingYear(null);
+  };
+
+  // Copy current year to another year
+  const copyYearTo = async (targetYear) => {
+    const existing = yearData[targetYear] || [];
+    if (existing.length > 0) {
+      if (!await confirm({
+        title: `Kopiera till ${targetYear}?`,
+        message: `${targetYear} har redan ${existing.filter(r => !r.isHeader).length} rader. Dessa ersätts.`,
+        confirmText: 'Kopiera',
+        variant: 'warning'
+      })) return;
+    }
+    // Deep-copy rows, reset done status, assign new ids
+    const copiedRows = rows.map(row => ({
+      ...row,
+      id: `row-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+      done: row.isHeader ? undefined : false
+    }));
+    setYearData(prev => ({ ...prev, [targetYear]: copiedRows }));
+  };
+
+  // Get all years that have data, plus current year and surrounding
+  const getAvailableYears = () => {
+    const years = new Set(Object.keys(yearData).map(Number));
+    years.add(CURRENT_YEAR);
+    years.add(activeYear);
+    return [...years].sort((a, b) => a - b);
+  };
+
+  // State for showing year picker
+  const [editingYear, setEditingYear] = useState(null);
   
   const HEADER_HEIGHT = 52;
   
@@ -215,7 +308,19 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
   
   const handleSave = () => {
     const cleanRows = rows.map(({ id, ...rest }) => rest);
-    onSave(cleanRows);
+    if (yearMode) {
+      // Save all years, including current rows in active year
+      const finalYearData = { ...yearData, [activeYear]: rows };
+      const cleanYearData = {};
+      Object.entries(finalYearData).forEach(([year, yearRows]) => {
+        if (yearRows && yearRows.length > 0) {
+          cleanYearData[year] = yearRows.map(({ id, ...rest }) => rest);
+        }
+      });
+      onSave(cleanRows, cleanYearData);
+    } else {
+      onSave(cleanRows);
+    }
   };
   
   const handlePaste = async () => {
@@ -254,7 +359,7 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
     }
   };
   
-  const contentHeight = viewportHeight - HEADER_HEIGHT;
+  const contentHeight = viewportHeight - HEADER_HEIGHT - (yearMode ? 44 : 0);
   
   return (
     <>
@@ -415,6 +520,19 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
                       Ta bort ibockade
                     </button>
                     <div className="border-t border-white/10 my-1" />
+                    {yearMode && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          copyYearTo(activeYear + 1);
+                          setShowUtilsMenu(false);
+                        }}
+                        className="w-full px-3 py-2 text-left text-sm text-gray-200 hover:bg-white/10 flex items-center gap-2"
+                      >
+                        <Copy size={14} />
+                        Kopiera till {activeYear + 1}
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={async () => {
@@ -442,6 +560,54 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel }) 
             </button>
           </div>
         </div>
+
+        {/* Year navigator (yearMode only) */}
+        {yearMode && (
+          <div className="flex-shrink-0 flex items-center justify-center gap-3 px-3 py-2 border-b border-white/5 bg-gray-950/30" style={{ height: '44px' }}>
+            <button
+              type="button"
+              onClick={() => switchYear(activeYear - 1)}
+              className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setEditingYear(editingYear ? null : activeYear)}
+              className="text-base font-semibold text-white tabular-nums min-w-[4rem] text-center"
+            >
+              {activeYear}
+            </button>
+            <button
+              type="button"
+              onClick={() => switchYear(activeYear + 1)}
+              className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+            >
+              <ChevronRight size={16} />
+            </button>
+            {/* Year dots - show which years have data */}
+            <div className="flex items-center gap-1 ml-2">
+              {getAvailableYears().map(year => {
+                const hasData = (yearData[year] || []).filter(r => !r.isHeader).length > 0 || (year === activeYear && rows.filter(r => !r.isHeader).length > 0);
+                return (
+                  <button
+                    key={year}
+                    type="button"
+                    onClick={() => switchYear(year)}
+                    className={`w-2 h-2 rounded-full transition-all ${
+                      year === activeYear
+                        ? 'bg-blue-400 w-4'
+                        : hasData
+                          ? 'bg-gray-500 hover:bg-gray-400'
+                          : 'bg-gray-700 hover:bg-gray-600'
+                    }`}
+                    title={`${year}${hasData ? '' : ' (tom)'}`}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        )}
         
         {/* Scrollable list */}
         <div 

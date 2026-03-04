@@ -1,15 +1,21 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Check, Edit2, ExternalLink, Phone } from 'lucide-react';
+import { ChevronDown, Check, Edit2, ExternalLink, Phone, ChevronLeft, ChevronRight } from 'lucide-react';
 import { getIconComponent } from '../../utils/iconHelpers';
 import { TABLE_TEMPLATES } from './tableTemplates';
 
 // Table Block - collapsible tables/lists with checkboxes, progress bars, template-based rendering
 export const TableBlock = ({ data, objectId, blockIndex, onUpdate, onExpand, onEditTable }) => {
+  const CURRENT_YEAR = new Date().getFullYear();
   const [isCollapsed, setIsCollapsed] = useState(data.defaultCollapsed ?? false);
+  const [activeYear, setActiveYear] = useState(CURRENT_YEAR);
   const blockRef = useRef(null);
   const template = TABLE_TEMPLATES[data.template] || TABLE_TEMPLATES.tasks;
   const columns = (data.columns && data.columns.length > 0) ? data.columns : template.columns;
-  const rows = data.rows || [];
+  
+  // In yearMode, rows come from yearData[activeYear]; otherwise flat
+  const yearMode = data.yearMode || false;
+  const yearData = data.yearData || {};
+  const rows = yearMode ? (yearData[activeYear] || []) : (data.rows || []);
   const title = data.title || '';
 
   // Sync collapsed state when defaultCollapsed changes
@@ -31,7 +37,12 @@ export const TableBlock = ({ data, objectId, blockIndex, onUpdate, onExpand, onE
     const newRows = rows.map((row, i) => 
       i === rowIndex ? { ...row, [colId]: !row[colId] } : row
     );
-    await onUpdate(objectId, blockIndex, { ...data, rows: newRows });
+    if (yearMode) {
+      const newYearData = { ...yearData, [activeYear]: newRows };
+      await onUpdate(objectId, blockIndex, { ...data, yearData: newYearData });
+    } else {
+      await onUpdate(objectId, blockIndex, { ...data, rows: newRows });
+    }
   };
 
   // Calculate sums for number columns
@@ -150,6 +161,27 @@ export const TableBlock = ({ data, objectId, blockIndex, onUpdate, onExpand, onE
           )}
         </div>
         
+        {/* Year navigator (yearMode only) */}
+        {yearMode && !isCollapsed && (
+          <div className="flex items-center justify-center gap-2 py-1.5">
+            <button
+              onClick={() => setActiveYear(activeYear - 1)}
+              className="w-6 h-6 rounded-md bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <span className="text-sm font-semibold text-gray-300 tabular-nums min-w-[3rem] text-center">
+              {activeYear}
+            </span>
+            <button
+              onClick={() => setActiveYear(activeYear + 1)}
+              className="w-6 h-6 rounded-md bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+            >
+              <ChevronRight size={14} />
+            </button>
+          </div>
+        )}
+
         {/* Collapsible content */}
         {!isCollapsed && (
           <div className="bg-white/[0.03] rounded-xl overflow-hidden">

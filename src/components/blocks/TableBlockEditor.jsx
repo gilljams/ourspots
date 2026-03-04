@@ -17,6 +17,8 @@ function TableBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
   const [defaultCollapsed, setDefaultCollapsed] = useState(block.defaultCollapsed ?? true);
   const [viewerEditable, setViewerEditable] = useState(block.viewerEditable ?? false);
   const [showTableEditor, setShowTableEditor] = useState(false);
+  const [yearMode, setYearMode] = useState(block.yearMode || false);
+  const [yearData, setYearData] = useState(block.yearData || {});
   const confirm = useConfirm();
   
   // Check if this is a legacy template (tasks, shopping, contacts)
@@ -45,7 +47,7 @@ function TableBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
     }
   }, [focusTarget, rows]);
 
-  const syncToParent = (newTitle, newTemplate, newRows, newDefaultCollapsed = defaultCollapsed, newViewerEditable = viewerEditable, newCol2Type = col2Type, newShowCheckbox = showCheckbox) => {
+  const syncToParent = (newTitle, newTemplate, newRows, newDefaultCollapsed = defaultCollapsed, newViewerEditable = viewerEditable, newCol2Type = col2Type, newShowCheckbox = showCheckbox, newYearMode = yearMode, newYearData = yearData) => {
     onUpdate(block.id, { 
       title: newTitle, 
       template: newTemplate, 
@@ -54,7 +56,9 @@ function TableBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
       defaultCollapsed: newDefaultCollapsed,
       viewerEditable: newViewerEditable,
       col2Type: newCol2Type,
-      showCheckbox: newShowCheckbox
+      showCheckbox: newShowCheckbox,
+      yearMode: newYearMode,
+      yearData: newYearData
     });
   };
 
@@ -349,6 +353,37 @@ function TableBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
             </div>
           )}
 
+          {/* Year mode toggle - only for list template */}
+          {template === 'list' && (
+            <div className="flex items-center justify-between py-2">
+              <span className="text-xs text-gray-400">Årsläge</span>
+              <button
+                type="button"
+                onClick={() => {
+                  const newYearMode = !yearMode;
+                  setYearMode(newYearMode);
+                  if (newYearMode && Object.keys(yearData).length === 0 && rows.length > 0) {
+                    // Migration: move current rows to current year
+                    const currentYear = new Date().getFullYear();
+                    const newYearData = { [currentYear]: rows };
+                    setYearData(newYearData);
+                    syncToParent(title, template, rows, defaultCollapsed, viewerEditable, col2Type, showCheckbox, newYearMode, newYearData);
+                  } else {
+                    syncToParent(title, template, rows, defaultCollapsed, viewerEditable, col2Type, showCheckbox, newYearMode, yearData);
+                  }
+                }}
+                disabled={saving}
+                className={`relative w-10 h-5 rounded-full transition-colors ${
+                  yearMode ? 'bg-blue-500' : 'bg-white/20'
+                }`}
+              >
+                <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                  yearMode ? 'translate-x-5' : 'translate-x-0.5'
+                }`} />
+              </button>
+            </div>
+          )}
+
           {/* Open fullscreen editor button */}
           <button
             type="button"
@@ -367,9 +402,16 @@ function TableBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
         <ListEditorModal
           rows={rows}
           title={title || 'Lista'}
-          onSave={(newRows) => {
+          yearMode={yearMode}
+          yearData={yearData}
+          onSave={(newRows, newYearData) => {
             setRows(newRows);
-            syncToParent(title, template, newRows);
+            if (yearMode && newYearData) {
+              setYearData(newYearData);
+              syncToParent(title, template, newRows, defaultCollapsed, viewerEditable, col2Type, showCheckbox, yearMode, newYearData);
+            } else {
+              syncToParent(title, template, newRows);
+            }
             setShowTableEditor(false);
           }}
           onCancel={() => setShowTableEditor(false)}

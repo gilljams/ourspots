@@ -260,7 +260,9 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             defaultCollapsed: b.data.defaultCollapsed || false,
             viewerEditable: b.data.viewerEditable || false,
             col2Type: b.data.col2Type || 'text',
-            showCheckbox: b.data.showCheckbox ?? true
+            showCheckbox: b.data.showCheckbox ?? true,
+            yearMode: b.data.yearMode || false,
+            yearData: b.data.yearData || {}
           };
         }
         if (b.type === 'datetag') {
@@ -844,7 +846,9 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             defaultCollapsed: block.defaultCollapsed || false,
             viewerEditable: block.viewerEditable || false,
             col2Type: block.col2Type || 'text',
-            showCheckbox: block.showCheckbox ?? true
+            showCheckbox: block.showCheckbox ?? true,
+            yearMode: block.yearMode || false,
+            ...(block.yearMode && block.yearData && Object.keys(block.yearData).length > 0 ? { yearData: block.yearData } : {})
           } 
         });
       } else if (block.type === 'datetag') {
