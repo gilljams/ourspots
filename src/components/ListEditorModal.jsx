@@ -233,14 +233,66 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel, ye
       }
     });
 
-    // Append moved rows to next year
+    // Merge moved rows into next year, grouping under existing headers
     const existingNext = (yearData[nextYear] || []).map((r, i) => ({
       ...r,
       id: r.id || `row-${i}-${Date.now()}`
     }));
+
+    // Build a map of sections in next year keyed by header label (lowercase)
+    const nextSections = [];
+    let curSec = { header: null, items: [] };
+    existingNext.forEach(row => {
+      if (row.isHeader) {
+        if (curSec.header || curSec.items.length > 0) nextSections.push(curSec);
+        curSec = { header: row, items: [] };
+      } else {
+        curSec.items.push(row);
+      }
+    });
+    if (curSec.header || curSec.items.length > 0) nextSections.push(curSec);
+
+    // Build map of header labels → section index for quick lookup
+    const headerMap = {};
+    nextSections.forEach((sec, idx) => {
+      if (sec.header) headerMap[(sec.header.label || '').trim().toLowerCase()] = idx;
+    });
+
+    // Group moved rows by their header
+    const movedSections = [];
+    let mSec = { header: null, items: [] };
+    movedRows.forEach(row => {
+      if (row.isHeader) {
+        if (mSec.header || mSec.items.length > 0) movedSections.push(mSec);
+        mSec = { header: row, items: [] };
+      } else {
+        mSec.items.push(row);
+      }
+    });
+    if (mSec.header || mSec.items.length > 0) movedSections.push(mSec);
+
+    // Merge: append items under matching header, or add new section at end
+    movedSections.forEach(moved => {
+      const key = moved.header ? (moved.header.label || '').trim().toLowerCase() : null;
+      if (key && headerMap[key] !== undefined) {
+        // Matching header exists – append items under it
+        nextSections[headerMap[key]].items.push(...moved.items);
+      } else {
+        // No match – add as new section
+        nextSections.push(moved);
+      }
+    });
+
+    // Flatten sections back to rows
+    const mergedNext = [];
+    nextSections.forEach(sec => {
+      if (sec.header) mergedNext.push(sec.header);
+      sec.items.forEach(r => mergedNext.push(r));
+    });
+
     setYearData(prev => ({
       ...prev,
-      [nextYear]: [...existingNext, ...movedRows]
+      [nextYear]: mergedNext
     }));
 
     // Update current year to only keep done items
