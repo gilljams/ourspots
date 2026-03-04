@@ -1,52 +1,29 @@
-import React, { useState, useRef } from 'react';
-import { X, ArrowUp, ArrowDown, ChevronDown, Palette, Plus, GripVertical } from 'lucide-react';
-
-const ROOM_SUGGESTIONS = ['Fasad', 'Kök', 'Vardagsrum', 'Sovrum', 'Badrum', 'Hall', 'Tak', 'Garage'];
+import React, { useState } from 'react';
+import { X, ArrowUp, ArrowDown, ChevronDown, Palette, Edit2 } from 'lucide-react';
+import { ColorEditorModal } from '../ColorEditorModal';
 
 /**
- * ColorBlockEditor – editor for color/paint entries per room.
- * Data model: { entries: [{ id, room, colorName, colorCode, hex, brand, product }] }
+ * ColorBlockEditor – compact editor for the color block.
+ * Shows summary + "Redigera" button that opens ColorEditorModal.
+ * Same pattern as TableBlockEditor with ListEditorModal.
  */
 function ColorBlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }) {
-  const [isExpanded, setIsExpanded] = useState(true);
-  const [editingId, setEditingId] = useState(null);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [showEditor, setShowEditor] = useState(false);
+  const [defaultCollapsed, setDefaultCollapsed] = useState(block.defaultCollapsed ?? false);
+
   const entries = block.entries || [];
 
-  const updateEntries = (newEntries) => {
-    onUpdate(block.id, { entries: newEntries });
+  const syncToParent = (newEntries, newDefaultCollapsed = defaultCollapsed) => {
+    onUpdate(block.id, {
+      entries: newEntries,
+      defaultCollapsed: newDefaultCollapsed,
+    });
   };
 
-  const addEntry = (roomName = '') => {
-    const newEntry = {
-      id: Math.random().toString(36).substr(2, 9),
-      room: roomName,
-      colorName: '',
-      colorCode: '',
-      hex: '#888888',
-      brand: '',
-      product: '',
-    };
-    updateEntries([...entries, newEntry]);
-    setEditingId(newEntry.id);
-  };
-
-  const updateEntry = (entryId, field, value) => {
-    updateEntries(entries.map(e => e.id === entryId ? { ...e, [field]: value } : e));
-  };
-
-  const removeEntry = (entryId) => {
-    updateEntries(entries.filter(e => e.id !== entryId));
-    if (editingId === entryId) setEditingId(null);
-  };
-
-  const moveEntry = (entryId, direction) => {
-    const idx = entries.findIndex(e => e.id === entryId);
-    if (idx < 0) return;
-    const newIdx = idx + direction;
-    if (newIdx < 0 || newIdx >= entries.length) return;
-    const newEntries = [...entries];
-    [newEntries[idx], newEntries[newIdx]] = [newEntries[newIdx], newEntries[idx]];
-    updateEntries(newEntries);
+  const handleDefaultCollapsedChange = (val) => {
+    setDefaultCollapsed(val);
+    syncToParent(entries, val);
   };
 
   // Summary for collapsed state
@@ -72,6 +49,11 @@ function ColorBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
           <span className="text-sm font-medium text-gray-300 truncate">
             Kolör
           </span>
+          {entries.length > 0 && (
+            <span className="text-xs text-gray-500 flex-shrink-0">
+              ({entries.length})
+            </span>
+          )}
           {!isExpanded && (
             <span className="text-xs text-gray-500 truncate ml-1">
               {getSummary()}
@@ -93,167 +75,67 @@ function ColorBlockEditor({ block, onUpdate, onRemove, onMove, index, total, sav
 
       {/* Expandable content */}
       {isExpanded && (
-        <div className="px-3 pb-3 space-y-2">
-          {/* Existing entries */}
-          {entries.map((entry, i) => (
-            <div key={entry.id} className="rounded-lg border border-white/10 bg-white/[0.03] overflow-hidden">
-              {/* Entry row – compact view / tap to expand */}
-              <div
-                className="flex items-center gap-2 px-3 py-2 cursor-pointer"
-                onClick={() => setEditingId(editingId === entry.id ? null : entry.id)}
-              >
-                {/* Swatch */}
-                <div
-                  className="w-7 h-7 rounded-md border border-white/10 flex-shrink-0"
-                  style={{ backgroundColor: entry.hex || '#888' }}
-                />
-                {/* Room + color code */}
-                <div className="flex-1 min-w-0">
-                  <span className="text-sm text-gray-200 truncate block">
-                    {entry.room || 'Namnlös yta'}
+        <div className="px-3 pb-3 space-y-3">
+          {/* Preview of entries */}
+          {entries.length > 0 && (
+            <div className="space-y-1">
+              {entries.map((entry) => (
+                <div key={entry.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-white/[0.02]">
+                  <div
+                    className="w-5 h-5 rounded border border-white/10 flex-shrink-0"
+                    style={{ backgroundColor: entry.hex || '#888' }}
+                  />
+                  <span className="text-xs text-gray-300 truncate">
+                    {entry.room || 'Namnlös'}
                   </span>
-                  {(entry.colorCode || entry.colorName) && (
-                    <span className="text-xs text-gray-500 truncate block">
-                      {[entry.colorName, entry.colorCode].filter(Boolean).join(' · ')}
+                  {entry.colorCode && (
+                    <span className="text-xs text-gray-500 font-mono truncate">
+                      {entry.colorCode}
                     </span>
                   )}
                 </div>
-                <ChevronDown
-                  size={14}
-                  className={`text-gray-500 transition-transform flex-shrink-0 ${editingId === entry.id ? '' : '-rotate-90'}`}
-                />
-              </div>
-
-              {/* Expanded edit fields */}
-              {editingId === entry.id && (
-                <div className="px-3 pb-3 pt-1 space-y-2 border-t border-white/5">
-                  {/* Room name */}
-                  <div>
-                    <label className="text-xs text-gray-500 mb-1 block">Rum / Yta</label>
-                    <input
-                      type="text"
-                      value={entry.room}
-                      onChange={(e) => updateEntry(entry.id, 'room', e.target.value)}
-                      placeholder="T.ex. Fasad, Kök..."
-                      disabled={saving}
-                      className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                  {/* Color picker + hex */}
-                  <div className="flex gap-2">
-                    <div className="flex-shrink-0">
-                      <label className="text-xs text-gray-500 mb-1 block">Färg</label>
-                      <input
-                        type="color"
-                        value={entry.hex || '#888888'}
-                        onChange={(e) => updateEntry(entry.id, 'hex', e.target.value)}
-                        disabled={saving}
-                        className="w-10 h-10 rounded-lg border border-white/10 bg-transparent cursor-pointer"
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <label className="text-xs text-gray-500 mb-1 block">Färgnamn</label>
-                      <input
-                        type="text"
-                        value={entry.colorName}
-                        onChange={(e) => updateEntry(entry.id, 'colorName', e.target.value)}
-                        placeholder="T.ex. Dimgrön, Äggskal..."
-                        disabled={saving}
-                        className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                      />
-                    </div>
-                  </div>
-                  {/* Color code (NCS/RAL) */}
-                  <div>
-                    <label className="text-xs text-gray-500 mb-1 block">Färgkod (NCS/RAL)</label>
-                    <input
-                      type="text"
-                      value={entry.colorCode}
-                      onChange={(e) => updateEntry(entry.id, 'colorCode', e.target.value)}
-                      placeholder="T.ex. S 3020-Y30R"
-                      disabled={saving}
-                      className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm font-mono placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                  {/* Brand + product */}
-                  <div className="flex gap-2">
-                    <div className="flex-1">
-                      <label className="text-xs text-gray-500 mb-1 block">Fabrikat</label>
-                      <input
-                        type="text"
-                        value={entry.brand}
-                        onChange={(e) => updateEntry(entry.id, 'brand', e.target.value)}
-                        placeholder="T.ex. Beckers"
-                        disabled={saving}
-                        className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <label className="text-xs text-gray-500 mb-1 block">Produkt / Glans</label>
-                      <input
-                        type="text"
-                        value={entry.product}
-                        onChange={(e) => updateEntry(entry.id, 'product', e.target.value)}
-                        placeholder="T.ex. Elegant, matt"
-                        disabled={saving}
-                        className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                      />
-                    </div>
-                  </div>
-                  {/* Move / delete entry */}
-                  <div className="flex items-center justify-between pt-1">
-                    <div className="flex gap-1">
-                      <button type="button" onClick={() => moveEntry(entry.id, -1)} disabled={i === 0 || saving} className="w-7 h-7 rounded bg-white/5 text-gray-400 hover:bg-white/10 flex items-center justify-center disabled:opacity-30 text-xs">
-                        <ArrowUp size={12} />
-                      </button>
-                      <button type="button" onClick={() => moveEntry(entry.id, 1)} disabled={i === entries.length - 1 || saving} className="w-7 h-7 rounded bg-white/5 text-gray-400 hover:bg-white/10 flex items-center justify-center disabled:opacity-30 text-xs">
-                        <ArrowDown size={12} />
-                      </button>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeEntry(entry.id)}
-                      disabled={saving}
-                      className="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded hover:bg-red-500/10 transition-colors"
-                    >
-                      Ta bort
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-
-          {/* Quick-add room buttons */}
-          {entries.length === 0 && (
-            <div className="pt-1">
-              <div className="text-xs text-gray-500 mb-2">Snabblägg till:</div>
-              <div className="flex flex-wrap gap-1.5">
-                {ROOM_SUGGESTIONS.map((room) => (
-                  <button
-                    key={room}
-                    type="button"
-                    onClick={() => addEntry(room)}
-                    disabled={saving}
-                    className="px-2.5 py-1 rounded-md bg-white/5 border border-white/10 text-xs text-gray-400 hover:text-gray-200 hover:bg-white/10 transition-colors"
-                  >
-                    {room}
-                  </button>
-                ))}
-              </div>
+              ))}
             </div>
           )}
 
-          {/* Add button */}
+          {/* Default collapsed toggle */}
+          <div className="flex items-center justify-between py-1">
+            <span className="text-xs text-gray-400">Ihopfälld som standard</span>
+            <button
+              type="button"
+              onClick={() => handleDefaultCollapsedChange(!defaultCollapsed)}
+              className={`relative w-9 h-5 rounded-full transition-colors ${defaultCollapsed ? 'bg-blue-500' : 'bg-gray-600'}`}
+            >
+              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                defaultCollapsed ? 'translate-x-4' : 'translate-x-0.5'
+              }`} />
+            </button>
+          </div>
+
+          {/* Open editor button */}
           <button
             type="button"
-            onClick={() => addEntry('')}
+            onClick={() => setShowEditor(true)}
             disabled={saving}
-            className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-dashed border-white/10 text-gray-500 hover:text-gray-300 hover:border-white/20 hover:bg-white/[0.02] transition-colors text-xs"
+            className="w-full py-3 text-sm text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 rounded-lg border border-blue-500/20 transition-colors flex items-center justify-center gap-2"
           >
-            <Plus size={14} /> Lägg till yta
+            <Edit2 size={16} />
+            Redigera färger
           </button>
         </div>
+      )}
+
+      {/* Fullscreen color editor modal */}
+      {showEditor && (
+        <ColorEditorModal
+          entries={entries}
+          title="Kolör"
+          onSave={(newEntries) => {
+            syncToParent(newEntries);
+            setShowEditor(false);
+          }}
+          onCancel={() => setShowEditor(false)}
+        />
       )}
     </div>
   );
