@@ -573,6 +573,10 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
     try {
       const facts = await fetchCountryFacts(country.code);
       setTitle(facts.title);
+      // Set hero image from Wikipedia (external URL, no Cloudinary quota used)
+      if (facts.imageUrl) {
+        setImageUrl(facts.imageUrl);
+      }
       // Set location to capital/country center
       if (facts.lat != null && facts.lng != null) {
         setLat(facts.lat);

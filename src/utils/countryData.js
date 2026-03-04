@@ -147,8 +147,28 @@ function adapterNeeded(plugTypes) {
 }
 
 /**
+ * Fetch a representative Wikipedia image for a country.
+ * Uses the Wikipedia API to get the main page image (original size).
+ * Returns URL string or null.
+ */
+async function fetchCountryImage(countryName) {
+  try {
+    const encoded = encodeURIComponent(countryName);
+    const res = await fetch(
+      `https://en.wikipedia.org/api/rest_v1/page/summary/${encoded}`
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    // originalimage has the full-res version; thumbnail is smaller
+    return data.originalimage?.source || data.thumbnail?.source || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Fetch country data from REST Countries and build a formatted fact block.
- * Returns { title, flag, content } or throws on error.
+ * Returns { title, flag, content, lat, lng, address, imageUrl } or throws on error.
  */
 export async function fetchCountryFacts(countryCode) {
   const res = await fetch(`https://restcountries.com/v3.1/alpha/${countryCode}?fields=name,capital,capitalInfo,latlng,currencies,languages,region,subregion,population,flag,timezones,car,idd,cca2`);
@@ -203,6 +223,9 @@ export async function fetchCountryFacts(countryCode) {
     lines.splice(1, 0, '');
   }
 
+  // Fetch Wikipedia image in parallel-safe way (don't block on failure)
+  const imageUrl = await fetchCountryImage(name);
+
   return {
     title: `${name} ${flag}`,
     flag,
@@ -210,6 +233,7 @@ export async function fetchCountryFacts(countryCode) {
     lat: data.capitalInfo?.latlng?.[0] ?? data.latlng?.[0] ?? null,
     lng: data.capitalInfo?.latlng?.[1] ?? data.latlng?.[1] ?? null,
     address: capital !== 'Okänd' ? `${capital}, ${name}` : name,
+    imageUrl,
   };
 }
 
