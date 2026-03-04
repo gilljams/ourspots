@@ -1812,10 +1812,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                       ref={countryBlockInputRef}
                       type="text"
                       value={countryBlockSearch}
-                      onChange={(e) => {
-                        setCountryBlockSearch(e.target.value);
-                        setTimeout(() => countryBlockPickerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
-                      }}
+                      onChange={(e) => setCountryBlockSearch(e.target.value)}
                       placeholder="Sök land för fakta-block..."
                       disabled={saving || loadingCountry}
                       className="w-full pl-9 pr-10 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500"
