@@ -204,7 +204,7 @@ export async function fetchCountryFacts(countryCode) {
   }
 
   return {
-    title: `${flag} ${name}`,
+    title: `${name} ${flag}`,
     flag,
     content: lines.join('\n'),
   };
