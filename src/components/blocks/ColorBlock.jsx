@@ -50,7 +50,7 @@ export const ColorBlock = ({ data, onExpand, onEditColor }) => {
               className={`text-gray-400 transition-transform duration-200 ${isCollapsed ? '-rotate-90' : ''}`}
             />
           </div>
-          <Palette size={16} className="text-blue-400 flex-shrink-0" />
+          <Palette size={16} className="text-gray-400 flex-shrink-0" />
           <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">
             {title}
           </span>
