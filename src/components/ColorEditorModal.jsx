@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
-import { X, Plus, Check, Trash2, ArrowUp, ArrowDown, ChevronDown } from 'lucide-react';
+import { X, Plus, Check, Trash2, GripVertical, ChevronDown } from 'lucide-react';
 import { useFullscreenModal } from '../utils/useFullscreenModal';
+import { useDragReorder } from '../utils/useDragReorder';
 
 const ROOM_SUGGESTIONS = ['Fasad', 'Kök', 'Vardagsrum', 'Sovrum', 'Badrum', 'Hall', 'Tak', 'Garage'];
 
@@ -87,17 +88,17 @@ export function ColorEditorModal({ entries: initialEntries, title, onSave, onCan
     if (editingId === entryId) setEditingId(null);
   };
 
-  const moveEntry = (entryId, direction) => {
-    setEntries(prev => {
-      const idx = prev.findIndex(e => e.id === entryId);
-      if (idx < 0) return prev;
-      const newIdx = idx + direction;
-      if (newIdx < 0 || newIdx >= prev.length) return prev;
-      const newEntries = [...prev];
-      [newEntries[idx], newEntries[newIdx]] = [newEntries[newIdx], newEntries[idx]];
-      return newEntries;
-    });
-  };
+  const {
+    draggedId, dragOverId, touchDragId, touchY,
+    handleDragStart, handleDragOver, handleDragLeave,
+    handleDrop, handleDragEnd, handleTouchStart,
+  } = useDragReorder({
+    rows: entries,
+    setRows: setEntries,
+    selectMode: false,
+    selectedIds: new Set(),
+    listRef: scrollRef,
+  });
 
   // Strip legacy fields before saving
   const handleSave = () => {
@@ -174,12 +175,37 @@ export function ColorEditorModal({ entries: initialEntries, title, onSave, onCan
           ) : (
             <div className="divide-y divide-white/5">
               {entries.map((entry, i) => (
-                <div key={entry.id} data-entry-id={entry.id}>
+                <div
+                  key={entry.id}
+                  data-entry-id={entry.id}
+                  data-row-id={entry.id}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, entry.id)}
+                  onDragOver={(e) => handleDragOver(e, entry.id)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, entry.id)}
+                  onDragEnd={handleDragEnd}
+                  className={`transition-all ${
+                    draggedId === entry.id ? 'opacity-50' : ''
+                  } ${
+                    dragOverId === entry.id ? 'bg-blue-500/10 border-t-2 border-blue-500' : ''
+                  } ${
+                    touchDragId === entry.id ? 'opacity-50 scale-105' : ''
+                  }`}
+                  style={touchDragId === entry.id ? { transform: `translateY(${touchY}px)` } : {}}
+                >
                   {/* Compact row – tap to expand */}
                   <div
-                    className="flex items-center gap-3 px-3 py-2.5 cursor-pointer active:bg-white/[0.02]"
+                    className="flex items-center gap-2 px-3 py-2.5 cursor-pointer active:bg-white/[0.02]"
                     onClick={() => setEditingId(editingId === entry.id ? null : entry.id)}
                   >
+                    <div
+                      className="text-gray-500 cursor-grab active:cursor-grabbing touch-none"
+                      onTouchStart={(e) => handleTouchStart(e, entry.id)}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <GripVertical size={16} />
+                    </div>
                     <div
                       className="w-8 h-8 rounded-lg border border-white/10 flex-shrink-0 shadow-inner"
                       style={{ backgroundColor: entry.hex || '#888' }}
@@ -309,16 +335,8 @@ export function ColorEditorModal({ entries: initialEntries, title, onSave, onCan
                         </div>
                       </div>
 
-                      {/* Actions: move / delete */}
-                      <div className="flex items-center justify-between pt-1">
-                        <div className="flex gap-1">
-                          <button type="button" onClick={() => moveEntry(entry.id, -1)} disabled={i === 0} className="w-8 h-8 rounded-lg bg-white/5 text-gray-400 hover:bg-white/10 flex items-center justify-center disabled:opacity-30">
-                            <ArrowUp size={14} />
-                          </button>
-                          <button type="button" onClick={() => moveEntry(entry.id, 1)} disabled={i === entries.length - 1} className="w-8 h-8 rounded-lg bg-white/5 text-gray-400 hover:bg-white/10 flex items-center justify-center disabled:opacity-30">
-                            <ArrowDown size={14} />
-                          </button>
-                        </div>
+                      {/* Actions: delete */}
+                      <div className="flex items-center justify-end pt-1">
                         <button
                           type="button"
                           onClick={() => removeEntry(entry.id)}

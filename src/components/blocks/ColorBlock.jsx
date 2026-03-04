@@ -58,9 +58,6 @@ export const ColorBlock = ({ data, onExpand, onEditColor }) => {
           <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">
             {title}
           </span>
-          {entries.length > 0 && (
-            <span className="text-xs text-gray-500 ml-1">({entries.length})</span>
-          )}
         </button>
         {onEditColor && !isCollapsed && (
           <button
