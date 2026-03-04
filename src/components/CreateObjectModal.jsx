@@ -238,7 +238,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
       }));
     
     const otherBlocks = sourceObject.blocks
-      .filter(b => ['text', 'links', 'table', 'datetag', 'contact', 'timer', 'poll', 'audio', 'split', 'leaderboard', 'distribution', 'section', 'tiebreaker', 'gallery', 'rating'].includes(b.type))
+      .filter(b => ['text', 'links', 'table', 'datetag', 'contact', 'timer', 'poll', 'audio', 'split', 'leaderboard', 'distribution', 'section', 'tiebreaker', 'gallery', 'rating', 'color'].includes(b.type))
       .map(b => {
         if (b.type === 'links') {
           return {
@@ -386,6 +386,15 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             id: Math.random().toString(36).substr(2, 9),
             type: 'gallery',
             images: b.data.images || []
+          };
+        }
+        if (b.type === 'color') {
+          return {
+            id: Math.random().toString(36).substr(2, 9),
+            type: 'color',
+            title: b.data.title || 'Kolör',
+            entries: b.data.entries || [],
+            defaultCollapsed: b.data.defaultCollapsed ?? false
           };
         }
         // Text blocks
@@ -993,6 +1002,15 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             } 
           });
         }
+      } else if (block.type === 'color') {
+        blocks.push({
+          type: 'color',
+          data: {
+            title: (block.title || 'Kolör').trim(),
+            entries: block.entries || [],
+            defaultCollapsed: block.defaultCollapsed ?? false
+          }
+        });
       } else if (block.type === 'text') {
         // Always save text blocks, even if empty (can be edited from view mode)
         blocks.push({ 
