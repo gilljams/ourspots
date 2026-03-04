@@ -26,6 +26,8 @@
 | **Firebase Auth** | Google-inloggning | Gratis |
 | **Firebase Storage** | Lagring av uppladdade bilder | Gratis |
 | **Google Cloud** | API-nycklar och OAuth | Gratis |
+| **REST Countries API** | Landsdata (valuta, språk, el m.m.) | Gratis, ingen nyckel |
+| **Wikipedia REST API** | Landsbilder (hero image) | Gratis, ingen nyckel |
 
 ---
 
@@ -436,7 +438,25 @@ Och deploya igen.
 
 ---
 
-## 10. Snabblänkar
+## 11. Externa API:er (nyckelfria)
+
+### REST Countries API
+- **URL:** `https://restcountries.com/v3.1/`
+- **Används av:** `src/utils/countryData.js` → `fetchCountryFacts()`, `fetchCountryList()`
+- **Data:** Landsnamn, huvudstad, koordinater, valuta, språk, tidszon, riktnummer, körsida
+- **Kostnad:** Helt gratis, ingen API-nyckel, ingen registrering
+- **Rate limit:** Ingen dokumenterad gräns
+
+### Wikipedia REST API
+- **URL:** `https://en.wikipedia.org/api/rest_v1/page/summary/{title}`
+- **Används av:** `src/utils/countryData.js` → `fetchCountryImage()`
+- **Data:** Huvudbild (originalimage) från Wikipedia-artikeln
+- **Kostnad:** Helt gratis, ingen API-nyckel
+- **Notering:** Bilder länkas externt (ej uppladdade till Cloudinary) → sparar lagringskvota
+
+---
+
+## 12. Snabblänkar
 
 | Vad | Länk |
 |-----|------|
@@ -453,4 +473,4 @@ Och deploya igen.
 
 ---
 
-*Senast uppdaterad: 3 februari 2026*
+*Senast uppdaterad: 4 mars 2026*

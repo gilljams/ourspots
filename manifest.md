@@ -2,7 +2,7 @@
 OurSpots – Manifest / Blueprint (Updated Feb 25, 2026)
 ========================
 
-🚀 STATUS: v2.9.12 - Kartkomponentkonsolidering och UX-standardisering
+🚀 STATUS: v2.9.36br - Objektmallar, Landfakta och UI-förbättringar
 
 1. VISION
 - Mobilfokuserad app med premium dark theme
@@ -24,6 +24,13 @@ OurSpots – Manifest / Blueprint (Updated Feb 25, 2026)
 - Skärmhantering med Wake Lock API ✅
 - GPS-lägen: Snabb (standard) och Precis (±10m) ✅
 - Lager/samlingar för resor/projekt - planerad funktion
+- Samlingsmedlemskap visas på objekt ("Ingår i"-indikator i ObjectDetail) ✅ NY v2.9.36bc
+- Objektmallar (templates) vid skapande: recept, land ✅ NY v2.9.36bc
+- Landfakta-block: sök land → auto-fyller fakta via REST Countries API ✅ NY v2.9.36bg
+- Land-mall: Wikipedia-herobild (extern URL, ingen Cloudinary-kvota) ✅ NY v2.9.36bp
+- Land-mall: auto-sätter plats till huvudstadens koordinater ✅ NY v2.9.36bi
+- Land-mall: Wikipedia-länk i Fakta-blocket ✅ NY v2.9.36bq
+- Filterknappfärger ändrade från indigo-500 till denim-blå (#1560BD) ✅ NY v2.9.36bb
 - Dynamiska kategorier med Firebase-baserad hantering ✅
 - Kategorihantering för administratörer ✅
 - Admin objekthantering (redigera/radera alla objekt) ✅
@@ -1023,3 +1030,38 @@ src/
   - Alla markerade flyttas som block (behåller inbördes ordning)
   - Fungerar med touch-drag och desktop drag&drop
 - ✅ Implementerat i både ListEditorModal och SimpleTableEditorModal
+
+18. CHANGELOG v2.9.36bb-br - Objektmallar, Landfakta & UI (Mar 4, 2026)
+
+### UI-förbättringar
+- ✅ Filterknappar ändrade från indigo-500 till denim-blå (#1560BD) i AppHeader
+- ✅ 8 ställen uppdaterade: filterknapp, "Mina", Alla/Samlingar/Objekt, kompakt toggle, avståndsslider, "Närmast"
+
+### Samlingsmedlemskap (ObjectDetail)
+- ✅ "Ingår i"-indikator i objekthuvudet med ClipboardList-ikon + räknarbadge
+- ✅ Expanderbar lista som visar vilka samlingar ett objekt tillhör
+- ✅ Klickbar navigering till föräldrasamlingen
+
+### Objektmallar (CreateObjectModal)
+- ✅ OBJECT_TEMPLATES-system med mallväljare vid skapande av nytt objekt
+- ✅ Receptmall (UtensilsCrossed): betyg + 2 listblock (Ingredienser, Gör så här) + timer
+  - Visas för kategorier med hideLocation=true
+- ✅ Land-mall (Plane): fakta-textblock, landväljare med sök
+  - Visas för kategorier med Plane-ikon
+  - Sök land → auto-fyller titel, herobild, plats, fakta
+  - Herobild från Wikipedia (extern URL, ingen Cloudinary-kvota)
+  - Plats sätts till huvudstadens koordinater
+  - Wikipedia-länk i Fakta-blocket
+
+### Landfakta (standalone block)
+- ✅ "Landfakta"-knapp i "Fler"-blockmenyn med Globe-ikon
+- ✅ Inline landsökning med resultat ovanför sökfältet (iOS-tangentbordsanpassning)
+- ✅ Skapar textblock med titel "Fakta", ihopfällt som standard
+
+### countryData.js (ny fil)
+- ✅ ELECTRICAL_STANDARDS: ~120 länder med spänning, frekvens, kontakttyper
+- ✅ adapterNeeded(): jämför mot Sveriges C/F-kontakter
+- ✅ fetchCountryFacts(): REST Countries API + Wikipedia-bild + elstandard
+  - Returnerar: title, flag, content (markdown), lat, lng, address, imageUrl
+- ✅ fetchCountryList(): alla länder sorterade på svenska
+- ✅ fetchCountryImage(): Wikipedia REST API för representativ bild
