@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, forwardRef } from 'react';
-import { X, Plus, Check, Trash2, GripVertical, ClipboardPaste, MoreVertical, CheckSquare, Square, RotateCcw, ListX, ArrowDownUp, Undo2, CheckCheck, ChevronLeft, ChevronRight, Copy } from 'lucide-react';
+import { X, Plus, Check, Trash2, GripVertical, ClipboardPaste, MoreVertical, CheckSquare, Square, RotateCcw, ListX, ArrowDownUp, Undo2, CheckCheck, ChevronLeft, ChevronRight, Copy, ArrowRightFromLine } from 'lucide-react';
 import { useFullscreenModal } from '../utils/useFullscreenModal';
 import { useDragReorder } from '../utils/useDragReorder';
 import { useConfirm } from '../utils/useConfirm';
@@ -190,6 +190,61 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel, ye
     years.add(CURRENT_YEAR);
     years.add(activeYear);
     return [...years].sort((a, b) => a - b);
+  };
+
+  // Move unchecked items (+ their headers) to next year
+  const moveUnfinishedToNextYear = async () => {
+    const nextYear = activeYear + 1;
+    const uncheckedCount = rows.filter(r => !r.isHeader && !r.done).length;
+    if (uncheckedCount === 0) return;
+
+    // Build sections: each header + its items
+    const sections = [];
+    let currentSection = { header: null, items: [] };
+    rows.forEach(row => {
+      if (row.isHeader) {
+        if (currentSection.header || currentSection.items.length > 0) {
+          sections.push(currentSection);
+        }
+        currentSection = { header: row, items: [] };
+      } else {
+        currentSection.items.push(row);
+      }
+    });
+    if (currentSection.header || currentSection.items.length > 0) {
+      sections.push(currentSection);
+    }
+
+    // Rows to move: headers that have unchecked items + the unchecked items themselves
+    const movedRows = [];
+    const remainingRows = [];
+    sections.forEach(section => {
+      const unchecked = section.items.filter(r => !r.done);
+      const checked = section.items.filter(r => r.done);
+      if (unchecked.length > 0) {
+        // Move header + unchecked to next year
+        if (section.header) movedRows.push({ ...section.header, id: `row-${Date.now()}-${Math.random().toString(36).substr(2, 5)}` });
+        unchecked.forEach(r => movedRows.push({ ...r, done: false, id: `row-${Date.now()}-${Math.random().toString(36).substr(2, 5)}` }));
+      }
+      // Keep header + checked in current year (if any checked exist)
+      if (checked.length > 0) {
+        if (section.header) remainingRows.push(section.header);
+        checked.forEach(r => remainingRows.push(r));
+      }
+    });
+
+    // Append moved rows to next year
+    const existingNext = (yearData[nextYear] || []).map((r, i) => ({
+      ...r,
+      id: r.id || `row-${i}-${Date.now()}`
+    }));
+    setYearData(prev => ({
+      ...prev,
+      [nextYear]: [...existingNext, ...movedRows]
+    }));
+
+    // Update current year to only keep done items
+    setRows(remainingRows);
   };
 
   // State for showing year picker
@@ -531,6 +586,19 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel, ye
                       >
                         <Copy size={14} />
                         Kopiera till {activeYear + 1}
+                      </button>
+                    )}
+                    {yearMode && rows.some(r => !r.isHeader && !r.done) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          moveUnfinishedToNextYear();
+                          setShowUtilsMenu(false);
+                        }}
+                        className="w-full px-3 py-2 text-left text-sm text-gray-200 hover:bg-white/10 flex items-center gap-2"
+                      >
+                        <ArrowRightFromLine size={14} />
+                        Flytta ej klara → {activeYear + 1}
                       </button>
                     )}
                     <button
