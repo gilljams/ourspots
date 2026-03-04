@@ -571,6 +571,12 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
     try {
       const facts = await fetchCountryFacts(country.code);
       setTitle(facts.title);
+      // Set location to capital/country center
+      if (facts.lat != null && facts.lng != null) {
+        setLat(facts.lat);
+        setLng(facts.lng);
+        setAddress(facts.address);
+      }
       // Update the text block with fact content
       setCustomBlocks(prev => prev.map(b => 
         b.type === 'text' && b.title === 'Fakta' 

@@ -151,7 +151,7 @@ function adapterNeeded(plugTypes) {
  * Returns { title, flag, content } or throws on error.
  */
 export async function fetchCountryFacts(countryCode) {
-  const res = await fetch(`https://restcountries.com/v3.1/alpha/${countryCode}?fields=name,capital,currencies,languages,region,subregion,population,flag,timezones,car,idd,cca2`);
+  const res = await fetch(`https://restcountries.com/v3.1/alpha/${countryCode}?fields=name,capital,capitalInfo,latlng,currencies,languages,region,subregion,population,flag,timezones,car,idd,cca2`);
   if (!res.ok) throw new Error('Kunde inte hämta landsdata');
   const data = await res.json();
 
@@ -207,6 +207,9 @@ export async function fetchCountryFacts(countryCode) {
     title: `${name} ${flag}`,
     flag,
     content: lines.join('\n'),
+    lat: data.capitalInfo?.latlng?.[0] ?? data.latlng?.[0] ?? null,
+    lng: data.capitalInfo?.latlng?.[1] ?? data.latlng?.[1] ?? null,
+    address: capital !== 'Okänd' ? `${capital}, ${name}` : name,
   };
 }
 
