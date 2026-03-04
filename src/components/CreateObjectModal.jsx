@@ -110,7 +110,7 @@ const OBJECT_TEMPLATES = [
     matchCategoryIcon: 'Plane', // Show for travel-type categories
     hasCountryPicker: true,
     blocks: [
-      { type: 'text', title: 'Fakta', content: '', defaultCollapsed: false, viewerEditable: false },
+      { type: 'text', title: 'Fakta', content: '', defaultCollapsed: true, viewerEditable: false },
     ]
   },
 ];
@@ -603,9 +603,9 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
       const newBlock = {
         id: Math.random().toString(36).substr(2, 9),
         type: 'text',
-        title: `Fakta ${facts.title}`,
+        title: 'Fakta',
         content: facts.content,
-        defaultCollapsed: false,
+        defaultCollapsed: true,
         viewerEditable: false,
       };
       setCustomBlocks(prev => [...prev, newBlock]);
