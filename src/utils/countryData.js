@@ -234,7 +234,7 @@ export async function fetchCountryFacts(countryCode) {
     content: lines.join('\n'),
     lat: data.capitalInfo?.latlng?.[0] ?? data.latlng?.[0] ?? null,
     lng: data.capitalInfo?.latlng?.[1] ?? data.latlng?.[1] ?? null,
-    address: capital !== 'Okänd' ? `${capital}, ${name}` : name,
+    address: name,
     imageUrl,
   };
 }
