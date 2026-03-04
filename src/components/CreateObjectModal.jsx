@@ -426,6 +426,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
   const fileInputRef = useRef(null);
   const gpsWatchRef = useRef(null);
   const countryBlockPickerRef = useRef(null);
+  const countryBlockInputRef = useRef(null);
   
   // Calculate effective shares for block editors
   // Combines sourceObject shares with parent's inheritable shares (for new objects under shared parent)
@@ -1788,7 +1789,10 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                     if (countryList.length === 0) {
                       fetchCountryList().then(list => setCountryList(list)).catch(() => toast.error('Kunde inte läsa länderlistan'));
                     }
-                    setTimeout(() => countryBlockPickerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
+                    setTimeout(() => {
+                      countryBlockInputRef.current?.focus();
+                      countryBlockPickerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }, 150);
                   }} disabled={saving || loadingCountry} className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-500 hover:bg-white/5 hover:text-gray-300 text-xs transition-colors">
                     {loadingCountry ? <Loader size={14} className="animate-spin text-blue-400" /> : <Globe size={14} className="text-gray-500 group-hover:text-blue-400 transition-colors" />} Landfakta
                   </button>
@@ -1805,6 +1809,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   <div className="relative">
                     <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                     <input
+                      ref={countryBlockInputRef}
                       type="text"
                       value={countryBlockSearch}
                       onChange={(e) => {
@@ -1812,7 +1817,6 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                         setTimeout(() => countryBlockPickerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
                       }}
                       placeholder="Sök land för fakta-block..."
-                      autoFocus
                       disabled={saving || loadingCountry}
                       className="w-full pl-9 pr-10 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500"
                     />
