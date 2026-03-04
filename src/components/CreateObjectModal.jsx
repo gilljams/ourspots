@@ -85,6 +85,24 @@ const CATEGORY_STOCK_MAP = {
   list: 'shopping',
 };
 
+// ========== OBJECT TEMPLATES ==========
+// Pre-defined block setups that can be applied when creating new objects
+const OBJECT_TEMPLATES = [
+  {
+    id: 'recipe',
+    label: 'Recept',
+    icon: 'UtensilsCrossed',
+    description: 'Betyg, ingredienser, instruktioner & timer',
+    requireHideLocation: true, // Only show for location-independent categories
+    blocks: [
+      { type: 'rating', title: 'Betyg', ratings: {} },
+      { type: 'table', title: 'Ingredienser', template: 'tasks', columns: [], rows: [], showCheckbox: true, col2Type: 'text', viewerEditable: false, defaultCollapsed: false },
+      { type: 'text', title: 'Gör så här', content: '', defaultCollapsed: false, viewerEditable: false },
+      { type: 'timer', timers: [], defaultCollapsed: false },
+    ]
+  },
+];
+
 // Helper to get smaller thumbnail version
 const getThumbUrl = (url) => url.replace('w=800', 'w=400');
 
@@ -159,6 +177,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
   const [parentId, setParentId] = useState(sourceObject?.parentId || defaultParentId || '');
   const [inheritLocation, setInheritLocation] = useState(false);
   const [isCollection, setIsCollection] = useState(sourceObject?.isCollection || false);
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [whatsappGroupUrl, setWhatsappGroupUrl] = useState(sourceObject?.whatsappGroupUrl || '');
   const [whatsappAdded, setWhatsappAdded] = useState(!!sourceObject?.whatsappGroupUrl);
   const [whatsappExpanded, setWhatsappExpanded] = useState(false);
@@ -473,7 +492,39 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
   // ========== HANDLERS ==========
   const handleCategorySelect = (catId) => {
     setSelectedType(catId);
+    setSelectedTemplate(null); // Reset template when category changes
     setFormTouched(true);
+  };
+
+  // Get templates available for the currently selected category
+  const availableTemplates = useMemo(() => {
+    const cat = categories.find(c => c.id === selectedType);
+    return OBJECT_TEMPLATES.filter(t => {
+      if (t.requireHideLocation && !cat?.hideLocation) return false;
+      if (t.requireCategory && t.requireCategory !== selectedType) return false;
+      return true;
+    });
+  }, [selectedType, categories]);
+
+  const handleTemplateSelect = (templateId) => {
+    if (isEdit) return; // Templates only for new objects
+    const template = OBJECT_TEMPLATES.find(t => t.id === templateId);
+    if (selectedTemplate === templateId) {
+      // Deselect: clear template blocks
+      setSelectedTemplate(null);
+      setCustomBlocks([]);
+      setFormTouched(true);
+      return;
+    }
+    setSelectedTemplate(templateId);
+    if (template) {
+      const blocks = template.blocks.map(b => ({
+        ...b,
+        id: Math.random().toString(36).substr(2, 9),
+      }));
+      setCustomBlocks(blocks);
+      setFormTouched(true);
+    }
   };
 
   const handleGPSCapture = () => {
@@ -1076,6 +1127,40 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                 })}
               </div>
             </div>
+
+            {/* Template picker - only for new objects with matching templates */}
+            {!isEdit && !isDuplicate && availableTemplates.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Startmall</label>
+                <div className="flex flex-wrap gap-2">
+                  {availableTemplates.map(t => {
+                    const TplIcon = getIconComponent(t.icon);
+                    const isActive = selectedTemplate === t.id;
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => handleTemplateSelect(t.id)}
+                        disabled={saving}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all text-sm ${
+                          isActive
+                            ? 'border-blue-500 bg-blue-500/20 text-white'
+                            : 'border-white/10 bg-white/5 text-gray-300 hover:border-white/20 hover:bg-white/10'
+                        }`}
+                      >
+                        <TplIcon size={16} className={isActive ? 'text-blue-400' : 'text-gray-400'} />
+                        <span>{t.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {selectedTemplate && (
+                  <p className="text-xs text-gray-500 mt-1.5">
+                    {OBJECT_TEMPLATES.find(t => t.id === selectedTemplate)?.description}
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Title */}
             <div>

@@ -97,6 +97,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
   const [distributionModalData, setDistributionModalData] = useState(null); // { blockIndex, data }
   const [showCollectionMap, setShowCollectionMap] = useState(false); // For collection map modal
   const [showMultiLocationMap, setShowMultiLocationMap] = useState(false); // For multi-location objects map
+  const [showParentCollections, setShowParentCollections] = useState(false); // For showing which collections contain this object
   const [showPlanner, setShowPlanner] = useState(false); // For trip planner modal
   const [pendingLocations, setPendingLocations] = useState(() => getPendingLocations(object.id));
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -226,6 +227,15 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
   
   const childObjects = allObjects.filter(o => o.parentId === object.id);
   const parentObject = object.parentId ? allObjects.find(o => o.id === object.parentId) : null;
+  
+  // Find collections that contain this object
+  const parentCollections = useMemo(() => {
+    if (isCollection) return []; // Collections don't show this
+    return allObjects.filter(o => 
+      o.isCollection && 
+      o.linkedObjectIds?.includes(object.id)
+    );
+  }, [allObjects, object.id, isCollection]);
   
   // For collections: get linked objects that user has access to
   const totalLinkedCount = isCollection ? (object.linkedObjectIds || []).length : 0;
@@ -500,7 +510,35 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                       Demo
                     </span>
                   )}
+                  {parentCollections.length > 0 && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setShowParentCollections(v => !v); }}
+                      className="text-xs text-gray-500 hover:text-gray-300 flex items-center gap-1 transition-colors"
+                      title="Visa samlingar som innehåller detta objekt"
+                    >
+                      <ClipboardList size={10} />
+                      <span>{parentCollections.length}</span>
+                      <ChevronDown size={10} className={`transition-transform ${showParentCollections ? 'rotate-180' : ''}`} />
+                    </button>
+                  )}
                 </div>
+                {showParentCollections && parentCollections.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                    {parentCollections.map(coll => {
+                      const collTitle = coll.blocks?.find(b => b.type === 'title')?.data?.text || 'Samling';
+                      return (
+                        <button
+                          key={coll.id}
+                          onClick={() => onNavigate(coll)}
+                          className="text-xs px-2 py-0.5 rounded-md bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-1"
+                        >
+                          <ClipboardList size={10} />
+                          <span className="truncate max-w-[120px]">{collTitle}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-2 lg:gap-1">
