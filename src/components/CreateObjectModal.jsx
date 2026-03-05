@@ -1445,8 +1445,8 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                       {parentDropdownOpen && (
                         <>
                           <div className="fixed inset-0 z-40" onClick={() => setParentDropdownOpen(false)} />
-                          <div className="absolute left-0 right-0 mt-1 rounded-xl bg-gray-800 border border-white/10 shadow-2xl z-50 max-h-72 flex flex-col">
-                            <div className="p-2 border-b border-white/10">
+                          <div className="absolute left-0 right-0 mt-1 rounded-xl bg-gray-800 border border-white/10 shadow-2xl z-50 flex flex-col" style={{ maxHeight: 'min(50vh, 400px)' }}>
+                            <div className="p-2 border-b border-white/10 flex-shrink-0">
                               <input
                                 ref={parentSearchRef}
                                 type="text"
@@ -1456,7 +1456,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                                 className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500"
                               />
                             </div>
-                            <div className="overflow-y-auto flex-1">
+                            <div className="overflow-y-auto flex-1" style={{ minHeight: '200px' }}>
                               <button
                                 type="button"
                                 onClick={() => { setParentId(''); setFormTouched(true); setParentDropdownOpen(false); }}
