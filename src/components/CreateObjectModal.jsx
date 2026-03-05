@@ -1442,10 +1442,15 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                         </span>
                         <ChevronDown size={16} className={`text-gray-400 transition-transform ${parentDropdownOpen ? 'rotate-180' : ''}`} />
                       </button>
-                      {parentDropdownOpen && (
+                      {parentDropdownOpen && (() => {
+                        const rect = parentDropdownRef.current?.getBoundingClientRect();
+                        const top = rect ? rect.bottom + 4 : 100;
+                        const left = rect ? rect.left : 16;
+                        const width = rect ? rect.width : 300;
+                        return (
                         <>
-                          <div className="fixed inset-0 z-40" onClick={() => setParentDropdownOpen(false)} />
-                          <div className="absolute left-0 right-0 mt-1 rounded-xl bg-gray-800 border border-white/10 shadow-2xl z-50 flex flex-col" style={{ maxHeight: 'min(50vh, 400px)' }}>
+                          <div className="fixed inset-0 z-[9998]" onClick={() => setParentDropdownOpen(false)} />
+                          <div className="fixed rounded-xl bg-gray-800 border border-white/10 shadow-2xl z-[9999] flex flex-col" style={{ top, left, width, maxHeight: 'min(50vh, 400px)' }}>
                             <div className="p-2 border-b border-white/10 flex-shrink-0">
                               <input
                                 ref={parentSearchRef}
@@ -1494,7 +1499,8 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                             </div>
                           </div>
                         </>
-                      )}
+                        );
+                      })()}
                     </div>
                   </div>
 
