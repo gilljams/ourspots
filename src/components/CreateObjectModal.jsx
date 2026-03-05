@@ -423,6 +423,10 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
   const [originalImageFile, setOriginalImageFile] = useState(null);
   const [extractingGPS, setExtractingGPS] = useState(false);
   const [showMoreBlocks, setShowMoreBlocks] = useState(false);
+  const [parentDropdownOpen, setParentDropdownOpen] = useState(false);
+  const [parentSearchQuery, setParentSearchQuery] = useState('');
+  const parentSearchRef = useRef(null);
+  const parentDropdownRef = useRef(null);
   // Basic settings section - collapsed in edit mode if fields have values
   const [showBasicSettings, setShowBasicSettings] = useState(() => {
     if (!isEdit) return true; // Always expanded for new objects
@@ -1420,27 +1424,78 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   {/* Parent selector */}
                   <div className="pt-3">
                     <label className="block text-sm font-medium text-gray-300 mb-2">Lägg under objekt (valfritt)</label>
-                    <select 
-                      value={parentId} 
-                      onChange={(e) => { setParentId(e.target.value); setFormTouched(true); }} 
-                      disabled={saving}
-                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-blue-500 appearance-none"
-                      style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
-                    >
-                      <option value="">- Inget parent-objekt -</option>
-                      {categories.map(category => {
-                        const objectsInCategory = availableParents.filter(obj => obj.type === category.id);
-                        if (objectsInCategory.length === 0) return null;
-                        return (
-                          <optgroup key={category.id} label={category.label}>
-                            {objectsInCategory.map(obj => {
-                              const objTitle = obj.blocks.find(b => b.type === 'title')?.data?.text || 'Namnlöst';
-                              return <option key={obj.id} value={obj.id}>{objTitle}</option>;
-                            })}
-                          </optgroup>
-                        );
-                      })}
-                    </select>
+                    <div className="relative" ref={parentDropdownRef}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setParentDropdownOpen(!parentDropdownOpen);
+                          setParentSearchQuery('');
+                          setTimeout(() => parentSearchRef.current?.focus(), 50);
+                        }}
+                        disabled={saving}
+                        className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-blue-500 text-left flex items-center justify-between gap-2"
+                      >
+                        <span className={parentId ? 'text-white' : 'text-gray-400'}>
+                          {parentId
+                            ? (availableParents.find(p => p.id === parentId)?.blocks?.find(b => b.type === 'title')?.data?.text || 'Namnlöst')
+                            : '- Inget parent-objekt -'}
+                        </span>
+                        <ChevronDown size={16} className={`text-gray-400 transition-transform ${parentDropdownOpen ? 'rotate-180' : ''}`} />
+                      </button>
+                      {parentDropdownOpen && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setParentDropdownOpen(false)} />
+                          <div className="absolute left-0 right-0 mt-1 rounded-xl bg-gray-800 border border-white/10 shadow-2xl z-50 max-h-72 flex flex-col">
+                            <div className="p-2 border-b border-white/10">
+                              <input
+                                ref={parentSearchRef}
+                                type="text"
+                                value={parentSearchQuery}
+                                onChange={(e) => setParentSearchQuery(e.target.value)}
+                                placeholder="Sök objekt..."
+                                className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                              />
+                            </div>
+                            <div className="overflow-y-auto flex-1">
+                              <button
+                                type="button"
+                                onClick={() => { setParentId(''); setFormTouched(true); setParentDropdownOpen(false); }}
+                                className={`w-full text-left px-4 py-2.5 text-sm hover:bg-white/10 transition-colors ${!parentId ? 'text-blue-400 bg-white/5' : 'text-gray-300'}`}
+                              >
+                                - Inget parent-objekt -
+                              </button>
+                              {categories.map(category => {
+                                const objectsInCategory = availableParents.filter(obj => {
+                                  if (obj.type !== category.id) return false;
+                                  if (!parentSearchQuery) return true;
+                                  const title = obj.blocks?.find(b => b.type === 'title')?.data?.text || '';
+                                  return title.toLowerCase().includes(parentSearchQuery.toLowerCase());
+                                });
+                                if (objectsInCategory.length === 0) return null;
+                                return (
+                                  <div key={category.id}>
+                                    <div className="px-4 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-white/[0.02]">{category.label}</div>
+                                    {objectsInCategory.map(obj => {
+                                      const objTitle = obj.blocks?.find(b => b.type === 'title')?.data?.text || 'Namnlöst';
+                                      return (
+                                        <button
+                                          key={obj.id}
+                                          type="button"
+                                          onClick={() => { setParentId(obj.id); setFormTouched(true); setParentDropdownOpen(false); }}
+                                          className={`w-full text-left px-4 py-2.5 text-sm hover:bg-white/10 transition-colors ${parentId === obj.id ? 'text-blue-400 bg-white/5' : 'text-white'}`}
+                                        >
+                                          {objTitle}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
 
                   {/* Location */}
