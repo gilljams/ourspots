@@ -20,7 +20,7 @@ export default function AppHeader({
   pendingTiebreakerChallenges, selectedObject, objects, setSelectedObject,
   // header bar
   headerRef, showDemoObjects, setShowDemoObjects, isAdmin,
-  onOpenMenu, pendingInvitations, showInvitations, setShowInvitations,
+  onOpenMenu, pendingInvitations,
   // search
   searchQuery, setSearchQuery,
   // user
@@ -41,6 +41,7 @@ export default function AppHeader({
 }) {
   const searchInputRef = useRef(null);
   const [searchExpanded, setSearchExpanded] = useState(false);
+  const [showInvitations, setShowInvitations] = useState(false);
 
   return (
     <>
