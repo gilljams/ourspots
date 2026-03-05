@@ -1768,7 +1768,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                       setTimeout(() => {
                         const scrollContainer = document.querySelector('.overflow-y-auto');
                         if (scrollContainer) {
-                          scrollContainer.scrollBy({ top: 100, behavior: 'smooth' });
+                          scrollContainer.scrollBy({ top: 200, behavior: 'smooth' });
                         }
                       }, 50);
                     }
