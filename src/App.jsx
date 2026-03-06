@@ -767,24 +767,13 @@ function App() {
                       <p className="text-gray-400 text-sm mb-5 leading-relaxed">
                         Dela med vänner och planera tillsammans – eller behåll allt för dig själv.
                       </p>
-                      <div className="flex gap-2 justify-center">
+                      <div className="flex justify-center">
                         <button
                           onClick={handleLogin}
-                          className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all text-sm shadow-lg shadow-blue-500/20"
+                          className="flex items-center gap-1.5 px-5 py-2.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all text-sm shadow-lg shadow-blue-500/20"
                         >
                           <LogIn size={16} />
                           <span>Logga in</span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            setShowDemoObjects(true);
-                            setShowOnlyOwned(false);
-                            setShowFavoritesOnly(false);
-                          }}
-                          className="flex items-center gap-1.5 px-3 py-2.5 rounded-lg bg-purple-500/20 border border-purple-500/30 text-purple-300 hover:bg-purple-500/30 transition-all text-sm"
-                        >
-                          <Eye size={16} />
-                          <span>Se demo</span>
                         </button>
                       </div>
                     </div>
