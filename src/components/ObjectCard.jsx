@@ -291,7 +291,7 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
         
         {/* Action buttons - hide in compact mode */}
         {hasLocation && !compact && (
-          <div className="flex gap-2">
+          <div className="flex gap-2 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
             <button
               onClick={handleShowOnMap}
               className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 hover:text-white transition-all text-sm"

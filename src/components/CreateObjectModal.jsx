@@ -484,6 +484,18 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
   // Track if form has been modified (simpler than deep comparison)
   const [formTouched, setFormTouched] = useState(false);
 
+  // ========== ESCAPE KEY ==========
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && !saving) {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose, saving]);
+
   // ========== iOS VIEWPORT FIX ==========
   // Fix for iOS Safari viewport zoom issues when keyboard closes
   useEffect(() => {
@@ -1195,7 +1207,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
     <>
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-black/80 z-[1000] flex items-end sm:items-center justify-center lg:justify-end sm:p-8"
+        className="fixed inset-0 bg-black/80 sm:bg-black/70 lg:bg-black/50 z-[1000] flex items-end sm:items-center justify-center lg:justify-end sm:p-8"
         onClick={(e) => { 
           if (!saving && e.target === e.currentTarget) onClose(); 
         }}

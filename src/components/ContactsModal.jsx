@@ -251,7 +251,7 @@ function ContactsModal({ onClose, currentUserEmail, objects = [], favoriteContac
 
   return (
     <div 
-      className="fixed inset-0 bg-black/80 sm:bg-black/70 backdrop-blur-sm z-[1100] flex items-end sm:items-center justify-center lg:justify-end sm:p-8"
+      className="fixed inset-0 bg-black/80 sm:bg-black/70 lg:bg-black/50 backdrop-blur-sm z-[1100] flex items-end sm:items-center justify-center lg:justify-end sm:p-8"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div 

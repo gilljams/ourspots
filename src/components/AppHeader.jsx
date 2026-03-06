@@ -130,9 +130,9 @@ export default function AppHeader({
           {/* Right side: Search + User */}
           <div className="flex-1 flex items-center justify-end gap-3">
             <div className="relative flex items-center justify-end">
-              {/* Expandable search */}
+              {/* Expandable search — always visible on lg: */}
               <div className={`flex items-center transition-all duration-300 ease-out ${
-                searchExpanded || searchQuery ? 'w-full max-w-md' : 'w-9'
+                searchExpanded || searchQuery ? 'w-full max-w-md' : 'w-9 lg:w-64'
               }`}>
                 {(searchExpanded || searchQuery) ? (
                   <div className="relative w-full">
@@ -154,13 +154,27 @@ export default function AppHeader({
                     </button>
                   </div>
                 ) : (
-                  <button
-                    onClick={() => { setSearchExpanded(true); setTimeout(() => searchInputRef.current?.focus(), 50); }}
-                    className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/15 flex items-center justify-center text-gray-400 hover:text-white border border-white/10 transition-all"
-                    title="Sök"
-                  >
-                    <Search size={16} />
-                  </button>
+                  /* On mobile: just the icon button. On lg: show the full input field */
+                  <>
+                    <button
+                      onClick={() => { setSearchExpanded(true); setTimeout(() => searchInputRef.current?.focus(), 50); }}
+                      className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/15 flex items-center justify-center text-gray-400 hover:text-white border border-white/10 transition-all lg:hidden"
+                      title="Sök"
+                    >
+                      <Search size={16} />
+                    </button>
+                    <div className="relative w-full hidden lg:block">
+                      <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                      <input
+                        ref={searchInputRef}
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onFocus={() => setSearchExpanded(true)}
+                        className="w-full h-9 bg-white/10 text-white text-sm placeholder:text-gray-500 rounded-full pl-9 pr-3 border border-white/10 focus:border-blue-400 focus:bg-white/15 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                        placeholder="Sök..."
+                      />
+                    </div>
+                  </>
                 )}
               </div>
             </div>

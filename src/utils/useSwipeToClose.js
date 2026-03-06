@@ -1,7 +1,8 @@
-import { useState, useRef, useCallback, useMemo } from 'react';
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 
 // Shared swipe-right-to-dismiss hook for modals
 // Returns handlers, style, className, and ref to attach to the modal panel
+// Also listens for Escape key to close on desktop.
 //
 // Usage:
 //   const swipe = useSwipeToClose(onClose, { guardInteractive: true });
@@ -20,6 +21,18 @@ export function useSwipeToClose(onClose, { guardInteractive = false } = {}) {
   const [touchDelta, setTouchDelta] = useState(0);
   const [isSwipeActive, setIsSwipeActive] = useState(false);
   const ref = useRef(null);
+
+  // Escape key closes the modal
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   const handleTouchStart = useCallback((e) => {
     // Optionally skip swipe when touching interactive elements
