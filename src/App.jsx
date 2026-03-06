@@ -195,6 +195,38 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, [activeCategory]);
 
+  // Swipe between categories on mobile
+  const touchStartRef = useRef(null);
+  const categoryIds = useMemo(() => ['all', ...categories.map(c => c.id)], [categories]);
+
+  const handleCategorySwipe = useCallback((direction) => {
+    const currentIndex = categoryIds.indexOf(activeCategory);
+    if (currentIndex === -1) return;
+    if (direction === 'left' && currentIndex < categoryIds.length - 1) {
+      setActiveCategory(categoryIds[currentIndex + 1]);
+    } else if (direction === 'right' && currentIndex > 0) {
+      setActiveCategory(categoryIds[currentIndex - 1]);
+    }
+  }, [categoryIds, activeCategory, setActiveCategory]);
+
+  const onMainTouchStart = useCallback((e) => {
+    const t = e.touches[0];
+    touchStartRef.current = { x: t.clientX, y: t.clientY, time: Date.now() };
+  }, []);
+
+  const onMainTouchEnd = useCallback((e) => {
+    if (!touchStartRef.current) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touchStartRef.current.x;
+    const dy = t.clientY - touchStartRef.current.y;
+    const dt = Date.now() - touchStartRef.current.time;
+    touchStartRef.current = null;
+    // Must be a quick, mostly-horizontal swipe
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5 && dt < 400) {
+      handleCategorySwipe(dx < 0 ? 'left' : 'right');
+    }
+  }, [handleCategorySwipe]);
+
   // Wake Lock för att hålla skärmen påslagen
   useEffect(() => {
     let isActive = true; // Track if effect is still active
@@ -697,7 +729,11 @@ function App() {
         validFavoritesCount={validFavoritesCount}
       />
       
-      <main className="max-w-6xl mx-auto px-4">
+      <main
+        className="max-w-6xl mx-auto px-4"
+        onTouchStart={onMainTouchStart}
+        onTouchEnd={onMainTouchEnd}
+      >
         {viewMode === 'list' ? (
           <div className="pt-4 pb-8">
             <div className={`grid ${compactCards ? 'grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6' : 'grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3'}`}>
