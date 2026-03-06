@@ -3,7 +3,7 @@ import {
   X, Plus,
   Loader, Filter, Search,
   Map as MapIcon, List, ArrowLeft, Target,
-  MapPin, Eye, Sparkles
+  MapPin, Eye, Sparkles, Globe, LogIn
 } from 'lucide-react';
 
 import { getObjectDistance as getObjectDistanceUtil } from './utils/geoUtils';
@@ -750,15 +750,55 @@ function App() {
                       Sök i alla kategorier
                     </button>
                   </div>
+                ) : !user && !showDemoObjects ? (
+                  /* Not logged in – hero onboarding */
+                  <div className="max-w-sm mx-auto px-4">
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/20 to-emerald-500/20 flex items-center justify-center mx-auto mb-5">
+                      <Globe size={28} className="text-blue-400" />
+                    </div>
+                    <h3 className="text-xl font-bold text-white mb-3">Din värld. Organiserad.</h3>
+                    <p className="text-gray-400 text-sm mb-1.5 leading-relaxed">
+                      Spara platser, samla idéer och planera upplevelser.
+                    </p>
+                    <p className="text-gray-500 text-sm mb-1.5 leading-relaxed">
+                      Från restauranger och svampställen till resor, checklistor och projekt.
+                    </p>
+                    <p className="text-gray-400 text-sm mb-6 leading-relaxed">
+                      Dela med vänner och planera tillsammans – eller behåll allt för dig själv.
+                    </p>
+                    <div className="flex gap-2 justify-center">
+                      <button
+                        onClick={handleLogin}
+                        className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all text-sm"
+                      >
+                        <LogIn size={16} />
+                        <span>Logga in</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowDemoObjects(true);
+                          setShowOnlyOwned(false);
+                          setShowFavoritesOnly(false);
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-2.5 rounded-lg bg-purple-500/20 border border-purple-500/30 text-purple-300 hover:bg-purple-500/30 transition-all text-sm"
+                      >
+                        <Eye size={16} />
+                        <span>Se demo</span>
+                      </button>
+                    </div>
+                  </div>
                 ) : user && !showFavoritesOnly && !showDemoObjects && objects.filter(o => o.ownerId === user.uid).length === 0 ? (
+                  /* Logged in, no objects */
                   <div className="max-w-sm mx-auto px-4">
                     <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center mx-auto mb-5">
                       <Sparkles size={28} className="text-blue-400" />
                     </div>
-                    <h3 className="text-lg font-bold text-white mb-2">Välkommen till OurSpots</h3>
+                    <h3 className="text-lg font-bold text-white mb-2">Välkommen till OurSpots!</h3>
+                    <p className="text-gray-400 text-sm mb-1.5 leading-relaxed">
+                      Bygg dina egna objekt med block – text, listor, platser, bilder och mer.
+                    </p>
                     <p className="text-gray-400 text-sm mb-5 leading-relaxed">
-                      Skapa objekt med valfritt innehåll – text, listor, platser, bilder. 
-                      Dela med vänner. Bara fantasin sätter gränser.
+                      Koppla ihop dem i samlingar och dela när ni vill planera tillsammans.
                     </p>
                     <div className="flex gap-2 justify-center">
                       <button
@@ -790,8 +830,7 @@ function App() {
                       {showFavoritesOnly ? 'Inga favoriter ännu' : 'Inga objekt hittades'}
                     </p>
                     <p className="text-gray-600 text-sm mt-2 max-w-xs mx-auto">
-                      {!user ? 'Logga in för att skapa objekt!' : 
-                       showFavoritesOnly ? 'Markera objekt med stjärnan för att lägga till favoriter' :
+                      {showFavoritesOnly ? 'Markera objekt med stjärnan för att lägga till favoriter' :
                        'Tryck på + knappen för att skapa ditt första objekt'}
                     </p>
                   </>
