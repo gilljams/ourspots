@@ -230,7 +230,7 @@ export default function AppHeader({
             {/* Scrollable categories */}
             <div className="flex gap-2 overflow-x-auto flex-1 min-w-0 pb-1 -mb-1">
               <button
-                onClick={() => setActiveCategory('all')}
+                onClick={() => activeCategory === 'all' ? window.scrollTo({ top: 0, behavior: 'smooth' }) : setActiveCategory('all')}
                 className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl whitespace-nowrap transition-all flex-shrink-0 ${activeCategory === 'all' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-white/10 text-gray-300 hover:bg-white/20'}`}
               >
                 <span className="text-sm font-medium">Alla</span>
@@ -241,7 +241,7 @@ export default function AppHeader({
                 return (
                   <button
                     key={cat.id}
-                    onClick={() => setActiveCategory(cat.id)}
+                    onClick={() => activeCategory === cat.id ? window.scrollTo({ top: 0, behavior: 'smooth' }) : setActiveCategory(cat.id)}
                     className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl whitespace-nowrap transition-all flex-shrink-0 ${activeCategory === cat.id ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-white/10 text-gray-300 hover:bg-white/20'}`}
                   >
                     <IconComponent size={16} />

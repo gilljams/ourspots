@@ -209,10 +209,27 @@ function App() {
     }
   }, [categoryIds, activeCategory, setActiveCategory]);
 
+  // Pull-to-refresh state
+  const [pullDistance, setPullDistance] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const pullThreshold = 80;
+
   const onMainTouchStart = useCallback((e) => {
     const t = e.touches[0];
-    touchStartRef.current = { x: t.clientX, y: t.clientY, time: Date.now() };
+    touchStartRef.current = { x: t.clientX, y: t.clientY, time: Date.now(), scrollTop: window.scrollY };
   }, []);
+
+  const onMainTouchMove = useCallback((e) => {
+    if (!touchStartRef.current || isRefreshing) return;
+    // Only pull-to-refresh when scrolled to top
+    if (touchStartRef.current.scrollTop > 5) return;
+    const dy = e.touches[0].clientY - touchStartRef.current.y;
+    const dx = Math.abs(e.touches[0].clientX - touchStartRef.current.x);
+    if (dy > 10 && dy > dx && window.scrollY <= 0) {
+      const pull = Math.min(dy * 0.4, 120); // Damped pull
+      setPullDistance(pull);
+    }
+  }, [isRefreshing]);
 
   const onMainTouchEnd = useCallback((e) => {
     if (!touchStartRef.current) return;
@@ -220,12 +237,25 @@ function App() {
     const dx = t.clientX - touchStartRef.current.x;
     const dy = t.clientY - touchStartRef.current.y;
     const dt = Date.now() - touchStartRef.current.time;
+
+    // Pull-to-refresh trigger
+    if (pullDistance >= pullThreshold) {
+      setIsRefreshing(true);
+      setPullDistance(0);
+      if (navigator.vibrate) navigator.vibrate(10);
+      // Data is real-time via Firestore, so just show a brief "refreshed" animation
+      setTimeout(() => setIsRefreshing(false), 800);
+      touchStartRef.current = null;
+      return;
+    }
+    setPullDistance(0);
+
     touchStartRef.current = null;
     // Must be a quick, mostly-horizontal swipe
     if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5 && dt < 400) {
       handleCategorySwipe(dx < 0 ? 'left' : 'right');
     }
-  }, [handleCategorySwipe]);
+  }, [handleCategorySwipe, pullDistance]);
 
   // Wake Lock för att hålla skärmen påslagen
   useEffect(() => {
@@ -670,10 +700,51 @@ function App() {
 
   if (loading || !categoriesLoaded) {
     return (
-      <div className="min-h-[100dvh] bg-gradient-to-br from-gray-900 via-blue-900/20 to-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <Loader size={48} className="animate-spin text-blue-400 mx-auto mb-4" />
-          <p className="text-gray-400">{!categoriesLoaded ? 'Laddar kategorier...' : 'Laddar dina platser...'}</p>
+      <div
+        className="min-h-[100dvh] bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950"
+        style={{
+          backgroundImage: `radial-gradient(circle at 15% 12%, rgba(59,130,246,0.20), transparent 35%),
+                            radial-gradient(circle at 85% 8%, rgba(56,189,248,0.16), transparent 32%),
+                            radial-gradient(circle at 50% 88%, rgba(59,130,246,0.14), transparent 36%),
+                            linear-gradient(to bottom right, #06070c, #0b1220, #06070c)`
+        }}
+      >
+        {/* Skeleton header bar */}
+        <div className="bg-gray-900/60 backdrop-blur-md border-b border-white/10 px-4 py-3">
+          <div className="max-w-6xl mx-auto flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-white/10 animate-pulse" />
+            <div className="h-6 w-28 rounded-lg bg-white/10 animate-pulse" />
+            <div className="flex-1" />
+            <div className="w-8 h-8 rounded-full bg-white/10 animate-pulse" />
+          </div>
+        </div>
+        {/* Skeleton category bar */}
+        <div className="bg-gray-900/30 border-b border-white/10 px-4 py-3">
+          <div className="max-w-6xl mx-auto flex gap-2">
+            {[16, 10, 12, 10, 14].map((w, i) => (
+              <div key={i} className={`h-9 rounded-xl bg-white/10 animate-pulse flex-shrink-0`} style={{ width: `${w * 4 + 24}px`, animationDelay: `${i * 100}ms` }} />
+            ))}
+          </div>
+        </div>
+        {/* Skeleton cards */}
+        <div className="max-w-6xl mx-auto px-4 pt-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {[0, 1, 2, 3, 4, 5].map(i => (
+              <div key={i} className="bg-gray-900/80 rounded-2xl border border-white/10 overflow-hidden" style={{ animationDelay: `${i * 80}ms` }}>
+                {/* Image skeleton */}
+                <div className="w-full h-40 bg-white/[0.06] animate-pulse" style={{ animationDelay: `${i * 80}ms` }} />
+                {/* Content skeleton */}
+                <div className="p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-white/10 animate-pulse" style={{ animationDelay: `${i * 80 + 50}ms` }} />
+                    <div className="h-5 flex-1 rounded-lg bg-white/10 animate-pulse" style={{ animationDelay: `${i * 80 + 100}ms` }} />
+                  </div>
+                  <div className="h-3 w-3/4 rounded bg-white/[0.06] animate-pulse" style={{ animationDelay: `${i * 80 + 150}ms` }} />
+                  <div className="h-3 w-1/2 rounded bg-white/[0.06] animate-pulse" style={{ animationDelay: `${i * 80 + 200}ms` }} />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -732,8 +803,19 @@ function App() {
       <main
         className="max-w-6xl mx-auto px-4"
         onTouchStart={onMainTouchStart}
+        onTouchMove={onMainTouchMove}
         onTouchEnd={onMainTouchEnd}
       >
+        {/* Pull-to-refresh indicator */}
+        {(pullDistance > 0 || isRefreshing) && (
+          <div className="flex justify-center pt-2 pb-1 transition-all" style={{ height: pullDistance > 0 ? pullDistance : 'auto' }}>
+            <div className={`w-8 h-8 flex items-center justify-center rounded-full bg-white/10 border border-white/20 ${isRefreshing ? 'animate-spin' : ''}`}>
+              <Loader size={16} className={`text-blue-400 transition-transform ${!isRefreshing ? `rotate-[${Math.min(pullDistance / pullThreshold * 360, 360)}deg]` : ''}`} 
+                style={!isRefreshing ? { transform: `rotate(${Math.min(pullDistance / pullThreshold * 360, 360)}deg)` } : {}}
+              />
+            </div>
+          </div>
+        )}
         {viewMode === 'list' ? (
           <div className="pt-4 pb-8">
             <div className={`grid ${compactCards ? 'grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6' : 'grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3'}`}>

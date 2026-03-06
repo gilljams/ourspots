@@ -102,6 +102,7 @@ function ObjectCard({ object, onClick, currentUser, childCount, distance, catego
 
   const handleFavoriteClick = (e) => {
     e.stopPropagation();
+    if (navigator.vibrate) navigator.vibrate(8);
     onToggleFavorite(object.id);
   };
 
