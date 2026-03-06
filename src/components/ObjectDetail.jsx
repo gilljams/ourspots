@@ -606,7 +606,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
           )}
           
           {/* Scrollable content */}
-          <div className="overflow-y-auto overscroll-contain flex-1 p-4 sm:p-5 lg:p-6 pb-8 sm:pb-10">
+          <div className="overflow-y-auto overflow-x-hidden overscroll-contain flex-1 p-4 sm:p-5 lg:p-6 pb-8 sm:pb-10">
             <div className="space-y-5">
               {/* Show multi-location map button at top if no image block exists */}
               {!hasImageBlock && showLocationMap && (

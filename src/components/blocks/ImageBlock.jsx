@@ -106,13 +106,13 @@ export const ImageBlock = ({ data, isPlaying = false, animation = 'none', galler
   return (
     <>
       {/* Ambient glow – blurred image copy behind the container */}
-      <div className="relative mb-4">
+      <div className="relative mb-4 overflow-clip">
         {!imageError && data.url && (
-          <div className="absolute inset-0 -z-10 pointer-events-none overflow-visible" aria-hidden="true">
+          <div className="absolute -inset-4 -z-10 pointer-events-none" aria-hidden="true">
             <img
               src={getTransformedImageUrl(data.url, data.focalPoint ? 'custom' : data.cropMode, 80, 60, data.focalPoint)}
               alt=""
-              className={`w-full h-full object-cover rounded-2xl blur-3xl scale-110 transition-opacity duration-1000 ${imageLoaded ? 'opacity-50' : 'opacity-0'}`}
+              className={`w-full h-full object-cover blur-3xl transition-opacity duration-1000 ${imageLoaded ? 'opacity-50' : 'opacity-0'}`}
               style={focalStyles}
             />
           </div>
