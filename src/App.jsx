@@ -752,73 +752,91 @@ function App() {
                   </div>
                 ) : !user && !showDemoObjects ? (
                   /* Not logged in – hero onboarding */
-                  <div className="max-w-sm mx-auto px-4">
-                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/20 to-emerald-500/20 flex items-center justify-center mx-auto mb-5">
-                      <Globe size={28} className="text-blue-400" />
-                    </div>
-                    <h3 className="text-xl font-bold text-white mb-3">Din värld. Organiserad.</h3>
-                    <p className="text-gray-400 text-sm mb-1.5 leading-relaxed">
-                      Spara platser, samla idéer och planera upplevelser.
-                    </p>
-                    <p className="text-gray-500 text-sm mb-1.5 leading-relaxed">
-                      Från restauranger och svampställen till resor, checklistor och projekt.
-                    </p>
-                    <p className="text-gray-400 text-sm mb-6 leading-relaxed">
-                      Dela med vänner och planera tillsammans – eller behåll allt för dig själv.
-                    </p>
-                    <div className="flex gap-2 justify-center">
-                      <button
-                        onClick={handleLogin}
-                        className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all text-sm"
-                      >
-                        <LogIn size={16} />
-                        <span>Logga in</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          setShowDemoObjects(true);
-                          setShowOnlyOwned(false);
-                          setShowFavoritesOnly(false);
-                        }}
-                        className="flex items-center gap-1.5 px-3 py-2.5 rounded-lg bg-purple-500/20 border border-purple-500/30 text-purple-300 hover:bg-purple-500/30 transition-all text-sm"
-                      >
-                        <Eye size={16} />
-                        <span>Se demo</span>
-                      </button>
+                  <div className="max-w-md mx-auto px-4">
+                    <div className="rounded-2xl bg-white/[0.03] backdrop-blur-sm border border-white/[0.08] p-6 sm:p-8 text-center">
+                      <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500/20 to-emerald-500/20 flex items-center justify-center mx-auto mb-5">
+                        <Globe size={26} className="text-blue-400" />
+                      </div>
+                      <h3 className="text-xl font-bold text-white mb-3">Din värld. Organiserad.</h3>
+                      <p className="text-gray-400 text-sm mb-1.5 leading-relaxed">
+                        Spara platser, samla idéer och planera upplevelser.
+                      </p>
+                      <p className="text-gray-500 text-sm mb-1.5 leading-relaxed">
+                        Från restauranger och svampställen till resor, checklistor och projekt.
+                      </p>
+                      <p className="text-gray-400 text-sm mb-5 leading-relaxed">
+                        Dela med vänner och planera tillsammans – eller behåll allt för dig själv.
+                      </p>
+                      <div className="flex flex-wrap justify-center gap-1.5 mb-6">
+                        <span className="px-2.5 py-1 rounded-full bg-white/5 border border-white/[0.06] text-gray-400 text-xs">📍 Platser</span>
+                        <span className="px-2.5 py-1 rounded-full bg-white/5 border border-white/[0.06] text-gray-400 text-xs">📋 Listor</span>
+                        <span className="px-2.5 py-1 rounded-full bg-white/5 border border-white/[0.06] text-gray-400 text-xs">🗺️ Kartor</span>
+                        <span className="px-2.5 py-1 rounded-full bg-white/5 border border-white/[0.06] text-gray-400 text-xs">📷 Bilder</span>
+                        <span className="px-2.5 py-1 rounded-full bg-white/5 border border-white/[0.06] text-gray-400 text-xs">🤝 Dela</span>
+                      </div>
+                      <div className="flex gap-2 justify-center">
+                        <button
+                          onClick={handleLogin}
+                          className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all text-sm shadow-lg shadow-blue-500/20"
+                        >
+                          <LogIn size={16} />
+                          <span>Logga in</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowDemoObjects(true);
+                            setShowOnlyOwned(false);
+                            setShowFavoritesOnly(false);
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-2.5 rounded-lg bg-purple-500/20 border border-purple-500/30 text-purple-300 hover:bg-purple-500/30 transition-all text-sm"
+                        >
+                          <Eye size={16} />
+                          <span>Se demo</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ) : user && !showFavoritesOnly && !showDemoObjects && objects.filter(o => o.ownerId === user.uid).length === 0 ? (
                   /* Logged in, no objects */
-                  <div className="max-w-sm mx-auto px-4">
-                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center mx-auto mb-5">
-                      <Sparkles size={28} className="text-blue-400" />
-                    </div>
-                    <h3 className="text-lg font-bold text-white mb-2">Välkommen till OurSpots!</h3>
-                    <p className="text-gray-400 text-sm mb-1.5 leading-relaxed">
-                      Bygg dina egna objekt med block – text, listor, platser, bilder och mer.
-                    </p>
-                    <p className="text-gray-400 text-sm mb-5 leading-relaxed">
-                      Koppla ihop dem i samlingar och dela när ni vill planera tillsammans.
-                    </p>
-                    <div className="flex gap-2 justify-center">
-                      <button
-                        onClick={() => {
-                          setShowDemoObjects(true);
-                          setShowOnlyOwned(false);
-                          setShowFavoritesOnly(false);
-                        }}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-purple-500/20 border border-purple-500/30 text-purple-300 hover:bg-purple-500/30 transition-all text-sm"
-                      >
-                        <Eye size={16} />
-                        <span>Se demo</span>
-                      </button>
-                      <button
-                        onClick={() => { setEditingObject(null); setShowCreateModal(true); }}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all text-sm"
-                      >
-                        <Plus size={16} />
-                        <span>Skapa objekt</span>
-                      </button>
+                  <div className="max-w-md mx-auto px-4">
+                    <div className="rounded-2xl bg-white/[0.03] backdrop-blur-sm border border-white/[0.08] p-6 sm:p-8 text-center">
+                      <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center mx-auto mb-5">
+                        <Sparkles size={26} className="text-blue-400" />
+                      </div>
+                      <h3 className="text-lg font-bold text-white mb-2">Välkommen till OurSpots!</h3>
+                      <p className="text-gray-400 text-sm mb-1.5 leading-relaxed">
+                        Bygg dina egna objekt med block – text, listor, platser, bilder och mer.
+                      </p>
+                      <p className="text-gray-400 text-sm mb-5 leading-relaxed">
+                        Koppla ihop dem i samlingar och dela när ni vill planera tillsammans.
+                      </p>
+                      <div className="flex flex-wrap justify-center gap-1.5 mb-6">
+                        <span className="px-2.5 py-1 rounded-full bg-white/5 border border-white/[0.06] text-gray-400 text-xs">✏️ Text</span>
+                        <span className="px-2.5 py-1 rounded-full bg-white/5 border border-white/[0.06] text-gray-400 text-xs">📋 Listor</span>
+                        <span className="px-2.5 py-1 rounded-full bg-white/5 border border-white/[0.06] text-gray-400 text-xs">📷 Galleri</span>
+                        <span className="px-2.5 py-1 rounded-full bg-white/5 border border-white/[0.06] text-gray-400 text-xs">📍 Plats</span>
+                        <span className="px-2.5 py-1 rounded-full bg-white/5 border border-white/[0.06] text-gray-400 text-xs">📊 Omröstning</span>
+                      </div>
+                      <div className="flex gap-2 justify-center">
+                        <button
+                          onClick={() => {
+                            setShowDemoObjects(true);
+                            setShowOnlyOwned(false);
+                            setShowFavoritesOnly(false);
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-purple-500/20 border border-purple-500/30 text-purple-300 hover:bg-purple-500/30 transition-all text-sm"
+                        >
+                          <Eye size={16} />
+                          <span>Se demo</span>
+                        </button>
+                        <button
+                          onClick={() => { setEditingObject(null); setShowCreateModal(true); }}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white font-medium transition-all text-sm shadow-lg shadow-blue-500/20"
+                        >
+                          <Plus size={16} />
+                          <span>Skapa objekt</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ) : (
