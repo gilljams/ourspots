@@ -700,62 +700,10 @@ function App() {
 
   if (loading || !categoriesLoaded) {
     return (
-      <div
-        className="min-h-[100dvh] bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950"
-        style={{
-          backgroundImage: `radial-gradient(circle at 15% 12%, rgba(59,130,246,0.20), transparent 35%),
-                            radial-gradient(circle at 85% 8%, rgba(56,189,248,0.16), transparent 32%),
-                            radial-gradient(circle at 50% 88%, rgba(59,130,246,0.14), transparent 36%),
-                            linear-gradient(to bottom right, #06070c, #0b1220, #06070c)`
-        }}
-      >
-        {/* Skeleton header */}
-        <div className="bg-gray-900/50 backdrop-blur-xl border-b border-white/10 sticky top-0 z-40" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
-          <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-white/10 animate-pulse" />
-            <div className="h-6 w-24 rounded-lg bg-white/10 animate-pulse" />
-            <div className="flex-1" />
-            <div className="w-9 h-9 rounded-full bg-white/10 animate-pulse" />
-            <div className="w-9 h-9 rounded-full bg-white/10 animate-pulse" />
-          </div>
-        </div>
-        {/* Skeleton category bar */}
-        <div className="bg-gray-900/30 backdrop-blur-md border-b border-white/10 sticky z-30">
-          <div className="max-w-6xl mx-auto px-4 py-3">
-            <div className="flex gap-2 items-center">
-              <div className="flex gap-2 flex-1 min-w-0">
-                <div className="h-9 w-14 rounded-xl bg-blue-500/30 animate-pulse flex-shrink-0" />
-                {[9, 9, 9, 9].map((w, i) => (
-                  <div key={i} className="h-9 w-9 rounded-xl bg-white/10 animate-pulse flex-shrink-0" style={{ animationDelay: `${i * 80}ms` }} />
-                ))}
-              </div>
-              <div className="w-9 h-9 rounded-full bg-white/10 animate-pulse flex-shrink-0" />
-            </div>
-          </div>
-        </div>
-        {/* Skeleton cards */}
-        <div className="max-w-6xl mx-auto px-4 pt-4">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {[0, 1, 2, 3, 4, 5].map(i => (
-              <div key={i} className="bg-gray-900/80 rounded-2xl border border-white/10 overflow-hidden">
-                <div className="w-full h-40 bg-white/[0.04] animate-pulse" style={{ animationDelay: `${i * 100}ms` }} />
-                <div className="p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-8 h-8 rounded-lg bg-white/[0.08] animate-pulse flex-shrink-0" style={{ animationDelay: `${i * 100 + 50}ms` }} />
-                    <div className="h-5 rounded-lg bg-white/[0.08] animate-pulse" style={{ width: `${55 + (i % 3) * 15}%`, animationDelay: `${i * 100 + 100}ms` }} />
-                  </div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-3.5 h-3.5 rounded-sm bg-white/[0.05] animate-pulse" style={{ animationDelay: `${i * 100 + 150}ms` }} />
-                    <div className="h-3.5 w-2/3 rounded bg-white/[0.05] animate-pulse" style={{ animationDelay: `${i * 100 + 150}ms` }} />
-                  </div>
-                  <div className="flex gap-2">
-                    <div className="flex-1 h-9 rounded-xl bg-white/[0.04] animate-pulse" style={{ animationDelay: `${i * 100 + 200}ms` }} />
-                    <div className="flex-1 h-9 rounded-xl bg-white/[0.04] animate-pulse" style={{ animationDelay: `${i * 100 + 250}ms` }} />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+      <div className="min-h-[100dvh] bg-gradient-to-br from-gray-900 via-blue-900/20 to-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <Loader size={48} className="animate-spin text-blue-400 mx-auto mb-4" />
+          <p className="text-gray-400">{!categoriesLoaded ? 'Laddar kategorier...' : 'Laddar dina platser...'}</p>
         </div>
       </div>
     );
