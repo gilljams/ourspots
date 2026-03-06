@@ -767,13 +767,6 @@ function App() {
                       <p className="text-gray-400 text-sm mb-5 leading-relaxed">
                         Dela med vänner och planera tillsammans – eller behåll allt för dig själv.
                       </p>
-                      <div className="flex flex-wrap justify-center gap-1.5 mb-6">
-                        <span className="px-2.5 py-1 rounded-full bg-white/5 border border-white/[0.06] text-gray-400 text-xs">📍 Platser</span>
-                        <span className="px-2.5 py-1 rounded-full bg-white/5 border border-white/[0.06] text-gray-400 text-xs">📋 Listor</span>
-                        <span className="px-2.5 py-1 rounded-full bg-white/5 border border-white/[0.06] text-gray-400 text-xs">🗺️ Kartor</span>
-                        <span className="px-2.5 py-1 rounded-full bg-white/5 border border-white/[0.06] text-gray-400 text-xs">📷 Bilder</span>
-                        <span className="px-2.5 py-1 rounded-full bg-white/5 border border-white/[0.06] text-gray-400 text-xs">🤝 Dela</span>
-                      </div>
                       <div className="flex gap-2 justify-center">
                         <button
                           onClick={handleLogin}
@@ -810,13 +803,6 @@ function App() {
                       <p className="text-gray-400 text-sm mb-5 leading-relaxed">
                         Koppla ihop dem i samlingar och dela när ni vill planera tillsammans.
                       </p>
-                      <div className="flex flex-wrap justify-center gap-1.5 mb-6">
-                        <span className="px-2.5 py-1 rounded-full bg-white/5 border border-white/[0.06] text-gray-400 text-xs">✏️ Text</span>
-                        <span className="px-2.5 py-1 rounded-full bg-white/5 border border-white/[0.06] text-gray-400 text-xs">📋 Listor</span>
-                        <span className="px-2.5 py-1 rounded-full bg-white/5 border border-white/[0.06] text-gray-400 text-xs">📷 Galleri</span>
-                        <span className="px-2.5 py-1 rounded-full bg-white/5 border border-white/[0.06] text-gray-400 text-xs">📍 Plats</span>
-                        <span className="px-2.5 py-1 rounded-full bg-white/5 border border-white/[0.06] text-gray-400 text-xs">📊 Omröstning</span>
-                      </div>
                       <div className="flex gap-2 justify-center">
                         <button
                           onClick={() => {
