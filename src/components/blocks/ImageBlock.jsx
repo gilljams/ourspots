@@ -8,7 +8,14 @@ export const ImageBlock = ({ data, isPlaying = false, animation = 'none', galler
   const [showLightbox, setShowLightbox] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [imageError, setImageError] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
   const [animationActive, setAnimationActive] = useState(false);
+
+  // Reset fade-in when image URL changes
+  useEffect(() => {
+    setImageLoaded(false);
+    setImageError(false);
+  }, [data.url]);
   const [animationKey, setAnimationKey] = useState(0);
   const [showSecondLoop, setShowSecondLoop] = useState(false);
   const [showFilmEnding, setShowFilmEnding] = useState(false);
@@ -98,28 +105,45 @@ export const ImageBlock = ({ data, isPlaying = false, animation = 'none', galler
   
   return (
     <>
-      <div
-        className="relative w-full aspect-[4/3] lg:aspect-[2/1] rounded-xl overflow-hidden mb-4 border border-white/10 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.7)] cursor-pointer"
-        onClick={() => openLightbox(0)}
-      >
-        {imageError ? (
-          <div className="w-full h-full bg-gray-900 flex items-center justify-center">
-            <div className="text-center text-gray-500">
-              <svg className="w-12 h-12 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              <span className="text-xs">Bilden kunde inte laddas</span>
-            </div>
+      {/* Ambient glow – blurred image copy behind the container */}
+      <div className="relative mb-4">
+        {!imageError && data.url && (
+          <div className="absolute inset-0 -z-10 pointer-events-none overflow-visible" aria-hidden="true">
+            <img
+              src={getTransformedImageUrl(data.url, data.focalPoint ? 'custom' : data.cropMode, 80, 60, data.focalPoint)}
+              alt=""
+              className={`w-full h-full object-cover rounded-2xl blur-3xl scale-110 transition-opacity duration-1000 ${imageLoaded ? 'opacity-50' : 'opacity-0'}`}
+              style={focalStyles}
+            />
           </div>
-        ) : (
-          <img 
-            src={getTransformedImageUrl(data.url, data.focalPoint ? 'custom' : data.cropMode, 800, 600, data.focalPoint)} 
-            alt="" 
-            className={`w-full h-full object-cover transition-transform ${animationActive ? 'image-ken-burns' : ''}`}
-            style={focalStyles}
-            onError={() => setImageError(true)}
-          />
         )}
+
+        <div
+          className="relative w-full aspect-[4/3] lg:aspect-[2/1] rounded-xl overflow-hidden border border-white/10 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.7)] cursor-pointer"
+          onClick={() => openLightbox(0)}
+        >
+          {imageError ? (
+            <div className="w-full h-full bg-gray-900 flex items-center justify-center">
+              <div className="text-center text-gray-500">
+                <svg className="w-12 h-12 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span className="text-xs">Bilden kunde inte laddas</span>
+              </div>
+            </div>
+          ) : (
+            <img 
+              src={getTransformedImageUrl(data.url, data.focalPoint ? 'custom' : data.cropMode, 800, 600, data.focalPoint)} 
+              alt="" 
+              className={`w-full h-full object-cover transition-all duration-700 ${imageLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-[1.02]'} ${animationActive ? 'image-ken-burns' : ''}`}
+              style={focalStyles}
+              onLoad={() => setImageLoaded(true)}
+              onError={() => setImageError(true)}
+            />
+          )}
+
+          {/* Vignette overlay */}
+          <div className="absolute inset-0 pointer-events-none rounded-xl shadow-[inset_0_0_40px_rgba(0,0,0,0.35)] z-[1]" aria-hidden="true" />
         
         {/* Animation overlay */}
         {animationActive && animation !== 'none' && (
@@ -203,6 +227,7 @@ export const ImageBlock = ({ data, isPlaying = false, animation = 'none', galler
             {isAudioPlaying ? <Pause size={13} /> : <Play size={13} />}
           </button>
         )}
+      </div>
       </div>
       
       {/* Gallery thumbnails (if multiple images) */}
