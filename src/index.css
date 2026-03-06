@@ -56,6 +56,16 @@ button, a, input, textarea, select, [role="button"], .cursor-pointer {
   touch-action: manipulation;
 }
 
+/* Dark mode for native dropdowns */
+select {
+  color-scheme: dark;
+}
+
+option {
+  background-color: #1f2937;
+  color: #fff;
+}
+
 /* Prevent iOS auto-zoom on input focus by using 16px font (mobile only) */
 @media (max-width: 1023px) {
   input, textarea, select {

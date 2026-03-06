@@ -341,7 +341,6 @@ export function ColorEditorModal({ entries: initialEntries, title, onSave, onCan
                               if (e.target.value) toggleYear(entry.id, Number(e.target.value));
                             }}
                             className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-xs text-gray-400 focus:outline-none focus:border-blue-500 cursor-pointer"
-                            style={{ colorScheme: 'dark' }}
                           >
                             <option value="">+ År</option>
                             {YEAR_OPTIONS.filter(y => !(entry.years || []).includes(y)).map(y => (

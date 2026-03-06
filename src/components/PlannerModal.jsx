@@ -1404,7 +1404,6 @@ export default function PlannerModal({
                         }
                       }}
                       className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm appearance-none pr-8"
-                      style={{ colorScheme: 'dark' }}
                     >
                       {Array.from({ length: days }).map((_, i) => (
                         <option key={i} value={i} className="bg-gray-900">
@@ -1420,7 +1419,6 @@ export default function PlannerModal({
                       value={tempAccommodationEndDay}
                       onChange={(e) => setTempAccommodationEndDay(parseInt(e.target.value))}
                       className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm appearance-none pr-8"
-                      style={{ colorScheme: 'dark' }}
                   >
                     {Array.from({ length: days }).map((_, i) => (
                       <option key={i} value={i} disabled={i < tempAccommodationStartDay} className="bg-gray-900">

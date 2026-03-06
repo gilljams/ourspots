@@ -220,7 +220,6 @@ function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onView
               value={filterUserId}
               onChange={(e) => setFilterUserId(e.target.value)}
               className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-base focus:outline-none focus:border-blue-400/50 appearance-none cursor-pointer"
-              style={{ colorScheme: 'dark' }}
             >
               <option value="">Välj användare...</option>
               <option value="all">Alla användare ({objects.length} objekt)</option>

@@ -771,8 +771,8 @@ function ShareModal({ object, onClose, currentUserEmail, allObjects = [], shared
                       className="px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-base focus:outline-none focus:border-blue-500 appearance-none cursor-pointer"
                       style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239CA3AF'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 6px center', backgroundSize: '14px', paddingRight: '24px' }}
                     >
-                      <option value="viewer" className="bg-gray-800 text-white">Läsare</option>
-                      <option value="editor" className="bg-gray-800 text-white">Redigerare</option>
+                      <option value="viewer">Läsare</option>
+                      <option value="editor">Redigerare</option>
                     </select>
                     {/* Pause/Resume button */}
                     {(share.status === 'accepted' || share.status === 'inherited') && (

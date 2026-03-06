@@ -858,7 +858,7 @@ function App() {
         <div className="fixed inset-x-0 bottom-0 pointer-events-none z-[1200]" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
           <div className="max-w-6xl mx-auto relative px-4">
             {/* Hide buttons when modals are open */}
-            {!selectedObject && !showCreateModal && !showCategoryAdmin && !showObjectsAdmin && !showShareModal && (
+            {!selectedObject && !showCreateModal && !showCategoryAdmin && !showObjectsAdmin && !showUsersAdmin && !showShareModal && (
               <>
                 {/* + button - also hidden in demo mode for non-admins */}
                 {!(showDemoObjects && !isAdmin) && (
