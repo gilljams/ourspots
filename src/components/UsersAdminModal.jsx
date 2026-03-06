@@ -6,7 +6,7 @@ import { useSwipeToClose } from '../utils/useSwipeToClose';
 import { useConfirm } from '../utils/useConfirm';
 import { useToast } from '../utils/useToast';
 
-function UsersAdminModal({ currentUserId, onClose }) {
+function UsersAdminModal({ currentUserId, onClose, menuOpen }) {
   const [users, setUsers] = useState([]);
   const confirm = useConfirm();
   const toast = useToast();
@@ -374,12 +374,16 @@ function UsersAdminModal({ currentUserId, onClose }) {
 
   return (
     <div 
-      className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[1000] flex items-end sm:items-center justify-center lg:justify-end sm:p-8"
+      className={`fixed inset-0 flex items-end sm:items-center sm:p-8 ${
+        menuOpen
+          ? 'z-[2002] bg-black/80 backdrop-blur-sm lg:bg-transparent lg:backdrop-blur-none justify-center lg:justify-start lg:pl-[25rem]'
+          : 'z-[1000] bg-black/80 backdrop-blur-sm justify-center lg:justify-end'
+      }`}
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div 
         ref={swipe.ref}
-        className={`bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-2xl border-t sm:border border-white/10 w-full sm:max-w-2xl sm:w-[90%] lg:w-[35%] h-full sm:h-auto sm:max-h-[85vh] lg:h-[calc(100dvh-2rem)] lg:max-h-none overflow-hidden flex flex-col pt-[var(--sat)] sm:pt-0 ${swipe.className}`}
+        className={`bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-2xl border-t sm:border border-white/10 w-full sm:max-w-2xl sm:w-[90%] ${menuOpen ? 'lg:w-[30rem]' : 'lg:w-[35%]'} h-full sm:h-auto sm:max-h-[85vh] lg:h-[calc(100dvh-2rem)] lg:max-h-none overflow-hidden flex flex-col pt-[var(--sat)] sm:pt-0 ${swipe.className}`}
         style={swipe.style}
         {...swipe.handlers}
       >

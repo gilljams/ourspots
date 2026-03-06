@@ -1050,6 +1050,7 @@ function App() {
             onClose={() => setShowCategoryAdmin(false)}
             currentUser={user}
             objects={objects}
+            menuOpen={showMenu}
           />
         )}
 
@@ -1058,6 +1059,7 @@ function App() {
             objects={objects}
             categories={categories}
             onClose={() => setShowObjectsAdmin(false)}
+            menuOpen={showMenu}
             onViewObject={(obj) => {
               // Add object to list temporarily if not already there (for admin viewing other users' objects)
               if (!objects.find(o => o.id === obj.id)) {
@@ -1072,6 +1074,7 @@ function App() {
           <UsersAdminModal
             currentUserId={user?.uid}
             onClose={() => setShowUsersAdmin(false)}
+            menuOpen={showMenu}
           />
         )}
       </Suspense>
@@ -1088,7 +1091,7 @@ function App() {
 
       {showMenu && (
         <AppMenu
-          onClose={() => setShowMenu(false)}
+          onClose={() => { setShowMenu(false); setShowCategoryAdmin(false); setShowObjectsAdmin(false); setShowUsersAdmin(false); }}
           user={user}
           isAdmin={isAdmin}
           displayName={displayName}
@@ -1112,9 +1115,12 @@ function App() {
             setShowQuickCaptureObjectPicker(true);
           }}
           onShowCaptures={() => setShowCaptures(true)}
-          onShowCategoryAdmin={() => setShowCategoryAdmin(true)}
-          onShowObjectsAdmin={() => setShowObjectsAdmin(true)}
-          onShowUsersAdmin={() => setShowUsersAdmin(true)}
+          onShowCategoryAdmin={() => { setShowCategoryAdmin(true); setShowObjectsAdmin(false); setShowUsersAdmin(false); }}
+          onShowObjectsAdmin={() => { setShowObjectsAdmin(true); setShowCategoryAdmin(false); setShowUsersAdmin(false); }}
+          onShowUsersAdmin={() => { setShowUsersAdmin(true); setShowCategoryAdmin(false); setShowObjectsAdmin(false); }}
+          showCategoryAdmin={showCategoryAdmin}
+          showObjectsAdmin={showObjectsAdmin}
+          showUsersAdmin={showUsersAdmin}
           onShowContacts={() => setShowContacts(true)}
           menuAdminExpanded={menuAdminExpanded}
           setMenuAdminExpanded={setMenuAdminExpanded}

@@ -7,7 +7,7 @@ import { useSwipeToClose } from '../utils/useSwipeToClose';
 import { useConfirm } from '../utils/useConfirm';
 import { useToast } from '../utils/useToast';
 
-function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
+function CategoryAdminModal({ categories, onClose, currentUser, objects, menuOpen }) {
   const confirm = useConfirm();
   const toast = useToast();
   const [editingCategory, setEditingCategory] = useState(null);
@@ -112,12 +112,16 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects }) {
 
   return (
     <div 
-      className="fixed inset-0 bg-black/80 sm:bg-black/70 backdrop-blur-sm z-[2100] flex items-end sm:items-center justify-center lg:justify-end sm:p-8"
+      className={`fixed inset-0 flex items-end sm:items-center sm:p-8 ${
+        menuOpen
+          ? 'z-[2002] bg-black/80 sm:bg-black/70 backdrop-blur-sm lg:bg-transparent lg:backdrop-blur-none justify-center lg:justify-start lg:pl-[25rem]'
+          : 'z-[2100] bg-black/80 sm:bg-black/70 backdrop-blur-sm justify-center lg:justify-end'
+      }`}
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div 
         ref={swipe.ref}
-        className={`bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-2xl border-t sm:border border-white/10 sm:border-white/[0.08] w-full sm:max-w-lg sm:w-[90%] lg:w-[35%] h-full sm:h-auto sm:max-h-[85vh] lg:h-[calc(100dvh-2rem)] lg:max-h-none overflow-hidden flex flex-col pt-[var(--sat)] sm:pt-0 ${swipe.className} relative sm:shadow-2xl sm:shadow-black/50`}
+        className={`bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-2xl border-t sm:border border-white/10 sm:border-white/[0.08] w-full sm:max-w-lg sm:w-[90%] ${menuOpen ? 'lg:w-[30rem]' : 'lg:w-[35%]'} h-full sm:h-auto sm:max-h-[85vh] lg:h-[calc(100dvh-2rem)] lg:max-h-none overflow-hidden flex flex-col pt-[var(--sat)] sm:pt-0 ${swipe.className} relative sm:shadow-2xl sm:shadow-black/50`}
         style={swipe.style}
         {...swipe.handlers}
       >

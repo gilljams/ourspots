@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
-  X, LogOut, ChevronDown, Settings, Target, Users, Share2, Check, AlertTriangle, Eye,
-  MapPin, Navigation, Trash2, ExternalLink, Wrench, HelpCircle, Pencil
+  X, LogOut, ChevronDown, ChevronRight, Settings, Target, Users, Share2, Check, AlertTriangle, Eye,
+  MapPin, Navigation, Trash2, ExternalLink, Wrench, HelpCircle, Pencil, List
 } from 'lucide-react';
 import { db } from '../firebase';
 import { doc, updateDoc } from 'firebase/firestore';
@@ -40,6 +40,9 @@ export default function AppMenu({
   onShowCategoryAdmin,
   onShowObjectsAdmin,
   onShowUsersAdmin,
+  showCategoryAdmin,
+  showObjectsAdmin,
+  showUsersAdmin,
   // Contacts
   onShowContacts,
   // Section expansion states
@@ -119,7 +122,7 @@ export default function AppMenu({
   return (
     <>
       <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[2000]" onClick={onClose} />
-      <div className="fixed top-0 left-0 h-full w-80 lg:w-96 bg-gray-950/98 backdrop-blur-xl border-r border-white/10 z-[2001] shadow-2xl animate-in slide-in-from-left duration-300 flex flex-col pt-[var(--sat)]">
+      <div className="fixed top-0 left-0 h-full w-80 lg:w-96 bg-gray-950/98 backdrop-blur-xl border-r border-white/10 z-[2005] shadow-2xl animate-in slide-in-from-left duration-300 flex flex-col pt-[var(--sat)]">
         {/* Sticky header with user identity */}
         <div className="flex-shrink-0 p-4 border-b border-white/10">
           <div className="flex items-center justify-between">
@@ -402,25 +405,40 @@ export default function AppMenu({
               {menuAdminExpanded && (
                 <div className="p-2 space-y-1">
                   <button
-                    onClick={() => { onShowCategoryAdmin(); onClose(); }}
-                    className="w-full flex items-center gap-3 p-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-all"
+                    onClick={() => { onShowCategoryAdmin(); if (!window.matchMedia('(min-width: 1024px)').matches) onClose(); }}
+                    className={`w-full flex items-center gap-3 p-2.5 rounded-lg transition-all ${
+                      showCategoryAdmin
+                        ? 'bg-blue-500/15 text-blue-400 ring-1 ring-blue-500/30'
+                        : 'bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white'
+                    }`}
                   >
-                    <Settings size={16} className="text-gray-400" />
+                    <Settings size={16} className={showCategoryAdmin ? 'text-blue-400' : 'text-gray-400'} />
                     <span className="text-sm">Hantera kategorier</span>
+                    {showCategoryAdmin && <ChevronRight size={14} className="ml-auto text-blue-400/60" />}
                   </button>
                   <button
-                    onClick={() => { onShowObjectsAdmin(); onClose(); }}
-                    className="w-full flex items-center gap-3 p-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-all"
+                    onClick={() => { onShowObjectsAdmin(); if (!window.matchMedia('(min-width: 1024px)').matches) onClose(); }}
+                    className={`w-full flex items-center gap-3 p-2.5 rounded-lg transition-all ${
+                      showObjectsAdmin
+                        ? 'bg-blue-500/15 text-blue-400 ring-1 ring-blue-500/30'
+                        : 'bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white'
+                    }`}
                   >
-                    <Settings size={16} className="text-gray-400" />
+                    <List size={16} className={showObjectsAdmin ? 'text-blue-400' : 'text-gray-400'} />
                     <span className="text-sm">Alla objekt</span>
+                    {showObjectsAdmin && <ChevronRight size={14} className="ml-auto text-blue-400/60" />}
                   </button>
                   <button
-                    onClick={() => { onShowUsersAdmin(); onClose(); }}
-                    className="w-full flex items-center gap-3 p-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-all"
+                    onClick={() => { onShowUsersAdmin(); if (!window.matchMedia('(min-width: 1024px)').matches) onClose(); }}
+                    className={`w-full flex items-center gap-3 p-2.5 rounded-lg transition-all ${
+                      showUsersAdmin
+                        ? 'bg-purple-500/15 text-purple-400 ring-1 ring-purple-500/30'
+                        : 'bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white'
+                    }`}
                   >
-                    <Users size={16} className="text-gray-400" />
+                    <Users size={16} className={showUsersAdmin ? 'text-purple-400' : 'text-gray-400'} />
                     <span className="text-sm">Användare</span>
+                    {showUsersAdmin && <ChevronRight size={14} className="ml-auto text-purple-400/60" />}
                   </button>
                 </div>
               )}
