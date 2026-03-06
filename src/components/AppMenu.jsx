@@ -75,6 +75,22 @@ export default function AppMenu({
   const [spotSaving, setSpotSaving] = useState(false);
   const [spotEditingNote, setSpotEditingNote] = useState(false);
 
+  // Geolocation availability check
+  const [geoPermission, setGeoPermission] = useState('unknown'); // 'granted' | 'denied' | 'prompt' | 'unavailable' | 'unknown'
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setGeoPermission('unavailable');
+      return;
+    }
+    if (navigator.permissions && navigator.permissions.query) {
+      navigator.permissions.query({ name: 'geolocation' }).then((result) => {
+        setGeoPermission(result.state); // 'granted' | 'denied' | 'prompt'
+        result.addEventListener('change', () => setGeoPermission(result.state));
+      }).catch(() => setGeoPermission('unknown'));
+    }
+  }, []);
+  const geoBlocked = geoPermission === 'denied' || geoPermission === 'unavailable';
+
   const saveSpot = () => {
     setSpotSaving(true);
     navigator.geolocation.getCurrentPosition(
@@ -169,17 +185,25 @@ export default function AppMenu({
                 )}
 
                 {/* Mark my spot — toggle activates + expands */}
-                <div className="rounded-lg bg-white/5 overflow-hidden">
+                <div className={`rounded-lg bg-white/5 overflow-hidden ${geoBlocked && !markedSpot ? 'opacity-50' : ''}`}>
                   <div className="flex items-center justify-between p-2.5">
-                    <div className="flex items-center gap-3">
-                      <MapPin size={16} className="text-gray-400" />
-                      <span className="text-sm text-gray-300">{spotSaving ? 'Hämtar GPS...' : 'Markera min plats'}</span>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <MapPin size={16} className={geoBlocked && !markedSpot ? 'text-gray-600' : 'text-gray-400'} />
+                      <div className="min-w-0">
+                        <span className={`text-sm ${geoBlocked && !markedSpot ? 'text-gray-500' : 'text-gray-300'}`}>
+                          {spotSaving ? 'Hämtar GPS...' : 'Markera min plats'}
+                        </span>
+                        {geoBlocked && !markedSpot && (
+                          <p className="text-xs text-yellow-500/80 mt-0.5">Platstjänster är blockerade i webbläsaren</p>
+                        )}
+                      </div>
                     </div>
                     <button
                       onClick={handleToggleSpot}
-                      disabled={spotSaving}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${
-                        markedSpot ? 'bg-blue-500' : 'bg-white/20'
+                      disabled={spotSaving || (geoBlocked && !markedSpot)}
+                      title={geoBlocked && !markedSpot ? 'Aktivera platstjänster i webbläsarens inställningar' : undefined}
+                      className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
+                        markedSpot ? 'bg-blue-500' : geoBlocked ? 'bg-white/10 cursor-not-allowed' : 'bg-white/20'
                       }`}
                     >
                       <span
