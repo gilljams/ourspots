@@ -56,9 +56,11 @@ button, a, input, textarea, select, [role="button"], .cursor-pointer {
   touch-action: manipulation;
 }
 
-/* Prevent iOS auto-zoom on input focus by using 16px font */
-input, textarea, select {
-  font-size: 16px !important;
+/* Prevent iOS auto-zoom on input focus by using 16px font (mobile only) */
+@media (max-width: 1023px) {
+  input, textarea, select {
+    font-size: 16px !important;
+  }
 }
 
 /* Safe area utility classes */
