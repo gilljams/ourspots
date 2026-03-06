@@ -218,7 +218,7 @@ function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onView
             <select
               value={filterUserId}
               onChange={(e) => setFilterUserId(e.target.value)}
-              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-base focus:outline-none focus:border-blue-400/50 appearance-none cursor-pointer"
+              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-blue-400/50 appearance-none cursor-pointer"
             >
               <option value="">Välj användare...</option>
               <option value="all">Alla användare ({objects.length} objekt)</option>
@@ -254,7 +254,7 @@ function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onView
                     placeholder="Sök på titel..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 text-base focus:outline-none focus:border-blue-400/50"
+                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 text-sm focus:outline-none focus:border-blue-400/50"
                   />
                   <div className="flex gap-2">
                     <button
@@ -323,12 +323,12 @@ function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onView
               return (
                 <div
                   key={obj.id}
-                  className={`p-4 rounded-xl border ${hasInvalidCategory || hasCircularParent || hasInvalidParent ? 'bg-yellow-400/5 border-yellow-400/30' : 'bg-white/5 border-white/10'}`}
+                  className={`p-3 rounded-lg border ${hasInvalidCategory || hasCircularParent || hasInvalidParent ? 'bg-yellow-400/5 border-yellow-400/30' : 'bg-white/5 border-white/10'}`}
                 >
                   <div className="flex items-start gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-white font-medium truncate">{getObjectTitle(obj)}</h3>
+                        <h3 className="text-sm text-white font-medium truncate">{getObjectTitle(obj)}</h3>
                         {(hasInvalidCategory || hasCircularParent || hasInvalidParent) && (
                           <AlertTriangle size={14} className="text-yellow-400 flex-shrink-0" />
                         )}

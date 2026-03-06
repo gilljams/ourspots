@@ -142,8 +142,8 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects, menuOpe
 
         <div className="p-4 overflow-y-auto overscroll-contain flex-1">
           {/* Add new category */}
-          <div className="mb-6 p-4 rounded-xl bg-white/5 border border-white/10">
-            <h3 className="text-lg font-semibold text-white mb-3">Skapa ny kategori</h3>
+          <div className="mb-6 p-3 rounded-lg bg-white/5 border border-white/10">
+            <h3 className="text-sm font-semibold text-white mb-3">Skapa ny kategori</h3>
             <div className="space-y-3">
               <div>
                 <label className="block text-sm text-gray-300 mb-1">Namn</label>
@@ -152,7 +152,7 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects, menuOpe
                   value={newCategory.label}
                   onChange={(e) => setNewCategory({ ...newCategory, label: e.target.value })}
                   placeholder="T.ex. Restauranger"
-                  className="w-full px-3 py-2 text-base rounded-lg bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-400"
+                  className="w-full px-3 py-2 text-sm rounded-lg bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-blue-400"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -236,7 +236,7 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects, menuOpe
 
           {/* Existing categories */}
           <div className="space-y-2">
-            <h3 className="text-lg font-semibold text-white mb-3">Befintliga kategorier</h3>
+            <h3 className="text-sm font-semibold text-white mb-3">Befintliga kategorier</h3>
             {categories.length === 0 ? (
               <p className="text-gray-400 text-sm">Inga kategorier än</p>
             ) : (
@@ -244,7 +244,7 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects, menuOpe
                 const IconComp = getIconComponent(cat.icon);
                 const objectCount = objects.filter(obj => obj.type === cat.id).length;
                 return (
-                  <div key={cat.id} className="p-4 rounded-xl bg-white/5 border border-white/10">
+                  <div key={cat.id} className="p-3 rounded-lg bg-white/5 border border-white/10">
                     {editingCategory?.id === cat.id ? (
                       <div className="space-y-3">
                         <div>
@@ -345,7 +345,7 @@ function CategoryAdminModal({ categories, onClose, currentUser, objects, menuOpe
                             <IconComp size={20} style={{ color: cat.color }} />
                           </div>
                           <div>
-                            <div className="text-white font-medium">{cat.label}</div>
+                            <div className="text-sm text-white font-medium">{cat.label}</div>
                             <div className="text-xs text-gray-400">{objectCount} objekt</div>
                           </div>
                         </div>

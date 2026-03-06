@@ -463,7 +463,7 @@ function UsersAdminModal({ currentUserId, onClose, menuOpen }) {
                   min="1"
                   value={appSettings.defaultObjectLimit}
                   onChange={(e) => setAppSettings(prev => ({ ...prev, defaultObjectLimit: parseInt(e.target.value) || 5 }))}
-                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-base focus:outline-none focus:border-indigo-500"
+                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
                 />
               </div>
               <div>
@@ -473,7 +473,7 @@ function UsersAdminModal({ currentUserId, onClose, menuOpen }) {
                   min="1"
                   value={appSettings.approvedObjectLimit}
                   onChange={(e) => setAppSettings(prev => ({ ...prev, approvedObjectLimit: parseInt(e.target.value) || 100 }))}
-                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-base focus:outline-none focus:border-indigo-500"
+                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-indigo-500"
                 />
               </div>
             </div>
@@ -522,14 +522,14 @@ function UsersAdminModal({ currentUserId, onClose, menuOpen }) {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Sök på namn eller email..."
-              className="w-full pl-9 pr-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-base placeholder-gray-500 focus:outline-none focus:border-purple-500/50"
+              className="w-full pl-9 pr-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:border-purple-500/50"
             />
           </div>
           <div className="relative">
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="appearance-none bg-white/5 border border-white/10 rounded-lg px-3 py-2 pr-8 text-white text-base focus:outline-none focus:border-purple-500/50"
+              className="appearance-none bg-white/5 border border-white/10 rounded-lg px-3 py-2 pr-8 text-white text-sm focus:outline-none focus:border-purple-500/50"
             >
               <option value="name">Namn</option>
               <option value="objects">Flest objekt</option>
@@ -549,7 +549,7 @@ function UsersAdminModal({ currentUserId, onClose, menuOpen }) {
             filteredUsers.map(user => (
               <div 
                 key={user.id}
-                className={`p-4 rounded-xl border transition-all ${
+                className={`p-3 rounded-lg border transition-all ${
                   user.blocked 
                     ? 'bg-red-500/5 border-red-500/20' 
                     : user.isAdmin 
@@ -562,7 +562,7 @@ function UsersAdminModal({ currentUserId, onClose, menuOpen }) {
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium text-white truncate">
+                      <span className="text-sm font-medium text-white truncate">
                         {user.displayName || user.email?.split('@')[0] || 'Okänd'}
                       </span>
                       {user.isAdmin && (
