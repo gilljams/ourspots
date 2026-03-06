@@ -99,7 +99,7 @@ export const ImageBlock = ({ data, isPlaying = false, animation = 'none', galler
   return (
     <>
       <div
-        className="relative w-full aspect-[4/3] rounded-xl overflow-hidden mb-4 border border-white/10 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.7)] cursor-pointer"
+        className="relative w-full aspect-[4/3] lg:aspect-[2/1] rounded-xl overflow-hidden mb-4 border border-white/10 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.7)] cursor-pointer"
         onClick={() => openLightbox(0)}
       >
         {imageError ? (
