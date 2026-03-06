@@ -1092,6 +1092,7 @@ function App() {
       {showMenu && (
         <AppMenu
           onClose={() => { setShowMenu(false); setShowCategoryAdmin(false); setShowObjectsAdmin(false); setShowUsersAdmin(false); }}
+          onCloseMenuOnly={() => setShowMenu(false)}
           user={user}
           isAdmin={isAdmin}
           displayName={displayName}

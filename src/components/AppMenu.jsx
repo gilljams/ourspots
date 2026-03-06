@@ -40,6 +40,7 @@ export default function AppMenu({
   onShowCategoryAdmin,
   onShowObjectsAdmin,
   onShowUsersAdmin,
+  onCloseMenuOnly,
   showCategoryAdmin,
   showObjectsAdmin,
   showUsersAdmin,
@@ -405,7 +406,7 @@ export default function AppMenu({
               {menuAdminExpanded && (
                 <div className="p-2 space-y-1">
                   <button
-                    onClick={() => { onShowCategoryAdmin(); if (!window.matchMedia('(min-width: 1024px)').matches) onClose(); }}
+                    onClick={() => { onShowCategoryAdmin(); if (!window.matchMedia('(min-width: 1024px)').matches) { if (onCloseMenuOnly) onCloseMenuOnly(); else onClose(); } }}
                     className={`w-full flex items-center gap-3 p-2.5 rounded-lg transition-all ${
                       showCategoryAdmin
                         ? 'bg-blue-500/15 text-blue-400 ring-1 ring-blue-500/30'
@@ -417,7 +418,7 @@ export default function AppMenu({
                     {showCategoryAdmin && <ChevronRight size={14} className="ml-auto text-blue-400/60" />}
                   </button>
                   <button
-                    onClick={() => { onShowObjectsAdmin(); if (!window.matchMedia('(min-width: 1024px)').matches) onClose(); }}
+                    onClick={() => { onShowObjectsAdmin(); if (!window.matchMedia('(min-width: 1024px)').matches) { if (onCloseMenuOnly) onCloseMenuOnly(); else onClose(); } }}
                     className={`w-full flex items-center gap-3 p-2.5 rounded-lg transition-all ${
                       showObjectsAdmin
                         ? 'bg-blue-500/15 text-blue-400 ring-1 ring-blue-500/30'
@@ -429,7 +430,7 @@ export default function AppMenu({
                     {showObjectsAdmin && <ChevronRight size={14} className="ml-auto text-blue-400/60" />}
                   </button>
                   <button
-                    onClick={() => { onShowUsersAdmin(); if (!window.matchMedia('(min-width: 1024px)').matches) onClose(); }}
+                    onClick={() => { onShowUsersAdmin(); if (!window.matchMedia('(min-width: 1024px)').matches) { if (onCloseMenuOnly) onCloseMenuOnly(); else onClose(); } }}
                     className={`w-full flex items-center gap-3 p-2.5 rounded-lg transition-all ${
                       showUsersAdmin
                         ? 'bg-purple-500/15 text-purple-400 ring-1 ring-purple-500/30'
