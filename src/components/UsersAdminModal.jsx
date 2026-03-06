@@ -383,19 +383,17 @@ function UsersAdminModal({ currentUserId, onClose, menuOpen }) {
     >
       <div 
         ref={swipe.ref}
-        className={`bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-2xl border-t sm:border border-white/10 w-full sm:max-w-2xl sm:w-[90%] ${menuOpen ? 'lg:w-[30rem]' : 'lg:w-[35%]'} h-full sm:h-auto sm:max-h-[85vh] lg:h-[calc(100dvh-2rem)] lg:max-h-none overflow-hidden flex flex-col pt-[var(--sat)] sm:pt-0 ${swipe.className}`}
+        className={`bg-gray-950/98 backdrop-blur-xl sm:rounded-2xl border-t sm:border border-white/10 w-full sm:max-w-2xl sm:w-[90%] ${menuOpen ? 'lg:w-[30rem]' : 'lg:w-[35%]'} h-full sm:h-auto sm:max-h-[85vh] lg:h-[calc(100dvh-2rem)] lg:max-h-none overflow-hidden flex flex-col pt-[var(--sat)] sm:pt-0 ${swipe.className}`}
         style={swipe.style}
         {...swipe.handlers}
       >
         {/* Header */}
-        <div className="px-4 py-4 border-b border-white/10 bg-gray-900/80 backdrop-blur-xl flex items-center justify-between">
+        <div className="flex-shrink-0 px-4 py-4 border-b border-white/10 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
-              <Users size={20} className="text-purple-400" />
-            </div>
+            <Users size={20} className="text-purple-400" />
             <div>
-              <h2 className="text-lg font-bold text-white">Användare</h2>
-              <p className="text-xs text-gray-400">{users.length} användare totalt</p>
+              <h2 className="text-xl font-bold text-white">Användare</h2>
+              <p className="text-xs text-gray-500">{users.length} användare totalt</p>
             </div>
           </div>
           <button onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 active:bg-white/20 text-gray-400 hover:text-white transition-all touch-manipulation" aria-label="Stäng">
@@ -404,7 +402,7 @@ function UsersAdminModal({ currentUserId, onClose, menuOpen }) {
         </div>
         
         {/* Stats bar */}
-        <div className="px-4 py-3 border-b border-white/5 flex flex-wrap gap-2 text-xs">
+        <div className="px-4 py-3 border-b border-white/10 flex flex-wrap gap-2 text-xs">
           <button 
             onClick={() => setFilterStatus('all')}
             className={`flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors ${filterStatus === 'all' ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white'}`}
@@ -452,7 +450,7 @@ function UsersAdminModal({ currentUserId, onClose, menuOpen }) {
         
         {/* Settings panel */}
         {showSettings && (
-          <div className="px-4 py-3 border-b border-white/5 bg-indigo-500/5">
+          <div className="px-4 py-3 border-b border-white/10 bg-indigo-500/5">
             <div className="flex items-center gap-3 mb-3">
               <Settings size={16} className="text-indigo-400" />
               <span className="text-sm font-medium text-white">Objektgränser</span>
@@ -496,7 +494,7 @@ function UsersAdminModal({ currentUserId, onClose, menuOpen }) {
         )}
         
         {/* Sync display names button */}
-        <div className="px-4 py-3 border-b border-white/5">
+        <div className="px-4 py-3 border-b border-white/10">
           <button
             onClick={syncDisplayNames}
             disabled={syncingNames}
@@ -516,7 +514,7 @@ function UsersAdminModal({ currentUserId, onClose, menuOpen }) {
         </div>
         
         {/* Search and sort */}
-        <div className="px-4 py-3 border-b border-white/5 flex gap-3">
+        <div className="px-4 py-3 border-b border-white/10 flex gap-3">
           <div className="flex-1 relative">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
             <input

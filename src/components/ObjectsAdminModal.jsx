@@ -192,20 +192,15 @@ function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onView
     >
       <div 
         ref={swipe.ref}
-        className={`bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 sm:rounded-2xl border-t sm:border border-white/10 sm:border-white/[0.08] w-full sm:max-w-lg sm:w-[90%] ${menuOpen ? 'lg:w-[30rem]' : 'lg:w-[35%]'} h-full sm:h-auto sm:max-h-[85vh] lg:h-[calc(100dvh-2rem)] lg:max-h-none overflow-hidden flex flex-col pt-[var(--sat)] sm:pt-0 ${swipe.className} relative sm:shadow-2xl sm:shadow-black/50`}
+        className={`bg-gray-950/98 backdrop-blur-xl sm:rounded-2xl border-t sm:border border-white/10 sm:border-white/[0.08] w-full sm:max-w-lg sm:w-[90%] ${menuOpen ? 'lg:w-[30rem]' : 'lg:w-[35%]'} h-full sm:h-auto sm:max-h-[85vh] lg:h-[calc(100dvh-2rem)] lg:max-h-none overflow-hidden flex flex-col pt-[var(--sat)] sm:pt-0 ${swipe.className} relative sm:shadow-2xl sm:shadow-black/50`}
         style={swipe.style}
         {...swipe.handlers}
       >
-        {/* Subtle decorative gradient */}
-        <div className="absolute top-0 left-0 right-0 h-72 bg-gradient-to-b from-blue-600/8 via-blue-900/5 to-transparent pointer-events-none" />
-        
-        {/* Fixed header */}
-        <div className="sticky top-0 z-10 px-4 py-4 border-b border-white/5 bg-gradient-to-r from-gray-900/98 via-gray-900/95 to-gray-900/98 backdrop-blur-xl flex items-center justify-between shadow-[0_1px_12px_rgba(0,0,0,0.4)]">
+        {/* Header */}
+        <div className="flex-shrink-0 px-4 py-4 border-b border-white/10 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-600/20 flex items-center justify-center">
-              <List size={20} className="text-blue-400" />
-            </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-white">Alla objekt</h2>
+            <List size={20} className="text-blue-400" />
+            <h2 className="text-xl font-bold text-white">Alla objekt</h2>
           </div>
           <button 
             onClick={onClose} 
@@ -217,7 +212,7 @@ function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onView
         </div>
         
         {/* Filters section */}
-        <div className="px-4 py-3 sm:p-4 border-b border-white/5 relative z-[1]">
+        <div className="px-4 py-3 sm:p-4 border-b border-white/10 relative z-[1]">
           {/* User select with proper dark mode styling */}
           <div className="relative">
             <select
@@ -283,7 +278,7 @@ function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onView
                   </div>
                   
                   {/* Migration button */}
-                  <div className="pt-3 border-t border-white/5 space-y-3">
+                  <div className="pt-3 border-t border-white/10 space-y-3">
                     <div>
                       <p className="text-xs text-gray-500 mb-2">Synkar hierarki-index (parentPath + ancestorIds)</p>
                       <button
@@ -307,7 +302,7 @@ function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onView
           )}
         </div>
         
-        <div className="overflow-y-auto overscroll-contain flex-1 p-4 sm:p-6 pb-8 sm:pb-10">
+        <div className="overflow-y-auto overscroll-contain flex-1 p-4 pb-8">
           <div className="space-y-2">
             {!filterUserId ? (
               <div className="text-center py-12 text-gray-500">
