@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause } from 'lucide-react';
 import { getTransformedImageUrl, getFocalPointStyles } from '../../utils/imageUtils';
 import { DateTagBlock } from './DateTagBlock';
@@ -10,11 +10,18 @@ export const ImageBlock = ({ data, isPlaying = false, animation = 'none', galler
   const [imageError, setImageError] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [animationActive, setAnimationActive] = useState(false);
+  const imgRef = useRef(null);
 
-  // Reset fade-in when image URL changes
+  // Reset fade-in when image URL changes, then check if already cached
   useEffect(() => {
     setImageLoaded(false);
     setImageError(false);
+    const raf = requestAnimationFrame(() => {
+      if (imgRef.current?.complete && imgRef.current?.naturalWidth > 0) {
+        setImageLoaded(true);
+      }
+    });
+    return () => cancelAnimationFrame(raf);
   }, [data.url]);
   const [animationKey, setAnimationKey] = useState(0);
   const [showSecondLoop, setShowSecondLoop] = useState(false);
@@ -133,6 +140,7 @@ export const ImageBlock = ({ data, isPlaying = false, animation = 'none', galler
             </div>
           ) : (
             <img 
+              ref={imgRef}
               src={getTransformedImageUrl(data.url, data.focalPoint ? 'custom' : data.cropMode, 800, 600, data.focalPoint)} 
               alt="" 
               className={`w-full h-full object-cover transition-all duration-700 ${imageLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-[1.02]'} ${animationActive ? 'image-ken-burns' : ''}`}
