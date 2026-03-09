@@ -9,10 +9,16 @@ import { usePrompt } from '../utils/usePrompt';
 const ExpandableInput = forwardRef(({ value, onChange, onKeyDown, placeholder, className, isHeader }, ref) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const textareaRef = useRef(null);
+  const didMountTextarea = useRef(false);
   const LONG_TEXT_THRESHOLD = 40;
   
   const isLongText = (value || '').length > LONG_TEXT_THRESHOLD;
   const showTextarea = isExpanded && isLongText;
+
+  // Reset mount flag when switching back to input
+  useEffect(() => {
+    if (!showTextarea) didMountTextarea.current = false;
+  }, [showTextarea]);
   
   // Sync refs
   useEffect(() => {
@@ -52,7 +58,15 @@ const ExpandableInput = forwardRef(({ value, onChange, onKeyDown, placeholder, c
         ref={(el) => {
           textareaRef.current = el;
           if (ref) ref.current = el;
-          if (el) adjustTextareaHeight(el);
+          if (el) {
+            adjustTextareaHeight(el);
+            // Place cursor at end on first mount (input→textarea switch)
+            if (!didMountTextarea.current) {
+              didMountTextarea.current = true;
+              const len = el.value.length;
+              requestAnimationFrame(() => el.setSelectionRange(len, len));
+            }
+          }
         }}
         value={value || ''}
         onChange={(e) => {
