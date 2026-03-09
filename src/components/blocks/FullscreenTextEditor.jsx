@@ -135,6 +135,8 @@ function FullscreenTextEditor({ content, title, onSave, onCancel }) {
           }
         }}
       >
+        {/* Centered content wrapper for desktop */}
+        <div className="w-full max-w-4xl mx-auto flex flex-col flex-1 min-h-0">
         {/* Header - fixed height */}
         <div 
           className="flex-shrink-0 flex items-center justify-between px-2 border-b border-white/10 bg-gray-900"
@@ -226,6 +228,7 @@ function FullscreenTextEditor({ content, title, onSave, onCancel }) {
         >
           <Check size={24} />
         </button>
+      </div>
       </div>
       </div>
     </>

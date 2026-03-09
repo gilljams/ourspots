@@ -534,6 +534,8 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel, ye
           height: `calc(${viewportHeight}px - env(safe-area-inset-top))`
         }}
       >
+        {/* Centered content wrapper for desktop */}
+        <div className="w-full max-w-4xl mx-auto flex flex-col flex-1 min-h-0 relative">
         {/* Header */}
         <div 
           className="flex-shrink-0 flex items-center justify-between px-3 border-b border-white/5 bg-gray-950/50"
@@ -945,6 +947,7 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel, ye
         >
           <Check size={24} strokeWidth={2.5} />
         </button>
+        </div>
       </div>
     </>
   );
