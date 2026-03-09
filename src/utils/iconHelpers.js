@@ -6,7 +6,7 @@ import {
   Gift, ClipboardList, Users, UserCircle,
   Wrench, BookOpen, Trophy, CheckSquare,
   MessageCircle, MessagesSquare, Headphones, Radio, FolderOpen, FileSpreadsheet, Video, Image,
-  PersonStanding, Footprints, HeartPulse, Flame, Zap, Tent, Compass, Sailboat, Fish, Anchor, Flag, Sunrise, Target
+  PersonStanding, Footprints, HeartPulse, Flame, Zap, Tent, Compass, Sailboat, Fish, Anchor, Flag, Sunrise, Target, Puzzle
 } from 'lucide-react';
 
 // Helper to get icon component from string name
@@ -18,7 +18,7 @@ export const iconMap = {
   Gift, ClipboardList, Users, UserCircle,
   Wrench, BookOpen, Trophy, CheckSquare,
   MessageCircle, MessagesSquare, Headphones, Radio, FolderOpen, FileSpreadsheet, Video, Image,
-  PersonStanding, Footprints, HeartPulse, Flame, Zap, Tent, Compass, Sailboat, Fish, Anchor, Flag, Sunrise, Target
+  PersonStanding, Footprints, HeartPulse, Flame, Zap, Tent, Compass, Sailboat, Fish, Anchor, Flag, Sunrise, Target, Puzzle
 };
 
 export const getIconComponent = (iconName) => {
@@ -67,6 +67,7 @@ export const AVAILABLE_ICONS = [
   { name: 'Flag', label: 'Flagga' },
   { name: 'Sunrise', label: 'Soluppgång' },
   { name: 'Target', label: 'Mål' },
+  { name: 'Puzzle', label: 'Pussel' },
 ];
 
 // Icons available for links
