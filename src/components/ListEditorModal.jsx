@@ -378,7 +378,7 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel, ye
   };
   
   const updateRow = (rowId, text) => {
-    setRows(rows.map(r => 
+    setRows(prev => prev.map(r => 
       r.id === rowId ? { ...r, item: text } : r
     ));
   };

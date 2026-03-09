@@ -110,11 +110,11 @@ export function SimpleTableEditorModal({
   };
   
   const removeRow = (rowId) => {
-    setRows(rows.filter(r => r.id !== rowId));
+    setRows(prev => prev.filter(r => r.id !== rowId));
   };
   
   const updateRow = (rowId, field, value) => {
-    setRows(rows.map(r => 
+    setRows(prev => prev.map(r => 
       r.id === rowId ? { ...r, [field]: value } : r
     ));
   };
@@ -690,11 +690,11 @@ export function MultiColumnTableEditorModal({
   };
   
   const removeRow = (rowId) => {
-    setRows(rows.filter(r => r.id !== rowId));
+    setRows(prev => prev.filter(r => r.id !== rowId));
   };
   
   const updateRow = (rowId, field, value) => {
-    setRows(rows.map(r => 
+    setRows(prev => prev.map(r => 
       r.id === rowId ? { ...r, [field]: value } : r
     ));
   };
