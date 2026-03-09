@@ -9,21 +9,44 @@ import { usePrompt } from '../utils/usePrompt';
 const ExpandableInput = forwardRef(({ value, onChange, onKeyDown, placeholder, className, isHeader }, ref) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const textareaRef = useRef(null);
+  const inputRef = useRef(null);
   const didMountTextarea = useRef(false);
+  const wasTextarea = useRef(false);
   const LONG_TEXT_THRESHOLD = 40;
   
   const isLongText = (value || '').length > LONG_TEXT_THRESHOLD;
   const showTextarea = isExpanded && isLongText;
 
-  // Reset mount flag when switching back to input
+  // Track transitions and reset mount flag
   useEffect(() => {
-    if (!showTextarea) didMountTextarea.current = false;
+    if (!showTextarea) {
+      // If we were just showing textarea, refocus the input
+      if (wasTextarea.current && inputRef.current) {
+        wasTextarea.current = false;
+        // Keep expanded so we re-enter textarea if text grows again
+        setIsExpanded(true);
+        requestAnimationFrame(() => {
+          if (inputRef.current) {
+            inputRef.current.focus();
+            const len = (inputRef.current.value || '').length;
+            inputRef.current.setSelectionRange(len, len);
+          }
+        });
+      }
+      didMountTextarea.current = false;
+    } else {
+      wasTextarea.current = true;
+    }
   }, [showTextarea]);
   
   // Sync refs
   useEffect(() => {
     if (ref) {
-      ref.current = showTextarea ? textareaRef.current : ref.current;
+      if (typeof ref === 'function') {
+        ref(showTextarea ? textareaRef.current : inputRef.current);
+      } else {
+        ref.current = showTextarea ? textareaRef.current : inputRef.current;
+      }
     }
   }, [showTextarea, ref]);
   
@@ -31,17 +54,26 @@ const ExpandableInput = forwardRef(({ value, onChange, onKeyDown, placeholder, c
     setIsExpanded(true);
   };
   
-  const handleBlur = () => {
-    setIsExpanded(false);
+  const handleBlur = (e) => {
+    // Don't collapse if we're transitioning between textarea and input internally
+    // Only collapse on genuine blur (focus leaving the component)
+    requestAnimationFrame(() => {
+      if (textareaRef.current === document.activeElement || inputRef.current === document.activeElement) {
+        return; // Focus is still within our component
+      }
+      setIsExpanded(false);
+    });
   };
   
-  const handleKeyDown = (e) => {
+  const handleTextareaKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       onKeyDown(e);
-    } else if (e.key === 'Backspace') {
+    } else if (e.key === 'Backspace' && e.target.value === '') {
+      // Only forward backspace to parent when field is empty (to delete row)
       onKeyDown(e);
     }
+    // All other backspace presses are handled normally by the textarea
   };
   
   // Auto-resize textarea
@@ -73,7 +105,7 @@ const ExpandableInput = forwardRef(({ value, onChange, onKeyDown, placeholder, c
           onChange(e);
           adjustTextareaHeight(e.target);
         }}
-        onKeyDown={handleKeyDown}
+        onKeyDown={handleTextareaKeyDown}
         onBlur={handleBlur}
         placeholder={placeholder}
         rows={2}
@@ -85,12 +117,19 @@ const ExpandableInput = forwardRef(({ value, onChange, onKeyDown, placeholder, c
   
   return (
     <input
-      ref={ref}
+      ref={(el) => {
+        inputRef.current = el;
+        if (ref) {
+          if (typeof ref === 'function') ref(el);
+          else ref.current = el;
+        }
+      }}
       type="text"
       value={value || ''}
       onChange={onChange}
       onKeyDown={onKeyDown}
       onFocus={handleFocus}
+      onBlur={handleBlur}
       placeholder={placeholder}
       className={className}
     />
