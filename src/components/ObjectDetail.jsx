@@ -496,7 +496,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-400">{category?.label || 'Objekt'}</span>
                   {isSharedWithMe && (
-                    <span className="text-xs text-purple-400 flex items-center gap-1">
+                    <span className="text-xs text-blue-400 flex items-center gap-1">
                       <Users size={10} />
                       {myShareRole === 'editor' ? 'Redigerare' : 'Läsare'}
                     </span>
@@ -507,7 +507,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                     </span>
                   )}
                   {isDemoObject && (
-                    <span className="text-xs bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded flex items-center gap-1">
+                    <span className="text-xs bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded flex items-center gap-1">
                       Demo
                     </span>
                   )}
@@ -1110,17 +1110,17 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
 
             {/* Linked objects section for collections */}
             {isCollection && orderedLinkedItems.length > 0 && (
-              <div className="mt-6 pt-6 border-t border-purple-500/20">
+              <div className="mt-6 pt-6 border-t border-blue-500/20">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <ClipboardList size={16} className="text-purple-400" />
-                    <h3 className="text-sm font-medium text-purple-400">Innehåll ({orderedLinkedItems.length})</h3>
+                    <ClipboardList size={16} className="text-blue-400" />
+                    <h3 className="text-sm font-medium text-blue-400">Innehåll ({orderedLinkedItems.length})</h3>
                   </div>
                   <div className="flex items-center gap-1">
                     {canManage && linkedEditMode && onAddToCollection && (
                       <button
                         onClick={() => { setObjectSearchQuery(''); setShowAddObjectPicker(true); }}
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 hover:text-purple-200 transition-colors"
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 hover:text-blue-200 transition-colors"
                       >
                         <Plus size={14} />
                         Objekt
@@ -1129,7 +1129,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                     {canManage && linkedEditMode && onAddLinkedUrl && (
                       <button
                         onClick={() => { setShowAddUrlForm(true); setNewUrlTitle(''); setNewUrlValue(''); setNewUrlNote(''); }}
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 hover:text-purple-200 transition-colors"
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 hover:text-blue-200 transition-colors"
                       >
                         <Link2 size={14} />
                         URL
@@ -1140,8 +1140,8 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                         onClick={() => setLinkedEditMode(!linkedEditMode)}
                         className={`p-2 rounded-lg transition-colors ${
                           linkedEditMode 
-                            ? 'bg-purple-500/30 text-purple-300' 
-                            : 'hover:bg-white/10 text-gray-500 hover:text-purple-300'
+                            ? 'bg-blue-500/30 text-blue-300' 
+                            : 'hover:bg-white/10 text-gray-500 hover:text-blue-300'
                         }`}
                         title={linkedEditMode ? 'Avsluta redigering' : 'Redigera'}
                       >
@@ -1152,14 +1152,14 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                 </div>
                 {/* Add URL form */}
                 {showAddUrlForm && (
-                  <div className="mb-3 p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                  <div className="mb-3 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
                     <div className="space-y-2">
                       <input
                         type="text"
                         value={newUrlTitle}
                         onChange={e => setNewUrlTitle(e.target.value)}
                         placeholder="Titel (t.ex. Restaurang Bolaget)"
-                        className="w-full px-3 py-2 text-base bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-400"
+                        className="w-full px-3 py-2 text-base bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-400"
                         autoFocus
                       />
                       <input
@@ -1167,14 +1167,14 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                         value={newUrlValue}
                         onChange={e => setNewUrlValue(e.target.value)}
                         placeholder="URL (https://...)"
-                        className="w-full px-3 py-2 text-base bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-400"
+                        className="w-full px-3 py-2 text-base bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-400"
                       />
                       <input
                         type="text"
                         value={newUrlNote}
                         onChange={e => setNewUrlNote(e.target.value)}
                         placeholder="Anteckning (valfritt, t.ex. Middag fredag 20:00)"
-                        className="w-full px-3 py-2 text-base bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-400"
+                        className="w-full px-3 py-2 text-base bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-400"
                       />
                       <div className="flex gap-2">
                         <button
@@ -1185,7 +1185,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                             }
                           }}
                           disabled={!newUrlTitle.trim() || !newUrlValue.trim()}
-                          className="flex-1 px-3 py-2 text-sm font-medium rounded-lg bg-purple-500 hover:bg-purple-600 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          className="flex-1 px-3 py-2 text-sm font-medium rounded-lg bg-blue-500 hover:bg-blue-600 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
                           Lägg till
                         </button>
@@ -1223,7 +1223,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                                 <button
                                   onClick={() => onReorderLinked(object.id, itemIndex, 'up')}
                                   disabled={isFirst}
-                                  className={`p-1.5 rounded-lg transition-colors ${isFirst ? 'text-gray-700 cursor-default' : 'text-gray-400 hover:text-purple-300 hover:bg-white/10 active:bg-purple-500/20'}`}
+                                  className={`p-1.5 rounded-lg transition-colors ${isFirst ? 'text-gray-700 cursor-default' : 'text-gray-400 hover:text-blue-300 hover:bg-white/10 active:bg-blue-500/20'}`}
                                   title="Flytta upp"
                                 >
                                   <ChevronUp size={18} />
@@ -1231,7 +1231,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                                 <button
                                   onClick={() => onReorderLinked(object.id, itemIndex, 'down')}
                                   disabled={isLast}
-                                  className={`p-1.5 rounded-lg transition-colors ${isLast ? 'text-gray-700 cursor-default' : 'text-gray-400 hover:text-purple-300 hover:bg-white/10 active:bg-purple-500/20'}`}
+                                  className={`p-1.5 rounded-lg transition-colors ${isLast ? 'text-gray-700 cursor-default' : 'text-gray-400 hover:text-blue-300 hover:bg-white/10 active:bg-blue-500/20'}`}
                                   title="Flytta ner"
                                 >
                                   <ChevronDown size={18} />
@@ -1240,7 +1240,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                             )}
                             <button
                               onClick={() => onNavigate(linked)}
-                              className="flex-1 min-w-0 flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 hover:border-purple-400/30 transition-all text-left"
+                              className="flex-1 min-w-0 flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 hover:border-blue-400/30 transition-all text-left"
                             >
                               {linkedImage ? (
                                 <div className="w-8 h-8 rounded overflow-hidden flex-shrink-0">
@@ -1252,14 +1252,14 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                                   />
                                 </div>
                               ) : (
-                                <div className="w-8 h-8 rounded bg-purple-500/20 flex items-center justify-center flex-shrink-0">
-                                  <LinkedIcon size={14} className="text-purple-400" />
+                                <div className="w-8 h-8 rounded bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+                                  <LinkedIcon size={14} className="text-blue-400" />
                                 </div>
                               )}
                               <div className="flex-1 min-w-0">
                                 <div className="text-sm font-medium text-white truncate">{linkedTitle?.data?.text || 'Namnlöst'}</div>
                                 {linkedNote && !isEditingThis && (
-                                  <div className="text-xs text-purple-300 truncate">{linkedNote}</div>
+                                  <div className="text-xs text-blue-300 truncate">{linkedNote}</div>
                                 )}
                                 {linkedDistance !== undefined && !linkedNote && (
                                   <div className="text-xs text-gray-500">{formatDistance(linkedDistance)}</div>
@@ -1282,7 +1282,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                                     saveAndSwitchNote(linked.id, linkedNote);
                                   }
                                 }}
-                                className={`p-2 rounded-lg transition-all flex-shrink-0 ${isEditingThis ? 'bg-purple-500/20 text-purple-300' : 'hover:bg-white/10 text-gray-500 hover:text-purple-300'}`}
+                                className={`p-2 rounded-lg transition-all flex-shrink-0 ${isEditingThis ? 'bg-blue-500/20 text-blue-300' : 'hover:bg-white/10 text-gray-500 hover:text-blue-300'}`}
                                 title={linkedNote ? 'Redigera anteckning' : 'Lägg till anteckning'}
                               >
                                 <Edit2 size={14} />
@@ -1325,7 +1325,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                                   saveAndSwitchNote(null, '');
                                 }}
                                 placeholder="t.ex. Lördag 10:00"
-                                className="flex-1 min-w-0 px-3 py-2 text-base bg-white/10 border border-purple-500/50 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-400"
+                                className="flex-1 min-w-0 px-3 py-2 text-base bg-white/10 border border-blue-500/50 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-400"
                               />
                             </div>
                           )}
@@ -1345,7 +1345,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                                 <button
                                   onClick={() => onReorderLinked(object.id, itemIndex, 'up')}
                                   disabled={isFirst}
-                                  className={`p-1.5 rounded-lg transition-colors ${isFirst ? 'text-gray-700 cursor-default' : 'text-gray-400 hover:text-purple-300 hover:bg-white/10 active:bg-purple-500/20'}`}
+                                  className={`p-1.5 rounded-lg transition-colors ${isFirst ? 'text-gray-700 cursor-default' : 'text-gray-400 hover:text-blue-300 hover:bg-white/10 active:bg-blue-500/20'}`}
                                   title="Flytta upp"
                                 >
                                   <ChevronUp size={18} />
@@ -1353,7 +1353,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                                 <button
                                   onClick={() => onReorderLinked(object.id, itemIndex, 'down')}
                                   disabled={isLast}
-                                  className={`p-1.5 rounded-lg transition-colors ${isLast ? 'text-gray-700 cursor-default' : 'text-gray-400 hover:text-purple-300 hover:bg-white/10 active:bg-purple-500/20'}`}
+                                  className={`p-1.5 rounded-lg transition-colors ${isLast ? 'text-gray-700 cursor-default' : 'text-gray-400 hover:text-blue-300 hover:bg-white/10 active:bg-blue-500/20'}`}
                                   title="Flytta ner"
                                 >
                                   <ChevronDown size={18} />
@@ -1364,15 +1364,15 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                               href={urlItem.url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="flex-1 min-w-0 flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 hover:border-purple-400/30 transition-all text-left"
+                              className="flex-1 min-w-0 flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 hover:border-blue-400/30 transition-all text-left"
                             >
-                              <div className="w-8 h-8 rounded bg-purple-500/20 flex items-center justify-center flex-shrink-0">
-                                <ExternalLink size={14} className="text-purple-400" />
+                              <div className="w-8 h-8 rounded bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+                                <ExternalLink size={14} className="text-blue-400" />
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="text-sm font-medium text-white truncate">{urlItem.title}</div>
                                 {urlItem.note && !isEditingUrlNote && (
-                                  <div className="text-xs text-purple-300 truncate">{urlItem.note}</div>
+                                  <div className="text-xs text-blue-300 truncate">{urlItem.note}</div>
                                 )}
                               </div>
                             </a>
@@ -1389,7 +1389,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                                     saveAndSwitchNote(`url_${urlItem.id}`, urlItem.note || '');
                                   }
                                 }}
-                                className={`p-2 rounded-lg transition-all flex-shrink-0 ${isEditingUrlNote ? 'bg-purple-500/20 text-purple-300' : 'hover:bg-white/10 text-gray-500 hover:text-purple-300'}`}
+                                className={`p-2 rounded-lg transition-all flex-shrink-0 ${isEditingUrlNote ? 'bg-blue-500/20 text-blue-300' : 'hover:bg-white/10 text-gray-500 hover:text-blue-300'}`}
                                 title={urlItem.note ? 'Redigera anteckning' : 'Lägg till anteckning'}
                               >
                                 <Edit2 size={14} />
@@ -1432,7 +1432,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                                   saveAndSwitchNote(null, '');
                                 }}
                                 placeholder="t.ex. Middag 20:00"
-                                className="flex-1 min-w-0 px-3 py-2 text-base bg-white/10 border border-purple-500/50 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-purple-400"
+                                className="flex-1 min-w-0 px-3 py-2 text-base bg-white/10 border border-blue-500/50 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-400"
                               />
                             </div>
                           )}
@@ -1462,11 +1462,11 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
               </div>
             )}
             {isCollection && orderedLinkedItems.length === 0 && totalLinkedCount === 0 && canManage && (
-              <div className="mt-6 pt-6 border-t border-purple-500/20">
+              <div className="mt-6 pt-6 border-t border-blue-500/20">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <ClipboardList size={16} className="text-purple-400" />
-                    <h3 className="text-sm font-medium text-purple-400">Innehåll</h3>
+                    <ClipboardList size={16} className="text-blue-400" />
+                    <h3 className="text-sm font-medium text-blue-400">Innehåll</h3>
                   </div>
                 </div>
                 <div className="text-sm text-gray-500 text-center py-6 bg-white/5 rounded-lg border border-dashed border-white/10">
@@ -1475,7 +1475,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                     {onAddToCollection && (
                       <button
                         onClick={() => { setObjectSearchQuery(''); setShowAddObjectPicker(true); }}
-                        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 hover:text-purple-200 transition-colors"
+                        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 hover:text-blue-200 transition-colors"
                       >
                         <Plus size={16} />
                         Objekt
@@ -1484,7 +1484,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                     {onAddLinkedUrl && (
                       <button
                         onClick={() => { setShowAddUrlForm(true); setNewUrlTitle(''); setNewUrlValue(''); setNewUrlNote(''); }}
-                        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 hover:text-purple-200 transition-colors"
+                        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 hover:text-blue-200 transition-colors"
                       >
                         <Link2 size={16} />
                         URL
@@ -1502,10 +1502,10 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
             )}
             {/* User has no access to any linked objects - don't show confusing empty state */}
             {isCollection && linkedObjects.length === 0 && hiddenLinkedCount > 0 && (
-              <div className="mt-6 pt-6 border-t border-purple-500/20">
+              <div className="mt-6 pt-6 border-t border-blue-500/20">
                 <div className="flex items-center gap-2 mb-3">
-                  <ClipboardList size={16} className="text-purple-400" />
-                  <h3 className="text-sm font-medium text-purple-400">Länkade objekt</h3>
+                  <ClipboardList size={16} className="text-blue-400" />
+                  <h3 className="text-sm font-medium text-blue-400">Länkade objekt</h3>
                 </div>
                 <div className="text-sm text-gray-500 text-center py-4 bg-white/5 rounded-lg border border-white/10">
                   {hiddenLinkedCount} {hiddenLinkedCount === 1 ? 'objekt länkat' : 'objekt länkade'} som du inte har tillgång till
@@ -1613,7 +1613,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
           >
             <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <ClipboardList size={18} className="text-purple-400" />
+                <ClipboardList size={18} className="text-blue-400" />
                 <h3 className="font-medium text-white">Välj samlingsvy</h3>
               </div>
               <button 
@@ -1640,14 +1640,14 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                       disabled={alreadyLinked}
                       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all ${
                         alreadyLinked 
-                          ? 'bg-purple-500/10 text-purple-300 cursor-default' 
+                          ? 'bg-blue-500/10 text-blue-300 cursor-default' 
                           : 'hover:bg-white/10 text-gray-300 hover:text-white'
                       }`}
                     >
-                      <ClipboardList size={16} className="text-purple-400 flex-shrink-0" />
+                      <ClipboardList size={16} className="text-blue-400 flex-shrink-0" />
                       <span className="flex-1 truncate">{colTitle}</span>
                       {alreadyLinked && (
-                        <span className="text-xs text-purple-400">✓ Tillagd</span>
+                        <span className="text-xs text-blue-400">✓ Tillagd</span>
                       )}
                     </button>
                   );
@@ -1673,7 +1673,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
           >
             <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between flex-shrink-0">
               <div className="flex items-center gap-2">
-                <Plus size={18} className="text-purple-400" />
+                <Plus size={18} className="text-blue-400" />
                 <h3 className="font-medium text-white">Lägg till objekt</h3>
               </div>
               <button 
@@ -1692,7 +1692,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                   value={objectSearchQuery}
                   onChange={e => setObjectSearchQuery(e.target.value)}
                   placeholder="Sök objekt..."
-                  className="w-full pl-9 pr-3 py-2 bg-white/5 border border-white/10 rounded-lg text-base text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                  className="w-full pl-9 pr-3 py-2 bg-white/5 border border-white/10 rounded-lg text-base text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
                   autoFocus
                 />
               </div>
@@ -1783,7 +1783,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                                 </div>
                               )}
                               <span className="flex-1 truncate text-sm">{objTitle}</span>
-                              <Plus size={16} className="text-purple-400 opacity-0 group-hover:opacity-100" />
+                              <Plus size={16} className="text-blue-400 opacity-0 group-hover:opacity-100" />
                             </button>
                           );
                         })}
@@ -2050,13 +2050,13 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
           onClick={() => setShowCollectionMap(false)}
         >
           <div 
-            className="bg-gray-900 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-purple-500/30 shadow-2xl"
+            className="bg-gray-900 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-blue-500/30 shadow-2xl"
             onClick={e => e.stopPropagation()}
           >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
               <div className="flex items-center gap-2">
-                <MapIcon size={18} className="text-purple-400" />
+                <MapIcon size={18} className="text-blue-400" />
                 <h3 className="font-medium text-white">
                   Karta ({linkedObjectsWithCoords.length} {linkedObjectsWithCoords.length === 1 ? 'plats' : 'platser'})
                 </h3>
