@@ -5,7 +5,8 @@ import {
   Link, ExternalLink, Globe, FileText, ShoppingCart, CreditCard, Phone, Mail, Instagram, Youtube, Facebook,
   Gift, ClipboardList, Users, UserCircle,
   Wrench, BookOpen, Trophy, CheckSquare,
-  MessageCircle, MessagesSquare, Headphones, Radio, FolderOpen, FileSpreadsheet, Video, Image
+  MessageCircle, MessagesSquare, Headphones, Radio, FolderOpen, FileSpreadsheet, Video, Image,
+  PersonStanding, Footprints, HeartPulse, Flame, Zap, Tent, Compass, Sailboat, Fish, Anchor, Flag, Sunrise, Target
 } from 'lucide-react';
 
 // Helper to get icon component from string name
@@ -16,7 +17,8 @@ export const iconMap = {
   Link, ExternalLink, Globe, FileText, ShoppingCart, CreditCard, Phone, Mail, Instagram, Youtube, Facebook,
   Gift, ClipboardList, Users, UserCircle,
   Wrench, BookOpen, Trophy, CheckSquare,
-  MessageCircle, MessagesSquare, Headphones, Radio, FolderOpen, FileSpreadsheet, Video, Image
+  MessageCircle, MessagesSquare, Headphones, Radio, FolderOpen, FileSpreadsheet, Video, Image,
+  PersonStanding, Footprints, HeartPulse, Flame, Zap, Tent, Compass, Sailboat, Fish, Anchor, Flag, Sunrise, Target
 };
 
 export const getIconComponent = (iconName) => {
@@ -52,6 +54,19 @@ export const AVAILABLE_ICONS = [
   { name: 'Wrench', label: 'Verktyg' },
   { name: 'BookOpen', label: 'Manual' },
   { name: 'ClipboardList', label: 'Listor' },
+  { name: 'PersonStanding', label: 'Person' },
+  { name: 'Footprints', label: 'Fotspår' },
+  { name: 'HeartPulse', label: 'Hälsa' },
+  { name: 'Flame', label: 'Eld' },
+  { name: 'Zap', label: 'Energi' },
+  { name: 'Tent', label: 'Camping' },
+  { name: 'Compass', label: 'Kompass' },
+  { name: 'Sailboat', label: 'Segling' },
+  { name: 'Fish', label: 'Fiske' },
+  { name: 'Anchor', label: 'Ankare' },
+  { name: 'Flag', label: 'Flagga' },
+  { name: 'Sunrise', label: 'Soluppgång' },
+  { name: 'Target', label: 'Mål' },
 ];
 
 // Icons available for links
