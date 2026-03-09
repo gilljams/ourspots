@@ -249,13 +249,12 @@ export function SimpleTableEditorModal({
           height: `calc(${viewportHeight}px - env(safe-area-inset-top))`
         }}
       >
-        {/* Centered content wrapper for desktop */}
-        <div className="w-full max-w-4xl mx-auto flex flex-col flex-1 min-h-0 relative">
-        {/* Header */}
+        {/* Header - full width bg, centered content */}
         <div 
-          className="flex-shrink-0 flex items-center justify-between px-3 border-b border-white/5 bg-gray-950/50"
+          className="flex-shrink-0 border-b border-white/5 bg-gray-950/50"
           style={{ height: `${HEADER_HEIGHT}px` }}
         >
+          <div className="max-w-4xl mx-auto h-full flex items-center justify-between px-3">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <span className="text-base font-medium text-white truncate">
               {title || 'Redigera tabell'}
@@ -422,7 +421,12 @@ export function SimpleTableEditorModal({
               <X size={18} />
             </button>
           </div>
+          </div>
         </div>
+        
+        {/* Body - centered content */}
+        <div className="flex-1 min-h-0 relative">
+        <div className="max-w-4xl mx-auto h-full flex flex-col relative lg:border-x lg:border-white/[0.06]">
         
         {/* Scrollable list */}
         <div 
@@ -605,6 +609,7 @@ export function SimpleTableEditorModal({
           <Check size={24} strokeWidth={2.5} />
         </button>
         </div>
+        </div>
       </div>
     </>
   );
@@ -785,13 +790,12 @@ export function MultiColumnTableEditorModal({
           height: `calc(${viewportHeight}px - env(safe-area-inset-top))`
         }}
       >
-        {/* Centered content wrapper for desktop */}
-        <div className="w-full max-w-4xl mx-auto flex flex-col flex-1 min-h-0 relative">
-        {/* Header */}
+        {/* Header - full width bg, centered content */}
         <div 
-          className="flex-shrink-0 flex items-center justify-between px-3 border-b border-white/5 bg-gray-950/50"
+          className="flex-shrink-0 border-b border-white/5 bg-gray-950/50"
           style={{ height: `${HEADER_HEIGHT}px` }}
         >
+          <div className="max-w-4xl mx-auto h-full flex items-center justify-between px-3">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <span className="text-base font-medium text-white truncate">
               {title || 'Redigera'}
@@ -823,10 +827,12 @@ export function MultiColumnTableEditorModal({
               <X size={18} />
             </button>
           </div>
+          </div>
         </div>
         
-        {/* Column headers */}
-        <div className="flex-shrink-0 flex items-center px-3 py-2 border-b border-white/10 bg-gray-950/30 gap-2">
+        {/* Column headers - full width bg, centered content */}
+        <div className="flex-shrink-0 border-b border-white/10 bg-gray-950/30">
+          <div className="max-w-4xl mx-auto flex items-center px-3 py-2 gap-2">
           <div className="w-8" /> {/* Spacer for grip */}
           {columns.map((col, idx) => (
             <div
@@ -837,7 +843,12 @@ export function MultiColumnTableEditorModal({
             </div>
           ))}
           <div className="w-8" /> {/* Spacer for delete button */}
+          </div>
         </div>
+        
+        {/* Body - centered content */}
+        <div className="flex-1 min-h-0 relative">
+        <div className="max-w-4xl mx-auto h-full flex flex-col relative lg:border-x lg:border-white/[0.06]">
         
         {/* Scrollable list */}
         <div 
@@ -932,6 +943,7 @@ export function MultiColumnTableEditorModal({
         >
           <Check size={24} strokeWidth={2.5} />
         </button>
+        </div>
         </div>
       </div>
     </>

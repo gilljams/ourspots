@@ -135,13 +135,12 @@ function FullscreenTextEditor({ content, title, onSave, onCancel }) {
           }
         }}
       >
-        {/* Centered content wrapper for desktop */}
-        <div className="w-full max-w-4xl mx-auto flex flex-col flex-1 min-h-0">
-        {/* Header - fixed height */}
+        {/* Header - full width bg, centered content */}
         <div 
-          className="flex-shrink-0 flex items-center justify-between px-2 border-b border-white/10 bg-gray-900"
+          className="flex-shrink-0 border-b border-white/10"
           style={{ height: `${HEADER_HEIGHT}px` }}
         >
+          <div className="max-w-4xl mx-auto h-full flex items-center justify-between px-2">
           <span className="text-sm text-gray-400 truncate flex-1 pl-2">
             {title || 'Anteckning'}
         </span>
@@ -160,14 +159,16 @@ function FullscreenTextEditor({ content, title, onSave, onCancel }) {
         >
           <X size={24} />
         </button>
+          </div>
       </div>
       
-      {/* Markdown toolbar - fixed height */}
+      {/* Markdown toolbar - full width bg, centered content */}
       <div 
-        className="flex-shrink-0 px-3 py-2 border-b border-white/5 bg-gray-900"
+        className="flex-shrink-0 border-b border-white/5"
         style={{ height: `${TOOLBAR_HEIGHT}px` }}
       >
-        <div className="flex items-center gap-1">
+        <div className="max-w-4xl mx-auto h-full flex items-center px-3">
+        <div className="flex items-center gap-1 flex-1">
           <ToolbarButton onPress={() => insertMarkdown('**', '**', 'text')} title="Fetstil">
             <span className="font-bold text-sm">B</span>
           </ToolbarButton>
@@ -203,10 +204,12 @@ function FullscreenTextEditor({ content, title, onSave, onCancel }) {
             <Trash2 size={16} />
           </ToolbarButton>
         </div>
+        </div>
       </div>
       
       {/* Textarea container with floating button */}
       <div className="relative flex-1">
+        <div className="max-w-4xl mx-auto h-full relative lg:border-x lg:border-white/[0.06]">
         <textarea
           ref={textareaRef}
           value={text}

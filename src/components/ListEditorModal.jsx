@@ -534,13 +534,12 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel, ye
           height: `calc(${viewportHeight}px - env(safe-area-inset-top))`
         }}
       >
-        {/* Centered content wrapper for desktop */}
-        <div className="w-full max-w-4xl mx-auto flex flex-col flex-1 min-h-0 relative">
-        {/* Header */}
+        {/* Header - full width bg, centered content */}
         <div 
-          className="flex-shrink-0 flex items-center justify-between px-3 border-b border-white/5 bg-gray-950/50"
+          className="flex-shrink-0 border-b border-white/5 bg-gray-950/50"
           style={{ height: `${HEADER_HEIGHT}px` }}
         >
+          <div className="max-w-4xl mx-auto h-full flex items-center justify-between px-3">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <span className="text-base font-medium text-white truncate">
               {title || 'Redigera lista'}
@@ -734,11 +733,13 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel, ye
               <X size={18} />
             </button>
           </div>
+          </div>
         </div>
 
         {/* Year navigator (yearMode only) */}
         {yearMode && (
-          <div className="flex-shrink-0 flex items-center justify-center gap-3 px-3 py-2 border-b border-white/5 bg-gray-950/30" style={{ height: '44px' }}>
+          <div className="flex-shrink-0 border-b border-white/5 bg-gray-950/30" style={{ height: '44px' }}>
+            <div className="max-w-4xl mx-auto h-full flex items-center justify-center gap-3 px-3">
             <button
               type="button"
               onClick={() => switchYear(activeYear - 1)}
@@ -781,8 +782,13 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel, ye
                 );
               })}
             </div>
+            </div>
           </div>
         )}
+        
+        {/* Body - centered content */}
+        <div className="flex-1 min-h-0 relative">
+        <div className="max-w-4xl mx-auto h-full flex flex-col relative lg:border-x lg:border-white/[0.06]">
         
         {/* Scrollable list */}
         <div 
@@ -947,6 +953,7 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel, ye
         >
           <Check size={24} strokeWidth={2.5} />
         </button>
+        </div>
         </div>
       </div>
     </>
