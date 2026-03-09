@@ -1419,13 +1419,6 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   className={`text-gray-500 transition-transform ${showBasicSettings ? '' : '-rotate-90'}`} 
                 />
                 <span className="text-sm font-medium text-gray-300">Grundinställningar</span>
-                {!showBasicSettings && (
-                  <span className="text-xs text-gray-500 ml-auto flex items-center gap-3">
-                    {parentId && <Folder size={14} className="text-blue-400" />}
-                    {(lat !== null || address) && <MapPin size={14} className="text-green-400" />}
-                    {imageUrl && <ImageIcon size={14} className="text-purple-400" />}
-                  </span>
-                )}
               </button>
 
               {/* Content */}
