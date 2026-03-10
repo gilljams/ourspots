@@ -143,6 +143,9 @@ option {
 .user-position-icon {
   z-index: 1000 !important;
   pointer-events: none !important;
+  overflow: visible !important;
+  background: transparent !important;
+  border: none !important;
 }
 
 /* Subtle glow pulse for audio play button */
