@@ -6,7 +6,7 @@ import {
   MapPin, Eye, Sparkles, Globe, LogIn
 } from 'lucide-react';
 
-import { getObjectDistance as getObjectDistanceUtil } from './utils/geoUtils';
+import { getObjectDistance as getObjectDistanceUtil, getDistanceMeters, getBearing } from './utils/geoUtils';
 
 import { emailToKey } from './utils/iconHelpers';
 import { STORAGE_KEYS } from './utils/storageKeys';
@@ -157,6 +157,8 @@ function App() {
   const seedingRef = useRef(false);
   const wakeLockRef = useRef(null);
   const globalTrackingWatchRef = useRef(null);
+  const prevTrackingPosRef = useRef(null);
+  const prevComputedHeadingRef = useRef(null);
 
 
   // Wrapper to use imported distance function with userLocation state
@@ -170,13 +172,33 @@ function App() {
     if (!('geolocation' in navigator)) return;
     
     setIsGlobalTracking(true);
+    prevTrackingPosRef.current = null;
+    prevComputedHeadingRef.current = null;
     globalTrackingWatchRef.current = navigator.geolocation.watchPosition(
       (position) => {
         const { latitude, longitude, heading, accuracy } = position.coords;
+        // Use native heading if available, otherwise compute from movement
+        let finalHeading = heading != null && !isNaN(heading) && heading >= 0 ? heading : null;
+        if (finalHeading == null && prevTrackingPosRef.current) {
+          const dist = getDistanceMeters(
+            prevTrackingPosRef.current.lat, prevTrackingPosRef.current.lng,
+            latitude, longitude
+          );
+          if (dist >= 3) {
+            finalHeading = getBearing(
+              prevTrackingPosRef.current.lat, prevTrackingPosRef.current.lng,
+              latitude, longitude
+            );
+            prevComputedHeadingRef.current = finalHeading;
+          } else {
+            finalHeading = prevComputedHeadingRef.current;
+          }
+        }
+        prevTrackingPosRef.current = { lat: latitude, lng: longitude };
         setLiveUserLocation({
           lat: latitude,
           lng: longitude,
-          heading: heading != null && !isNaN(heading) && heading >= 0 ? heading : null,
+          heading: finalHeading,
           accuracy: accuracy != null ? Math.round(accuracy) : null
         });
       },

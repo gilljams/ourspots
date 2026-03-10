@@ -23,7 +23,7 @@ import { Navigation, Locate, X, Maximize2, Target } from 'lucide-react';
 import { TileLayer, Marker, Tooltip, Polyline, Circle, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { createUserIcon } from '../../utils/mapIcons';
-import { getDistanceMeters, formatDistanceMeters } from '../../utils/geoUtils';
+import { getDistanceMeters, getBearing, formatDistanceMeters } from '../../utils/geoUtils';
 import { useToast } from '../../utils/useToast';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -248,6 +248,8 @@ export function CenterOnLocationButton({ onLocationFound, enableWatch = false, o
   const watchIdRef = useRef(null);
   const isFollowingRef = useRef(true);
   const onLocationFoundRef = useRef(onLocationFound);
+  const prevPosRef = useRef(null);
+  const prevHeadingRef = useRef(null);
   
   // Keep refs in sync (for use inside watchPosition closure)
   useEffect(() => { isFollowingRef.current = isFollowing; }, [isFollowing]);
@@ -337,15 +339,33 @@ export function CenterOnLocationButton({ onLocationFound, enableWatch = false, o
         if (enableWatch) {
           setIsWatching(true);
           setIsFollowing(true);
+          prevPosRef.current = null;
+          prevHeadingRef.current = null;
           watchIdRef.current = navigator.geolocation.watchPosition(
             (pos) => {
               const { latitude: lat, longitude: lng, accuracy: acc, heading: hdg } = pos.coords;
+              // Use native heading if available, otherwise compute from movement
+              let finalHeading = hdg != null && !isNaN(hdg) && hdg >= 0 ? hdg : null;
+              if (finalHeading == null && prevPosRef.current) {
+                const dist = getDistanceMeters(
+                  prevPosRef.current.lat, prevPosRef.current.lng, lat, lng
+                );
+                if (dist >= 3) {
+                  finalHeading = getBearing(
+                    prevPosRef.current.lat, prevPosRef.current.lng, lat, lng
+                  );
+                  prevHeadingRef.current = finalHeading;
+                } else {
+                  finalHeading = prevHeadingRef.current;
+                }
+              }
+              prevPosRef.current = { lat, lng };
               // Always update marker position + accuracy + heading
               if (onLocationFoundRef.current) {
                 onLocationFoundRef.current({
                   lat, lng,
                   accuracy: Math.round(acc),
-                  heading: hdg != null && !isNaN(hdg) && hdg >= 0 ? hdg : null
+                  heading: finalHeading
                 });
               }
               // Only auto-center if in follow mode
