@@ -72,12 +72,12 @@ function PromptDialog({
         </div>
 
         {message && (
-          <p className="text-gray-300 text-sm leading-relaxed mb-3 pl-[52px]">
+          <p className="text-gray-300 text-sm leading-relaxed mb-3">
             {message}
           </p>
         )}
 
-        <div className="mb-5 pl-[52px]">
+        <div className="mb-5">
           {multiline ? (
             <textarea
               ref={inputRef}
