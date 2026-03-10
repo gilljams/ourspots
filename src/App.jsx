@@ -172,8 +172,13 @@ function App() {
     setIsGlobalTracking(true);
     globalTrackingWatchRef.current = navigator.geolocation.watchPosition(
       (position) => {
-        const { latitude, longitude } = position.coords;
-        setLiveUserLocation({ lat: latitude, lng: longitude });
+        const { latitude, longitude, heading, accuracy } = position.coords;
+        setLiveUserLocation({
+          lat: latitude,
+          lng: longitude,
+          heading: heading != null && !isNaN(heading) && heading >= 0 ? heading : null,
+          accuracy: accuracy != null ? Math.round(accuracy) : null
+        });
       },
       (error) => {
         console.warn('Global tracking error:', error);

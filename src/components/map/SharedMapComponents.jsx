@@ -18,7 +18,7 @@
  *   - Pulsing ring for active tracking states
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Navigation, Locate, X, Maximize2, Target } from 'lucide-react';
 import { TileLayer, Marker, Tooltip, Polyline, Circle, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
@@ -55,6 +55,15 @@ export function BaseTileLayer() {
 export function UserLocationMarker({ position, isTracking = false }) {
   if (!position) return null;
   const accuracy = position.accuracy;
+  const heading = position.heading;
+
+  // Round heading to nearest 3° to avoid excessive icon recreation
+  const stableHeading = heading != null && !isNaN(heading)
+    ? Math.round(heading / 3) * 3
+    : null;
+
+  const icon = useMemo(() => createUserIcon(stableHeading), [stableHeading]);
+
   return (
     <>
       {accuracy != null && accuracy < 200 && (
@@ -72,7 +81,7 @@ export function UserLocationMarker({ position, isTracking = false }) {
       )}
       <Marker 
         position={[position.lat, position.lng]} 
-        icon={createUserIcon()} 
+        icon={icon} 
         zIndexOffset={1000}
       >
         <Tooltip permanent={false} direction="top">
@@ -330,10 +339,14 @@ export function CenterOnLocationButton({ onLocationFound, enableWatch = false, o
           setIsFollowing(true);
           watchIdRef.current = navigator.geolocation.watchPosition(
             (pos) => {
-              const { latitude: lat, longitude: lng, accuracy: acc } = pos.coords;
-              // Always update marker position + accuracy
+              const { latitude: lat, longitude: lng, accuracy: acc, heading: hdg } = pos.coords;
+              // Always update marker position + accuracy + heading
               if (onLocationFoundRef.current) {
-                onLocationFoundRef.current({ lat, lng, accuracy: Math.round(acc) });
+                onLocationFoundRef.current({
+                  lat, lng,
+                  accuracy: Math.round(acc),
+                  heading: hdg != null && !isNaN(hdg) && hdg >= 0 ? hdg : null
+                });
               }
               // Only auto-center if in follow mode
               if (isFollowingRef.current) {
