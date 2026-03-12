@@ -112,16 +112,16 @@ export const QuizModal = ({ categoryId, difficulty, title, onClose }) => {
         style={swipe.style}
         {...swipe.handlers}
       >
-        <button
-          type="button"
-          onClick={onClose}
-          className="p-1.5 -ml-1.5 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
-        >
-          <X size={20} />
-        </button>
         <HelpCircle size={18} className="text-blue-400 flex-shrink-0" />
         <span className="text-sm font-medium text-gray-200 truncate flex-1">{title}</span>
         <span className="text-xs text-gray-500 flex-shrink-0">Fråga #{questionCount}</span>
+        <button
+          type="button"
+          onClick={onClose}
+          className="p-1.5 -mr-1.5 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+        >
+          <X size={20} />
+        </button>
       </div>
 
       {/* Content */}
