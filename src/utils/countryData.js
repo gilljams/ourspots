@@ -192,23 +192,42 @@ async function fetchClimateData(lat, lng) {
 }
 
 /**
+ * Fetch Wikipedia page summary, trying Swedish first then English.
+ * Returns { extract, imageUrl, title, lang, wikiUrl } or null.
+ */
+async function fetchWikiSummary(searchTerm) {
+  for (const lang of ['sv', 'en']) {
+    try {
+      const encoded = encodeURIComponent(searchTerm);
+      const res = await fetch(
+        `https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encoded}`
+      );
+      if (!res.ok) continue;
+      const d = await res.json();
+      if (d.type === 'disambiguation') continue;
+      // Require at least some actual content (skip very short stubs)
+      const extract = d.extract || '';
+      if (lang === 'sv' && extract.length < 60) continue; // too short stub – try English
+      const title = d.titles?.normalized || searchTerm;
+      return {
+        extract,
+        imageUrl: d.originalimage?.source || d.thumbnail?.source || null,
+        title,
+        lang,
+        wikiUrl: `https://${lang}.wikipedia.org/wiki/${encodeURIComponent(title)}`,
+      };
+    } catch { /* try next */ }
+  }
+  return null;
+}
+
+/**
  * Fetch a representative Wikipedia image for a country.
- * Uses the Wikipedia API to get the main page image (original size).
  * Returns URL string or null.
  */
 async function fetchCountryImage(countryName) {
-  try {
-    const encoded = encodeURIComponent(countryName);
-    const res = await fetch(
-      `https://en.wikipedia.org/api/rest_v1/page/summary/${encoded}`
-    );
-    if (!res.ok) return null;
-    const data = await res.json();
-    // originalimage has the full-res version; thumbnail is smaller
-    return data.originalimage?.source || data.thumbnail?.source || null;
-  } catch {
-    return null;
-  }
+  const wiki = await fetchWikiSummary(countryName);
+  return wiki?.imageUrl || null;
 }
 
 /**
@@ -261,8 +280,6 @@ export async function fetchCountryFacts(countryCode) {
     `**Körsida:** ${driveSide}`,
     `**El:** ${elecStr}`,
     `**Adapter från Sverige:** ${adapterStr}`,
-    '',
-    `[Läs mer på Wikipedia](https://en.wikipedia.org/wiki/${encodeURIComponent(name)})`,
   ].filter(line => line !== null);
 
   if (nativeName && nativeName !== name) {
@@ -270,23 +287,23 @@ export async function fetchCountryFacts(countryCode) {
     lines.splice(1, 0, '');
   }
 
-  // Fetch Wikipedia image and climate data in parallel (don't block on failure)
+  // Fetch Wikipedia summary (sv→en), image and climate data in parallel
   const countryLat = data.capitalInfo?.latlng?.[0] ?? data.latlng?.[0] ?? null;
   const countryLng = data.capitalInfo?.latlng?.[1] ?? data.latlng?.[1] ?? null;
-  const [imageUrl, climateStr] = await Promise.all([
-    fetchCountryImage(name),
+  const [wiki, climateStr] = await Promise.all([
+    fetchWikiSummary(name),
     fetchClimateData(countryLat, countryLng),
   ]);
+  const imageUrl = wiki?.imageUrl || null;
 
   // Insert climate before the Wikipedia link
   if (climateStr) {
-    const wikiIdx = lines.findIndex(l => l.startsWith('[Läs mer'));
-    if (wikiIdx !== -1) {
-      lines.splice(wikiIdx, 0, climateStr, '');
-    } else {
-      lines.push('', climateStr);
-    }
+    lines.push('');
+    lines.push(climateStr);
   }
+
+  lines.push('');
+  lines.push(`[Läs mer på Wikipedia](${wiki?.wikiUrl || `https://en.wikipedia.org/wiki/${encodeURIComponent(name)}`})`);
 
   return {
     title: `${name} ${flag}`,
@@ -353,27 +370,16 @@ export async function searchPlaces(query) {
  * Returns { title, content, lat, lng, address, imageUrl } or throws on error.
  */
 export async function fetchPlaceFacts(name, lat, lng, { country = '', state = '', city = '' } = {}) {
-  // Try Wikipedia summary – search with name first, fallback with more context
-  let wikiData = null;
+  // Try Wikipedia summary (sv→en) – search with name first, fallback with more context
+  let wiki = null;
   for (const searchTerm of [name, `${name} ${country}`, `${name} ${state}`]) {
-    try {
-      const encoded = encodeURIComponent(searchTerm);
-      const res = await fetch(
-        `https://en.wikipedia.org/api/rest_v1/page/summary/${encoded}`
-      );
-      if (res.ok) {
-        const d = await res.json();
-        if (d.type !== 'disambiguation') {
-          wikiData = d;
-          break;
-        }
-      }
-    } catch { /* try next */ }
+    wiki = await fetchWikiSummary(searchTerm);
+    if (wiki) break;
   }
 
-  const extract = wikiData?.extract || '';
-  const imageUrl = wikiData?.originalimage?.source || wikiData?.thumbnail?.source || null;
-  const wikiTitle = wikiData?.titles?.normalized || name;
+  const extract = wiki?.extract || '';
+  const imageUrl = wiki?.imageUrl || null;
+  const wikiUrl = wiki?.wikiUrl || `https://en.wikipedia.org/wiki/${encodeURIComponent(name)}`;
 
   // Build location context line
   const locationParts = [city, state, country].filter(Boolean);
@@ -403,7 +409,7 @@ export async function fetchPlaceFacts(name, lat, lng, { country = '', state = ''
   }
 
   lines.push('');
-  lines.push(`[Läs mer på Wikipedia](https://en.wikipedia.org/wiki/${encodeURIComponent(wikiTitle)})`);
+  lines.push(`[Läs mer på Wikipedia](${wikiUrl})`);
 
   return {
     title: name,
