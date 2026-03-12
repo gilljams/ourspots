@@ -1,58 +1,15 @@
-import React, { useState } from 'react';
-import { Check, Copy } from 'lucide-react';
+import React from 'react';
 
-// Copyable code block component with touch support
-const CodeBlockCopyable = ({ code }) => {
-  const [copied, setCopied] = useState(false);
-  
-  const handleCopy = async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    try {
-      // Try modern clipboard API first
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(code);
-      } else {
-        // Fallback for older browsers/mobile
-        const textArea = document.createElement('textarea');
-        textArea.value = code;
-        textArea.style.position = 'fixed';
-        textArea.style.left = '-9999px';
-        textArea.style.top = '-9999px';
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textArea);
-      }
-      
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error('Copy failed:', err);
-    }
-  };
-  
-  return (
-    <pre 
-      className="bg-black/40 border border-white/10 rounded-lg p-3 my-2 overflow-x-auto cursor-pointer hover:bg-black/50 active:bg-black/60 transition-colors group relative touch-manipulation"
-      onClick={handleCopy}
-      onTouchEnd={handleCopy}
-    >
-      <code className="text-sm font-mono text-blue-400 whitespace-pre">
-        {code}
-      </code>
-      <span className={`absolute top-2 right-2 flex items-center gap-1 text-xs transition-all ${copied ? 'text-green-400 opacity-100 scale-110' : 'text-gray-400 opacity-70 sm:opacity-0 sm:group-hover:opacity-100'}`}>
-        {copied ? (
-          <Check size={16} />
-        ) : (
-          <Copy size={16} />
-        )}
-      </span>
-    </pre>
-  );
-};
+// Simple scrollable code block – overscroll-behavior prevents scroll-chaining
+// into the parent modal on mobile.
+const CodeBlock = ({ code }) => (
+  <pre
+    className="bg-black/40 border border-white/10 rounded-lg p-3 my-2 overflow-x-auto text-sm font-mono text-blue-400 whitespace-pre"
+    style={{ overscrollBehaviorX: 'contain', WebkitOverflowScrolling: 'touch' }}
+  >
+    {code}
+  </pre>
+);
 
 // Lightweight markdown renderer - supports **bold**, *italic*, [links](url), > quotes, # headings, - bullets, numbered lists
 export const renderMarkdown = (text) => {
@@ -101,7 +58,7 @@ export const renderMarkdown = (text) => {
     if (codeBlockLines.length > 0) {
       const codeContent = codeBlockLines.join('\n');
       elements.push(
-        <CodeBlockCopyable key={`code-${elements.length}`} code={codeContent} />
+        <CodeBlock key={`code-${elements.length}`} code={codeContent} />
       );
       codeBlockLines = [];
     }

@@ -38,7 +38,7 @@ export function useSwipeToClose(onClose, { guardInteractive = false } = {}) {
     // Optionally skip swipe when touching interactive elements
     if (guardInteractive) {
       const target = e.target;
-      if (target.closest('button') || target.closest('a') || target.closest('input') || target.closest('[role="button"]')) {
+      if (target.closest('button') || target.closest('a') || target.closest('input') || target.closest('[role="button"]') || target.closest('pre')) {
         return;
       }
     }
