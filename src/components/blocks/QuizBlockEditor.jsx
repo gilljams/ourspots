@@ -25,40 +25,52 @@ const DIFFICULTIES = [
   { id: 'hard', label: 'Svår' },
 ];
 
-function QuizBlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving }) {
+const QUIZ_TYPES = [
+  { id: 'multiple', label: 'Flerval' },
+  { id: 'boolean', label: 'Sant / Falskt' },
+];
+
+function QuizBlockEditor({ block, onUpdate, onMove, index, total, saving }) {
   const [title, setTitle] = useState(block.title || 'Quiz');
   const [categoryId, setCategoryId] = useState(block.categoryId || '');
   const [difficulty, setDifficulty] = useState(block.difficulty || '');
+  const [quizType, setQuizType] = useState(block.quizType || 'multiple');
   const [defaultCollapsed, setDefaultCollapsed] = useState(block.defaultCollapsed ?? true);
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const syncToParent = (newTitle, newCategoryId, newDifficulty, newDefaultCollapsed) => {
+  const syncToParent = (newTitle, newCategoryId, newDifficulty, newQuizType, newDefaultCollapsed) => {
     onUpdate(block.id, {
       title: newTitle,
       categoryId: newCategoryId,
       difficulty: newDifficulty,
+      quizType: newQuizType,
       defaultCollapsed: newDefaultCollapsed,
     });
   };
 
   const handleTitleChange = (val) => {
     setTitle(val);
-    syncToParent(val, categoryId, difficulty, defaultCollapsed);
+    syncToParent(val, categoryId, difficulty, quizType, defaultCollapsed);
   };
 
   const handleCategoryChange = (val) => {
     setCategoryId(val);
-    syncToParent(title, val, difficulty, defaultCollapsed);
+    syncToParent(title, val, difficulty, quizType, defaultCollapsed);
   };
 
   const handleDifficultyChange = (val) => {
     setDifficulty(val);
-    syncToParent(title, categoryId, val, defaultCollapsed);
+    syncToParent(title, categoryId, val, quizType, defaultCollapsed);
+  };
+
+  const handleQuizTypeChange = (val) => {
+    setQuizType(val);
+    syncToParent(title, categoryId, difficulty, val, defaultCollapsed);
   };
 
   const handleCollapsedChange = (val) => {
     setDefaultCollapsed(val);
-    syncToParent(title, categoryId, difficulty, val);
+    syncToParent(title, categoryId, difficulty, quizType, val);
   };
 
   return (
@@ -115,6 +127,27 @@ function QuizBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
                 <option key={c.id} value={c.id} className="bg-gray-900">{c.label}</option>
               ))}
             </select>
+          </div>
+
+          {/* Quiz type */}
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Typ</label>
+            <div className="flex gap-2">
+              {QUIZ_TYPES.map(t => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => handleQuizTypeChange(t.id)}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    quizType === t.id
+                      ? 'bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/50'
+                      : 'bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Difficulty */}

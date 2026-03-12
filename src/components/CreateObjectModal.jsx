@@ -409,6 +409,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             title: b.data.title || 'Quiz',
             categoryId: b.data.categoryId || '',
             difficulty: b.data.difficulty || '',
+            quizType: b.data.quizType || 'multiple',
             defaultCollapsed: b.data.defaultCollapsed ?? true
           };
         }
@@ -1094,6 +1095,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             title: (block.title || 'Quiz').trim(),
             categoryId: block.categoryId || '',
             difficulty: block.difficulty || '',
+            quizType: block.quizType || 'multiple',
             defaultCollapsed: block.defaultCollapsed ?? true
           }
         });
@@ -1220,6 +1222,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
       newBlock.title = 'Quiz';
       newBlock.categoryId = '';
       newBlock.difficulty = '';
+      newBlock.quizType = 'multiple';
       newBlock.defaultCollapsed = true;
     }
     setCustomBlocks(prev => [...prev, newBlock]);

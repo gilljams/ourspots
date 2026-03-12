@@ -26,6 +26,11 @@ const DIFFICULTY_LABELS = {
   hard: 'Svår',
 };
 
+const TYPE_LABELS = {
+  multiple: 'Flerval',
+  boolean: 'Sant/Falskt',
+};
+
 export const QuizBlock = ({ data, onExpand }) => {
   const [isCollapsed, setIsCollapsed] = useState(data.defaultCollapsed ?? true);
   const [showQuiz, setShowQuiz] = useState(false);
@@ -46,6 +51,8 @@ export const QuizBlock = ({ data, onExpand }) => {
   const title = data.title || 'Quiz';
   const categoryLabel = CATEGORY_LABELS[data.categoryId || ''] || 'Blandad';
   const difficultyLabel = DIFFICULTY_LABELS[data.difficulty || ''] || 'Blandad';
+  const quizType = data.quizType || 'multiple';
+  const typeLabel = TYPE_LABELS[quizType] || 'Flerval';
 
   return (
     <>
@@ -68,7 +75,7 @@ export const QuizBlock = ({ data, onExpand }) => {
               <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors truncate">{title}</span>
             </div>
             <span className="text-xs text-gray-500 flex-shrink-0">
-              {categoryLabel} · {difficultyLabel}
+              {typeLabel} · {categoryLabel} · {difficultyLabel}
             </span>
           </button>
         </div>
@@ -77,7 +84,7 @@ export const QuizBlock = ({ data, onExpand }) => {
         {!isCollapsed && (
           <div className="bg-white/[0.03] rounded-xl p-4 space-y-3">
             <div className="text-xs text-gray-500">
-              Kategori: {categoryLabel} · Svårighetsgrad: {difficultyLabel} · Engelska
+              {typeLabel} · Kategori: {categoryLabel} · Svårighetsgrad: {difficultyLabel} · Engelska
             </div>
 
             <button
@@ -96,6 +103,7 @@ export const QuizBlock = ({ data, onExpand }) => {
         <QuizModal
           categoryId={data.categoryId || ''}
           difficulty={data.difficulty || ''}
+          quizType={quizType}
           title={title}
           onClose={() => setShowQuiz(false)}
         />

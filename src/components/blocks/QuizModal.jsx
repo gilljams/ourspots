@@ -21,7 +21,7 @@ const shuffle = (arr) => {
 
 const OPTION_LETTERS = ['A', 'B', 'C', 'D'];
 
-export const QuizModal = ({ categoryId, difficulty, title, onClose }) => {
+export const QuizModal = ({ categoryId, difficulty, quizType = 'multiple', title, onClose }) => {
   const [question, setQuestion] = useState(null);
   const [options, setOptions] = useState([]);
   const [correctAnswer, setCorrectAnswer] = useState('');
@@ -39,7 +39,7 @@ export const QuizModal = ({ categoryId, difficulty, title, onClose }) => {
     setSelectedAnswer(null);
     setShowAnswer(false);
     try {
-      let url = `https://opentdb.com/api.php?amount=1&type=multiple`;
+      let url = `https://opentdb.com/api.php?amount=1&type=${quizType}`;
       if (categoryId) url += `&category=${categoryId}`;
       if (difficulty) url += `&difficulty=${difficulty}`;
 
@@ -67,7 +67,7 @@ export const QuizModal = ({ categoryId, difficulty, title, onClose }) => {
     } finally {
       setLoading(false);
     }
-  }, [categoryId, difficulty]);
+  }, [categoryId, difficulty, quizType]);
 
   // Fetch first question on mount
   useEffect(() => {
@@ -157,7 +157,7 @@ export const QuizModal = ({ categoryId, difficulty, title, onClose }) => {
             </div>
 
             {/* Options */}
-            <div className="flex flex-col gap-2.5">
+            <div className={`flex ${quizType === 'boolean' ? 'flex-row gap-3' : 'flex-col gap-2.5'}`}>
               {options.map((opt, i) => (
                 <button
                   key={i}
@@ -166,18 +166,20 @@ export const QuizModal = ({ categoryId, difficulty, title, onClose }) => {
                   disabled={showAnswer}
                   className={getOptionStyle(opt)}
                 >
-                  <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
-                    showAnswer && opt === correctAnswer
-                      ? 'bg-green-500/30 text-green-300'
-                      : showAnswer && selectedAnswer === opt && opt !== correctAnswer
-                        ? 'bg-red-500/30 text-red-300'
-                        : selectedAnswer === opt
-                          ? 'bg-blue-500/30 text-blue-300'
-                          : 'bg-white/10 text-gray-400'
-                  }`}>
-                    {OPTION_LETTERS[i]}
-                  </span>
-                  <span className="flex-1">{opt}</span>
+                  {quizType !== 'boolean' && (
+                    <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                      showAnswer && opt === correctAnswer
+                        ? 'bg-green-500/30 text-green-300'
+                        : showAnswer && selectedAnswer === opt && opt !== correctAnswer
+                          ? 'bg-red-500/30 text-red-300'
+                          : selectedAnswer === opt
+                            ? 'bg-blue-500/30 text-blue-300'
+                            : 'bg-white/10 text-gray-400'
+                    }`}>
+                      {OPTION_LETTERS[i]}
+                    </span>
+                  )}
+                  <span className={quizType === 'boolean' ? 'flex-1 text-center' : 'flex-1'}>{opt === 'True' ? 'Sant' : opt === 'False' ? 'Falskt' : opt}</span>
                   {showAnswer && opt === correctAnswer && (
                     <span className="text-green-400 text-xs font-medium">✓ Rätt</span>
                   )}
