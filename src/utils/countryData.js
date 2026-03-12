@@ -146,6 +146,51 @@ function adapterNeeded(plugTypes) {
   return 'Ja';
 }
 
+const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'Maj', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dec'];
+
+/**
+ * Fetch monthly average temperatures for a location using Open-Meteo Historical API.
+ * Averages the last 5 complete years of daily data → 12 monthly means.
+ * Returns formatted climate table string, or null on failure.
+ */
+async function fetchClimateData(lat, lng) {
+  if (lat == null || lng == null) return null;
+  try {
+    // Use 5 recent complete years for a good average
+    const endYear = new Date().getFullYear() - 1;
+    const startYear = endYear - 4;
+    const res = await fetch(
+      `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}&start_date=${startYear}-01-01&end_date=${endYear}-12-31&daily=temperature_2m_mean&timezone=auto`
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const times = data.daily?.time;
+    const temps = data.daily?.temperature_2m_mean;
+    if (!times || !temps || times.length === 0) return null;
+
+    // Group by month and average
+    const monthSums = new Array(12).fill(0);
+    const monthCounts = new Array(12).fill(0);
+    for (let i = 0; i < times.length; i++) {
+      if (temps[i] == null) continue;
+      const month = parseInt(times[i].substring(5, 7), 10) - 1; // 0-11
+      monthSums[month] += temps[i];
+      monthCounts[month]++;
+    }
+    const monthAvgs = monthSums.map((sum, i) =>
+      monthCounts[i] > 0 ? Math.round(sum / monthCounts[i]) : null
+    );
+    if (monthAvgs.every(v => v === null)) return null;
+
+    // Format as compact table
+    const labels = MONTH_LABELS.map(m => m.padStart(4)).join('');
+    const values = monthAvgs.map(v => (v !== null ? `${v}°` : ' -').padStart(4)).join('');
+    return `🌡️ **Klimat (medeltemperatur):**\n\`\`\`\n${labels}\n${values}\n\`\`\``;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Fetch a representative Wikipedia image for a country.
  * Uses the Wikipedia API to get the main page image (original size).
@@ -225,15 +270,30 @@ export async function fetchCountryFacts(countryCode) {
     lines.splice(1, 0, '');
   }
 
-  // Fetch Wikipedia image in parallel-safe way (don't block on failure)
-  const imageUrl = await fetchCountryImage(name);
+  // Fetch Wikipedia image and climate data in parallel (don't block on failure)
+  const countryLat = data.capitalInfo?.latlng?.[0] ?? data.latlng?.[0] ?? null;
+  const countryLng = data.capitalInfo?.latlng?.[1] ?? data.latlng?.[1] ?? null;
+  const [imageUrl, climateStr] = await Promise.all([
+    fetchCountryImage(name),
+    fetchClimateData(countryLat, countryLng),
+  ]);
+
+  // Insert climate before the Wikipedia link
+  if (climateStr) {
+    const wikiIdx = lines.findIndex(l => l.startsWith('[Läs mer'));
+    if (wikiIdx !== -1) {
+      lines.splice(wikiIdx, 0, climateStr, '');
+    } else {
+      lines.push('', climateStr);
+    }
+  }
 
   return {
     title: `${name} ${flag}`,
     flag,
     content: lines.join('\n'),
-    lat: data.capitalInfo?.latlng?.[0] ?? data.latlng?.[0] ?? null,
-    lng: data.capitalInfo?.latlng?.[1] ?? data.latlng?.[1] ?? null,
+    lat: countryLat,
+    lng: countryLng,
     address: name,
     imageUrl,
   };
@@ -332,6 +392,14 @@ export async function fetchPlaceFacts(name, lat, lng, { country = '', state = ''
   if (lat != null && lng != null) {
     lines.push(`**Koordinater:** ${lat.toFixed(4)}°N, ${lng.toFixed(4)}°E`);
   }
+
+  // Fetch climate data (don't block on failure)
+  const climateStr = await fetchClimateData(lat, lng);
+  if (climateStr) {
+    lines.push('');
+    lines.push(climateStr);
+  }
+
   lines.push('');
   lines.push(`[Läs mer på Wikipedia](https://en.wikipedia.org/wiki/${encodeURIComponent(wikiTitle)})`);
 
