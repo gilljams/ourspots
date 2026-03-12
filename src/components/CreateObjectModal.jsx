@@ -16,7 +16,8 @@ import BlockEditor from './BlockEditor';
 import { useConfirm } from '../utils/useConfirm';
 import { useToast } from '../utils/useToast';
 import { usePrompt } from '../utils/usePrompt';
-import { fetchCountryList, fetchCountryFacts } from '../utils/countryData';
+import { fetchCountryFacts, searchPlaces, fetchPlaceFacts } from '../utils/countryData';
+import { useDebounce } from '../utils/useDebounce';
 
 // Demo users available when in demo mode for realistic examples
 const DEMO_USERS = {
@@ -104,9 +105,9 @@ const OBJECT_TEMPLATES = [
   },
   {
     id: 'country',
-    label: 'Land',
+    label: 'Plats',
     icon: 'Globe',
-    description: 'Fakta om ett land – valuta, el, språk m.m.',
+    description: 'Fakta om ett land, stad eller plats via Wikipedia',
     matchCategoryIcon: 'Plane', // Show for travel-type categories
     hasCountryPicker: true,
     blocks: [
@@ -190,12 +191,15 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
   const [inheritLocation, setInheritLocation] = useState(false);
   const [isCollection, setIsCollection] = useState(sourceObject?.isCollection || false);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
-  const [countryList, setCountryList] = useState([]);
-  const [countrySearch, setCountrySearch] = useState('');
-  const [loadingCountry, setLoadingCountry] = useState(false);
-  const [selectedCountry, setSelectedCountry] = useState(null);
-  const [showCountryBlockPicker, setShowCountryBlockPicker] = useState(false);
-  const [countryBlockSearch, setCountryBlockSearch] = useState('');
+  const [placeResults, setPlaceResults] = useState([]);
+  const [placeSearch, setPlaceSearch] = useState('');
+  const [loadingPlace, setLoadingPlace] = useState(false);
+  const [searchingPlace, setSearchingPlace] = useState(false);
+  const [selectedPlace, setSelectedPlace] = useState(null);
+  const [showPlaceBlockPicker, setShowPlaceBlockPicker] = useState(false);
+  const [placeBlockSearch, setPlaceBlockSearch] = useState('');
+  const [placeBlockResults, setPlaceBlockResults] = useState([]);
+  const [searchingPlaceBlock, setSearchingPlaceBlock] = useState(false);
   const [whatsappGroupUrl, setWhatsappGroupUrl] = useState(sourceObject?.whatsappGroupUrl || '');
   const [whatsappAdded, setWhatsappAdded] = useState(!!sourceObject?.whatsappGroupUrl);
   const [whatsappExpanded, setWhatsappExpanded] = useState(false);
@@ -440,8 +444,8 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
   // Refs
   const fileInputRef = useRef(null);
   const gpsWatchRef = useRef(null);
-  const countryBlockPickerRef = useRef(null);
-  const countryBlockInputRef = useRef(null);
+  const placeBlockPickerRef = useRef(null);
+  const placeBlockInputRef = useRef(null);
   
   // Calculate effective shares for block editors
   // Combines sourceObject shares with parent's inheritable shares (for new objects under shared parent)
@@ -561,21 +565,19 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
       // Deselect: clear template blocks
       setSelectedTemplate(null);
       setCustomBlocks([]);
-      setSelectedCountry(null);
-      setCountrySearch('');
+      setSelectedPlace(null);
+      setPlaceSearch('');
+      setPlaceResults([]);
       setFormTouched(true);
       return;
     }
     setSelectedTemplate(templateId);
-    setSelectedCountry(null);
-    setCountrySearch('');
+    setSelectedPlace(null);
+    setPlaceSearch('');
+    setPlaceResults([]);
     if (template) {
-      // For country template, don't populate blocks yet — wait for country selection
+      // For country/place template, don't populate blocks yet — wait for place selection
       if (template.hasCountryPicker) {
-        // Load country list if not already loaded
-        if (countryList.length === 0) {
-          fetchCountryList().then(list => setCountryList(list)).catch(() => toast.error('Kunde inte läsa länderlistan'));
-        }
         const blocks = template.blocks.map(b => ({
           ...b,
           id: Math.random().toString(36).substr(2, 9),
@@ -593,24 +595,57 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
     }
   };
 
-  const handleCountrySelect = async (country) => {
-    setSelectedCountry(country);
-    setCountrySearch('');
-    setLoadingCountry(true);
+  // Debounced place search for template picker
+  const debouncedPlaceSearch = useDebounce(placeSearch, 350);
+  useEffect(() => {
+    if (!debouncedPlaceSearch || debouncedPlaceSearch.length < 2 || selectedPlace) return;
+    let cancelled = false;
+    setSearchingPlace(true);
+    searchPlaces(debouncedPlaceSearch).then(results => {
+      if (!cancelled) setPlaceResults(results);
+    }).catch(() => {}).finally(() => { if (!cancelled) setSearchingPlace(false); });
+    return () => { cancelled = true; };
+  }, [debouncedPlaceSearch, selectedPlace]);
+
+  // Debounced place search for block picker
+  const debouncedPlaceBlockSearch = useDebounce(placeBlockSearch, 350);
+  useEffect(() => {
+    if (!debouncedPlaceBlockSearch || debouncedPlaceBlockSearch.length < 2) return;
+    let cancelled = false;
+    setSearchingPlaceBlock(true);
+    searchPlaces(debouncedPlaceBlockSearch).then(results => {
+      if (!cancelled) setPlaceBlockResults(results);
+    }).catch(() => {}).finally(() => { if (!cancelled) setSearchingPlaceBlock(false); });
+    return () => { cancelled = true; };
+  }, [debouncedPlaceBlockSearch]);
+
+  const handlePlaceSelect = async (place) => {
+    setSelectedPlace(place);
+    setPlaceSearch('');
+    setPlaceResults([]);
+    setLoadingPlace(true);
     try {
-      const facts = await fetchCountryFacts(country.code);
+      let facts;
+      if (place.type === 'country' && place.countryCode) {
+        // Country → use rich country facts (el, adapter, valuta etc)
+        facts = await fetchCountryFacts(place.countryCode);
+      } else {
+        // City/place → use Wikipedia-based facts
+        facts = await fetchPlaceFacts(place.name, place.lat, place.lng, {
+          country: place.country,
+          state: place.state,
+          city: place.city,
+        });
+      }
       setTitle(facts.title);
-      // Set hero image from Wikipedia (external URL, no Cloudinary quota used)
       if (facts.imageUrl) {
         setImageUrl(facts.imageUrl);
       }
-      // Set location to capital/country center
       if (facts.lat != null && facts.lng != null) {
         setLat(facts.lat);
         setLng(facts.lng);
-        setAddress(facts.address);
+        setAddress(facts.address || place.displayName);
       }
-      // Update the text block with fact content
       setCustomBlocks(prev => prev.map(b => 
         b.type === 'text' && b.title === 'Fakta' 
           ? { ...b, content: facts.content }
@@ -618,19 +653,29 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
       ));
       setFormTouched(true);
     } catch (err) {
-      console.error('Country fetch error:', err);
-      toast.error('Kunde inte hämta landsdata');
+      console.error('Place fetch error:', err);
+      toast.error('Kunde inte hämta platsdata');
     } finally {
-      setLoadingCountry(false);
+      setLoadingPlace(false);
     }
   };
 
-  const handleCountryBlockSelect = async (country) => {
-    setCountryBlockSearch('');
-    setShowCountryBlockPicker(false);
-    setLoadingCountry(true);
+  const handlePlaceBlockSelect = async (place) => {
+    setPlaceBlockSearch('');
+    setPlaceBlockResults([]);
+    setShowPlaceBlockPicker(false);
+    setLoadingPlace(true);
     try {
-      const facts = await fetchCountryFacts(country.code);
+      let facts;
+      if (place.type === 'country' && place.countryCode) {
+        facts = await fetchCountryFacts(place.countryCode);
+      } else {
+        facts = await fetchPlaceFacts(place.name, place.lat, place.lng, {
+          country: place.country,
+          state: place.state,
+          city: place.city,
+        });
+      }
       const newBlock = {
         id: Math.random().toString(36).substr(2, 9),
         type: 'text',
@@ -641,12 +686,12 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
       };
       setCustomBlocks(prev => [...prev, newBlock]);
       setFormTouched(true);
-      toast.success(`Landfakta för ${facts.title} tillagt!`);
+      toast.success(`Fakta om ${facts.title} tillagt!`);
     } catch (err) {
-      console.error('Country block fetch error:', err);
-      toast.error('Kunde inte hämta landsdata');
+      console.error('Place block fetch error:', err);
+      toast.error('Kunde inte hämta platsdata');
     } finally {
-      setLoadingCountry(false);
+      setLoadingPlace(false);
     }
   };
 
@@ -1297,47 +1342,48 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   </p>
                 )}
 
-                {/* Country picker for Land template */}
+                {/* Place/country picker for Plats template */}
                 {selectedTemplate === 'country' && (
                   <div className="mt-3">
                     {/* Results shown ABOVE the input so they aren't hidden by the iOS keyboard */}
-                    {countrySearch && !selectedCountry && countryList.length > 0 && (
+                    {placeSearch.length >= 2 && !selectedPlace && placeResults.length > 0 && (
                       <div className="mb-1 max-h-48 overflow-y-auto bg-gray-800 border border-white/10 rounded-lg shadow-xl">
-                        {countryList
-                          .filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase()))
-                          .slice(0, 20)
-                          .map(c => (
-                            <button
-                              key={c.code}
-                              type="button"
-                              onClick={() => handleCountrySelect(c)}
-                              className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2"
-                            >
-                              <span className="text-lg">{c.flag}</span>
-                              <span>{c.name}</span>
-                            </button>
-                          ))
-                        }
-                        {countryList.filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase())).length === 0 && (
-                          <div className="px-3 py-2 text-sm text-gray-500">Inget land matchade</div>
-                        )}
+                        {placeResults.map((p, i) => (
+                          <button
+                            key={`${p.lat}-${p.lng}-${i}`}
+                            type="button"
+                            onClick={() => handlePlaceSelect(p)}
+                            className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2"
+                          >
+                            <span className="text-lg">{p.type === 'country' ? '🏳️' : '📍'}</span>
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate font-medium">{p.name}</div>
+                              {p.displayName !== p.name && (
+                                <div className="text-xs text-gray-500 truncate">{p.displayName}</div>
+                              )}
+                            </div>
+                          </button>
+                        ))}
                       </div>
+                    )}
+                    {placeSearch.length >= 2 && !selectedPlace && placeResults.length === 0 && !searchingPlace && (
+                      <div className="mb-1 px-3 py-2 text-sm text-gray-500 bg-gray-800 border border-white/10 rounded-lg">Inga resultat</div>
                     )}
                     <div className="relative">
                       <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                       <input
                         type="text"
-                        value={selectedCountry ? `${selectedCountry.flag} ${selectedCountry.name}` : countrySearch}
+                        value={selectedPlace ? selectedPlace.displayName : placeSearch}
                         onChange={(e) => {
-                          setCountrySearch(e.target.value);
-                          if (selectedCountry) setSelectedCountry(null);
+                          setPlaceSearch(e.target.value);
+                          if (selectedPlace) { setSelectedPlace(null); setPlaceResults([]); }
                         }}
-                        onFocus={() => { if (selectedCountry) { setSelectedCountry(null); setCountrySearch(''); } }}
-                        placeholder="Sök land..."
-                        disabled={saving || loadingCountry}
+                        onFocus={() => { if (selectedPlace) { setSelectedPlace(null); setPlaceSearch(''); setPlaceResults([]); } }}
+                        placeholder="Sök land, stad eller plats..."
+                        disabled={saving || loadingPlace}
                         className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500"
                       />
-                      {loadingCountry && (
+                      {(loadingPlace || searchingPlace) && (
                         <Loader size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-400 animate-spin" />
                       )}
                     </div>
@@ -1884,16 +1930,13 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                     <Palette size={14} className="text-gray-500 group-hover:text-blue-400 transition-colors" /> Kulör
                   </button>
                   <button type="button" onClick={() => { 
-                    setShowCountryBlockPicker(true);
-                    if (countryList.length === 0) {
-                      fetchCountryList().then(list => setCountryList(list)).catch(() => toast.error('Kunde inte läsa länderlistan'));
-                    }
+                    setShowPlaceBlockPicker(true);
                     setTimeout(() => {
-                      countryBlockInputRef.current?.focus();
-                      countryBlockPickerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                      placeBlockInputRef.current?.focus();
+                      placeBlockPickerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                     }, 150);
-                  }} disabled={saving || loadingCountry} className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-500 hover:bg-white/5 hover:text-gray-300 text-xs transition-colors">
-                    {loadingCountry ? <Loader size={14} className="animate-spin text-blue-400" /> : <Globe size={14} className="text-gray-500 group-hover:text-blue-400 transition-colors" />} Landfakta
+                  }} disabled={saving || loadingPlace} className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-500 hover:bg-white/5 hover:text-gray-300 text-xs transition-colors">
+                    {loadingPlace ? <Loader size={14} className="animate-spin text-blue-400" /> : <Globe size={14} className="text-gray-500 group-hover:text-blue-400 transition-colors" />} Platsfakta
                   </button>
                   {isAdmin && (
                     <button type="button" onClick={() => addCustomBlock('audio')} disabled={saving} className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-500 hover:bg-white/5 hover:text-gray-300 text-xs transition-colors">
@@ -1902,46 +1945,50 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   )}
                 </div>
               )}
-              {/* Country block picker - inline search */}
-              {showCountryBlockPicker && (
-                <div ref={countryBlockPickerRef} className="mt-2 pt-2 border-t border-white/5">
+              {/* Place/country block picker - inline search */}
+              {showPlaceBlockPicker && (
+                <div ref={placeBlockPickerRef} className="mt-2 pt-2 border-t border-white/5">
                   {/* Results shown ABOVE the input so they aren't hidden by the iOS keyboard */}
-                  {countryBlockSearch && countryList.length > 0 && (
+                  {placeBlockSearch.length >= 2 && placeBlockResults.length > 0 && (
                     <div className="mb-1 max-h-48 overflow-y-auto bg-gray-800 border border-white/10 rounded-lg shadow-xl">
-                      {countryList
-                        .filter(c => c.name.toLowerCase().includes(countryBlockSearch.toLowerCase()))
-                        .slice(0, 20)
-                        .map(c => (
-                          <button
-                            key={c.code}
-                            type="button"
-                            onClick={() => handleCountryBlockSelect(c)}
-                            className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2"
-                          >
-                            <span className="text-lg">{c.flag}</span>
-                            <span>{c.name}</span>
-                          </button>
-                        ))
-                      }
-                      {countryList.filter(c => c.name.toLowerCase().includes(countryBlockSearch.toLowerCase())).length === 0 && (
-                        <div className="px-3 py-2 text-sm text-gray-500">Inget land matchade</div>
-                      )}
+                      {placeBlockResults.map((p, i) => (
+                        <button
+                          key={`${p.lat}-${p.lng}-${i}`}
+                          type="button"
+                          onClick={() => handlePlaceBlockSelect(p)}
+                          className="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-colors flex items-center gap-2"
+                        >
+                          <span className="text-lg">{p.type === 'country' ? '🏳️' : '📍'}</span>
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate font-medium">{p.name}</div>
+                            {p.displayName !== p.name && (
+                              <div className="text-xs text-gray-500 truncate">{p.displayName}</div>
+                            )}
+                          </div>
+                        </button>
+                      ))}
                     </div>
+                  )}
+                  {placeBlockSearch.length >= 2 && placeBlockResults.length === 0 && !searchingPlaceBlock && (
+                    <div className="mb-1 px-3 py-2 text-sm text-gray-500 bg-gray-800 border border-white/10 rounded-lg">Inga resultat</div>
                   )}
                   <div className="relative">
                     <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                     <input
-                      ref={countryBlockInputRef}
+                      ref={placeBlockInputRef}
                       type="text"
-                      value={countryBlockSearch}
-                      onChange={(e) => setCountryBlockSearch(e.target.value)}
-                      placeholder="Sök land för fakta-block..."
-                      disabled={saving || loadingCountry}
+                      value={placeBlockSearch}
+                      onChange={(e) => setPlaceBlockSearch(e.target.value)}
+                      placeholder="Sök land, stad eller plats..."
+                      disabled={saving || loadingPlace}
                       className="w-full pl-9 pr-10 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500"
                     />
+                    {searchingPlaceBlock && (
+                      <Loader size={14} className="absolute right-7 top-1/2 -translate-y-1/2 text-blue-400 animate-spin" />
+                    )}
                     <button
                       type="button"
-                      onClick={() => { setShowCountryBlockPicker(false); setCountryBlockSearch(''); }}
+                      onClick={() => { setShowPlaceBlockPicker(false); setPlaceBlockSearch(''); setPlaceBlockResults([]); }}
                       className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white/10 text-gray-400 hover:text-white flex items-center justify-center"
                     >
                       <X size={12} />

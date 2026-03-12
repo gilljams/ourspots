@@ -255,3 +255,92 @@ export async function fetchCountryList() {
     }))
     .sort((a, b) => a.name.localeCompare(b.name, 'sv'));
 }
+
+/**
+ * Search for places (countries, cities, landmarks) using Photon (OpenStreetMap).
+ * Returns array of { name, displayName, lat, lng, type, country, countryCode, city }.
+ */
+export async function searchPlaces(query) {
+  if (!query || query.trim().length < 2) return [];
+  const res = await fetch(
+    `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=8&lang=en`
+  );
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.features.map(f => {
+    const p = f.properties;
+    const osmType = p.osm_value || p.type || '';
+    // Detect if this is a country-level result
+    const isCountry = osmType === 'country' || 
+                      p.type === 'country' ||
+                      (p.osm_key === 'place' && p.osm_value === 'country');
+    return {
+      name: p.name || '',
+      displayName: [p.name, p.city, p.state, p.country].filter(Boolean).join(', '),
+      lat: f.geometry.coordinates[1],
+      lng: f.geometry.coordinates[0],
+      type: isCountry ? 'country' : (osmType || 'place'),
+      country: p.country || '',
+      countryCode: p.countrycode?.toUpperCase() || '',
+      city: p.city || p.county || '',
+      state: p.state || '',
+    };
+  });
+}
+
+/**
+ * Fetch facts about a non-country place (city, landmark, etc.) using Wikipedia.
+ * Returns { title, content, lat, lng, address, imageUrl } or throws on error.
+ */
+export async function fetchPlaceFacts(name, lat, lng, { country = '', state = '', city = '' } = {}) {
+  // Try Wikipedia summary – search with name first, fallback with more context
+  let wikiData = null;
+  for (const searchTerm of [name, `${name} ${country}`, `${name} ${state}`]) {
+    try {
+      const encoded = encodeURIComponent(searchTerm);
+      const res = await fetch(
+        `https://en.wikipedia.org/api/rest_v1/page/summary/${encoded}`
+      );
+      if (res.ok) {
+        const d = await res.json();
+        if (d.type !== 'disambiguation') {
+          wikiData = d;
+          break;
+        }
+      }
+    } catch { /* try next */ }
+  }
+
+  const extract = wikiData?.extract || '';
+  const imageUrl = wikiData?.originalimage?.source || wikiData?.thumbnail?.source || null;
+  const wikiTitle = wikiData?.titles?.normalized || name;
+
+  // Build location context line
+  const locationParts = [city, state, country].filter(Boolean);
+  const locationStr = locationParts.length > 0 ? locationParts.join(', ') : '';
+
+  // Build markdown content
+  const lines = [];
+  if (locationStr) {
+    lines.push(`**Plats:** ${locationStr}`);
+    lines.push('');
+  }
+  if (extract) {
+    lines.push(extract);
+    lines.push('');
+  }
+  if (lat != null && lng != null) {
+    lines.push(`**Koordinater:** ${lat.toFixed(4)}°N, ${lng.toFixed(4)}°E`);
+  }
+  lines.push('');
+  lines.push(`[Läs mer på Wikipedia](https://en.wikipedia.org/wiki/${encodeURIComponent(wikiTitle)})`);
+
+  return {
+    title: name,
+    content: lines.join('\n'),
+    lat,
+    lng,
+    address: locationStr || name,
+    imageUrl,
+  };
+}
