@@ -389,8 +389,8 @@ export async function fetchPlaceFacts(name, lat, lng, { country = '', state = ''
 
   // Build markdown content
   const lines = [];
-  if (locationStr) {
-    lines.push(`**Plats:** ${locationStr}`);
+  if (fullAddress) {
+    lines.push(`**Plats:** ${fullAddress}`);
     lines.push('');
   }
   if (extract) {
