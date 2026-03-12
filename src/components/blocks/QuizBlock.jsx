@@ -75,7 +75,7 @@ export const QuizBlock = ({ data, onExpand }) => {
               <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors truncate">{title}</span>
             </div>
             <span className="text-xs text-gray-500 flex-shrink-0">
-              {typeLabel} · {categoryLabel} · {difficultyLabel}
+              {categoryLabel} · {difficultyLabel}
             </span>
           </button>
         </div>
@@ -84,7 +84,7 @@ export const QuizBlock = ({ data, onExpand }) => {
         {!isCollapsed && (
           <div className="bg-white/[0.03] rounded-xl p-4 space-y-3">
             <div className="text-xs text-gray-500">
-              {typeLabel} · Kategori: {categoryLabel} · Svårighetsgrad: {difficultyLabel} · Engelska
+              {typeLabel} · Kategori: {categoryLabel} · Svårighetsgrad: {difficultyLabel}
             </div>
 
             <button
