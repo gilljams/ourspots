@@ -64,7 +64,7 @@ export const QuizBlock = ({ data, onExpand }) => {
               />
             </div>
             <div className="flex items-center gap-2.5 flex-1 min-w-0">
-              <HelpCircle size={16} className="text-blue-400 flex-shrink-0" />
+              <HelpCircle size={16} className="text-gray-400 flex-shrink-0" />
               <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors truncate">{title}</span>
             </div>
             <span className="text-xs text-gray-500 flex-shrink-0">
