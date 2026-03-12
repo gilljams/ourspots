@@ -21,9 +21,10 @@ import { LeaderboardBlock } from './LeaderboardBlock';
 import { DistributionBlock } from './DistributionBlock';
 import TiebreakerBlock from './TiebreakerBlock';
 import { ColorBlock } from './ColorBlock';
+import { QuizBlock } from './QuizBlock';
 
 // Re-export all components
-export { TitleBlock, LocationBlock, ImageBlock, GalleryBlock, SectionBlock, TextBlock, ContactBlock, LinksBlock, TableBlock, DateTagBlock, TimerBlock, PollBlock, AudioBlock, RatingBlock, SplitBlock, LeaderboardBlock, DistributionBlock, TiebreakerBlock, ColorBlock };
+export { TitleBlock, LocationBlock, ImageBlock, GalleryBlock, SectionBlock, TextBlock, ContactBlock, LinksBlock, TableBlock, DateTagBlock, TimerBlock, PollBlock, AudioBlock, RatingBlock, SplitBlock, LeaderboardBlock, DistributionBlock, TiebreakerBlock, ColorBlock, QuizBlock };
 
 // Shared constants and utilities
 export { TABLE_TEMPLATES } from './tableTemplates';
@@ -49,5 +50,6 @@ export const blockComponents = {
   leaderboard: LeaderboardBlock,
   distribution: DistributionBlock,
   tiebreaker: TiebreakerBlock,
-  color: ColorBlock
+  color: ColorBlock,
+  quiz: QuizBlock
 };

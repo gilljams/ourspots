@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   X, Plus, Upload, Loader, Navigation, ChevronDown, ChevronUp,
-  Map as MapIcon, FileText, CheckSquare, ClipboardList, Link2, Table2, Image as ImageIcon, Calendar, Phone, Timer, BarChart3, Folder, MapPin, Music, Wallet, Trophy, Car, Users, Minus, MessageCircle, Swords, Zap, Images, Star, Search, Globe, Palette 
+  Map as MapIcon, FileText, CheckSquare, ClipboardList, Link2, Table2, Image as ImageIcon, Calendar, Phone, Timer, BarChart3, Folder, MapPin, Music, Wallet, Trophy, Car, Users, Minus, MessageCircle, Swords, Zap, Images, Star, Search, Globe, Palette, HelpCircle 
 } from 'lucide-react';
 import { 
   CLOUDINARY_CLOUD_NAME, 
@@ -241,7 +241,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
       }));
     
     const otherBlocks = sourceObject.blocks
-      .filter(b => ['text', 'links', 'table', 'datetag', 'contact', 'timer', 'poll', 'audio', 'split', 'leaderboard', 'distribution', 'section', 'tiebreaker', 'gallery', 'rating', 'color'].includes(b.type))
+      .filter(b => ['text', 'links', 'table', 'datetag', 'contact', 'timer', 'poll', 'audio', 'split', 'leaderboard', 'distribution', 'section', 'tiebreaker', 'gallery', 'rating', 'color', 'quiz'].includes(b.type))
       .map(b => {
         if (b.type === 'links') {
           return {
@@ -400,6 +400,16 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             title: b.data.title || 'Kulör',
             entries: b.data.entries || [],
             defaultCollapsed: b.data.defaultCollapsed ?? false
+          };
+        }
+        if (b.type === 'quiz') {
+          return {
+            id: Math.random().toString(36).substr(2, 9),
+            type: 'quiz',
+            title: b.data.title || 'Quiz',
+            categoryId: b.data.categoryId || '',
+            difficulty: b.data.difficulty || '',
+            defaultCollapsed: b.data.defaultCollapsed ?? true
           };
         }
         // Text blocks
@@ -1077,6 +1087,16 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             defaultCollapsed: block.defaultCollapsed ?? false
           }
         });
+      } else if (block.type === 'quiz') {
+        blocks.push({
+          type: 'quiz',
+          data: {
+            title: (block.title || 'Quiz').trim(),
+            categoryId: block.categoryId || '',
+            difficulty: block.difficulty || '',
+            defaultCollapsed: block.defaultCollapsed ?? true
+          }
+        });
       } else if (block.type === 'text') {
         // Always save text blocks, even if empty (can be edited from view mode)
         blocks.push({ 
@@ -1194,6 +1214,12 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
     if (type === 'color') {
       newBlock.title = 'Kulör';
       newBlock.entries = [];
+      newBlock.defaultCollapsed = true;
+    }
+    if (type === 'quiz') {
+      newBlock.title = 'Quiz';
+      newBlock.categoryId = '';
+      newBlock.difficulty = '';
       newBlock.defaultCollapsed = true;
     }
     setCustomBlocks(prev => [...prev, newBlock]);
@@ -1929,6 +1955,9 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
                   </button>
                   <button type="button" onClick={() => addCustomBlock('color')} disabled={saving} className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-500 hover:bg-white/5 hover:text-gray-300 text-xs transition-colors">
                     <Palette size={14} className="text-gray-500 group-hover:text-blue-400 transition-colors" /> Kulör
+                  </button>
+                  <button type="button" onClick={() => addCustomBlock('quiz')} disabled={saving} className="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-gray-500 hover:bg-white/5 hover:text-gray-300 text-xs transition-colors">
+                    <HelpCircle size={14} className="text-gray-500 group-hover:text-blue-400 transition-colors" /> Quiz
                   </button>
                   <button type="button" onClick={() => { 
                     setShowPlaceBlockPicker(true);

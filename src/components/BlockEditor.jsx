@@ -17,6 +17,7 @@ import { DistributionBlockEditor } from './blocks/DistributionBlockEditor';
 import { TiebreakerBlockEditor } from './blocks/TiebreakerBlockEditor';
 import { RatingBlockEditor } from './blocks/RatingBlockEditor';
 import { ColorBlockEditor } from './blocks/ColorBlockEditor';
+import { QuizBlockEditor } from './blocks/QuizBlockEditor';
 
 // Block type → editor component map
 const EDITOR_MAP = {
@@ -36,6 +37,7 @@ const EDITOR_MAP = {
   tiebreaker: TiebreakerBlockEditor,
   rating: RatingBlockEditor,
   color: ColorBlockEditor,
+  quiz: QuizBlockEditor,
 };
 
 // Main block editor dispatcher
@@ -81,7 +83,8 @@ export {
   DistributionBlockEditor,
   TiebreakerBlockEditor,
   RatingBlockEditor,
-  ColorBlockEditor
+  ColorBlockEditor,
+  QuizBlockEditor
 };
 
 export default BlockEditor;
