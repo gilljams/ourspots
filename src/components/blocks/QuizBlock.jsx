@@ -49,18 +49,18 @@ export const QuizBlock = ({ data, onExpand }) => {
 
   return (
     <>
-      <div ref={blockRef} className="rounded-xl border border-white/10 bg-white/5 overflow-hidden">
+      <div ref={blockRef}>
         {/* Collapsible header */}
         <button
           type="button"
           onClick={handleToggleCollapse}
-          className="flex items-center gap-2 p-3 w-full text-left"
+          className="flex items-center gap-2 py-1 w-full text-left"
         >
           <ChevronDown
             size={16}
             className={`text-gray-500 transition-transform flex-shrink-0 ${isCollapsed ? '-rotate-90' : ''}`}
           />
-          <HelpCircle size={16} className="text-purple-400 flex-shrink-0" />
+          <HelpCircle size={16} className="text-blue-400 flex-shrink-0" />
           <span className="text-sm font-medium text-gray-200 truncate">{title}</span>
           <span className="text-xs text-gray-500 ml-auto flex-shrink-0">
             {categoryLabel} · {difficultyLabel}
@@ -69,17 +69,15 @@ export const QuizBlock = ({ data, onExpand }) => {
 
         {/* Expanded content */}
         {!isCollapsed && (
-          <div className="px-3 pb-3 space-y-3">
-            <div className="text-xs text-gray-400 flex flex-col gap-1">
-              <span>📂 Kategori: {categoryLabel}</span>
-              <span>📊 Svårighetsgrad: {difficultyLabel}</span>
-              <span className="text-gray-500 italic mt-1">Frågorna är på engelska</span>
+          <div className="pl-8 pr-1 pb-2 pt-1 space-y-3">
+            <div className="text-xs text-gray-500">
+              Kategori: {categoryLabel} · Svårighetsgrad: {difficultyLabel} · Engelska
             </div>
 
             <button
               type="button"
               onClick={() => setShowQuiz(true)}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-purple-600/80 hover:bg-purple-500/80 active:bg-purple-700/80 text-white font-medium text-sm transition-colors"
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white font-medium text-sm transition-colors"
             >
               <Play size={18} />
               Starta Quiz

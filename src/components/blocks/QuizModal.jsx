@@ -88,7 +88,7 @@ export const QuizModal = ({ categoryId, difficulty, title, onClose }) => {
 
     if (!showAnswer) {
       if (selectedAnswer === opt) {
-        return `${base} bg-purple-600/40 border-2 border-purple-400 text-white`;
+        return `${base} bg-blue-600/40 border-2 border-blue-400 text-white`;
       }
       return `${base} bg-white/5 border-2 border-white/10 text-gray-200 hover:bg-white/10 active:bg-white/15`;
     }
@@ -119,7 +119,7 @@ export const QuizModal = ({ categoryId, difficulty, title, onClose }) => {
         >
           <X size={20} />
         </button>
-        <HelpCircle size={18} className="text-purple-400 flex-shrink-0" />
+        <HelpCircle size={18} className="text-blue-400 flex-shrink-0" />
         <span className="text-sm font-medium text-gray-200 truncate flex-1">{title}</span>
         <span className="text-xs text-gray-500 flex-shrink-0">Fråga #{questionCount}</span>
       </div>
@@ -128,7 +128,7 @@ export const QuizModal = ({ categoryId, difficulty, title, onClose }) => {
       <div className="flex-1 overflow-y-auto px-4 py-6 flex flex-col">
         {loading && (
           <div className="flex-1 flex items-center justify-center">
-            <Loader size={32} className="animate-spin text-purple-400" />
+            <Loader size={32} className="animate-spin text-blue-400" />
           </div>
         )}
 
@@ -168,7 +168,7 @@ export const QuizModal = ({ categoryId, difficulty, title, onClose }) => {
                       : showAnswer && selectedAnswer === opt && opt !== correctAnswer
                         ? 'bg-red-500/30 text-red-300'
                         : selectedAnswer === opt
-                          ? 'bg-purple-500/30 text-purple-300'
+                          ? 'bg-blue-500/30 text-blue-300'
                           : 'bg-white/10 text-gray-400'
                   }`}>
                     {OPTION_LETTERS[i]}
@@ -187,7 +187,7 @@ export const QuizModal = ({ categoryId, difficulty, title, onClose }) => {
                 <button
                   type="button"
                   onClick={handleReveal}
-                  className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-purple-600/80 hover:bg-purple-500/80 active:bg-purple-700/80 text-white font-medium text-sm transition-colors"
+                  className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white font-medium text-sm transition-colors"
                 >
                   <Eye size={18} />
                   Visa svar

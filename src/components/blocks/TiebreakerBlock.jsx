@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { RotateCcw, Trophy, Clock, Users, X, Check, Loader2, ChevronDown, Swords } from 'lucide-react';
+import { RotateCcw, Trophy, Clock, Users, X, Check, Loader2, ChevronDown, Swords, Play } from 'lucide-react';
 import { doc, updateDoc, onSnapshot, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db } from '../../firebase';
 
@@ -793,7 +793,7 @@ const TiebreakerBlock = ({
             }}
             className="w-full mt-4 px-3 py-2 text-gray-500 hover:text-gray-400 text-sm transition-colors flex items-center justify-center gap-2"
           >
-            <Swords size={14} />
+            <Play size={14} />
             Eller starta demo-match
           </button>
         ) : (
@@ -813,7 +813,7 @@ const TiebreakerBlock = ({
             }}
             className="w-full mt-4 px-4 py-3 bg-blue-500 hover:bg-blue-600 rounded-xl text-white font-medium transition-all flex items-center justify-center gap-2"
           >
-            <Swords size={18} />
+            <Play size={18} />
             Starta demo-match
           </button>
         )}

@@ -74,22 +74,18 @@ function QuizBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
             size={16}
             className={`text-gray-500 transition-transform flex-shrink-0 ${isExpanded ? '' : '-rotate-90'}`}
           />
-          <HelpCircle size={16} className="text-purple-400 flex-shrink-0" />
-          <span className="text-sm text-gray-300 truncate">{title || 'Quiz'}</span>
+          <HelpCircle size={16} className="text-blue-400 flex-shrink-0" />
+          <span className="text-sm font-medium text-gray-300 truncate">{title || 'Quiz'}</span>
         </button>
 
-        <div className="flex items-center gap-1 flex-shrink-0">
-          {index > 0 && (
-            <button type="button" onClick={() => onMove(index, index - 1)} disabled={saving} className="p-1 rounded hover:bg-white/10 text-gray-500 hover:text-gray-300">
-              <ArrowUp size={14} />
-            </button>
-          )}
-          {index < total - 1 && (
-            <button type="button" onClick={() => onMove(index, index + 1)} disabled={saving} className="p-1 rounded hover:bg-white/10 text-gray-500 hover:text-gray-300">
-              <ArrowDown size={14} />
-            </button>
-          )}
-          <button type="button" onClick={() => onRemove(block.id)} disabled={saving} className="p-1 rounded hover:bg-white/10 text-gray-500 hover:text-red-400">
+        <div className="flex gap-1 flex-shrink-0">
+          <button type="button" onClick={() => onMove(block.id, -1)} disabled={index === 0} className="w-7 h-7 rounded bg-white/5 text-gray-400 hover:bg-white/10 flex items-center justify-center disabled:opacity-30">
+            <ArrowUp size={14} />
+          </button>
+          <button type="button" onClick={() => onMove(block.id, 1)} disabled={index === total - 1} className="w-7 h-7 rounded bg-white/5 text-gray-400 hover:bg-white/10 flex items-center justify-center disabled:opacity-30">
+            <ArrowDown size={14} />
+          </button>
+          <button type="button" onClick={() => onRemove(block.id)} className="w-7 h-7 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center">
             <X size={14} />
           </button>
         </div>
@@ -104,7 +100,7 @@ function QuizBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
             value={title}
             onChange={(e) => handleTitleChange(e.target.value)}
             placeholder="Titel"
-            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-purple-500/50"
+            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500"
           />
 
           {/* Category */}
@@ -113,7 +109,7 @@ function QuizBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
             <select
               value={categoryId}
               onChange={(e) => handleCategoryChange(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-purple-500/50"
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-blue-500"
             >
               {CATEGORIES.map(c => (
                 <option key={c.id} value={c.id} className="bg-gray-900">{c.label}</option>
@@ -132,7 +128,7 @@ function QuizBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
                   onClick={() => handleDifficultyChange(d.id)}
                   className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                     difficulty === d.id
-                      ? 'bg-purple-600/40 text-purple-300 border border-purple-500/50'
+                      ? 'bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/50'
                       : 'bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10'
                   }`}
                 >
@@ -143,15 +139,20 @@ function QuizBlockEditor({ block, onUpdate, onRemove, onMove, index, total, savi
           </div>
 
           {/* Default collapsed toggle */}
-          <label className="flex items-center gap-2 text-xs text-gray-400 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={defaultCollapsed}
-              onChange={(e) => handleCollapsedChange(e.target.checked)}
-              className="accent-purple-500"
-            />
-            Collapsed som standard
-          </label>
+          <div className="flex items-center justify-between py-2">
+            <span className="text-xs text-gray-400">Ihopfälld som standard</span>
+            <button
+              type="button"
+              onClick={() => handleCollapsedChange(!defaultCollapsed)}
+              className={`relative w-10 h-5 rounded-full transition-colors ${
+                defaultCollapsed ? 'bg-blue-500' : 'bg-white/20'
+              }`}
+            >
+              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                defaultCollapsed ? 'translate-x-5' : 'translate-x-0.5'
+              }`} />
+            </button>
+          </div>
 
           <p className="text-xs text-gray-500 italic">
             Frågorna hämtas live från Open Trivia Database och visas på engelska.
