@@ -108,7 +108,6 @@ const OBJECT_TEMPLATES = [
     label: 'Plats',
     icon: 'Globe',
     description: 'Fakta om ett land, stad eller plats via Wikipedia',
-    matchCategoryIcon: 'Plane', // Show for travel-type categories
     hasCountryPicker: true,
     blocks: [
       { type: 'text', title: 'Fakta', content: '', defaultCollapsed: true, viewerEditable: false },
@@ -554,6 +553,8 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
       if (t.requireHideLocation && !cat?.hideLocation) return false;
       if (t.requireCategory && t.requireCategory !== selectedType) return false;
       if (t.matchCategoryIcon && cat?.icon !== t.matchCategoryIcon) return false;
+      // Hide place picker for location-independent categories
+      if (t.hasCountryPicker && cat?.hideLocation) return false;
       return true;
     });
   }, [selectedType, categories]);
