@@ -160,12 +160,12 @@ async function fetchClimateData(lat, lng) {
     const endYear = new Date().getFullYear() - 1;
     const startYear = endYear - 4;
     const res = await fetch(
-      `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}&start_date=${startYear}-01-01&end_date=${endYear}-12-31&daily=temperature_2m_mean&timezone=auto`
+      `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}&start_date=${startYear}-01-01&end_date=${endYear}-12-31&daily=temperature_2m_max&timezone=auto`
     );
     if (!res.ok) return null;
     const data = await res.json();
     const times = data.daily?.time;
-    const temps = data.daily?.temperature_2m_mean;
+    const temps = data.daily?.temperature_2m_max;
     if (!times || !temps || times.length === 0) return null;
 
     // Group by month and average
@@ -185,7 +185,7 @@ async function fetchClimateData(lat, lng) {
     // Format as compact table
     const labels = MONTH_LABELS.map(m => m.padStart(4)).join('');
     const values = monthAvgs.map(v => (v !== null ? `${v}°` : ' -').padStart(4)).join('');
-    return `🌡️ **Klimat (medeltemperatur):**\n\`\`\`\n${labels}\n${values}\n\`\`\``;
+    return `🌡️ **Klimat (dagtemperatur, medel):**\n\`\`\`\n${labels}\n${values}\n\`\`\``;
   } catch {
     return null;
   }
@@ -378,6 +378,8 @@ export async function fetchPlaceFacts(name, lat, lng, { country = '', state = ''
   // Build location context line
   const locationParts = [city, state, country].filter(Boolean);
   const locationStr = locationParts.length > 0 ? locationParts.join(', ') : '';
+  // Full address includes the place name itself
+  const fullAddress = [name, ...locationParts].filter(Boolean).join(', ');
 
   // Build markdown content
   const lines = [];
@@ -408,7 +410,7 @@ export async function fetchPlaceFacts(name, lat, lng, { country = '', state = ''
     content: lines.join('\n'),
     lat,
     lng,
-    address: locationStr || name,
+    address: fullAddress || name,
     imageUrl,
   };
 }
