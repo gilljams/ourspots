@@ -1016,13 +1016,24 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                     <h3 className="text-sm font-medium text-gray-400">{childObjects.length} objekt</h3>
                   </div>
                   {childObjects.length > 0 && (
-                    <button
-                      onClick={toggleChildViewMode}
-                      className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
-                      title={childViewMode === 'grid' ? 'Visa som lista' : 'Visa som kort'}
-                    >
-                      {childViewMode === 'grid' ? <List size={14} /> : <LayoutGrid size={14} />}
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      {canManage && (
+                        <button
+                          onClick={() => onEdit({ parentId: object.id })}
+                          className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                          title="Lägg till barnobjekt"
+                        >
+                          <Plus size={14} />
+                        </button>
+                      )}
+                      <button
+                        onClick={toggleChildViewMode}
+                        className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                        title={childViewMode === 'grid' ? 'Visa som lista' : 'Visa som kort'}
+                      >
+                        {childViewMode === 'grid' ? <List size={14} /> : <LayoutGrid size={14} />}
+                      </button>
+                    </div>
                   )}
                 </div>
                 {childViewMode === 'list' ? (
