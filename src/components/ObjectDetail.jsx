@@ -11,6 +11,7 @@ import { getObjectDistance, formatDistance } from '../utils/geoUtils';
 import { useSwipeToClose } from '../utils/useSwipeToClose';
 import { blockComponents } from './blocks';
 import { HeroInfoBlock } from './blocks/HeroInfoBlock';
+import { useWeather } from '../utils/useWeather';
 import DeleteConfirmModal from './DeleteConfirmModal';
 import LeaderboardModal from './LeaderboardModal';
 import DistributionModal from './DistributionModal';
@@ -348,6 +349,10 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
   //   - With 1 location only if showQuickCapture is on (FAB enables adding more)
   const showLocationMap = !isCollection && (hasMultipleLocations || (ownLocationBlocks.length >= 1 && showQuickCapture));
   const hasImageBlock = object.blocks.some(b => b.type === 'image' && b.data?.url);
+  
+  // Weather data for primary location (shown as overlay on image)
+  const primaryLocForWeather = object.blocks.find(b => b.type === 'location' && b.data?.isPrimary === true && b.data?.lat != null);
+  const weather = useWeather(primaryLocForWeather?.data?.lat, primaryLocForWeather?.data?.lng);
   
   // Create fake "objects" for the multi-location map view (one per location)
   // Use same numbering logic as rendering: primary = no number, extras = #2, #3, etc.
@@ -743,6 +748,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                           animation={block.type === 'image' ? audioAnimation : 'none'}
                           galleryImages={block.type === 'image' ? (blocksToRender.find(b => b.type === 'gallery')?.data?.images || []) : []}
                           dateTagData={block.type === 'image' ? dateTagBlock?.data : undefined}
+                          weather={block.type === 'image' ? weather : undefined}
                           // Poll-specific props (use effectiveUser for demo identity)
                           currentUser={effectiveUser}
                           userDisplayName={effectiveDisplayName}

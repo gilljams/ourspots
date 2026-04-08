@@ -22,6 +22,7 @@ export const renderMarkdown = (text) => {
   let quoteLines = []; // For multi-line quotes
   let codeBlockLines = []; // For code blocks
   let inCodeBlock = false;
+  let tableRows = []; // For markdown tables
   
   const flushList = () => {
     if (listItems.length > 0) {
@@ -62,6 +63,40 @@ export const renderMarkdown = (text) => {
       );
       codeBlockLines = [];
     }
+  };
+
+  const flushTable = () => {
+    if (tableRows.length < 2) { tableRows = []; return; }
+    const parseCells = (row) => row.replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
+    const headerCells = parseCells(tableRows[0]);
+    // Skip separator row (index 1), rest are body rows
+    const bodyRows = tableRows.slice(tableRows[1] && /^[\s|:-]+$/.test(tableRows[1]) ? 2 : 1);
+    elements.push(
+      <div key={`table-${elements.length}`} className="my-2 overflow-x-auto rounded-lg border border-white/10" style={{ overscrollBehaviorX: 'contain' }}>
+        <table className="w-full text-sm text-left">
+          <thead>
+            <tr className="border-b border-white/15 bg-white/5">
+              {headerCells.map((cell, i) => (
+                <th key={i} className="px-3 py-2 font-semibold text-white whitespace-nowrap">{formatInline(cell)}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {bodyRows.map((row, ri) => {
+              const cells = parseCells(row);
+              return (
+                <tr key={ri} className="border-b border-white/5 last:border-b-0">
+                  {headerCells.map((_, ci) => (
+                    <td key={ci} className="px-3 py-2 text-gray-300">{formatInline(cells[ci] || '')}</td>
+                  ))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    );
+    tableRows = [];
   };
   
   const formatInline = (line) => {
@@ -184,12 +219,24 @@ export const renderMarkdown = (text) => {
       return;
     }
     
+    // Check for table row ( | ... | )
+    if (/^\|/.test(line.trim())) {
+      flushList();
+      flushQuote();
+      tableRows.push(line.trim());
+      return;
+    } else {
+      flushTable();
+    }
+
     // Check for quote (> )
     const quoteMatch = line.match(/^>\s*(.*)/);
-    // Check for H1 heading (# )
-    const h1Match = line.match(/^#\s+(.+)/);
+    // Check for H3 heading (### )
+    const h3Match = line.match(/^###\s+(.+)/);
     // Check for H2 heading (## )
-    const h2Match = line.match(/^##\s+(.+)/);
+    const h2Match = !h3Match && line.match(/^##\s+(.+)/);
+    // Check for H1 heading (# )
+    const h1Match = !h2Match && !h3Match && line.match(/^#\s+(.+)/);
     // Check for bullet list (- or *)
     const bulletMatch = line.match(/^\s*[-*]\s+(.+)/);
     // Check for numbered list (1. 2. etc)
@@ -198,6 +245,11 @@ export const renderMarkdown = (text) => {
     if (quoteMatch) {
       flushList();
       quoteLines.push(quoteMatch[1]);
+    } else if (h3Match) {
+      flushList();
+      flushQuote();
+      const isFirst = elements.length === 0;
+      elements.push(<h4 key={`h3-${index}`} className={`text-sm font-semibold text-gray-200 ${isFirst ? '' : 'mt-2'} mb-1`}>{formatInline(h3Match[1])}</h4>);
     } else if (h2Match) {
       flushList();
       flushQuote();
@@ -231,6 +283,7 @@ export const renderMarkdown = (text) => {
   
   flushList();
   flushQuote();
+  flushTable();
   flushCodeBlock(); // In case code block wasn't closed
   return elements;
 };

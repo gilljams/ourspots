@@ -2,9 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause } from 'lucide-react';
 import { getTransformedImageUrl, getFocalPointStyles } from '../../utils/imageUtils';
 import { DateTagBlock } from './DateTagBlock';
+import { WeatherBadge } from './WeatherBadge';
 import ImageLightbox from '../ImageLightbox';
 
-export const ImageBlock = ({ data, isPlaying = false, animation = 'none', galleryImages = [], dateTagData, hasAudio, isAudioPlaying, onToggleAudio }) => {
+export const ImageBlock = ({ data, isPlaying = false, animation = 'none', galleryImages = [], dateTagData, hasAudio, isAudioPlaying, onToggleAudio, weather }) => {
   const [showLightbox, setShowLightbox] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [imageError, setImageError] = useState(false);
@@ -152,6 +153,15 @@ export const ImageBlock = ({ data, isPlaying = false, animation = 'none', galler
 
           {/* Vignette overlay */}
           <div className="absolute inset-0 pointer-events-none rounded-xl shadow-[inset_0_0_40px_rgba(0,0,0,0.35)] z-[1]" aria-hidden="true" />
+
+          {/* Weather overlay – top right */}
+          {weather && (
+            <div className="absolute top-2 right-2 z-[2] pointer-events-none">
+              <div className="bg-black/50 backdrop-blur-sm rounded-lg px-2 py-1">
+                <WeatherBadge weather={weather} />
+              </div>
+            </div>
+          )}
         
         {/* Animation overlay */}
         {animationActive && animation !== 'none' && (
