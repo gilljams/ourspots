@@ -9,7 +9,7 @@ export const LeaderboardBlock = ({ data, currentUser, shares = {}, canEdit = fal
   const confirm = useConfirm();
   const blockRef = useRef(null);
   
-  const title = data.title || (data.competitionType === 'longestdrive' ? 'Longest Drive' : 'Leaderboard');
+  const title = data.title || (data.competitionType === 'longestdrive' ? 'Longest Drive' : data.competitionType === 'team' ? 'Lagtävling' : 'Leaderboard');
   const displayTitle = title;
   const participants = data.participants || [];
   const roundCount = data.roundCount || 0;
@@ -18,9 +18,11 @@ export const LeaderboardBlock = ({ data, currentUser, shares = {}, canEdit = fal
   const status = data.status || 'active';
   const sortOrder = data.sortOrder || 'desc';
   const mode = data.mode || 'single';
-  const competitionType = data.competitionType || 'score';
+  const competitionType = data.competitionType || 'single';
   const isTeamMode = mode === 'team';
   const isLongestDrive = competitionType === 'longestdrive';
+  const isTeamCompetition = competitionType === 'team';
+  const golfRounds = data.golfRounds || [];
   
   const currentUserEmail = currentUser?.email?.toLowerCase();
   
@@ -111,6 +113,25 @@ export const LeaderboardBlock = ({ data, currentUser, shares = {}, canEdit = fal
     ? rankedParticipants.some(p => p.distance > 0)
     : rankedParticipants.some(p => p.total > 0);
   
+  // Get per-round winners for longest drive
+  const getRoundWinners = () => {
+    const rounds = data.rounds || [];
+    const winners = [];
+    for (let i = 0; i < roundCount; i++) {
+      let best = null;
+      participants.forEach(p => {
+        const shot = shots[p.email]?.[i];
+        if (shot?.distance > 0 && shot?.fairway) {
+          if (!best || shot.distance > best.distance) {
+            best = { name: p.name || p.email?.split('@')[0], email: p.email, distance: shot.distance, holeNumber: rounds[i]?.holeNumber };
+          }
+        }
+      });
+      winners.push(best);
+    }
+    return winners;
+  };
+
   // Find current user's rank if not in top 3
   const qualifiedParticipants = isLongestDrive 
     ? rankedParticipants.filter(p => p.fairway && p.distance > 0)
@@ -218,7 +239,7 @@ export const LeaderboardBlock = ({ data, currentUser, shares = {}, canEdit = fal
                   Öppna
                 </button>
               )}
-              {roundCount > 0 && onResetLeaderboard && (
+              {roundCount > 0 && onResetLeaderboard && status !== 'finished' && status !== 'finished' && (
                 <button
                   onClick={async () => {
                     if (await confirm({ title: 'Nollställ poäng?', message: 'Alla poäng raderas. Detta kan inte ångras.', confirmText: 'Nollställ', variant: 'danger' })) {
@@ -237,114 +258,114 @@ export const LeaderboardBlock = ({ data, currentUser, shares = {}, canEdit = fal
           
           {/* Top 3 preview + current user if outside top 3 */}
           {hasScores ? (
-            <div className="space-y-1">
-              {top3.map((participant, idx) => {
-                const rank = idx + 1;
-                const isCurrentUser = participant.email?.toLowerCase() === currentUserEmail;
-                const isDQ = isLongestDrive && !participant.fairway;
-                return (
-                  <div 
-                    key={participant.email}
-                    className={`flex items-center gap-3 py-1.5 px-2 rounded-lg ${
-                      isDQ ? 'opacity-50' :
-                      isCurrentUser ? 'bg-blue-500/10 ring-1 ring-blue-500/30' : ''
-                    }`}
-                  >
-                    <RankIcon rank={rank} />
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      isTeamMode && participant.team === 1 ? 'bg-cyan-500' :
-                      isTeamMode && participant.team === 2 ? 'bg-orange-500' :
-                      isCurrentUser ? 'bg-blue-500' : 'bg-white/10'
-                    }`}>
-                      <User size={12} className={`${
-                        isTeamMode && participant.team ? 'text-white' :
-                        isCurrentUser ? 'text-white' : 'text-gray-400'
-                      }`} />
+            isLongestDrive ? (
+              /* Longest drive: show per-round winners */
+              <div className="space-y-1">
+                {getRoundWinners().map((winner, idx) => {
+                  const isCurrentUser = winner?.email?.toLowerCase() === currentUserEmail;
+                  const holeLabel = winner?.holeNumber ? `R${idx + 1} H${winner.holeNumber}` : `R${idx + 1}`;
+                  return (
+                    <div 
+                      key={idx}
+                      className={`flex items-center gap-3 py-1.5 px-2 rounded-lg ${
+                        isCurrentUser ? 'bg-blue-500/10 ring-1 ring-blue-500/30' : ''
+                      }`}
+                    >
+                      <span className="text-xs text-gray-500 w-14 flex-shrink-0">{holeLabel}</span>
+                      {winner ? (
+                        <>
+                          <span className={`text-sm flex-1 truncate ${isCurrentUser ? 'text-blue-300 font-medium' : 'text-gray-300'}`}>
+                            {winner.name}
+                            {isCurrentUser && ' (du)'}
+                          </span>
+                          <span className="text-sm font-medium text-gray-400 tabular-nums">
+                            {winner.distance}m
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-sm text-gray-500 flex-1">–</span>
+                      )}
                     </div>
-                    <span className={`text-sm flex-1 truncate ${isCurrentUser ? 'text-blue-300 font-medium' : 'text-gray-300'}`}>
-                      {participant.name || participant.email?.split('@')[0]}
-                      {isCurrentUser && ' (du)'}
-                    </span>
-                    {isLongestDrive ? (
-                      <span className={`text-sm font-medium tabular-nums ${isDQ ? 'text-red-400' : 'text-green-400'}`}>
-                        {participant.distance > 0 ? `${participant.distance}m` : '–'}
-                        {isDQ && ' DQ'}
+                  );
+                })}
+              </div>
+            ) : (
+              /* Score mode: show top 3 ranked */
+              <div className="space-y-1">
+                {top3.map((participant, idx) => {
+                  const rank = idx + 1;
+                  const isCurrentUser = participant.email?.toLowerCase() === currentUserEmail;
+                  return (
+                    <div 
+                      key={participant.email}
+                      className={`flex items-center gap-3 py-1.5 px-2 rounded-lg ${
+                        isCurrentUser ? 'bg-blue-500/10 ring-1 ring-blue-500/30' : ''
+                      }`}
+                    >
+                      <RankIcon rank={rank} />
+                      {(() => {
+                        const initial = (participant.name || participant.email || '?')[0].toUpperCase();
+                        const hash = (participant.email || '').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+                        const hue = hash % 360;
+                        const bg = isTeamMode && participant.team === 1 ? 'bg-blue-500' :
+                          isTeamMode && participant.team === 2 ? 'bg-orange-500' :
+                          isCurrentUser ? 'bg-blue-500' : undefined;
+                        return (
+                          <div
+                            className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold text-white ${bg || ''}`}
+                            style={!bg ? { background: `hsl(${hue}, 45%, 35%)` } : undefined}
+                          >
+                            {initial}
+                          </div>
+                        );
+                      })()}
+                      <span className={`text-sm flex-1 truncate ${isCurrentUser ? 'text-blue-300 font-medium' : 'text-gray-300'}`}>
+                        {participant.name || participant.email?.split('@')[0]}
+                        {isCurrentUser && ' (du)'}
                       </span>
-                    ) : (
                       <span className="text-sm font-medium text-gray-400 tabular-nums">
                         {participant.total}p
                       </span>
-                    )}
-                  </div>
-                );
-              })}
-              
-              {/* Show DQ players if longest drive mode */}
-              {isLongestDrive && rankedParticipants.filter(p => !p.fairway && p.distance > 0).length > 0 && (
-                <>
-                  <div className="text-xs text-gray-600 text-center py-0.5">– DQ –</div>
-                  {rankedParticipants.filter(p => !p.fairway && p.distance > 0).slice(0, 2).map((participant) => {
-                    const isCurrentUser = participant.email?.toLowerCase() === currentUserEmail;
-                    return (
-                      <div 
-                        key={participant.email}
-                        className="flex items-center gap-3 py-1.5 px-2 rounded-lg opacity-50"
-                      >
-                        <span className="text-xs text-red-400 w-3.5">DQ</span>
-                        <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 bg-red-500/20">
-                          <User size={12} className="text-red-400" />
-                        </div>
-                        <span className="text-sm flex-1 truncate text-gray-500">
-                          {participant.name || participant.email?.split('@')[0]}
-                          {isCurrentUser && ' (du)'}
-                        </span>
-                        <span className="text-sm font-medium text-red-400/70 tabular-nums">
-                          {participant.distance}m
-                        </span>
-                      </div>
-                    );
-                  })}
-                </>
-              )}
-              
-              {/* Show current user if outside top 3 */}
-              {currentUserData && (
-                <>
-                  <div className="text-xs text-gray-600 text-center py-0.5">···</div>
-                  <div className="flex items-center gap-3 py-1.5 px-2 rounded-lg bg-blue-500/10 ring-1 ring-blue-500/30">
-                    <span className="text-xs text-gray-500 w-3.5 text-center">{currentUserRank}</span>
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      isTeamMode && currentUserData.team === 1 ? 'bg-cyan-500' :
-                      isTeamMode && currentUserData.team === 2 ? 'bg-orange-500' :
-                      'bg-blue-500'
-                    }`}>
-                      <User size={12} className="text-white" />
                     </div>
-                    <span className="text-sm flex-1 truncate text-blue-300 font-medium">
-                      {currentUserData.name || currentUserData.email?.split('@')[0]} (du)
-                    </span>
-                    {isLongestDrive ? (
-                      <span className="text-sm font-medium text-green-400 tabular-nums">
-                        {currentUserData.distance > 0 ? `${currentUserData.distance}m` : '–'}
+                  );
+                })}
+                
+                {/* Show current user if outside top 3 */}
+                {currentUserData && (
+                  <>
+                    <div className="text-xs text-gray-600 text-center py-0.5">···</div>
+                    <div className="flex items-center gap-3 py-1.5 px-2 rounded-lg bg-blue-500/10 ring-1 ring-blue-500/30">
+                      <span className="text-xs text-gray-500 w-3.5 text-center">{currentUserRank}</span>
+                      <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold text-white bg-blue-500">
+                        {(currentUserData.name || currentUserData.email || '?')[0].toUpperCase()}
+                      </div>
+                      <span className="text-sm flex-1 truncate text-blue-300 font-medium">
+                        {currentUserData.name || currentUserData.email?.split('@')[0]} (du)
                       </span>
-                    ) : (
                       <span className="text-sm font-medium text-gray-400 tabular-nums">
                         {currentUserData.total}p
                       </span>
-                    )}
+                    </div>
+                  </>
+                )}
+                
+                {qualifiedParticipants.length > 3 && !currentUserData && (
+                  <div className="text-xs text-gray-500 pl-2 pt-1">
+                    +{qualifiedParticipants.length - 3} till...
                   </div>
-                </>
-              )}
-              
-              {qualifiedParticipants.length > 3 && !currentUserData && (
-                <div className="text-xs text-gray-500 pl-2 pt-1">
-                  +{qualifiedParticipants.length - 3} till...
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )
           ) : (
             <div className="text-sm text-gray-500 text-center py-2">
-              {isLongestDrive ? 'Inga drives registrerade än' : 'Inga poäng registrerade än'}
+              {isLongestDrive ? 'Inga drives registrerade än' : isTeamCompetition ? 'Inga rundor spelade än' : 'Inga poäng registrerade än'}
+            </div>
+          )}
+
+          {/* Golf: round count info */}
+          {isTeamCompetition && golfRounds.length > 0 && (
+            <div className="flex items-center justify-between px-2 py-1.5 bg-white/[0.02] rounded-lg">
+              <span className="text-xs text-gray-400">{golfRounds.length} {golfRounds.length === 1 ? 'runda' : 'rundor'}</span>
             </div>
           )}
           
@@ -354,7 +375,7 @@ export const LeaderboardBlock = ({ data, currentUser, shares = {}, canEdit = fal
               onClick={onOpenModal}
               className="w-full py-2.5 text-sm text-blue-400 hover:bg-white/5 rounded-lg flex items-center justify-center gap-1.5 transition-colors border border-white/10"
             >
-              {isLongestDrive ? 'Öppna tävling' : 'Visa leaderboard'}
+              {isLongestDrive ? 'Öppna tävling' : isTeamCompetition ? 'Öppna lagtävling' : 'Visa leaderboard'}
               <ChevronRight size={14} />
             </button>
           )}

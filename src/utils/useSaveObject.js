@@ -174,7 +174,11 @@ export function useSaveObject({
         }
 
         // Update existing object
-        const updatePayload = { ...dataWithPath, updatedAt: Timestamp.now(), ...sharesUpdateData };
+        // Demo objects not owned by user: only update blocks + updatedAt (Firestore rules restriction)
+        const isDemoNotOwner = existingObj?.isDemoObject && existingObj?.ownerId !== user.uid;
+        const updatePayload = isDemoNotOwner
+          ? { blocks: objectData.blocks, updatedAt: Timestamp.now() }
+          : { ...dataWithPath, updatedAt: Timestamp.now(), ...sharesUpdateData };
         await updateDoc(doc(db, 'objects', editId), updatePayload);
 
         // If new inherited emails, add them (separate update to handle arrayUnion after arrayRemove)

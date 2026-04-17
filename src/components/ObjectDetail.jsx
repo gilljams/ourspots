@@ -14,6 +14,7 @@ import { HeroInfoBlock } from './blocks/HeroInfoBlock';
 import { useWeather } from '../utils/useWeather';
 import DeleteConfirmModal from './DeleteConfirmModal';
 import LeaderboardModal from './LeaderboardModal';
+import GolfModal from './GolfModal';
 import DistributionModal from './DistributionModal';
 import { FullscreenTextEditor } from './BlockEditor';
 import { ListEditorModal } from './ListEditorModal';
@@ -93,7 +94,17 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
   const [childViewMode, setChildViewMode] = useState(() => {
     return localStorage.getItem(STORAGE_KEYS.CHILD_VIEW_MODE) || 'grid';
   });
-  const [leaderboardModalData, setLeaderboardModalData] = useState(null); // { blockIndex, data }
+  const [leaderboardModalBlockIndex, setLeaderboardModalBlockIndex] = useState(null);
+  const leaderboardModalData = leaderboardModalBlockIndex !== null ? object.blocks[leaderboardModalBlockIndex]?.data : null;
+
+  // Close leaderboard modal if the block was deleted or shifted
+  useEffect(() => {
+    if (leaderboardModalBlockIndex === null) return;
+    const block = object.blocks[leaderboardModalBlockIndex];
+    if (!block || block.type !== 'leaderboard') {
+      setLeaderboardModalBlockIndex(null);
+    }
+  }, [object.blocks, leaderboardModalBlockIndex]);
   const [textEditModalData, setTextEditModalData] = useState(null); // { blockIndex, content, title }
   const [tableEditModalData, setTableEditModalData] = useState(null); // { blockIndex, rows, columns, template, title }
   const [distributionModalData, setDistributionModalData] = useState(null); // { blockIndex, data }
@@ -817,7 +828,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                           } : undefined}
                           // Leaderboard-specific props
                           onOpenModal={block.type === 'leaderboard' ? () => {
-                            setLeaderboardModalData({ blockIndex: actualBlockIndex, data: block.data });
+                            setLeaderboardModalBlockIndex(actualBlockIndex);
                           } : block.type === 'distribution' ? () => {
                             setDistributionModalData({ blockIndex: actualBlockIndex, data: block.data });
                           } : undefined}
@@ -1813,56 +1824,61 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
           </div>
         </div>
       )}
-      {leaderboardModalData && (
+      {leaderboardModalData && leaderboardModalData.competitionType === 'team' && (
+        <GolfModal
+          data={leaderboardModalData}
+          currentUser={effectiveUser}
+          canEdit={canEdit}
+          onClose={() => setLeaderboardModalBlockIndex(null)}
+          onUpdateData={async (updates) => {
+            await updateBlockField(leaderboardModalBlockIndex, updates);
+          }}
+        />
+      )}
+      {leaderboardModalData && leaderboardModalData.competitionType !== 'team' && (
         <LeaderboardModal
-          data={leaderboardModalData.data}
+          data={leaderboardModalData}
           currentUser={effectiveUser}
           shares={object.shares || {}}
           canEdit={canEdit}
-          onClose={() => setLeaderboardModalData(null)}
+          onClose={() => setLeaderboardModalBlockIndex(null)}
           onUpdateScores={async (newScores) => {
-            await updateBlockField(leaderboardModalData.blockIndex, { scores: newScores });
-            setLeaderboardModalData(prev => ({ ...prev, data: { ...prev.data, scores: newScores } }));
+            await updateBlockField(leaderboardModalBlockIndex, { scores: newScores });
           }}
           onAddRound={async () => {
-            const newCount = (object.blocks[leaderboardModalData.blockIndex].data.roundCount || 0) + 1;
-            await updateBlockField(leaderboardModalData.blockIndex, { roundCount: newCount });
-            setLeaderboardModalData(prev => ({ ...prev, data: { ...prev.data, roundCount: newCount } }));
+            const newCount = (leaderboardModalData.roundCount || 0) + 1;
+            await updateBlockField(leaderboardModalBlockIndex, { roundCount: newCount });
           }}
           onDeleteRound={async (roundIndex) => {
-            const blockData = object.blocks[leaderboardModalData.blockIndex].data;
-            const currentRoundCount = blockData.roundCount || 0;
+            const currentRoundCount = leaderboardModalData.roundCount || 0;
             if (currentRoundCount <= 0) return;
             
             // Remove scores for this round and shift subsequent rounds
-            const newScores = { ...blockData.scores };
+            const newScores = { ...leaderboardModalData.scores };
             Object.keys(newScores).forEach(email => {
               const ps = { ...newScores[email] };
               for (let i = roundIndex; i < currentRoundCount - 1; i++) ps[i] = ps[i + 1] || 0;
               delete ps[currentRoundCount - 1];
               newScores[email] = ps;
             });
-            const newShots = { ...blockData.shots };
+            const newShots = { ...leaderboardModalData.shots };
             Object.keys(newShots).forEach(email => {
               const ps = { ...newShots[email] };
               for (let i = roundIndex; i < currentRoundCount - 1; i++) ps[i] = ps[i + 1];
               delete ps[currentRoundCount - 1];
               newShots[email] = ps;
             });
-            const newRounds = [...(blockData.rounds || [])];
+            const newRounds = [...(leaderboardModalData.rounds || [])];
             newRounds.splice(roundIndex, 1);
             
             const changes = { roundCount: currentRoundCount - 1, scores: newScores, shots: newShots, rounds: newRounds };
-            await updateBlockField(leaderboardModalData.blockIndex, changes);
-            setLeaderboardModalData(prev => ({ ...prev, data: { ...prev.data, ...changes } }));
+            await updateBlockField(leaderboardModalBlockIndex, changes);
           }}
           onUpdateShots={async (newShots) => {
-            await updateBlockField(leaderboardModalData.blockIndex, { shots: newShots });
-            setLeaderboardModalData(prev => ({ ...prev, data: { ...prev.data, shots: newShots } }));
+            await updateBlockField(leaderboardModalBlockIndex, { shots: newShots });
           }}
           onUpdateRounds={async (newRounds) => {
-            await updateBlockField(leaderboardModalData.blockIndex, { rounds: newRounds });
-            setLeaderboardModalData(prev => ({ ...prev, data: { ...prev.data, rounds: newRounds } }));
+            await updateBlockField(leaderboardModalBlockIndex, { rounds: newRounds });
           }}
           preciseGPS={preciseGPS}
         />

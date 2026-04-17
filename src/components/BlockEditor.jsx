@@ -60,6 +60,7 @@ function BlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving, 
       currentUser={currentUser}
       currentUserDisplayName={currentUserDisplayName}
       hideReorder={hideReorder}
+
     />
   );
 }

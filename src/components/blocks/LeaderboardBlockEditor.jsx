@@ -1,22 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { X, ArrowUp, ArrowDown, ChevronDown, Trophy, Target, Plus, Check } from 'lucide-react';
+import { X, ArrowUp, ArrowDown, ChevronDown, Trophy, Target, Plus, Check, UserPlus } from 'lucide-react';
 
 // Leaderboard Block Editor - competition/ranking configuration
 function LeaderboardBlockEditor({ block, onUpdate, onRemove, onMove, index, total, saving, shares = {}, currentUser, currentUserDisplayName }) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const getDefaultTitle = (type) => type === 'longestdrive' ? 'Longest Drive' : 'Leaderboard';
+  const getDefaultTitle = (type) => type === 'longestdrive' ? 'Longest Drive' : type === 'team' ? 'Lagtävling' : 'Leaderboard';
   const [title, setTitle] = useState(block.title ?? '');
   const [participants, setParticipants] = useState(block.participants || []);
   const [roundCount, setRoundCount] = useState(block.roundCount || 0);
   const [defaultCollapsed, setDefaultCollapsed] = useState(block.defaultCollapsed ?? true);
   const [status, setStatus] = useState(block.status || 'active');
   const [mode, setMode] = useState(block.mode || 'single'); // 'single' or 'team'
-  const [competitionType, setCompetitionType] = useState(block.competitionType || 'score'); // 'score' or 'longestdrive'
+  const [competitionType, setCompetitionType] = useState(block.competitionType || 'single'); // 'single', 'team', or 'longestdrive'
   const [teams, setTeams] = useState(block.teams || [
     { id: 1, name: 'Lag 1' },
     { id: 2, name: 'Lag 2' }
   ]);
   const [selectedTeam, setSelectedTeam] = useState(1); // Which team is selected for adding members
+  const [guestName, setGuestName] = useState('');
 
   // Sync with block changes
   useEffect(() => {
@@ -26,7 +27,7 @@ function LeaderboardBlockEditor({ block, onUpdate, onRemove, onMove, index, tota
     setDefaultCollapsed(block.defaultCollapsed ?? true);
     setStatus(block.status || 'active');
     setMode(block.mode || 'single');
-    setCompetitionType(block.competitionType || 'score');
+    setCompetitionType(block.competitionType || 'single');
     setTeams(block.teams || [
       { id: 1, name: 'Lag 1' },
       { id: 2, name: 'Lag 2' }
@@ -41,12 +42,15 @@ function LeaderboardBlockEditor({ block, onUpdate, onRemove, onMove, index, tota
       scores: block.scores || {},
       shots: block.shots || {},
       rounds: block.rounds || [],
+      golfRounds: block.golfRounds || [],
+      balancePlayers: block.balancePlayers || [],
       defaultCollapsed,
       status,
       sortOrder: block.sortOrder || 'desc',
       mode,
       competitionType,
       teams,
+      awardPoints: block.awardPoints ?? 1,
       ...updates
     });
   };
@@ -122,12 +126,15 @@ function LeaderboardBlockEditor({ block, onUpdate, onRemove, onMove, index, tota
   // Get available users not in any team (for team mode)
   const getAvailableForTeam = () => {
     const assignedEmails = participants.filter(p => p.team).map(p => p.email?.toLowerCase());
-    return availableUsers.filter(u => !assignedEmails.includes(u.email));
+    // Include guest players as available for team assignment
+    const allUsers = [...availableUsers, ...guestPlayers.map(g => ({ email: g.email, name: g.name, isGuest: true }))];
+    return allUsers.filter(u => !assignedEmails.includes(u.email?.toLowerCase()));
   };
 
   // Get available users from shares (accepted or inherited) + owner
   const sharedUsers = Object.entries(shares)
     .filter(([_, share]) => share.status === 'accepted' || share.status === 'inherited')
+    .filter(([_, share]) => !share.email?.toLowerCase().endsWith('.demo.se'))
     .map(([key, share]) => ({
       email: share.email?.toLowerCase(),
       name: share.displayName || share.email?.split('@')[0]
@@ -140,6 +147,22 @@ function LeaderboardBlockEditor({ block, onUpdate, onRemove, onMove, index, tota
   const availableUsers = ownerEmail 
     ? [{ email: ownerEmail, name: ownerName, isOwner: true }, ...sharedUsers]
     : sharedUsers;
+
+  // Guest players: participants that aren't in availableUsers
+  const guestPlayers = participants.filter(p => p.isGuest);
+
+  // Add a guest player (no app account)
+  const addGuestPlayer = () => {
+    const name = guestName.trim();
+    if (!name) return;
+    // Create a pseudo-email to use as key
+    const pseudoEmail = `guest_${name.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}`;
+    const newParticipant = { email: pseudoEmail, name, isGuest: true };
+    const updated = [...participants, newParticipant];
+    setParticipants(updated);
+    setGuestName('');
+    syncToParent({ participants: updated });
+  };
 
   return (
     <div className="rounded-xl border border-white/10 bg-white/5 overflow-hidden">
@@ -160,7 +183,7 @@ function LeaderboardBlockEditor({ block, onUpdate, onRemove, onMove, index, tota
             <Trophy size={16} className="text-blue-400 flex-shrink-0" />
           )}
           <span className="text-sm font-medium text-gray-300 truncate">
-            Golf – {competitionType === 'longestdrive' ? 'Longest Drive' : 'Leaderboard'}
+            Golf – {competitionType === 'longestdrive' ? 'Longest Drive' : competitionType === 'team' ? 'Lagtävling' : 'Singel'}
           </span>
           {participants.length > 0 && (
             <span className="text-xs text-gray-500 flex-shrink-0">({participants.length} deltagare)</span>
@@ -196,29 +219,63 @@ function LeaderboardBlockEditor({ block, onUpdate, onRemove, onMove, index, tota
             />
           </div>
 
-          {/* Competition type toggle: Score / Longest Drive */}
+          {/* Competition type toggle: Score / Golf / Longest Drive */}
           <div>
             <label className="text-xs text-gray-400 mb-2 block">Format</label>
             <div className="flex rounded-lg overflow-hidden border border-white/10">
               <button
                 type="button"
                 onClick={() => {
-                  setCompetitionType('score');
-                  syncToParent({ competitionType: 'score' });
+                  const oldDefault = getDefaultTitle(competitionType);
+                  const newTitle = (!title || title === oldDefault) ? getDefaultTitle('single') : title;
+                  setTitle(newTitle);
+                  setCompetitionType('single');
+                  setMode('single');
+                  setRoundCount(0);
+                  const resetParticipants = participants.map(({ team, ...rest }) => rest);
+                  setParticipants(resetParticipants);
+                  syncToParent({ competitionType: 'single', mode: 'single', title: newTitle, participants: resetParticipants, roundCount: 0, scores: {}, shots: {}, rounds: [], golfRounds: [] });
                 }}
                 className={`flex-1 px-3 py-2 text-xs font-medium transition-colors ${
-                  competitionType === 'score'
+                  competitionType === 'single'
                     ? 'bg-blue-500/20 text-blue-400'
                     : 'bg-white/5 text-gray-500 hover:text-gray-300'
                 }`}
               >
-                Poäng
+                Singel
               </button>
               <button
                 type="button"
                 onClick={() => {
+                  const oldDefault = getDefaultTitle(competitionType);
+                  const newTitle = (!title || title === oldDefault) ? getDefaultTitle('team') : title;
+                  setTitle(newTitle);
+                  setCompetitionType('team');
+                  setMode('team');
+                  setRoundCount(0);
+                  const resetParticipants = participants.map(({ team, ...rest }) => rest);
+                  setParticipants(resetParticipants);
+                  syncToParent({ competitionType: 'team', mode: 'team', title: newTitle, participants: resetParticipants, roundCount: 0, scores: {}, shots: {}, rounds: [], golfRounds: [] });
+                }}
+                className={`flex-1 px-3 py-2 text-xs font-medium transition-colors ${
+                  competitionType === 'team'
+                    ? 'bg-blue-500/20 text-blue-400'
+                    : 'bg-white/5 text-gray-500 hover:text-gray-300'
+                }`}
+              >
+                Lagtävling
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const oldDefault = getDefaultTitle(competitionType);
+                  const newTitle = (!title || title === oldDefault) ? getDefaultTitle('longestdrive') : title;
+                  setTitle(newTitle);
                   setCompetitionType('longestdrive');
-                  syncToParent({ competitionType: 'longestdrive' });
+                  setRoundCount(0);
+                  const resetParticipants = participants.map(({ team, ...rest }) => rest);
+                  setParticipants(resetParticipants);
+                  syncToParent({ competitionType: 'longestdrive', title: newTitle, participants: resetParticipants, roundCount: 0, scores: {}, shots: {}, rounds: [], golfRounds: [] });
                 }}
                 className={`flex-1 px-3 py-2 text-xs font-medium transition-colors ${
                   competitionType === 'longestdrive'
@@ -234,41 +291,42 @@ function LeaderboardBlockEditor({ block, onUpdate, onRemove, onMove, index, tota
                 Mät drive-längd med GPS. Tee-position + bollposition per spelare.
               </p>
             )}
-          </div>
-
-          {/* Mode toggle: Singel / Lag (only for score mode) */}
-          {competitionType === 'score' && (
-          <>
-          <div>
-            <label className="text-xs text-gray-400 mb-2 block">Tävlingstyp</label>
-            <div className="flex rounded-lg overflow-hidden border border-white/10">
-              <button
-                type="button"
-                onClick={() => handleModeChange('single')}
-                className={`flex-1 px-3 py-2 text-xs font-medium transition-colors ${
-                  mode === 'single'
-                    ? 'bg-blue-500/20 text-blue-400'
-                    : 'bg-white/5 text-gray-500 hover:text-gray-300'
-                }`}
-              >
-                Singel
-              </button>
-              <button
-                type="button"
-                onClick={() => handleModeChange('team')}
-                className={`flex-1 px-3 py-2 text-xs font-medium transition-colors ${
-                  mode === 'team'
-                    ? 'bg-blue-500/20 text-blue-400'
-                    : 'bg-white/5 text-gray-500 hover:text-gray-300'
-                }`}
-              >
-                Lag
-              </button>
-            </div>
+            {competitionType === 'team' && (
+              <p className="text-xs text-gray-500 mt-2">
+                Lagtävling med rundor, automatisk bollindelning och leaderboard.
+              </p>
+            )}
+            {competitionType === 'team' && (
+              <div className="mt-3">
+                <label className="text-xs text-gray-400 mb-1.5 block">Bonuspoäng per sidotävling</label>
+                <div className="flex items-center gap-2">
+                  {[0, 1, 2, 3].map((v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => syncToParent({ awardPoints: v })}
+                      className={`w-8 h-8 rounded-lg text-xs font-medium border transition-colors ${
+                        (block.awardPoints ?? 1) === v
+                          ? 'bg-amber-500/20 border-amber-500/50 text-amber-400'
+                          : 'bg-white/5 border-white/10 text-gray-500 hover:text-gray-300'
+                      }`}
+                    >
+                      {v}p
+                    </button>
+                  ))}
+                  <span className="text-[10px] text-gray-600 ml-1">per Longest Drive / Closest to Pin</span>
+                </div>
+              </div>
+            )}
+            {competitionType === 'single' && (
+              <p className="text-xs text-gray-500 mt-2">
+                Individuell tävling med poäng per runda.
+              </p>
+            )}
           </div>
 
           {/* Single mode: Participants */}
-          {mode === 'single' && (
+          {competitionType === 'single' && (
             <div>
               <label className="text-xs text-gray-400 mb-2 block">
                 Deltagare
@@ -303,14 +361,13 @@ function LeaderboardBlockEditor({ block, onUpdate, onRemove, onMove, index, tota
           )}
 
           {/* Team mode: Team assignment */}
-          {mode === 'team' && (
+          {competitionType === 'team' && (
             <div className="space-y-3">
               {/* Team columns */}
               <div className="grid grid-cols-2 gap-2">
                 {teams.map((team) => {
                   const teamMembers = getTeamMembers(team.id);
                   const isSelected = selectedTeam === team.id;
-                  const teamColor = team.id === 1 ? 'cyan' : 'orange';
                   
                   return (
                     <button
@@ -365,7 +422,7 @@ function LeaderboardBlockEditor({ block, onUpdate, onRemove, onMove, index, tota
               {/* Available users to add to teams */}
               <div>
                 <label className="text-xs text-gray-400 mb-1.5 block">
-                  Tillgängliga att lägga till i {teams.find(t => t.id === selectedTeam)?.name}
+                  Lägg till i {teams.find(t => t.id === selectedTeam)?.name}
                 </label>
                 {getAvailableForTeam().length > 0 ? (
                   <div className="flex flex-wrap gap-1.5">
@@ -395,8 +452,6 @@ function LeaderboardBlockEditor({ block, onUpdate, onRemove, onMove, index, tota
                 )}
               </div>
             </div>
-          )}
-          </>
           )}
 
           {/* Longest Drive mode: Participants (simpler selection) */}
@@ -433,6 +488,53 @@ function LeaderboardBlockEditor({ block, onUpdate, onRemove, onMove, index, tota
               )}
             </div>
           )}
+
+          {/* Guest players: add players without accounts */}
+          <div>
+            <label className="text-xs text-gray-400 mb-2 block">Gästspelare</label>
+            {guestPlayers.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {guestPlayers.map((g, idx) => (
+                  <span
+                    key={idx}
+                    className="px-2 py-1 text-xs rounded-lg bg-white/5 border border-white/10 text-gray-400 flex items-center gap-1.5"
+                  >
+                    {g.name}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated = participants.filter(p => p.email !== g.email);
+                        setParticipants(updated);
+                        syncToParent({ participants: updated });
+                      }}
+                      className="text-gray-600 hover:text-red-400"
+                    >
+                      <X size={10} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-1.5">
+              <input
+                type="text"
+                value={guestName}
+                onChange={(e) => setGuestName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addGuestPlayer())}
+                placeholder="Namn på gästspelare"
+                className="flex-1 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500"
+              />
+              <button
+                type="button"
+                onClick={addGuestPlayer}
+                disabled={!guestName.trim()}
+                className="px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-400 text-xs font-medium hover:bg-blue-500/30 disabled:opacity-30 flex items-center gap-1"
+              >
+                <UserPlus size={12} />
+                Lägg till
+              </button>
+            </div>
+          </div>
 
           {/* Round count info */}
           {roundCount > 0 && (

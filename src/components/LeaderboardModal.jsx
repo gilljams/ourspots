@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, ChevronLeft, ChevronRight, Play, Pause, Edit3, Save, Plus, User, Trophy, Trash2, BarChart2, ChevronDown, MapPin, Target, Check, Crosshair, Map as MapIcon } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, ChevronLeft, ChevronRight, Plus, User, Trophy, Trash2, BarChart2, ChevronDown, MapPin, Target, Check, Crosshair, Map as MapIcon, MoreVertical } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Polyline, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { useGPSCapture, calculateDistance } from '../utils/useGPSCapture';
 import { useToast } from '../utils/useToast';
+import { useConfirm } from '../utils/useConfirm';
 
 // Custom marker icons for longest drive
 const createTeeIcon = () => L.divIcon({
@@ -251,7 +252,7 @@ const ComparisonChart = ({ scores, participants, roundCount, currentUserEmail, s
           {(() => {
             const diff = userTotal - avgTotal;
             const diffSign = diff >= 0 ? '+' : '';
-            const diffColor = diff >= 0 ? 'text-emerald-400' : 'text-rose-400';
+            const diffColor = diff >= 0 ? 'text-green-400' : 'text-red-400';
             
             // Find best and worst rounds
             let bestRound = { index: 0, score: userScores[0] || 0 };
@@ -277,11 +278,11 @@ const ComparisonChart = ({ scores, participants, roundCount, currentUserEmail, s
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-gray-500">Bäst / Sämst</span>
                     <div className="flex items-center gap-3 text-sm tabular-nums">
-                      <span className="text-emerald-400">
+                      <span className="text-green-400">
                         R{bestRound.index + 1} <span className="text-gray-500">({bestRound.score}p)</span>
                       </span>
                       <span className="text-gray-600">/</span>
-                      <span className="text-rose-400">
+                      <span className="text-red-400">
                         R{worstRound.index + 1} <span className="text-gray-500">({worstRound.score}p)</span>
                       </span>
                     </div>
@@ -311,45 +312,18 @@ const TriangleDown = ({ className }) => (
 
 // Avatar with initials and consistent color based on email or team
 const Avatar = ({ name, email, size = 'md', isCurrentUser = false, team = null }) => {
-  // Team colors override individual colors
-  const getTeamColor = (teamId) => {
-    if (teamId === 1) return 'bg-cyan-500';
-    if (teamId === 2) return 'bg-orange-500';
-    return null;
-  };
-  
-  // Generate consistent color from email
-  const getColorFromEmail = (email) => {
-    const colors = [
-      'bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-pink-500',
-      'bg-indigo-500', 'bg-cyan-500', 'bg-teal-500', 'bg-orange-500'
-    ];
-    const hash = (email || '').split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    return colors[hash % colors.length];
-  };
-  
-  const getInitials = (name, email) => {
-    if (name && name.trim()) {
-      const parts = name.trim().split(' ');
-      if (parts.length >= 2) {
-        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-      }
-      return name.slice(0, 2).toUpperCase();
-    }
-    return (email || '?').slice(0, 2).toUpperCase();
-  };
-  
-  const sizeClasses = {
-    sm: 'w-6 h-6 text-[10px]',
-    md: 'w-8 h-8 text-xs'
-  };
-  
-  // Priority: team color > current user > email hash
-  const colorClass = team ? getTeamColor(team) : (isCurrentUser ? 'bg-blue-500' : getColorFromEmail(email));
-  
+  const initial = (name || email || '?')[0].toUpperCase();
+  const hash = (email || '').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  const hue = hash % 360;
+  const bg = team === 1 ? 'bg-blue-500' : team === 2 ? 'bg-orange-500' : isCurrentUser ? 'bg-blue-500' : undefined;
+  const sizeClass = size === 'sm' ? 'w-6 h-6 text-[10px]' : 'w-8 h-8 text-xs';
+
   return (
-    <div className={`${sizeClasses[size]} ${colorClass} rounded-full flex items-center justify-center flex-shrink-0 font-medium text-white`}>
-      {getInitials(name, email)}
+    <div
+      className={`${sizeClass} rounded-full flex items-center justify-center flex-shrink-0 font-bold text-white ${bg || ''}`}
+      style={!bg ? { background: `hsl(${hue}, 45%, 35%)` } : undefined}
+    >
+      {initial}
     </div>
   );
 };
@@ -368,17 +342,16 @@ export default function LeaderboardModal({
   preciseGPS = true
 }) {
   const toast = useToast();
+  const confirm = useConfirm();
   const [currentRound, setCurrentRound] = useState(() => {
     // Start at last round if there are rounds, otherwise 0
     const rc = data.roundCount || 0;
     return rc > 0 ? rc - 1 : 0;
   });
-  const [isEditing, setIsEditing] = useState(false);
   const [editScores, setEditScores] = useState({});
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
   const [sortBy, setSortBy] = useState('total'); // 'total' or 'round'
   const [focusedParticipant, setFocusedParticipant] = useState(null);
-  const [rowOffsets, setRowOffsets] = useState({}); // For FLIP animation
   const [showDeleteRoundConfirm, setShowDeleteRoundConfirm] = useState(false);
   const [viewMode, setViewMode] = useState('single'); // 'single' or 'team' - for team mode display toggle
   
@@ -388,9 +361,7 @@ export default function LeaderboardModal({
   const [showMap, setShowMap] = useState(false);
   const [ldStatsExpanded, setLdStatsExpanded] = useState(false); // Stats collapsed by default
   
-  const playIntervalRef = useRef(null);
   const inputRefs = useRef({});
-  const rowRefs = useRef({});
   
   // GPS capture hook - same settings as object pinning (10m threshold, 15s timeout)
   const gpsCapture = useGPSCapture({ preciseGPS, accuracyThreshold: 10, timeout: 15000 });
@@ -404,7 +375,7 @@ export default function LeaderboardModal({
   const status = data.status || 'active';
   const sortOrder = data.sortOrder || 'desc';
   const mode = data.mode || 'single'; // Competition mode: 'single' or 'team'
-  const competitionType = data.competitionType || 'score'; // 'score' or 'longestdrive'
+  const competitionType = data.competitionType || 'single'; // 'single' or 'longestdrive'
   const isLongestDrive = competitionType === 'longestdrive';
   const teams = data.teams || [
     { id: 1, name: 'Lag 1' },
@@ -424,25 +395,18 @@ export default function LeaderboardModal({
     }
   }, [currentUserEmail, participants, focusedParticipant]);
   
-  // Initialize edit scores when entering edit mode
+  // Initialize edit scores when round changes (always, for inline editing)
   useEffect(() => {
-    if (isEditing) {
+    if (canEdit && !isLongestDrive) {
       const initialScores = {};
       participants.forEach(p => {
-        initialScores[p.email] = scores[p.email]?.[currentRound] ?? '';
+        const val = scores[p.email]?.[currentRound];
+        initialScores[p.email] = val !== undefined && val !== 0 ? String(val) : '';
       });
       setEditScores(initialScores);
     }
-  }, [isEditing, currentRound, participants, scores]);
+  }, [currentRound, participants, scores, canEdit, isLongestDrive]);
   
-  // Cleanup play interval on unmount
-  useEffect(() => {
-    return () => {
-      if (playIntervalRef.current) {
-        clearInterval(playIntervalRef.current);
-      }
-    };
-  }, []);
   
   // Calculate total score up to a specific round
   const getTotalUpToRound = (email, upToRound) => {
@@ -560,78 +524,6 @@ export default function LeaderboardModal({
   
   const rankedTeams = getTeamRankingAtRound(currentRound);
   
-  // FLIP animation for row position changes
-  const animateRowChange = (newRound) => {
-    // First: Record current positions
-    const firstPositions = {};
-    Object.keys(rowRefs.current).forEach(email => {
-      const el = rowRefs.current[email];
-      if (el) {
-        firstPositions[email] = el.getBoundingClientRect().top;
-      }
-    });
-    
-    // Change round
-    setCurrentRound(newRound);
-    
-    // After render, calculate and apply FLIP
-    requestAnimationFrame(() => {
-      const offsets = {};
-      Object.keys(rowRefs.current).forEach(email => {
-        const el = rowRefs.current[email];
-        if (el && firstPositions[email] !== undefined) {
-          const lastPosition = el.getBoundingClientRect().top;
-          const delta = firstPositions[email] - lastPosition;
-          if (Math.abs(delta) > 2) {
-            offsets[email] = delta;
-          }
-        }
-      });
-      
-      if (Object.keys(offsets).length > 0) {
-        setRowOffsets(offsets);
-        // Clear offsets after animation
-        setTimeout(() => setRowOffsets({}), 400);
-      }
-    });
-  };
-  
-  // Play animation through rounds
-  const handlePlay = () => {
-    if (roundCount === 0) return;
-    
-    setIsPlaying(true);
-    
-    // Start from round 0 with animation
-    animateRowChange(0);
-    
-    let round = 0;
-    playIntervalRef.current = setInterval(() => {
-      round++;
-      if (round >= roundCount) {
-        clearInterval(playIntervalRef.current);
-        setIsPlaying(false);
-      } else {
-        animateRowChange(round);
-      }
-    }, 1800); // 1.8 seconds between rounds for smoother feel
-  };
-  
-  const handlePause = () => {
-    if (playIntervalRef.current) {
-      clearInterval(playIntervalRef.current);
-    }
-    setIsPlaying(false);
-  };
-  
-  const handleStop = () => {
-    if (playIntervalRef.current) {
-      clearInterval(playIntervalRef.current);
-    }
-    setIsPlaying(false);
-    setCurrentRound(roundCount > 0 ? roundCount - 1 : 0);
-  };
-  
   // Handle score input change
   const handleScoreChange = (email, value) => {
     setEditScores(prev => ({
@@ -640,6 +532,16 @@ export default function LeaderboardModal({
     }));
   };
   
+  // Check if scores have been modified
+  const isScoresDirty = () => {
+    return participants.some(p => {
+      const saved = scores[p.email]?.[currentRound];
+      const edit = editScores[p.email];
+      const editNum = edit === '' || edit === undefined ? 0 : Number(edit);
+      return editNum !== (saved || 0);
+    });
+  };
+
   // Handle Enter key to move to next input
   const handleKeyDown = (e, email, index) => {
     if (e.key === 'Enter') {
@@ -650,7 +552,13 @@ export default function LeaderboardModal({
         inputRefs.current[nextParticipant.email].focus();
       }
     } else if (e.key === 'Escape') {
-      setIsEditing(false);
+      // Reset to saved values
+      const initialScores = {};
+      participants.forEach(p => {
+        const val = scores[p.email]?.[currentRound];
+        initialScores[p.email] = val !== undefined && val !== 0 ? String(val) : '';
+      });
+      setEditScores(initialScores);
     }
   };
   
@@ -664,13 +572,10 @@ export default function LeaderboardModal({
         newScores[p.email] = {};
       }
       const value = editScores[p.email];
-      if (value !== '' && value !== undefined) {
-        newScores[p.email][currentRound] = parseFloat(value) || 0;
-      }
+      newScores[p.email][currentRound] = (value === '' || value === undefined) ? 0 : (parseFloat(value) || 0);
     });
     
     onUpdateScores(newScores);
-    setIsEditing(false);
   };
   
   // Add new round
@@ -918,8 +823,8 @@ export default function LeaderboardModal({
     );
     if (rank === 3) return (
       <span className="relative">
-        <Trophy size={16} className="text-orange-600" />
-        {isTied && <span className="absolute -right-1.5 -top-1 text-[8px] text-orange-600 font-bold">=</span>}
+        <Trophy size={16} className="text-amber-700" />
+        {isTied && <span className="absolute -right-1.5 -top-1 text-[8px] text-amber-700 font-bold">=</span>}
       </span>
     );
     return (
@@ -940,18 +845,19 @@ export default function LeaderboardModal({
   return (
     <div className="fixed inset-0 z-[2000] bg-black/95 flex flex-col pt-[var(--sat)]">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-gray-900/50">
+      <div className="border-b border-white/10 bg-gray-900/50">
+        <div className="max-w-2xl mx-auto flex items-center justify-between px-4 py-3">
         <h2 className="text-lg font-semibold text-white flex items-center gap-2">
           {isLongestDrive ? (
-            <Target size={20} className="text-green-400" />
+            <Target size={20} className="text-blue-400" />
           ) : (
             <Trophy size={20} className="text-amber-400" />
           )}
-          {isEditing ? 'Redigera poäng' : (isLongestDrive ? 'Longest Drive' : 'Poäng')}
+          {isLongestDrive ? 'Longest Drive' : (data.title || 'Poäng')}
         </h2>
-        <div className="flex items-center gap-2">
-          {/* View toggle for team mode (only when not editing) */}
-          {isTeamMode && !isEditing && (
+        <div className="flex items-center gap-1">
+          {/* View toggle for team mode */}
+          {isTeamMode && (
             <div className="flex rounded-lg overflow-hidden border border-white/10">
               <button
                 onClick={() => setViewMode('single')}
@@ -977,163 +883,114 @@ export default function LeaderboardModal({
               </button>
             </div>
           )}
+          {/* ... menu */}
+          {canEdit && status !== 'finished' && (
+            <div className="relative">
+              <button
+                onClick={() => setShowMenu(!showMenu)}
+                className="w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 touch-manipulation"
+              >
+                <MoreVertical size={18} />
+              </button>
+              {showMenu && (
+                <>
+                  <div className="fixed inset-0 z-[100]" onClick={() => setShowMenu(false)} />
+                  <div className="absolute right-0 top-10 z-[101] w-56 py-1 rounded-xl bg-gray-800 border border-white/[0.08] shadow-xl">
+                    {status !== 'finished' && (
+                      <button
+                        onClick={() => { setShowMenu(false); handleAddRound(); }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-blue-400 hover:bg-white/5 transition-colors"
+                      >
+                        <Plus size={14} />
+                        Ny runda
+                      </button>
+                    )}
+                    {onDeleteRound && currentRound === roundCount - 1 && (
+                      <button
+                        onClick={() => { setShowMenu(false); setShowDeleteRoundConfirm(true); }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-white/5 transition-colors"
+                      >
+                        <Trash2 size={14} />
+                        Ta bort runda {currentRound + 1}
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
           <button
-            onClick={onClose}
+            onClick={async () => {
+              if (isScoresDirty()) {
+                if (!(await confirm({ title: 'Osparade ändringar', message: 'Du har poäng som inte sparats. Vill du kasta ändringarna?', confirmText: 'Kasta', variant: 'warning' }))) return;
+              }
+              onClose();
+            }}
             className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 active:bg-white/20 text-gray-400 hover:text-white transition-all touch-manipulation"
             aria-label="Stäng"
           >
             <X size={20} />
           </button>
         </div>
+        </div>
       </div>
       
-      {/* Round navigation / controls */}
-      <div className="px-4 py-3 border-b border-white/10 bg-gray-900/30">
-        {isEditing ? (
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setCurrentRound(Math.max(0, currentRound - 1))}
-                disabled={currentRound === 0}
-                className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 disabled:opacity-30 flex items-center justify-center text-gray-400"
-              >
-                <ChevronLeft size={16} />
-              </button>
-              <span className="text-sm text-gray-300 min-w-[100px] text-center">
-                Runda {currentRound + 1} av {roundCount || 1}
+      {/* Content wrapper – constrained width on desktop */}
+      <div className="flex-1 flex flex-col max-w-2xl w-full mx-auto lg:border-x lg:border-white/[0.06] min-h-0">
+      
+      {/* Round navigation */}
+      <div className="flex items-center gap-2 px-4 py-2 border-b border-white/[0.06] bg-white/[0.03]">
+        <button
+          onClick={() => setCurrentRound(Math.max(0, currentRound - 1))}
+          disabled={currentRound === 0 || roundCount === 0 || isScoresDirty()}
+          className="w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 disabled:opacity-30 touch-manipulation"
+        >
+          <ChevronLeft size={18} />
+        </button>
+        <div className="flex-1 text-center">
+          {roundCount === 0 ? (
+            <span className="text-sm text-gray-500">Inga rundor</span>
+          ) : (
+            <div>
+              <span className="text-sm font-medium text-white">
+                Runda {currentRound + 1}
               </span>
-              <button
-                onClick={() => setCurrentRound(Math.min((roundCount || 1) - 1, currentRound + 1))}
-                disabled={currentRound >= (roundCount || 1) - 1}
-                className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 disabled:opacity-30 flex items-center justify-center text-gray-400"
-              >
-                <ChevronRight size={16} />
-              </button>
-            </div>
-            <div className="flex items-center gap-2">
-              {roundCount > 0 && onDeleteRound && (
-                <button
-                  onClick={() => setShowDeleteRoundConfirm(true)}
-                  className="w-8 h-8 rounded-lg bg-red-500/10 hover:bg-red-500/20 flex items-center justify-center text-red-400"
-                  title="Ta bort runda"
-                >
-                  <Trash2 size={14} />
-                </button>
+              {roundCount > 1 && (
+                <span className="text-xs ml-2 text-gray-500">av {roundCount}</span>
               )}
-              <button
-                onClick={handleAddRound}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 text-sm"
-              >
-                <Plus size={14} />
-                Ny runda
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => animateRowChange(Math.max(0, currentRound - 1))}
-                disabled={currentRound === 0 || isPlaying}
-                className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 disabled:opacity-30 flex items-center justify-center text-gray-400"
-              >
-                <ChevronLeft size={16} />
-              </button>
-              <span className="text-sm text-gray-300 min-w-[100px] text-center">
-                {`Runda ${currentRound + 1}${roundCount > 1 ? ` av ${roundCount}` : ''}${
-                  isLongestDrive && rounds[currentRound]?.holeNumber 
-                    ? ` (Hål ${rounds[currentRound].holeNumber})` 
-                    : ''
-                }`}
-              </span>
-              <button
-                onClick={() => animateRowChange(Math.min(roundCount - 1, currentRound + 1))}
-                disabled={currentRound >= roundCount - 1 || isPlaying}
-                className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 disabled:opacity-30 flex items-center justify-center text-gray-400"
-              >
-                <ChevronRight size={16} />
-              </button>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              {/* Play controls - only show if more than 1 round */}
-              {roundCount > 1 && isPlaying && (
-                <button
-                  onClick={handlePause}
-                  className="w-8 h-8 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 flex items-center justify-center text-blue-400"
-                  title="Pausa"
-                >
-                  <Pause size={16} />
-                </button>
-              )}
-              {roundCount > 1 && !isPlaying && (
-                <button
-                  onClick={handlePlay}
-                  className="w-8 h-8 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 flex items-center justify-center text-blue-400"
-                  title="Spela upp"
-                >
-                  <Play size={14} />
-                </button>
-              )}
-              
-              {/* Edit button - visible but disabled during play */}
-              {canEdit && status !== 'finished' && (
-                <button
-                  onClick={() => !isPlaying && setIsEditing(true)}
-                  disabled={isPlaying}
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                    isPlaying 
-                      ? 'bg-white/5 text-gray-600 cursor-not-allowed' 
-                      : 'bg-white/5 hover:bg-white/10 text-gray-300'
-                  }`}
-                  title="Redigera"
-                >
-                  <Edit3 size={14} />
-                </button>
+              {isLongestDrive && rounds[currentRound]?.holeNumber && (
+                <span className="text-xs ml-2 text-gray-500">(Hål {rounds[currentRound].holeNumber})</span>
               )}
             </div>
-          </div>
-        )}
+          )}
+        </div>
+        <button
+          onClick={() => setCurrentRound(Math.min(roundCount - 1, currentRound + 1))}
+          disabled={currentRound >= roundCount - 1 || roundCount === 0 || isScoresDirty()}
+          className="w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 disabled:opacity-30 touch-manipulation"
+        >
+          <ChevronRight size={18} />
+        </button>
       </div>
       
       {/* Longest Drive tabs - only in longestdrive mode */}
-      {isLongestDrive && !isEditing && (
-        <div className="px-4 py-2 border-b border-white/10 bg-gray-900/20">
-          <div className="flex rounded-lg overflow-hidden border border-white/10 bg-white/5">
+      {isLongestDrive && (
+        <div className="flex border-b border-white/[0.06]">
+          {[
+            { key: 'results', label: 'Resultat' },
+            { key: 'capture', label: 'Registrera' },
+            { key: 'map', label: 'Karta' }
+          ].map(({ key, label }) => (
             <button
-              onClick={() => setLdTab('results')}
-              className={`flex-1 px-3 py-2 text-xs font-medium transition-colors flex items-center justify-center gap-1.5 ${
-                ldTab === 'results'
-                  ? 'bg-green-500/20 text-green-400'
-                  : 'text-gray-500 hover:text-gray-300'
+              key={key}
+              onClick={() => setLdTab(key)}
+              className={`flex-1 py-3.5 text-sm font-medium transition-colors ${
+                ldTab === key ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-500 hover:text-gray-300'
               }`}
             >
-              <Trophy size={14} />
-              Resultat
+              {label}
             </button>
-            <button
-              onClick={() => setLdTab('capture')}
-              className={`flex-1 px-3 py-2 text-xs font-medium transition-colors flex items-center justify-center gap-1.5 ${
-                ldTab === 'capture'
-                  ? 'bg-green-500/20 text-green-400'
-                  : 'text-gray-500 hover:text-gray-300'
-              }`}
-            >
-              <Crosshair size={14} />
-              Registrera
-            </button>
-            <button
-              onClick={() => setLdTab('map')}
-              className={`flex-1 px-3 py-2 text-xs font-medium transition-colors flex items-center justify-center gap-1.5 ${
-                ldTab === 'map'
-                  ? 'bg-green-500/20 text-green-400'
-                  : 'text-gray-500 hover:text-gray-300'
-              }`}
-            >
-              <MapIcon size={14} />
-              Karta
-            </button>
-          </div>
+          ))}
         </div>
       )}
       
@@ -1195,7 +1052,7 @@ export default function LeaderboardModal({
                                 {isCurrentUser && ' (du)'}
                               </span>
                               <span className={`text-sm font-medium tabular-nums ${
-                                p.distance > 0 ? 'text-green-400' : 'text-gray-600'
+                                p.distance > 0 ? 'text-gray-400' : 'text-gray-600'
                               }`}>
                                 {p.distance > 0 ? `${p.distance}m` : '–'}
                               </span>
@@ -1246,31 +1103,46 @@ export default function LeaderboardModal({
               </div>
             )}
             
-            {ldTab === 'capture' && (
+            {ldTab === 'capture' && roundCount === 0 && (
+              <div className="flex flex-col items-center justify-center py-16 text-gray-500">
+                <Crosshair size={32} className="mb-3 text-gray-600" />
+                <div className="text-sm">Skapa en runda först</div>
+                {canEdit && status !== 'finished' && (
+                  <button
+                    onClick={handleAddRound}
+                    className="mt-4 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 text-sm font-medium"
+                  >
+                    + Ny runda
+                  </button>
+                )}
+              </div>
+            )}
+            {ldTab === 'capture' && roundCount > 0 && (
               /* Capture tab - GPS registration */
               <div className="space-y-4">
                 {/* Hole number + Tee position section - only for editors */}
-                {canEdit && (
+                {canEdit && status !== 'finished' && (
+                <>
+                {/* Hole number input - outside the box */}
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-gray-400">Hål</span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min="1"
+                    max="18"
+                    value={getCurrentHoleNumber() || ''}
+                    onChange={(e) => handleSetHoleNumber(e.target.value)}
+                    placeholder="#"
+                    className="w-16 px-3 py-2 text-center text-base bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-blue-500 text-white placeholder-gray-600"
+                  />
+                </div>
+
+                {/* Tee position - in a box */}
                 <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-                  {/* Hole number input */}
-                  <div className="flex items-center gap-3 mb-4 pb-3 border-b border-white/10">
-                    <span className="text-sm text-gray-400">Hål</span>
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      min="1"
-                      max="18"
-                      value={getCurrentHoleNumber() || ''}
-                      onChange={(e) => handleSetHoleNumber(e.target.value)}
-                      placeholder="#"
-                      className="w-16 px-3 py-2 text-center text-base bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-green-500 text-white placeholder-gray-600"
-                    />
-                  </div>
-                  
-                  {/* Tee position */}
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <Target size={16} className="text-green-400" />
+                      <Target size={16} className="text-blue-400" />
                       <span className="text-sm font-medium text-white">Tee-position</span>
                     </div>
                     {getCurrentTeePosition() && (
@@ -1288,7 +1160,7 @@ export default function LeaderboardModal({
                       <button
                         onClick={handleCaptureTee}
                         disabled={capturingFor !== null}
-                        className="px-3 py-1.5 text-xs rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 disabled:opacity-50"
+                        className="px-3 py-1.5 text-xs rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 disabled:opacity-50"
                       >
                         {capturingFor === 'tee' ? (
                           <span className="flex items-center gap-1">
@@ -1302,7 +1174,7 @@ export default function LeaderboardModal({
                     <button
                       onClick={handleCaptureTee}
                       disabled={capturingFor !== null}
-                      className="w-full py-3 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 disabled:opacity-50 flex items-center justify-center gap-2"
+                      className="w-full py-3 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                       {capturingFor === 'tee' ? (
                         <>
@@ -1318,13 +1190,14 @@ export default function LeaderboardModal({
                     </button>
                   )}
                 </div>
+                </>
                 )}
                 
                 {/* Show tee info for non-editors */}
                 {!canEdit && getCurrentTeePosition() && (
                   <div className="bg-white/5 rounded-xl p-3 border border-white/10">
                     <div className="flex items-center gap-2 text-sm text-gray-400">
-                      <MapPin size={14} className="text-green-400" />
+                      <MapPin size={14} className="text-blue-400" />
                       <span>Tee-position satt{getCurrentHoleNumber() ? ` (hål ${getCurrentHoleNumber()})` : ''}</span>
                       {getCurrentTeePosition()?.accuracy && (
                         <span className="text-xs text-gray-500">±{getCurrentTeePosition().accuracy}m</span>
@@ -1335,7 +1208,7 @@ export default function LeaderboardModal({
                 
                 {!getCurrentTeePosition() && (
                   <div className="bg-blue-500/10 rounded-xl p-3 border border-blue-500/30 text-sm text-blue-400 text-center">
-                    Tee-position måste sättas av en redaktör innan slag kan registreras
+                    Tee-position måste sättas av en administratör innan slag kan registreras
                   </div>
                 )}
                 
@@ -1346,8 +1219,8 @@ export default function LeaderboardModal({
                     const shot = getParticipantShot(p.email);
                     const isCurrentUser = p.email?.toLowerCase() === currentUserEmail;
                     const isCapturing = capturingFor === p.email;
-                    // Editors can capture all balls, viewers can only capture their own
-                    const canCapture = canEdit || isCurrentUser;
+                    // Editors can capture all balls, viewers can only capture their own (not when finished)
+                    const canCapture = status !== 'finished' && (canEdit || isCurrentUser);
                     
                     return (
                       <div 
@@ -1373,7 +1246,7 @@ export default function LeaderboardModal({
                           {shot?.position ? (
                             <div className="text-right">
                               <span className={`text-lg font-bold tabular-nums ${
-                                shot.fairway ? 'text-green-400' : 'text-red-400'
+                                shot.fairway ? 'text-white' : 'text-red-400'
                               }`}>
                                 {shot.distance != null ? `${shot.distance}m` : '?'}
                               </span>
@@ -1392,7 +1265,7 @@ export default function LeaderboardModal({
                             className={`flex-1 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 ${
                               shot?.position
                                 ? 'bg-white/5 text-gray-400 hover:bg-white/10'
-                                : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                                : 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30'
                             } disabled:opacity-50`}
                           >
                             {isCapturing ? (
@@ -1416,22 +1289,20 @@ export default function LeaderboardModal({
                           {shot?.position && (canEdit || isCurrentUser) && (
                             <button
                               onClick={() => handleToggleFairway(p.email)}
-                              className="flex items-center rounded-lg overflow-hidden border border-white/10"
-                            >
-                              <span className={`px-2.5 py-2 text-xs font-medium transition-colors ${
+                              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
                                 shot.fairway
-                                  ? 'bg-green-500/30 text-green-400'
+                                  ? 'bg-green-500/10 text-green-400'
                                   : 'bg-white/5 text-gray-500'
+                              }`}
+                            >
+                              <div className={`w-8 h-4 rounded-full relative transition-colors ${
+                                shot.fairway ? 'bg-green-500' : 'bg-gray-600'
                               }`}>
-                                ✓ Fairway
-                              </span>
-                              <span className={`px-2.5 py-2 text-xs font-medium transition-colors ${
-                                !shot.fairway
-                                  ? 'bg-red-500/30 text-red-400'
-                                  : 'bg-white/5 text-gray-500'
-                              }`}>
-                                ✗ Miss
-                              </span>
+                                <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${
+                                  shot.fairway ? 'left-[18px]' : 'left-0.5'
+                                }`} />
+                              </div>
+                              Fairway
                             </button>
                           )}
                         </div>
@@ -1544,46 +1415,23 @@ export default function LeaderboardModal({
               </div>
             )}
           </div>
-        ) : isEditing ? (
-          /* Edit mode */
-          <div className="p-4 space-y-2">
-            {participants.map((participant, index) => {
-              const isCurrentUser = participant.email?.toLowerCase() === currentUserEmail;
-              return (
-                <div 
-                  key={participant.email}
-                  className={`flex items-center gap-3 p-3 rounded-xl ${
-                    isCurrentUser ? 'bg-blue-500/10 ring-1 ring-blue-500/30' : 'bg-white/[0.03]'
-                  }`}
-                >
-                  <Avatar 
-                    name={participant.name} 
-                    email={participant.email} 
-                    isCurrentUser={isCurrentUser}
-                    team={isTeamMode ? participant.team : null}
-                  />
-                  <span className={`flex-1 text-sm truncate ${isCurrentUser ? 'text-blue-300' : 'text-gray-300'}`}>
-                    {participant.name || participant.email?.split('@')[0]}
-                  </span>
-                  <input
-                    ref={el => inputRefs.current[participant.email] = el}
-                    type="number"
-                    inputMode="numeric"
-                    value={editScores[participant.email] ?? ''}
-                    onChange={(e) => handleScoreChange(participant.email, e.target.value)}
-                    onKeyDown={(e) => handleKeyDown(e, participant.email, index)}
-                    placeholder="0"
-                    className="w-20 px-3 py-2 text-base text-right bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-blue-500 text-white placeholder-gray-600"
-                  />
-                </div>
-              );
-            })}
-          </div>
         ) : (
           /* View mode - Table */
           <div className="p-4">
-            {/* Show team view or single view */}
-            {isTeamMode && viewMode === 'team' ? (
+            {roundCount === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-gray-500">
+                <Trophy size={32} className="mb-3 text-gray-600" />
+                <div className="text-sm">Skapa en runda för att komma igång</div>
+                {canEdit && status !== 'finished' && (
+                  <button
+                    onClick={handleAddRound}
+                    className="mt-4 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 text-sm font-medium"
+                  >
+                    + Ny runda
+                  </button>
+                )}
+              </div>
+            ) : isTeamMode && viewMode === 'team' ? (
               /* Team view */
               <>
                 {/* Table header */}
@@ -1608,14 +1456,14 @@ export default function LeaderboardModal({
                 <div className="space-y-1 mt-2">
                   {rankedTeams.map((team, index) => {
                     const rank = team.rank;
-                    const teamColor = team.id === 1 ? 'cyan' : 'orange';
+                    const teamColor = team.id === 1 ? 'blue' : 'orange';
                     
                     return (
                       <div 
                         key={team.id}
                         className={`flex items-center gap-2 px-3 py-3 rounded-xl ${
                           team.id === 1 
-                            ? 'bg-cyan-500/10 ring-1 ring-cyan-500/30' 
+                            ? 'bg-blue-500/10 ring-1 ring-blue-500/30' 
                             : 'bg-orange-500/10 ring-1 ring-orange-500/30'
                         }`}
                       >
@@ -1623,12 +1471,12 @@ export default function LeaderboardModal({
                           <RankDisplay rank={rank} isTied={team.isTied} />
                         </div>
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                          team.id === 1 ? 'bg-cyan-500 text-white' : 'bg-orange-500 text-white'
+                          team.id === 1 ? 'bg-blue-500 text-white' : 'bg-orange-500 text-white'
                         }`}>
                           {team.id}
                         </div>
                         <span className={`flex-1 text-sm font-medium ${
-                          team.id === 1 ? 'text-cyan-300' : 'text-orange-300'
+                          team.id === 1 ? 'text-blue-300' : 'text-orange-300'
                         }`}>
                           {team.name}
                         </span>
@@ -1636,7 +1484,7 @@ export default function LeaderboardModal({
                           {team.roundScore || '–'}
                         </span>
                         <span className={`w-16 text-right text-sm font-bold tabular-nums ${
-                          team.id === 1 ? 'text-cyan-400' : 'text-orange-400'
+                          team.id === 1 ? 'text-blue-400' : 'text-orange-400'
                         }`}>
                           {team.total}
                         </span>
@@ -1674,24 +1522,18 @@ export default function LeaderboardModal({
                     const rankChange = getRankChange(participant.email, currentRound);
                     const isCurrentUser = participant.email?.toLowerCase() === currentUserEmail;
                     const isFocused = participant.email === focusedParticipant;
-                    const offset = rowOffsets[participant.email] || 0;
                     
                     return (
                       <div 
                         key={participant.email}
-                        ref={el => rowRefs.current[participant.email] = el}
                         onClick={() => setFocusedParticipant(participant.email)}
-                        style={{
-                          transform: offset ? `translateY(${offset}px)` : 'translateY(0)',
-                          transition: offset ? 'none' : 'transform 400ms cubic-bezier(0.4, 0, 0.2, 1)'
-                        }}
                         className={`flex items-center gap-2 px-3 py-2.5 rounded-xl cursor-pointer ${
                           isCurrentUser 
                             ? 'bg-blue-500/15 ring-1 ring-blue-500/40' 
                             : isFocused 
                               ? 'bg-white/10 ring-1 ring-white/20'
                               : 'bg-white/[0.03] hover:bg-white/[0.06]'
-                        } ${isPlaying && isFocused ? 'ring-2 ring-blue-400/60 scale-[1.02]' : ''}`}
+                        }`}
                       >
                         <div className="w-6 flex justify-center">
                           <RankDisplay rank={rank} isTied={participant.isTied} />
@@ -1712,7 +1554,21 @@ export default function LeaderboardModal({
                           {isCurrentUser && ' (du)'}
                         </span>
                         <span className="w-16 text-right text-sm tabular-nums text-gray-400">
-                          {participant.roundScore || '–'}
+                          {canEdit && status !== 'finished' && !isLongestDrive ? (
+                            <input
+                              ref={el => inputRefs.current[participant.email] = el}
+                              type="number"
+                              inputMode="numeric"
+                              value={editScores[participant.email] ?? ''}
+                              onChange={(e) => handleScoreChange(participant.email, e.target.value)}
+                              onKeyDown={(e) => handleKeyDown(e, participant.email, index)}
+                              onClick={(e) => e.stopPropagation()}
+                              placeholder="0"
+                              className="w-16 px-1.5 py-1 text-sm text-right bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-blue-500 text-white placeholder-gray-600 tabular-nums"
+                            />
+                          ) : (
+                            participant.roundScore || '–'
+                          )}
                         </span>
                         <span className={`w-16 text-right text-sm font-medium tabular-nums ${
                           isCurrentUser ? 'text-blue-400' : 'text-gray-300'
@@ -1729,8 +1585,8 @@ export default function LeaderboardModal({
         )}
       </div>
       
-      {/* Comparison chart - only show when not editing and has rounds (score mode) */}
-      {!isEditing && roundCount > 0 && !isLongestDrive && (
+      {/* Comparison chart - show when has rounds (score mode) */}
+      {roundCount > 0 && !isLongestDrive && (
         <ComparisonChart
           scores={scores}
           participants={participants}
@@ -1772,7 +1628,7 @@ export default function LeaderboardModal({
                   {/* Longest drive */}
                   <div className="bg-white/[0.03] rounded-xl p-3">
                     <div className="text-xs text-gray-500 mb-1">Längst</div>
-                    <div className="text-lg font-bold text-green-400 tabular-nums">{stats.maxDistance}m</div>
+                    <div className="text-lg font-bold text-white tabular-nums">{stats.maxDistance}m</div>
                     {stats.longestDrive && (
                       <div className="text-xs text-gray-500 truncate">
                         {stats.longestDrive.name || stats.longestDrive.email?.split('@')[0]}
@@ -1810,23 +1666,24 @@ export default function LeaderboardModal({
         );
       })()}
       
-      {/* Footer - Edit mode actions */}
-      {isEditing && (
-        <div className="px-4 py-3 border-t border-white/10 bg-gray-900/50 flex gap-3">
-          <button
-            onClick={() => setIsEditing(false)}
-            className="flex-1 py-2.5 rounded-xl bg-white/5 text-gray-300 hover:bg-white/10 text-sm font-medium"
-          >
-            Avbryt
-          </button>
-          <button
-            onClick={handleSave}
-            className="flex-1 py-2.5 rounded-xl bg-blue-500 text-white hover:bg-blue-400 text-sm font-medium flex items-center justify-center gap-2"
-          >
-            <Save size={16} />
-            Spara
-          </button>
-        </div>
+      {/* Floating save button */}
+      {canEdit && status !== 'finished' && !isLongestDrive && isScoresDirty() && (
+        <button
+          onClick={handleSave}
+          className="fixed z-[2100] right-4 bottom-4 w-14 h-14 rounded-full bg-blue-500 hover:bg-blue-400 active:bg-blue-600 text-white shadow-lg shadow-blue-500/25 flex items-center justify-center touch-manipulation"
+        >
+          <Check size={24} />
+        </button>
+      )}
+
+      {/* Floating + button for new round */}
+      {canEdit && status !== 'finished' && !(canEdit && !isLongestDrive && isScoresDirty()) && (
+        <button
+          onClick={handleAddRound}
+          className="fixed z-[2100] right-4 bottom-4 w-14 h-14 rounded-full bg-white/10 hover:bg-white/20 active:bg-white/30 text-white shadow-lg flex items-center justify-center touch-manipulation"
+        >
+          <Plus size={24} />
+        </button>
       )}
       
       {/* Delete round confirm dialog */}
@@ -1854,6 +1711,7 @@ export default function LeaderboardModal({
           </div>
         </div>
       )}
+      </div>{/* end content wrapper */}
     </div>
   );
 }

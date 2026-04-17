@@ -335,16 +335,19 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             type: 'leaderboard',
             title: b.data.title || '',
             mode: b.data.mode || 'single',
-            competitionType: b.data.competitionType || 'score',
+            competitionType: b.data.competitionType || 'single',
             teams: b.data.teams || [{ id: 1, name: 'Lag 1' }, { id: 2, name: 'Lag 2' }],
             participants: isDuplicate ? [] : (b.data.participants || []), // Clear participants when duplicating
             roundCount: isDuplicate ? 0 : (b.data.roundCount || 0),
             scores: isDuplicate ? {} : (b.data.scores || {}), // Clear scores when duplicating
             shots: isDuplicate ? {} : (b.data.shots || {}), // Clear shots when duplicating
             rounds: isDuplicate ? [] : (b.data.rounds || []), // Clear rounds when duplicating
+            golfRounds: isDuplicate ? [] : (b.data.golfRounds || []), // Clear golf rounds when duplicating
+            balancePlayers: isDuplicate ? [] : (b.data.balancePlayers || []), // Clear balance players when duplicating
             status: isDuplicate ? 'active' : (b.data.status || 'active'),
             sortOrder: b.data.sortOrder || 'desc',
-            defaultCollapsed: b.data.defaultCollapsed ?? true
+            defaultCollapsed: b.data.defaultCollapsed ?? true,
+            awardPoints: b.data.awardPoints ?? 1
           };
         }
         if (b.type === 'distribution') {
@@ -1002,7 +1005,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
         }
       } else if (block.type === 'leaderboard') {
         // Save leaderboard block - use competitionType-based default title
-        const defaultTitle = (block.competitionType || 'score') === 'longestdrive' ? 'Longest Drive' : 'Leaderboard';
+        const defaultTitle = block.competitionType === 'longestdrive' ? 'Longest Drive' : block.competitionType === 'team' ? 'Lagtävling' : 'Leaderboard';
         blocks.push({ 
           type: 'leaderboard', 
           data: { 
@@ -1012,15 +1015,18 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
             scores: block.scores || {},
             shots: block.shots || {},
             rounds: block.rounds || [],
+            golfRounds: block.golfRounds || [],
+            balancePlayers: block.balancePlayers || [],
             status: block.status || 'active',
             sortOrder: block.sortOrder || 'desc',
             defaultCollapsed: block.defaultCollapsed ?? true,
             mode: block.mode || 'single',
-            competitionType: block.competitionType || 'score',
+            competitionType: block.competitionType || 'single',
             teams: block.teams || [
               { id: 1, name: 'Lag 1' },
               { id: 2, name: 'Lag 2' }
-            ]
+            ],
+            awardPoints: block.awardPoints ?? 1
           } 
         });
       } else if (block.type === 'distribution') {
@@ -1185,7 +1191,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
       newBlock.sortOrder = 'desc';
       newBlock.defaultCollapsed = true;
       newBlock.mode = 'single';
-      newBlock.competitionType = 'score';
+      newBlock.competitionType = 'single';
     }
     if (type === 'distribution') {
       // template can be 'carpool' or 'tasks'
