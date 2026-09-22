@@ -96,6 +96,9 @@ export function useFullscreenModal({
       }
     };
 
+    // Lock first: it repositions the body, and no viewport event is guaranteed after
+    if (lockBody) acquireBodyLock(bgColor);
+
     if (viewport) {
       viewport.addEventListener('resize', updateLayout);
       viewport.addEventListener('scroll', updateLayout);
@@ -111,9 +114,6 @@ export function useFullscreenModal({
       remeasureTimers.push(setTimeout(updateLayout, 400));
     };
     document.addEventListener('focusout', handleFocusOut);
-
-    // Lock body scroll
-    if (lockBody) acquireBodyLock(bgColor);
 
     return () => {
       // Restore body
