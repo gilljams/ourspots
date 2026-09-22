@@ -535,6 +535,31 @@ Mål: Admin kan skapa exempelobjekt som visar dokumentation och funktionsdemos.
 - ✅ Nya barn ärver automatiskt förälderns shares
 - ✅ Använder ancestorIds för snabb uppslagning
 
+### Delningsarv i flera led (Fixat 2026-09-22) ✅ NY
+**Bugg:** Nedärvda delningar sparades med `includeChildren: false`. Varje ställe som
+avgjorde om ett nytt barn skulle ärva kollade den flaggan på den *direkta* föräldern,
+så kedjan bröts efter en generation - framtida barnbarn fick aldrig åtkomst.
+
+**Fix:** `src/utils/shareInheritance.js` samlar logiken:
+- `cascadesToChildren(share)` - en delning fortplantar sig om den har `includeChildren`
+  **eller** själv är nedärvd. Det är det som håller kedjan igång nedåt.
+- `buildInheritedShare(share, parentId)` - `inheritedFrom` pekar alltid på
+  *ursprungsobjektet*, inte närmaste förälder.
+
+**Andra buggen som fixades:** `inheritedFrom` sattes olika på olika ställen (ShareModal
+satte ursprunget, useSaveObject satte direkt förälder). Eftersom "neka" och "lämna
+delning" letade ättlingar via `inheritedFrom === rot` missades de posterna → användaren
+behöll åtkomst till undersidor efter att ha lämnat. useSharing matchar nu på
+`ancestorIds` + `status === 'inherited'`, vilket även städar gammal felaktig data.
+
+**Anropas från:** useSaveObject (skapa/flytta/flytta ättlingar), CreateObjectModal
+(förhandsvisning), ShareModal (vid delning).
+
+**Admin:** "Underhåll → Analysera delningar" i ObjectsAdminModal fyller på nedärvda
+delningar som saknas på befintlig data. Analysera först (läser bara), reparera sedan.
+⚠️ `handleExcludeInherited` raderar posten utan tombstone, så reparationen kan
+återställa medvetet borttagna delningar - därför visas listan före skrivning.
+
 ### Extra location-blocks (Förbättrat v2.0) ✅ NY
 - ✅ Bevarar alla extra positioner vid redigering
 - ✅ Kopierar alla positioner vid duplicering
@@ -710,35 +735,47 @@ Mål: Admin kan skapa exempelobjekt som visar dokumentation och funktionsdemos.
 
 11. KÄNDA PROBLEM & KVARSTÅENDE ARBETE (v1.5)
 
-### ⚠️ OBS! iOS Safari Viewport-problem (Återkommande)
-**Problem:** iOS Safari zoomar automatiskt när tangentbordet öppnas och återställer inte alltid viewport korrekt när det stängs. Detta kan orsaka "spök-klick" där touch-händelser registreras på fel element.
+### iOS Safari Viewport (Ombyggt 2026-09-22) ✅
+**Historik:** Detta var ett återkommande problem i flera omgångar. Symptomen varierade -
+"spök-klick" där touch landade på fel element, modaler som fastnade i tangentbordshöjd,
+vit yta under modalen, bakgrunden som scrollade med. Det var inte separata buggar utan
+**en designsvaghet**: varje modal mätte viewporten själv, i egen React-state.
 
-**Symptom:**
-- Klickar på "Uppdatera" men inget händer
-- Klickar på ett fält men ett annat element aktiveras (t.ex. dropdown öppnas)
-- Måste pinch-zooma för att få rätt fokus
+**Varför det inte gick att lappa:** sex oberoende kopior av samma sanning kunde hamna i
+otakt, och varje mätning gick via `setState` → omrendering → ny stil, vilket alltid låg
+några bildrutor efter tangentbordet.
 
-**Lösning (implementerad i CreateObjectModal):**
-```javascript
-// iOS viewport fix - lyssnar på focusout och tvingar viewport-reset
-useEffect(() => {
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-  if (!isIOS) return;
-  
-  const handleFocusOut = (e) => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-      setTimeout(() => {
-        window.scrollTo(0, window.scrollY);
-      }, 100);
-    }
-  };
-  
-  document.addEventListener('focusout', handleFocusOut);
-  return () => document.removeEventListener('focusout', handleFocusOut);
-}, []);
-```
+**Nuvarande arkitektur:**
 
-**Om problemet återkommer:** Kontrollera att denna fix finns i alla modaler med input-fält. Fixen tvingar Safari att räkna om viewport-koordinater efter att tangentbordet stängts.
+1. **`src/utils/viewport.js`** - en mätpunkt för hela appen, installeras i `main.jsx`.
+   Skriver CSS-variabler på `<html>`:
+   - `--app-vh` - den faktiskt synliga höjden (krymper med tangentbordet)
+   - `--app-vt` - var den ytan börjar i layout-viewporten
+
+   En `requestAnimationFrame`-slinga följer med under tangentbordets animation vid
+   `focusin`/`focusout` och rotation. **Detta är nyckeln på iOS:** Safari skickar inte
+   ett event per bildruta, och ibland inget alls när tangentbordet stängs. Slingan gör
+   att vi konvergerar på rätt värde oavsett vilka event som uteblir.
+
+2. **`src/utils/useFullscreenModal.js`** - returnerar färdig CSS (`panelStyle`,
+   `contentStyle`) som refererar variablerna. **Ingen React-state.** Webbläsaren
+   resizear modalen i samma bildruta som variabeln ändras.
+
+3. **`src/utils/useBodyScrollLock.js`** - referensräknat body-lås, separat från mätningen.
+   Räkningen krävs eftersom modalerna nästlas: CreateObjectModal innehåller list-, tabell-
+   och textredigerarna. Utan räkning släppte den inre modalen låset när den stängdes.
+
+**Användare:** ListEditorModal, SimpleTableEditorModal (×2), ColorEditorModal,
+FullscreenTextEditor. CreateObjectModal använder variablerna direkt i CSS
+(`max-sm:h-[var(--app-vh)]`) och anropar bara låset.
+
+**Nya modaler:** använd `useFullscreenModal()` och sprid `panelStyle`/`contentStyle`.
+Inget eget mätande.
+
+**Felsökning:** lägg till `?vpdebug=1` i adressen. En overlay visar `visualViewport`-höjd
+och offset, `window.innerHeight`, scrollposition, om body är låst och vad som har fokus.
+Utan flaggan skapas ingenting. Använd den innan du gissar - iOS-tangentbordet går inte
+att emulera i desktop-webbläsare.
 
 ### Högprioriterade buggar
 1. **PublicObjectView block-rendering** 🔴
@@ -1065,3 +1102,10 @@ src/
   - Returnerar: title, flag, content (markdown), lat, lng, address, imageUrl
 - ✅ fetchCountryList(): alla länder sorterade på svenska
 - ✅ fetchCountryImage(): Wikipedia REST API för representativ bild
+
+### Objekträknare i listvyn (Implementerat 2026-09-22) ✅ NY
+- ✅ Tunn rad ovanför kortrutnätet i App.jsx: antal + hårfin avgränsningslinje
+- ✅ Anpassar sig: "24 objekt", "3 träffar" vid sökning, "5 samlingar" vid viewFilter
+- ✅ Döljs när listan är tom (tomt-lägena tar över)
+- ℹ️ Visar medvetet bara antalet som syns, inte "24 av 48" - `objects` innehåller även
+  barnobjekt som aldrig visas på toppnivå, så en nämnare hade blivit missvisande
