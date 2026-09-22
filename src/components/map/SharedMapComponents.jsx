@@ -28,7 +28,13 @@ import { useToast } from '../../utils/useToast';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-export const CARTO_TILE_URL = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+// CARTO watermarks tiles with "API KEY REQUIRED" once an anonymous client passes
+// their free usage allowance. Set VITE_CARTO_API_KEY to authenticate.
+const CARTO_API_KEY = import.meta.env.VITE_CARTO_API_KEY;
+
+export const CARTO_TILE_URL =
+  'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
+  + (CARTO_API_KEY ? `?api_key=${CARTO_API_KEY}` : '');
 export const CARTO_ATTRIBUTION = '&copy; <a href="https://carto.com/">CARTO</a>';
 
 // ─── Standard button styles ───────────────────────────────────────────────────

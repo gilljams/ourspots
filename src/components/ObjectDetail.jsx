@@ -7,7 +7,7 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { getIconComponent, PREDEFINED_ICONS, emailToKey } from '../utils/iconHelpers';
 import { getTransformedImageUrl, getFocalPointStyles } from '../utils/imageUtils';
-import { getObjectDistance, formatDistance } from '../utils/geoUtils';
+import { getObjectDistance, formatDistance, getDistanceMeters, getBearing } from '../utils/geoUtils';
 import { useSwipeToClose } from '../utils/useSwipeToClose';
 import { blockComponents } from './blocks';
 import { HeroInfoBlock } from './blocks/HeroInfoBlock';
@@ -27,6 +27,7 @@ import { STORAGE_KEYS } from '../utils/storageKeys';
 import { usePrompt } from '../utils/usePrompt';
 import { useToast } from '../utils/useToast';
 import { addCapture, capturesForObject, flushCaptures } from '../utils/captureQueue';
+import LocationsEntryCard from './LocationsEntryCard';
 
 // Folder icon - we'll define it locally since it's only used here
 const Folder = ({ size = 24, ...props }) => (
@@ -304,6 +305,21 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
   //   - With 1 location only if showQuickCapture is on (FAB enables adding more)
   const showLocationMap = !isCollection && (hasMultipleLocations || (ownLocationBlocks.length >= 1 && showQuickCapture));
   const hasImageBlock = object.blocks.some(b => b.type === 'image' && b.data?.url);
+
+  const nearestLocation = useMemo(() => {
+    if (!userLocation) return null;
+    const points = [
+      ...ownLocationBlocks.map(b => ({ lat: b.data.lat, lng: b.data.lng })),
+      ...pendingLocations.map(p => ({ lat: p.lat, lng: p.lng })),
+    ];
+    let best = null;
+    for (const p of points) {
+      const distance = getDistanceMeters(userLocation.lat, userLocation.lng, p.lat, p.lng);
+      if (!best || distance < best.distance) best = { ...p, distance };
+    }
+    if (!best) return null;
+    return { ...best, bearing: getBearing(userLocation.lat, userLocation.lng, best.lat, best.lng) };
+  }, [userLocation, ownLocationBlocks, pendingLocations]);
   
   // Weather data for primary location (shown as overlay on image)
   const primaryLocForWeather = object.blocks.find(b => b.type === 'location' && b.data?.isPrimary === true && b.data?.lat != null);
@@ -568,21 +584,14 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
           {/* Scrollable content */}
           <div className="overflow-y-auto overflow-x-hidden overscroll-contain flex-1 p-4 sm:p-5 lg:p-6 pb-8 sm:pb-10">
             <div className="space-y-5">
-              {/* Show multi-location map button at top if no image block exists */}
-              {!hasImageBlock && showLocationMap && (
-                <div className="flex items-center justify-end">
-                  <button
-                    onClick={() => setShowMultiLocationMap(true)}
-                    className="h-9 px-3 rounded-lg bg-white/5 hover:bg-blue-500/20 flex items-center gap-2 text-gray-400 hover:text-blue-400 transition-all"
-                    title="Visa platser på karta"
-                  >
-                    <MapIcon size={16} />
-                    <span className="text-sm font-medium">
-                      {ownLocationBlocks.length + pendingLocations.length} {(ownLocationBlocks.length + pendingLocations.length) === 1 ? 'plats' : 'platser'}
-                      {pendingLocations.length > 0 && <span className="text-yellow-400 ml-1">({pendingLocations.length} väntar)</span>}
-                    </span>
-                  </button>
-                </div>
+              {/* Map is the point of a multi-position object, so it leads */}
+              {showLocationMap && (
+                <LocationsEntryCard
+                  count={ownLocationBlocks.length + pendingLocations.length}
+                  pendingCount={pendingLocations.length}
+                  nearest={nearestLocation}
+                  onClick={() => setShowMultiLocationMap(true)}
+                />
               )}
               {(() => {
                 // Identify primary and extra location blocks upfront
@@ -941,22 +950,6 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                         >
                           <MapIcon size={16} />
                           <span className="text-sm font-medium">{linkedObjectsWithCoords.length} {linkedObjectsWithCoords.length === 1 ? 'plats' : 'platser'}</span>
-                        </button>
-                      </div>
-                    )}
-                    {/* Show location map button – visible for 1+ locations (enables adding more via FAB) */}
-                    {block.type === 'image' && showLocationMap && (
-                      <div className="flex items-center justify-end mt-3">
-                        <button
-                          onClick={() => setShowMultiLocationMap(true)}
-                          className="h-9 px-3 rounded-lg bg-white/5 hover:bg-blue-500/20 flex items-center gap-2 text-gray-400 hover:text-blue-400 transition-all"
-                          title="Visa platser på karta"
-                        >
-                          <MapIcon size={16} />
-                          <span className="text-sm font-medium">
-                            {ownLocationBlocks.length + pendingLocations.length} {(ownLocationBlocks.length + pendingLocations.length) === 1 ? 'plats' : 'platser'}
-                            {pendingLocations.length > 0 && <span className="text-yellow-400 ml-1">({pendingLocations.length} väntar)</span>}
-                          </span>
                         </button>
                       </div>
                     )}

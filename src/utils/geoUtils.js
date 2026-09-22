@@ -50,3 +50,10 @@ export const formatDistance = (km) => {
   }
   return `${km.toFixed(1)} km`;
 };
+
+const COMPASS_POINTS = ['norr', 'nordost', 'öster', 'sydost', 'söder', 'sydväst', 'väster', 'nordväst'];
+
+// Bearing in degrees to a Swedish compass direction
+export const bearingToCompass = (bearing) => {
+  return COMPASS_POINTS[Math.round(bearing / 45) % 8];
+};

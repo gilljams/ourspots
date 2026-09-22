@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, ChevronLeft, ChevronRight, Plus, User, Trophy, Trash2, BarChart2, ChevronDown, MapPin, Target, Check, Crosshair, Map as MapIcon, MoreVertical } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Polyline, Tooltip, useMap } from 'react-leaflet';
+import { BaseTileLayer } from './map/SharedMapComponents';
 import L from 'leaflet';
 import { useGPSCapture, calculateDistance } from '../utils/useGPSCapture';
 import { useToast } from '../utils/useToast';
@@ -1356,10 +1357,7 @@ export default function LeaderboardModal({
                         style={{ height: '100%', width: '100%' }}
                         className="z-0"
                       >
-                        <TileLayer
-                          attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-                          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-                        />
+                        <BaseTileLayer />
                         
                         {/* Tee marker */}
                         <Marker 
