@@ -19,6 +19,7 @@ import { usePrompt } from '../utils/usePrompt';
 import { fetchCountryFacts, searchPlaces, fetchPlaceFacts } from '../utils/countryData';
 import { useDebounce } from '../utils/useDebounce';
 import { cascadesToChildren, buildInheritedShare } from '../utils/shareInheritance';
+import { useFullscreenModal } from '../utils/useFullscreenModal';
 
 // Demo users available when in demo mode for realistic examples
 const DEMO_USERS = {
@@ -496,6 +497,23 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
   
   // Track if form has been modified (simpler than deep comparison)
   const [formTouched, setFormTouched] = useState(false);
+
+  // iOS shrinks the visual viewport when the keyboard opens while the layout
+  // viewport stays put, which offsets tap targets in a plain `fixed inset-0`
+  // modal. Body lock stays off - this modal hosts the list/table editors.
+  const { viewportHeight, viewportOffset } = useFullscreenModal({ lockBody: false });
+  const [isSmallScreen, setIsSmallScreen] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(max-width: 639px)').matches
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 639px)');
+    const onChange = (e) => setIsSmallScreen(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  const viewportStyle = isSmallScreen
+    ? { top: `${viewportOffset}px`, height: `${viewportHeight}px`, bottom: 'auto' }
+    : undefined;
 
   // ========== ESCAPE KEY ==========
   useEffect(() => {
@@ -1285,6 +1303,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
       {/* Backdrop */}
       <div 
         className="fixed inset-0 bg-black/80 sm:bg-black/70 lg:bg-black/50 z-[1000] flex items-end sm:items-center justify-center lg:justify-end sm:p-8"
+        style={viewportStyle}
         onClick={(e) => { 
           if (!saving && e.target === e.currentTarget) onClose(); 
         }}

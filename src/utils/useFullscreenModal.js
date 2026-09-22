@@ -10,6 +10,8 @@ import { useState, useEffect, useRef } from 'react';
  * @param {number} [options.headerHeight=52] - Fixed header height to subtract
  * @param {number} [options.toolbarHeight=0] - Fixed toolbar height to subtract
  * @param {boolean} [options.useRAF=false] - Use requestAnimationFrame for jitter-reduction (text editor)
+ * @param {boolean} [options.lockBody=true] - Lock body scroll. Set false when this modal can host
+ *   other fullscreen modals, since the nested one would otherwise release the lock on close.
  * @param {Function} [options.onCleanup] - Extra cleanup to run on unmount (e.g. clear undo timers)
  * @returns {{ viewportHeight: number, viewportOffset: number, contentHeight: number }}
  */
@@ -18,6 +20,7 @@ export function useFullscreenModal({
   headerHeight = 52,
   toolbarHeight = 0,
   useRAF = false,
+  lockBody = true,
   onCleanup,
 } = {}) {
   const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
@@ -72,24 +75,28 @@ export function useFullscreenModal({
     // Lock body scroll
     scrollYRef.current = window.scrollY;
     const scrollY = scrollYRef.current;
-    document.documentElement.style.backgroundColor = bgColor;
-    document.body.style.backgroundColor = bgColor;
-    document.body.style.position = 'fixed';
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.left = '0';
-    document.body.style.right = '0';
-    document.body.style.overflow = 'hidden';
+    if (lockBody) {
+      document.documentElement.style.backgroundColor = bgColor;
+      document.body.style.backgroundColor = bgColor;
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.left = '0';
+      document.body.style.right = '0';
+      document.body.style.overflow = 'hidden';
+    }
 
     return () => {
       // Restore body
-      document.documentElement.style.backgroundColor = '';
-      document.body.style.backgroundColor = '';
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.left = '';
-      document.body.style.right = '';
-      document.body.style.overflow = '';
-      window.scrollTo(0, scrollYRef.current);
+      if (lockBody) {
+        document.documentElement.style.backgroundColor = '';
+        document.body.style.backgroundColor = '';
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.left = '';
+        document.body.style.right = '';
+        document.body.style.overflow = '';
+        window.scrollTo(0, scrollYRef.current);
+      }
 
       // Remove listeners
       if (viewport) {
