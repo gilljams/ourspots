@@ -1,17 +1,49 @@
 import { useState, useEffect, useRef } from 'react';
 
+// Reference counted so a nested fullscreen modal closing does not release the
+// outer modal's lock (CreateObjectModal hosts the list/table editors).
+let bodyLockCount = 0;
+let bodyLockScrollY = 0;
+
+function acquireBodyLock(bgColor) {
+  if (bodyLockCount === 0) {
+    bodyLockScrollY = window.scrollY;
+    document.documentElement.style.backgroundColor = bgColor;
+    document.body.style.backgroundColor = bgColor;
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${bodyLockScrollY}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.overflow = 'hidden';
+  }
+  bodyLockCount++;
+}
+
+function releaseBodyLock() {
+  bodyLockCount = Math.max(0, bodyLockCount - 1);
+  if (bodyLockCount === 0) {
+    document.documentElement.style.backgroundColor = '';
+    document.body.style.backgroundColor = '';
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.left = '';
+    document.body.style.right = '';
+    document.body.style.overflow = '';
+    window.scrollTo(0, bodyLockScrollY);
+  }
+}
+
 /**
  * Hook for fullscreen modal viewport management and body scroll lock.
  * Used by ListEditorModal, SimpleTableEditorModal, MultiColumnTableEditorModal,
- * and FullscreenTextEditor (BlockEditor) to handle iOS keyboard correctly.
+ * FullscreenTextEditor (BlockEditor) and CreateObjectModal to handle iOS keyboard correctly.
  *
  * @param {Object} options
  * @param {string} [options.bgColor='#1e293b'] - Background color during modal
  * @param {number} [options.headerHeight=52] - Fixed header height to subtract
  * @param {number} [options.toolbarHeight=0] - Fixed toolbar height to subtract
  * @param {boolean} [options.useRAF=false] - Use requestAnimationFrame for jitter-reduction (text editor)
- * @param {boolean} [options.lockBody=true] - Lock body scroll. Set false when this modal can host
- *   other fullscreen modals, since the nested one would otherwise release the lock on close.
+ * @param {boolean} [options.lockBody=true] - Lock body scroll while mounted
  * @param {Function} [options.onCleanup] - Extra cleanup to run on unmount (e.g. clear undo timers)
  * @returns {{ viewportHeight: number, viewportOffset: number, contentHeight: number }}
  */
@@ -25,7 +57,6 @@ export function useFullscreenModal({
 } = {}) {
   const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
   const [viewportOffset, setViewportOffset] = useState(0);
-  const scrollYRef = useRef(0);
   const rafRef = useRef(null);
   const lastValuesRef = useRef({ height: 0, offset: 0 });
 
@@ -82,30 +113,11 @@ export function useFullscreenModal({
     document.addEventListener('focusout', handleFocusOut);
 
     // Lock body scroll
-    scrollYRef.current = window.scrollY;
-    const scrollY = scrollYRef.current;
-    if (lockBody) {
-      document.documentElement.style.backgroundColor = bgColor;
-      document.body.style.backgroundColor = bgColor;
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.left = '0';
-      document.body.style.right = '0';
-      document.body.style.overflow = 'hidden';
-    }
+    if (lockBody) acquireBodyLock(bgColor);
 
     return () => {
       // Restore body
-      if (lockBody) {
-        document.documentElement.style.backgroundColor = '';
-        document.body.style.backgroundColor = '';
-        document.body.style.position = '';
-        document.body.style.top = '';
-        document.body.style.left = '';
-        document.body.style.right = '';
-        document.body.style.overflow = '';
-        window.scrollTo(0, scrollYRef.current);
-      }
+      if (lockBody) releaseBodyLock();
 
       // Remove listeners
       if (viewport) {

@@ -499,9 +499,8 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
   const [formTouched, setFormTouched] = useState(false);
 
   // iOS shrinks the visual viewport when the keyboard opens while the layout
-  // viewport stays put, which offsets tap targets in a plain `fixed inset-0`
-  // modal. Body lock stays off - this modal hosts the list/table editors.
-  const { viewportHeight, viewportOffset } = useFullscreenModal({ lockBody: false });
+  // viewport stays put, which offsets tap targets in a plain `fixed inset-0` modal.
+  const { viewportHeight, viewportOffset } = useFullscreenModal();
   const [isSmallScreen, setIsSmallScreen] = useState(() =>
     typeof window !== 'undefined' && window.matchMedia('(max-width: 639px)').matches
   );
@@ -510,6 +509,19 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
     const onChange = (e) => setIsSmallScreen(e.matches);
     mq.addEventListener('change', onChange);
     return () => mq.removeEventListener('change', onChange);
+  }, []);
+
+  // With the body locked iOS cannot scroll the field into view itself
+  useEffect(() => {
+    const handleFocusIn = (e) => {
+      const el = e.target;
+      if (!el.matches?.('input, textarea, [contenteditable="true"]')) return;
+      setTimeout(() => {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 300);
+    };
+    document.addEventListener('focusin', handleFocusIn);
+    return () => document.removeEventListener('focusin', handleFocusIn);
   }, []);
   const panelStyle = isSmallScreen
     ? {
