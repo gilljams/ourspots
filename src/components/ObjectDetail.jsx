@@ -26,6 +26,7 @@ import CollectionMapView from './map/CollectionMapView';
 import { STORAGE_KEYS } from '../utils/storageKeys';
 import { usePrompt } from '../utils/usePrompt';
 import { useToast } from '../utils/useToast';
+import { addCapture, capturesForObject, flushCaptures } from '../utils/captureQueue';
 
 // Folder icon - we'll define it locally since it's only used here
 const Folder = ({ size = 24, ...props }) => (
@@ -33,46 +34,6 @@ const Folder = ({ size = 24, ...props }) => (
     <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
   </svg>
 );
-
-// Helper to get/set pending locations from localStorage
-const PENDING_LOCATIONS_KEY = STORAGE_KEYS.PENDING_LOCATIONS;
-
-function getPendingLocations(objectId) {
-  try {
-    const all = JSON.parse(localStorage.getItem(PENDING_LOCATIONS_KEY) || '{}');
-    return all[objectId] || [];
-  } catch {
-    return [];
-  }
-}
-
-function savePendingLocation(objectId, coords) {
-  try {
-    const all = JSON.parse(localStorage.getItem(PENDING_LOCATIONS_KEY) || '{}');
-    const pending = all[objectId] || [];
-    pending.push({
-      id: `pending_${Date.now()}`,
-      lat: coords.lat,
-      lng: coords.lng,
-      timestamp: Date.now()
-    });
-    all[objectId] = pending;
-    localStorage.setItem(PENDING_LOCATIONS_KEY, JSON.stringify(all));
-    return pending;
-  } catch {
-    return [];
-  }
-}
-
-function clearPendingLocations(objectId) {
-  try {
-    const all = JSON.parse(localStorage.getItem(PENDING_LOCATIONS_KEY) || '{}');
-    delete all[objectId];
-    localStorage.setItem(PENDING_LOCATIONS_KEY, JSON.stringify(all));
-  } catch {
-    // Ignore
-  }
-}
 
 function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockUpdate, currentUser, userDisplayName, userLocation, showQuickCapture, allObjects, onNavigate, onGoBack, previousObject, categories, isAdmin, onShowOnMap, onShare, onLeaveShare, collections, onAddToCollection, onRemoveFromCollection, onUpdateLinkedNote, onAddLinkedUrl, onUpdateLinkedUrl, onRemoveLinkedUrl, onReorderLinked, preciseGPS = true, openPlannerOnReturn, onClearPlannerReturn }) {
   const prompt = usePrompt();
@@ -113,7 +74,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
   const [showMultiLocationMap, setShowMultiLocationMap] = useState(false); // For multi-location objects map
   const [showParentCollections, setShowParentCollections] = useState(false); // For showing which collections contain this object
   const [showPlanner, setShowPlanner] = useState(false); // For trip planner modal
-  const [pendingLocations, setPendingLocations] = useState(() => getPendingLocations(object.id));
+  const [pendingLocations, setPendingLocations] = useState(() => capturesForObject(object.id));
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   
   // Centralized audio state for coordinating between LocationBlock and ImageBlock
@@ -134,38 +95,21 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
   
   // Sync pending locations when online
   useEffect(() => {
-    const syncPendingLocations = async () => {
-      const pending = getPendingLocations(object.id);
-      if (pending.length === 0 || !isOnline) return;
-      
-      try {
-        // Get fresh object data
-        const currentBlocks = object.blocks || [];
-        const newBlocks = pending.map(p => ({
-          type: 'location',
-          data: { lat: p.lat, lng: p.lng, address: '' }
-        }));
-        
-        await updateDoc(doc(db, 'objects', object.id), {
-          blocks: [...currentBlocks, ...newBlocks]
-        });
-        
-        // Clear pending after successful sync
-        clearPendingLocations(object.id);
-        setPendingLocations([]);
-        
-        if (pending.length > 0) {
-          toast.success(`${pending.length} sparade platser synkade!`);
-        }
-      } catch (err) {
-        console.error('Failed to sync pending locations:', err);
-        // Keep pending, will try again later
+    if (!isOnline) return;
+    let cancelled = false;
+    const pending = capturesForObject(object.id);
+    if (pending.length === 0) return;
+
+    flushCaptures(db).then(({ synced }) => {
+      if (cancelled) return;
+      setPendingLocations(capturesForObject(object.id));
+      if (synced > 0) {
+        toast.success(`${synced} sparade platser synkade!`);
       }
-    };
-    
-    // Sync on mount and when isOnline changes to true
-    syncPendingLocations();
-  }, [object.id, object.blocks, isOnline]);
+    });
+
+    return () => { cancelled = true; };
+  }, [object.id, isOnline]);
   
   const toggleChildViewMode = () => {
     const newMode = childViewMode === 'grid' ? 'list' : 'grid';
@@ -2160,27 +2104,19 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                 userLocation={userLocation}
                 pendingLocations={pendingLocations}
                 onAddLocation={showQuickCapture ? async (coords) => {
-                  // Try to save to Firestore first
-                  try {
-                    const newBlock = {
-                      type: 'location',
-                      data: {
-                        lat: coords.lat,
-                        lng: coords.lng,
-                        address: ''
-                      }
-                    };
-                    const updatedBlocks = [...(object.blocks || []), newBlock];
-                    await updateDoc(doc(db, 'objects', object.id), {
-                      blocks: updatedBlocks
-                    });
-                    toast.success(`Plats #${ownLocationBlocks.length + pendingLocations.length + 1} tillagd!`);
-                  } catch (err) {
-                    console.error('Error adding location, saving locally:', err);
-                    // Fallback: Save to localStorage for later sync
-                    const newPending = savePendingLocation(object.id, coords);
-                    setPendingLocations(newPending);
-                    toast.info(`Plats #${ownLocationBlocks.length + newPending.length} sparad lokalt (synkas när nät finns)`);
+                  // Always queue first, then let the queue deliver it
+                  addCapture({
+                    lat: coords.lat,
+                    lng: coords.lng,
+                    accuracy: coords.accuracy ?? null,
+                    targetObjectId: object.id,
+                  });
+                  setPendingLocations(capturesForObject(object.id));
+                  toast.success(`Plats #${ownLocationBlocks.length + capturesForObject(object.id).length} sparad`);
+                  const { synced } = await flushCaptures(db);
+                  setPendingLocations(capturesForObject(object.id));
+                  if (synced === 0) {
+                    toast.info('Ingen uppkoppling – platsen skickas när nätet är tillbaka');
                   }
                 } : undefined}
                 onSelectObject={() => {

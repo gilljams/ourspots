@@ -1,10 +1,15 @@
 import React from 'react';
-import { X, Plus, Trash2, Target, Lightbulb, MapPin } from 'lucide-react';
+import { X, Plus, Trash2, Target, Lightbulb, MapPin, CloudUpload, Crosshair } from 'lucide-react';
 
 /**
  * Slide-in panel showing saved GPS captures with create/delete actions.
  */
-export default function CapturesModal({ captures, onDeleteCapture, onCreateFromCapture, onClose }) {
+export default function CapturesModal({ captures, objects = [], onDeleteCapture, onCreateFromCapture, onClose }) {
+  const waitingCount = captures.filter(c => c.targetObjectId).length;
+  const objectName = (id) => {
+    const obj = objects.find(o => o.id === id);
+    return obj?.blocks?.find(b => b.type === 'title')?.data?.text || 'objektet';
+  };
   return (
     <div
       className="fixed inset-0 bg-black/80 sm:bg-black/70 backdrop-blur-sm z-[2000] flex items-end sm:items-center justify-center sm:justify-end"
@@ -42,6 +47,13 @@ export default function CapturesModal({ captures, onDeleteCapture, onCreateFromC
             </div>
           </div>
 
+          {waitingCount > 0 && (
+            <div className="mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-sm text-amber-200 flex items-center gap-2">
+              <CloudUpload size={16} className="flex-shrink-0" />
+              <span>{waitingCount} {waitingCount === 1 ? 'pinning väntar' : 'pinningar väntar'} på att skickas. De ligger kvar tills de kommit fram.</span>
+            </div>
+          )}
+
           {captures.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
               <Target size={48} className="mx-auto mb-4 text-gray-600" />
@@ -51,13 +63,14 @@ export default function CapturesModal({ captures, onDeleteCapture, onCreateFromC
           ) : (
             <div className="space-y-3">
               {captures.map((capture, index) => {
-                const date = new Date(capture.timestamp);
+                const date = new Date(capture.capturedAt ?? capture.timestamp);
                 const timeStr = date.toLocaleString('sv-SE', {
                   month: 'short',
                   day: 'numeric',
                   hour: '2-digit',
                   minute: '2-digit'
                 });
+                const isWaiting = !!capture.targetObjectId;
 
                 return (
                   <div key={capture.id} className="bg-white/5 backdrop-blur-md rounded-xl border border-white/10 p-4">
@@ -83,15 +96,31 @@ export default function CapturesModal({ captures, onDeleteCapture, onCreateFromC
                         <MapPin size={12} />
                         <span>{capture.lat.toFixed(6)}, {capture.lng.toFixed(6)}</span>
                       </div>
+                      {capture.accuracy != null && (
+                        <div className="flex items-center gap-2">
+                          <Crosshair size={12} />
+                          <span className={capture.accuracy > 25 ? 'text-amber-400' : ''}>
+                            ±{capture.accuracy} m
+                            {capture.accuracy > 25 && ' – osäker position'}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
-                    <button
-                      onClick={() => onCreateFromCapture(capture)}
-                      className="w-full py-2 px-3 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium transition-all flex items-center justify-center gap-2"
-                    >
-                      <Plus size={16} />
-                      Skapa objekt från denna
-                    </button>
+                    {isWaiting ? (
+                      <div className="w-full py-2 px-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-200 text-sm flex items-center justify-center gap-2">
+                        <CloudUpload size={16} />
+                        Väntar på att skickas till "{objectName(capture.targetObjectId)}"
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => onCreateFromCapture(capture)}
+                        className="w-full py-2 px-3 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium transition-all flex items-center justify-center gap-2"
+                      >
+                        <Plus size={16} />
+                        Skapa objekt från denna
+                      </button>
+                    )}
                   </div>
                 );
               })}

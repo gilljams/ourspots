@@ -11,6 +11,10 @@ import { getObjectDistance as getObjectDistanceUtil, getDistanceMeters, getBeari
 import { emailToKey } from './utils/iconHelpers';
 import { STORAGE_KEYS } from './utils/storageKeys';
 import { usePersistedState } from './utils/usePersistedState';
+import { useGPSCapture } from './utils/useGPSCapture';
+import {
+  readCaptures, addCapture, removeCapture, flushCaptures, migrateLegacyStores
+} from './utils/captureQueue';
 import { useAuth } from './utils/useAuth';
 import { useObjects } from './utils/useObjects';
 import { useFavorites } from './utils/useFavorites';
@@ -136,7 +140,10 @@ function App() {
   const [showObjectsAdmin, setShowObjectsAdmin] = useState(false);
   const [showUsersAdmin, setShowUsersAdmin] = useState(false);
   const [showContacts, setShowContacts] = useState(false);
-  const [captures, setCaptures] = usePersistedState(STORAGE_KEYS.CAPTURES, [], { type: 'json' });
+  const [captures, setCaptures] = useState(() => {
+    migrateLegacyStores();
+    return readCaptures();
+  });
   const [showCaptures, setShowCaptures] = useState(false);
   const [keepScreenOn, setKeepScreenOn] = usePersistedState(STORAGE_KEYS.KEEP_SCREEN_ON, false);
   const [showQuickCapture, setShowQuickCapture] = usePersistedState(STORAGE_KEYS.SHOW_QUICK_CAPTURE, false);
@@ -397,6 +404,20 @@ function App() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, []);
 
+  // Retry queued pins whenever there is a realistic chance of getting through
+  useEffect(() => {
+    if (!user) return;
+    const attempt = () => flushCaptures(db, { onChange: setCaptures });
+    attempt();
+    const onVisible = () => { if (document.visibilityState === 'visible') attempt(); };
+    window.addEventListener('online', attempt);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.removeEventListener('online', attempt);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [user]);
+
   // Capture user's location on mount
   useEffect(() => {
     if ('geolocation' in navigator) {
@@ -566,63 +587,49 @@ function App() {
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
                        window.navigator.standalone === true;
 
-  // Quick capture functions
+  // Quick capture takes its own high-accuracy fix rather than reusing the
+  // start-up position, which can be kilometres away by the time you pin.
+  const quickCaptureGPS = useGPSCapture({ preciseGPS: true, accuracyThreshold: 10, timeout: 15000 });
+
   const handleQuickCapture = async () => {
-    if (!userLocation) {
-      toast.error('Ingen GPS-position! Vänta tills GPS har hittats.');
+    if (quickCaptureGPS.isCapturing) return;
+
+    const targetId = quickCaptureObjectId || null;
+    const targetObject = targetId ? objects.find(o => o.id === targetId) : null;
+    if (targetId && !targetObject) {
+      toast.error('Valt objekt finns inte längre. Välj ett nytt i inställningar.');
       return;
     }
 
-    // If quick capture object is set, add location block directly
-    if (quickCaptureObjectId) {
-      const targetObject = objects.find(o => o.id === quickCaptureObjectId);
-      if (targetObject) {
-        try {
-          const newBlock = {
-            type: 'location',
-            data: {
-              lat: userLocation.lat,
-              lng: userLocation.lng,
-              address: ''
-            }
-          };
-          const updatedBlocks = [...(targetObject.blocks || []), newBlock];
-          await updateDoc(doc(db, 'objects', quickCaptureObjectId), {
-            blocks: updatedBlocks
-          });
-          const objectName = targetObject.blocks?.find(b => b.type === 'title')?.data?.text || 'objektet';
-          toast.success(`Position tillagd till "${objectName}"!`);
-          return;
-        } catch (err) {
-          console.error('Error adding location:', err);
-          toast.error('Kunde inte lägga till position');
-          return;
-        }
-      } else {
-        toast.error('Valt objekt finns inte längre. Välj ett nytt i inställningar.');
-        return;
-      }
+    let fix;
+    try {
+      fix = await quickCaptureGPS.capture();
+    } catch (err) {
+      toast.error(err?.message || 'Kunde inte hämta position');
+      return;
     }
 
-    // Fallback: Save to captures list
-    const capture = {
-      id: `capture_${Date.now()}`,
-      lat: userLocation.lat,
-      lng: userLocation.lng,
-      timestamp: Date.now(),
-      note: ''
-    };
+    addCapture({
+      lat: fix.lat,
+      lng: fix.lng,
+      accuracy: fix.accuracy,
+      targetObjectId: targetId,
+    });
+    setCaptures(readCaptures());
 
-    const newCaptures = [...captures, capture];
-    setCaptures(newCaptures);
-    
-    // Visual feedback
-    toast.success(`Position sparad! (${newCaptures.length} st)`);
+    const precision = fix.accuracy != null ? ` (±${fix.accuracy} m)` : '';
+    if (targetId) {
+      const objectName = targetObject.blocks?.find(b => b.type === 'title')?.data?.text || 'objektet';
+      toast.success(`Position${precision} sparad till "${objectName}"`);
+      flushCaptures(db, { onChange: setCaptures });
+    } else {
+      toast.success(`Position${precision} sparad`);
+    }
   };
 
   const handleDeleteCapture = (captureId) => {
-    const newCaptures = captures.filter(c => c.id !== captureId);
-    setCaptures(newCaptures);
+    removeCapture(captureId);
+    setCaptures(readCaptures());
   };
 
   const handleCreateFromCapture = (capture) => {
@@ -630,7 +637,16 @@ function App() {
     setEditingObject({
       parentId: null,
       blocks: [
-        { type: 'location', data: { lat: capture.lat, lng: capture.lng, address: '' } }
+        {
+          type: 'location',
+          data: {
+            lat: capture.lat,
+            lng: capture.lng,
+            accuracy: capture.accuracy ?? null,
+            capturedAt: capture.capturedAt,
+            address: ''
+          }
+        }
       ]
     });
     setShowCreateModal(true);
@@ -1030,7 +1046,8 @@ function App() {
             {showQuickCapture && (
               <button
                 onClick={handleQuickCapture}
-                className={`absolute right-2 w-14 h-14 bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 rounded-2xl shadow-xl shadow-orange-500/30 flex items-center justify-center text-white hover:scale-105 active:scale-95 transition-all duration-300 pointer-events-auto ${
+                disabled={quickCaptureGPS.isCapturing}
+                className={`absolute right-2 w-14 h-14 bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 rounded-2xl shadow-xl shadow-orange-500/30 flex items-center justify-center text-white hover:scale-105 active:scale-95 transition-all duration-300 pointer-events-auto disabled:hover:scale-100 ${
                   (selectedObject || showCreateModal || showCategoryAdmin || showObjectsAdmin || showShareModal) 
                     ? 'bottom-6' 
                     : viewMode === 'map' && returnToObjectId 
@@ -1039,8 +1056,17 @@ function App() {
                 }`}
                 title="Snabbpinna GPS-position"
               >
-                <Target size={22} />
-                {captures.length > 0 && (
+                {quickCaptureGPS.isCapturing ? (
+                  <Loader size={22} className="animate-spin" />
+                ) : (
+                  <Target size={22} />
+                )}
+                {quickCaptureGPS.isCapturing && quickCaptureGPS.accuracy != null && (
+                  <span className="absolute -bottom-6 right-0 text-[11px] font-medium text-orange-300 bg-black/70 px-1.5 py-0.5 rounded whitespace-nowrap">
+                    ±{quickCaptureGPS.accuracy} m
+                  </span>
+                )}
+                {!quickCaptureGPS.isCapturing && captures.length > 0 && (
                   <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
                     {captures.length}
                   </span>
@@ -1200,6 +1226,7 @@ function App() {
       {showCaptures && (
         <CapturesModal
           captures={captures}
+          objects={objects}
           onDeleteCapture={handleDeleteCapture}
           onCreateFromCapture={handleCreateFromCapture}
           onClose={() => setShowCaptures(false)}

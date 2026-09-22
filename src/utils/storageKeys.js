@@ -17,6 +17,7 @@ export const STORAGE_KEYS = {
 
   // Quick-capture / GPS
   CAPTURES: 'ourspots_captures',
+  CAPTURE_QUEUE: 'ourspots_capture_queue',
   KEEP_SCREEN_ON: 'keepScreenOn',
   SHOW_QUICK_CAPTURE: 'showQuickCapture',
   QUICK_CAPTURE_OBJECT_ID: 'quickCaptureObjectId',
