@@ -31,6 +31,8 @@ export default function AppMenu({
   showQuickCapture,
   setShowQuickCapture,
   quickCaptureObjectId,
+  duplicateRadius,
+  setDuplicateRadius,
   objects,
   categories,
   captures,
@@ -300,6 +302,26 @@ export default function AppMenu({
                           )}
                           <ChevronDown size={16} className="text-gray-400 flex-shrink-0" />
                         </button>
+                      </div>
+                      <div className="p-2.5 rounded-lg bg-white/5">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-xs text-gray-400">Varna för dubblett inom</span>
+                          <span className="text-xs font-medium text-orange-300 tabular-nums">
+                            {duplicateRadius > 0 ? `${duplicateRadius} m` : 'Av'}
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          step="5"
+                          value={duplicateRadius}
+                          onChange={(e) => setDuplicateRadius(Number(e.target.value))}
+                          className="w-full accent-orange-500"
+                        />
+                        <p className="text-[11px] text-gray-500 mt-1 leading-snug">
+                          GPS under trädtak ligger ofta på 5–20 m, så för litet värde fångar inga dubbletter.
+                        </p>
                       </div>
                       <button
                         onClick={() => { onClose(); onShowCaptures(); }}

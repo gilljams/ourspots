@@ -23,6 +23,7 @@ import { useDisplayObjects } from './utils/useDisplayObjects';
 import { useSaveObject } from './utils/useSaveObject';
 import { useCollectionActions } from './utils/useCollectionActions';
 import { useToast } from './utils/useToast';
+import { useConfirm } from './utils/useConfirm';
 import { useContactActions } from './utils/useContactActions';
 import { useDebounce } from './utils/useDebounce';
 
@@ -71,6 +72,7 @@ L.Icon.Default.mergeOptions({
 function App() {
   // Global toast via context
   const toast = useToast();
+  const confirm = useConfirm();
 
   // --- Extracted hooks ---
   const {
@@ -151,6 +153,7 @@ function App() {
   const [showQuickCaptureObjectPicker, setShowQuickCaptureObjectPicker] = useState(false);
   const [quickCaptureSearchQuery, setQuickCaptureSearchQuery] = useState('');
   const [preciseGPS, setPreciseGPS] = usePersistedState(STORAGE_KEYS.PRECISE_GPS, false);
+  const [duplicateRadius, setDuplicateRadius] = usePersistedState(STORAGE_KEYS.DUPLICATE_RADIUS, 20, { type: 'json' });
   // Menu section collapse states with localStorage
   const [menuAdminExpanded, setMenuAdminExpanded] = usePersistedState(STORAGE_KEYS.MENU_ADMIN_EXPANDED, false);
   const [menuSettingsExpanded, setMenuSettingsExpanded] = usePersistedState(STORAGE_KEYS.MENU_SETTINGS_EXPANDED, false);
@@ -591,6 +594,30 @@ function App() {
   // start-up position, which can be kilometres away by the time you pin.
   const quickCaptureGPS = useGPSCapture({ preciseGPS: true, accuracyThreshold: 10, timeout: 15000 });
 
+  // Nearest pin already recorded for the same destination, queued ones included
+  const findNearbyPin = (lat, lng, targetId) => {
+    const candidates = [];
+
+    if (targetId) {
+      const target = objects.find(o => o.id === targetId);
+      (target?.blocks || []).forEach(b => {
+        if (b.type === 'location' && b.data?.lat != null && b.data?.lng != null) {
+          candidates.push({ lat: b.data.lat, lng: b.data.lng, at: b.data.capturedAt ?? null });
+        }
+      });
+    }
+    readCaptures()
+      .filter(c => (c.targetObjectId || null) === (targetId || null))
+      .forEach(c => candidates.push({ lat: c.lat, lng: c.lng, at: c.capturedAt }));
+
+    let nearest = null;
+    for (const c of candidates) {
+      const distance = getDistanceMeters(lat, lng, c.lat, c.lng);
+      if (!nearest || distance < nearest.distance) nearest = { ...c, distance };
+    }
+    return nearest;
+  };
+
   const handleQuickCapture = async () => {
     if (quickCaptureGPS.isCapturing) return;
 
@@ -607,6 +634,24 @@ function App() {
     } catch (err) {
       toast.error(err?.message || 'Kunde inte hämta position');
       return;
+    }
+
+    if (duplicateRadius > 0) {
+      const nearby = findNearbyPin(fix.lat, fix.lng, targetId);
+      if (nearby && nearby.distance <= duplicateRadius) {
+        const when = nearby.at
+          ? new Date(nearby.at).toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' })
+          : null;
+        const proceed = await confirm({
+          title: 'Redan pinnat här?',
+          message: `Du har redan en pinne ${Math.round(nearby.distance)} m härifrån${when ? ` (pinnad ${when})` : ''}.`
+            + (fix.accuracy != null ? ` Din mätning just nu är ±${fix.accuracy} m.` : ''),
+          confirmText: 'Pinna ändå',
+          cancelText: 'Avbryt',
+          variant: 'warning'
+        });
+        if (!proceed) return;
+      }
     }
 
     addCapture({
@@ -1252,6 +1297,8 @@ function App() {
           showQuickCapture={showQuickCapture}
           setShowQuickCapture={setShowQuickCapture}
           quickCaptureObjectId={quickCaptureObjectId}
+          duplicateRadius={duplicateRadius}
+          setDuplicateRadius={setDuplicateRadius}
           objects={objects}
           categories={categories}
           captures={captures}
