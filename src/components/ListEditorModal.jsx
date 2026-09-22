@@ -12,6 +12,7 @@ const ExpandableInput = forwardRef(({ value, onChange, onKeyDown, placeholder, c
   const inputRef = useRef(null);
   const didMountTextarea = useRef(false);
   const wasTextarea = useRef(false);
+  const blurredAway = useRef(false);
   const LONG_TEXT_THRESHOLD = 40;
   
   const isLongText = (value || '').length > LONG_TEXT_THRESHOLD;
@@ -20,9 +21,10 @@ const ExpandableInput = forwardRef(({ value, onChange, onKeyDown, placeholder, c
   // Track transitions and reset mount flag
   useEffect(() => {
     if (!showTextarea) {
-      // If we were just showing textarea, refocus the input
-      if (wasTextarea.current && inputRef.current) {
-        wasTextarea.current = false;
+      // Re-enter the input only when the text shrank below the threshold while we
+      // still had focus. Doing it after focus moved to another row makes the two
+      // rows fight over focus indefinitely.
+      if (wasTextarea.current && inputRef.current && !blurredAway.current) {
         // Keep expanded so we re-enter textarea if text grows again
         setIsExpanded(true);
         requestAnimationFrame(() => {
@@ -33,6 +35,8 @@ const ExpandableInput = forwardRef(({ value, onChange, onKeyDown, placeholder, c
           }
         });
       }
+      wasTextarea.current = false;
+      blurredAway.current = false;
       didMountTextarea.current = false;
     } else {
       wasTextarea.current = true;
@@ -61,6 +65,7 @@ const ExpandableInput = forwardRef(({ value, onChange, onKeyDown, placeholder, c
       if (textareaRef.current === document.activeElement || inputRef.current === document.activeElement) {
         return; // Focus is still within our component
       }
+      blurredAway.current = true;
       setIsExpanded(false);
     });
   };
