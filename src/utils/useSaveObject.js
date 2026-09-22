@@ -5,6 +5,7 @@ import {
   collection, addDoc, updateDoc, doc, Timestamp,
   getDoc, deleteField, arrayUnion, arrayRemove
 } from 'firebase/firestore';
+import { cascadesToChildren, buildInheritedShare } from './shareInheritance';
 
 /**
  * Hook encapsulating object save/create logic:
@@ -85,13 +86,8 @@ export function useSaveObject({
         const parent = objects.find(o => o.id === objectData.parentId);
         if (parent?.shares) {
           Object.entries(parent.shares).forEach(([emailKey, shareData]) => {
-            if (shareData.includeChildren) {
-              inheritedShares[emailKey] = {
-                ...shareData,
-                status: 'inherited',
-                includeChildren: false,
-                inheritedFrom: objectData.parentId
-              };
+            if (cascadesToChildren(shareData)) {
+              inheritedShares[emailKey] = buildInheritedShare(shareData, objectData.parentId);
               if (shareData.email) {
                 const emailLower = shareData.email.toLowerCase();
                 inheritedSharedWithEmails.push(emailLower);
@@ -138,13 +134,8 @@ export function useSaveObject({
             const newParent = objects.find(o => o.id === newParentId);
             if (newParent?.shares) {
               Object.entries(newParent.shares).forEach(([emailKey, shareData]) => {
-                if (shareData.includeChildren && (shareData.status === 'accepted' || shareData.status === 'inherited')) {
-                  newInheritedShares[emailKey] = {
-                    ...shareData,
-                    status: 'inherited',
-                    includeChildren: false,
-                    inheritedFrom: newParentId
-                  };
+                if (cascadesToChildren(shareData)) {
+                  newInheritedShares[emailKey] = buildInheritedShare(shareData, newParentId);
                   if (shareData.email) {
                     const emailLower = shareData.email.toLowerCase();
                     newInheritedEmails.push(emailLower);
@@ -188,7 +179,7 @@ export function useSaveObject({
             const emailsToAdd = [];
             const editorEmailsToAdd = [];
             Object.entries(newParent.shares).forEach(([emailKey, shareData]) => {
-              if (shareData.includeChildren && (shareData.status === 'accepted' || shareData.status === 'inherited')) {
+              if (cascadesToChildren(shareData)) {
                 if (shareData.email) {
                   emailsToAdd.push(shareData.email.toLowerCase());
                   if (shareData.role === 'editor') {
@@ -227,14 +218,9 @@ export function useSaveObject({
               const ancestor = objects.find(o => o.id === ancId);
               if (ancestor?.shares) {
                 Object.entries(ancestor.shares).forEach(([emailKey, shareData]) => {
-                  if (shareData.includeChildren && (shareData.status === 'accepted' || shareData.status === 'inherited')) {
+                  if (cascadesToChildren(shareData)) {
                     if (!newInheritedSharesForDesc[emailKey]) {
-                      newInheritedSharesForDesc[emailKey] = {
-                        ...shareData,
-                        status: 'inherited',
-                        includeChildren: false,
-                        inheritedFrom: ancId
-                      };
+                      newInheritedSharesForDesc[emailKey] = buildInheritedShare(shareData, ancId);
                       if (shareData.email) {
                         const emailLower = shareData.email.toLowerCase();
                         if (!newInheritedEmailsForDesc.includes(emailLower)) {

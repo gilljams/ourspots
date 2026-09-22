@@ -543,6 +543,13 @@ function App() {
     getObjectDistance
   });
 
+  const displayCountLabel = useMemo(() => {
+    const n = displayObjects.length;
+    if (searchTerm) return `${n} ${n === 1 ? 'träff' : 'träffar'}`;
+    if (viewFilter === 'collections') return `${n} ${n === 1 ? 'samling' : 'samlingar'}`;
+    return `${n} objekt`;
+  }, [displayObjects.length, searchTerm, viewFilter]);
+
   // Stable callback for navigating to map from ObjectCard
   const handleNavigateToMap = useCallback((coords) => {
     setViewMode('map');
@@ -804,6 +811,12 @@ function App() {
         )}
         {viewMode === 'list' ? (
           <div className="pt-4 pb-8">
+            {displayObjects.length > 0 && (
+              <div className="flex items-center gap-3 pb-3">
+                <span className="text-xs text-gray-500 tabular-nums whitespace-nowrap">{displayCountLabel}</span>
+                <div className="h-px flex-1 bg-white/5" />
+              </div>
+            )}
             <div className={`grid ${compactCards ? 'grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6' : 'grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3'}`}>
               {displayObjects.map(obj => {
                 const childCount = childCountMap[obj.id] || 0;

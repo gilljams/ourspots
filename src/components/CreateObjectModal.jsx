@@ -18,6 +18,7 @@ import { useToast } from '../utils/useToast';
 import { usePrompt } from '../utils/usePrompt';
 import { fetchCountryFacts, searchPlaces, fetchPlaceFacts } from '../utils/countryData';
 import { useDebounce } from '../utils/useDebounce';
+import { cascadesToChildren, buildInheritedShare } from '../utils/shareInheritance';
 
 // Demo users available when in demo mode for realistic examples
 const DEMO_USERS = {
@@ -474,13 +475,8 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
       if (parent?.shares) {
         const inheritableShares = {};
         Object.entries(parent.shares).forEach(([emailKey, shareData]) => {
-          if (shareData.includeChildren && (shareData.status === 'accepted' || shareData.status === 'inherited')) {
-            inheritableShares[emailKey] = {
-              ...shareData,
-              status: 'inherited',
-              includeChildren: false,
-              inheritedFrom: parentId
-            };
+          if (cascadesToChildren(shareData)) {
+            inheritableShares[emailKey] = buildInheritedShare(shareData, parentId);
           }
         });
         return inheritableShares;

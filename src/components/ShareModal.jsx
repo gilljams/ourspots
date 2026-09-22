@@ -6,6 +6,7 @@ import { emailToKey, keyToEmail } from '../utils/iconHelpers';
 import { useSwipeToClose } from '../utils/useSwipeToClose';
 import { useConfirm } from '../utils/useConfirm';
 import { useToast } from '../utils/useToast';
+import { buildInheritedShare } from '../utils/shareInheritance';
 
 function ShareModal({ object, onClose, currentUserEmail, allObjects = [], sharedContacts = [], favoriteContacts = [], onAddContact, onToggleFavoriteContact }) {
   const askConfirm = useConfirm();
@@ -132,15 +133,7 @@ function ShareModal({ object, onClose, currentUserEmail, allObjects = [], shared
 
       // If includeChildren, also share with all descendants (children, grandchildren, etc.)
       if (includeChildren && allDescendants.length > 0) {
-        const descendantShareData = {
-          email: trimmedEmail,
-          role,
-          status: 'inherited', // Use 'inherited' instead of 'pending' - no separate notification needed
-          includeChildren: false, // Descendants don't cascade further
-          invitedAt: Timestamp.now(),
-          respondedAt: null,
-          inheritedFrom: object.id // Track that this was inherited from parent
-        };
+        const descendantShareData = buildInheritedShare(shareData, object.id);
 
         // Update all descendants in parallel
         await Promise.all(allDescendants.map(descendant => {

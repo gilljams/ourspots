@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { List, ChevronDown, RefreshCw, X, AlertTriangle, XCircle, RefreshCcw } from 'lucide-react';
+import { List, ChevronDown, RefreshCw, X, AlertTriangle, XCircle, RefreshCcw, Share2 } from 'lucide-react';
 import { collection, onSnapshot, doc, updateDoc, deleteField, arrayUnion } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useSwipeToClose } from '../utils/useSwipeToClose';
 import { useConfirm } from '../utils/useConfirm';
 import { useToast } from '../utils/useToast';
+import { buildInheritedShare } from '../utils/shareInheritance';
 
 function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onViewObject, menuOpen }) {
   const confirm = useConfirm();
@@ -17,6 +18,9 @@ function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onView
   const [loadingAll, setLoadingAll] = useState(true);
   const [migrating, setMigrating] = useState(false);
   const [migrationResult, setMigrationResult] = useState(null);
+  const [repairing, setRepairing] = useState(false);
+  const [repairPlan, setRepairPlan] = useState(null);
+  const [repairResult, setRepairResult] = useState(null);
   
   // Fetch ALL objects for admin view
   useEffect(() => {
@@ -138,6 +142,101 @@ function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onView
       setMigrationResult({ success: false, message: `Fel: ${error.message}` });
     } finally {
       setMigrating(false);
+    }
+  };
+
+  // Finds children/grandchildren that should have inherited a share but don't.
+  // Only origin shares (includeChildren) are followed; inherited copies further
+  // down would otherwise be counted twice for the same ancestor chain.
+  const buildShareRepairPlan = () => {
+    const byId = new Map(objects.map(o => [o.id, o]));
+    const plan = [];
+
+    for (const obj of objects) {
+      if (!obj.parentId) continue;
+
+      const chain = [];
+      let currentId = obj.parentId;
+      let depth = 0;
+      while (currentId && depth < 10) {
+        const parent = byId.get(currentId);
+        if (!parent) break;
+        chain.unshift(parent);
+        currentId = parent.parentId;
+        depth++;
+      }
+
+      const wanted = {};
+      for (const ancestor of chain) {
+        if (!ancestor.shares) continue;
+        Object.entries(ancestor.shares).forEach(([emailKey, share]) => {
+          if (share.includeChildren !== true) return;
+          if (wanted[emailKey]) return; // closest to the root wins
+          wanted[emailKey] = { share, originId: ancestor.id };
+        });
+      }
+
+      Object.entries(wanted).forEach(([emailKey, { share, originId }]) => {
+        if (obj.shares?.[emailKey]) return; // already shared, or deliberately excluded
+        plan.push({
+          objId: obj.id,
+          title: getObjectTitle(obj),
+          emailKey,
+          share,
+          originId,
+          originTitle: getObjectTitle(byId.get(originId))
+        });
+      });
+    }
+
+    return plan;
+  };
+
+  const analyzeShareRepairs = () => {
+    setRepairResult(null);
+    setRepairPlan(buildShareRepairPlan());
+  };
+
+  const applyShareRepairs = async () => {
+    if (repairing || !repairPlan?.length) return;
+
+    const ok = await confirm({
+      title: 'Reparera delningar?',
+      message: `${repairPlan.length} ärvda delningar läggs till. Om någon medvetet uteslutits från ett underobjekt återfår den personen åtkomst.`,
+      confirmText: 'Reparera',
+      variant: 'warning'
+    });
+    if (!ok) return;
+
+    setRepairing(true);
+    setRepairResult(null);
+    try {
+      let fixed = 0;
+      for (const item of repairPlan) {
+        const inherited = buildInheritedShare(item.share, item.originId);
+        const updateData = { [`shares.${item.emailKey}`]: inherited };
+        const email = item.share.email?.toLowerCase();
+
+        // Paused shares stay out of the access arrays so they remain hidden
+        if (email && !inherited.paused) {
+          updateData.sharedWithEmails = arrayUnion(email);
+          updateData.acceptedShareEmails = arrayUnion(email);
+          if (inherited.role === 'editor') {
+            updateData.editorEmails = arrayUnion(email);
+          }
+        }
+
+        await updateDoc(doc(db, 'objects', item.objId), updateData);
+        fixed++;
+      }
+
+      setRepairPlan(null);
+      setRepairResult({ success: true, message: `Klart! ${fixed} ärvda delningar återställda.` });
+    } catch (error) {
+      console.error('Share repair error:', error);
+      setRepairResult({ success: false, message: `Fel: ${error.message}` });
+    } finally {
+      setRepairing(false);
     }
   };
 
@@ -292,6 +391,59 @@ function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onView
                       {migrationResult && (
                         <p className={`text-xs mt-2 ${migrationResult.success ? 'text-green-400' : 'text-red-400'}`}>
                           {migrationResult.message}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <p className="text-xs text-gray-500 mb-2">Fyller på ärvda delningar som saknas på barn/barnbarn</p>
+                      <button
+                        onClick={analyzeShareRepairs}
+                        disabled={repairing}
+                        className="w-full px-3 py-2 rounded-lg text-sm font-medium transition-all bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white border border-white/10 flex items-center justify-center gap-2 disabled:opacity-50"
+                      >
+                        <Share2 size={14} />
+                        Analysera delningar
+                      </button>
+
+                      {repairPlan && repairPlan.length === 0 && (
+                        <p className="text-xs mt-2 text-green-400">Inga saknade delningar hittades.</p>
+                      )}
+
+                      {repairPlan && repairPlan.length > 0 && (
+                        <div className="mt-2 space-y-2">
+                          <p className="text-xs text-gray-400">
+                            {repairPlan.length} saknade delningar i {new Set(repairPlan.map(p => p.objId)).size} objekt:
+                          </p>
+                          <div className="max-h-40 overflow-y-auto overscroll-contain space-y-1 rounded-lg bg-black/30 border border-white/10 p-2">
+                            {repairPlan.slice(0, 50).map((p, i) => (
+                              <p key={`${p.objId}-${p.emailKey}-${i}`} className="text-[11px] text-gray-400 leading-snug">
+                                <span className="text-gray-200">{p.title}</span>
+                                {' ← '}{p.share.email}
+                                <span className="text-gray-600"> (från {p.originTitle})</span>
+                              </p>
+                            ))}
+                            {repairPlan.length > 50 && (
+                              <p className="text-[11px] text-gray-500">…och {repairPlan.length - 50} till</p>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-orange-400/90 leading-snug">
+                            Obs: om någon medvetet uteslutits från ett underobjekt återfår den åtkomst.
+                          </p>
+                          <button
+                            onClick={applyShareRepairs}
+                            disabled={repairing}
+                            className="w-full px-3 py-2 rounded-lg text-sm font-medium transition-all bg-blue-500 text-white hover:bg-blue-400 flex items-center justify-center gap-2 disabled:opacity-50"
+                          >
+                            <RefreshCw size={14} className={`${repairing ? 'animate-spin' : ''}`} />
+                            {repairing ? 'Reparerar...' : `Reparera ${repairPlan.length} delningar`}
+                          </button>
+                        </div>
+                      )}
+
+                      {repairResult && (
+                        <p className={`text-xs mt-2 ${repairResult.success ? 'text-green-400' : 'text-red-400'}`}>
+                          {repairResult.message}
                         </p>
                       )}
                     </div>

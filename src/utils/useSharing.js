@@ -92,7 +92,7 @@ export function useSharing(user, objects, displayName, setSelectedObject) {
       if (shareInfo?.includeChildren) {
         const descendants = objects.filter(o =>
           o.ancestorIds?.includes(obj.id) &&
-          o.shares?.[emailKey]?.inheritedFrom === obj.id
+          o.shares?.[emailKey]?.status === 'inherited'
         );
         if (descendants.length > 0) {
           await Promise.all(descendants.map(desc =>
@@ -139,7 +139,7 @@ export function useSharing(user, objects, displayName, setSelectedObject) {
       if (shareData?.includeChildren && shareData?.status !== 'inherited') {
         const descendants = objects.filter(o =>
           o.ancestorIds?.includes(obj.id) &&
-          o.shares?.[emailKey]?.inheritedFrom === obj.id
+          o.shares?.[emailKey]?.status === 'inherited'
         );
         if (descendants.length > 0) {
           await Promise.all(descendants.map(desc =>
