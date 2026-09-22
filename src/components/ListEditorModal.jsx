@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, forwardRef } from 'react';
 import { X, Plus, Check, Trash2, GripVertical, ClipboardPaste, MoreVertical, CheckSquare, Square, RotateCcw, ListX, ArrowDownUp, Undo2, CheckCheck, ChevronLeft, ChevronRight, Copy, ArrowRightFromLine } from 'lucide-react';
 import { useFullscreenModal } from '../utils/useFullscreenModal';
+import { focusAndReveal } from '../utils/focusAndReveal';
 import { useDragReorder } from '../utils/useDragReorder';
 import { useConfirm } from '../utils/useConfirm';
 import { usePrompt } from '../utils/usePrompt';
@@ -378,12 +379,7 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel, ye
   // Focus newly added row and scroll it into view
   useEffect(() => {
     if (lastAddedRef.current && inputRefs.current[lastAddedRef.current]) {
-      const input = inputRefs.current[lastAddedRef.current];
-      input.focus();
-      // Wait a bit for keyboard to open, then scroll input into view
-      setTimeout(() => {
-        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 100);
+      focusAndReveal(inputRefs.current[lastAddedRef.current]);
       lastAddedRef.current = null;
     }
   }, [rows]);

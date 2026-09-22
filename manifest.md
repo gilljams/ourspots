@@ -777,6 +777,37 @@ och offset, `window.innerHeight`, scrollposition, om body är låst och vad som 
 Utan flaggan skapas ingenting. Använd den innan du gissar - iOS-tangentbordet går inte
 att emulera i desktop-webbläsare.
 
+### ⚠️ Fokushantering i listor och tabeller (Regel)
+**Regeln:** flytta bara fokus som svar på en **användarhandling** (rad tillagd, Enter,
+knapptryck). Flytta aldrig fokus som svar på att en komponent *tappade* fokus eller
+kollapsade.
+
+**Varför:** `ExpandableInput` i ListEditorModal hade en effekt som tog tillbaka fokus
+till sig själv när raden kollapsade. Avsikten var god - när texten krymper under
+40 tecken ska fältet växla från textarea till input utan att tappa skrivpositionen.
+Men den körde vid *varje* kollaps:
+
+1. Du trycker på rad B → B expanderar och tar fokus
+2. Rad A tappar fokus → A kollapsar → **A tar tillbaka fokus**
+3. Rad B tappar fokus → B kollapsar → **B tar tillbaka fokus**
+4. → oändlig slinga
+
+Symptom: skärmen hoppar upp och ner och inga tryck landar. Krävde **två** långa rader -
+med bara en fanns ingen motpart att bråka med, vilket gjorde buggen svår att hitta.
+Misstolkades länge som ett viewport-problem.
+
+**Fixat med** en `blurredAway`-flagga som skiljer "texten krympte" från "fokus lämnade
+raden". Se ListEditorModal.
+
+**Besläktat mönster att undvika:** inline ref-callbacks som fokuserar,
+`ref={el => el && setTimeout(() => el.focus(), 50)}`. De körs vid varje omrendering, så
+fältet fokuserar om sig själv vid varje tangenttryckning (på iOS scrollar det fram
+elementet → rycker medan man skriver). Använd `autoFocus` när syftet är fokus vid
+montering. Fanns i ObjectDetail, åtgärdat 2026-09-22.
+
+**Delad hjälpfunktion:** `src/utils/focusAndReveal.js` - fokuserar och scrollar fram ett
+fält. Används av ListEditorModal och SimpleTableEditorModal (×4).
+
 ### Högprioriterade buggar
 1. **PublicObjectView block-rendering** 🔴
    - Symptom: Text- och todo-block med innehåll visas inte

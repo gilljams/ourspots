@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Plus, Check, Trash2, GripVertical, ClipboardPaste, Phone, Link, Hash, Type, MoreVertical, CheckSquare, Square, RotateCcw, ListX, ArrowDownUp, Undo2, CheckCheck } from 'lucide-react';
 import { useFullscreenModal } from '../utils/useFullscreenModal';
+import { focusAndReveal } from '../utils/focusAndReveal';
 import { useDragReorder } from '../utils/useDragReorder';
 import { useConfirm } from '../utils/useConfirm';
 import { usePrompt } from '../utils/usePrompt';
@@ -59,13 +60,7 @@ export function SimpleTableEditorModal({
   // Focus newly added row and scroll it into view
   useEffect(() => {
     if (lastAddedRef.current) {
-      const input = inputRefs.current[`${lastAddedRef.current}-col1`];
-      if (input) {
-        input.focus();
-        setTimeout(() => {
-          input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 100);
-      }
+      focusAndReveal(inputRefs.current[`${lastAddedRef.current}-col1`]);
       lastAddedRef.current = null;
     }
   }, [rows]);
@@ -73,13 +68,7 @@ export function SimpleTableEditorModal({
   // Handle focus target after state update
   useEffect(() => {
     if (focusTargetRef.current) {
-      const input = inputRefs.current[focusTargetRef.current];
-      if (input) {
-        input.focus();
-        setTimeout(() => {
-          input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 100);
-      }
+      focusAndReveal(inputRefs.current[focusTargetRef.current]);
       focusTargetRef.current = null;
     }
   }, [rows]);
@@ -641,13 +630,7 @@ export function MultiColumnTableEditorModal({
   // Focus newly added row
   useEffect(() => {
     if (lastAddedRef.current && columns.length > 0) {
-      const input = inputRefs.current[`${lastAddedRef.current}-${columns[0].id}`];
-      if (input) {
-        input.focus();
-        setTimeout(() => {
-          input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 100);
-      }
+      focusAndReveal(inputRefs.current[`${lastAddedRef.current}-${columns[0].id}`]);
       lastAddedRef.current = null;
     }
   }, [rows, columns]);
@@ -655,13 +638,7 @@ export function MultiColumnTableEditorModal({
   // Handle focus target after state update
   useEffect(() => {
     if (focusTargetRef.current) {
-      const input = inputRefs.current[focusTargetRef.current];
-      if (input) {
-        input.focus();
-        setTimeout(() => {
-          input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 100);
-      }
+      focusAndReveal(inputRefs.current[focusTargetRef.current]);
       focusTargetRef.current = null;
     }
   }, [rows]);
