@@ -16,7 +16,9 @@ import { useBodyScrollLock } from './useBodyScrollLock';
  * @param {boolean} [options.lockBody=true] - Lock background scrolling
  * @param {boolean} [options.safeArea=true] - Offset for the notch/status bar
  * @param {Function} [options.onCleanup] - Extra cleanup to run on unmount (e.g. clear undo timers)
- * @returns {{ panelStyle: Object, contentStyle: Object }}
+ * @returns {{ panelProps: Object, contentStyle: Object }}
+ *   Spread `panelProps` on the panel: besides the sizing it tags the element so
+ *   outer modals know not to run their own scroll handling inside it.
  */
 export function useFullscreenModal({
   bgColor = '#111827',
@@ -34,7 +36,7 @@ export function useFullscreenModal({
   const height = safeArea ? 'calc(var(--app-vh) - env(safe-area-inset-top))' : 'var(--app-vh)';
 
   return {
-    panelStyle: { top, height },
+    panelProps: { style: { top, height }, 'data-fullscreen-modal': '' },
     contentStyle: { height: `calc(${height} - ${headerHeight + toolbarHeight}px)` },
   };
 }

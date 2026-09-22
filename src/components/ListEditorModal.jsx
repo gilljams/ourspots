@@ -357,7 +357,7 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel, ye
   
   const HEADER_HEIGHT = 52;
   
-  const { panelStyle, contentStyle } = useFullscreenModal({
+  const { panelProps, contentStyle } = useFullscreenModal({
     bgColor: '#111827',
     headerHeight: HEADER_HEIGHT,
     toolbarHeight: yearMode ? 44 : 0,
@@ -528,7 +528,7 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel, ye
       {/* Main modal */}
       <div
         className="fixed left-0 right-0 z-[2000] bg-gray-900 flex flex-col"
-        style={panelStyle}
+        {...panelProps}
       >
         {/* Header - full width bg, centered content */}
         <div 

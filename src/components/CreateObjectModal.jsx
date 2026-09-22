@@ -500,13 +500,16 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
 
   useBodyScrollLock();
 
-  // With the body locked iOS cannot scroll the field into view itself
+  // With the body locked iOS cannot scroll the field into view itself.
+  // Nested fullscreen editors do their own scrolling - running this on top of
+  // theirs makes the two fight and the view oscillates.
   useEffect(() => {
     const handleFocusIn = (e) => {
       const el = e.target;
       if (!el.matches?.('input, textarea, [contenteditable="true"]')) return;
+      if (el.closest('[data-fullscreen-modal]')) return;
       setTimeout(() => {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.scrollIntoView({ block: 'nearest' });
       }, 300);
     };
     document.addEventListener('focusin', handleFocusIn);

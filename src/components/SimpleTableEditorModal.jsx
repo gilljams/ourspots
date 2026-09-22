@@ -44,7 +44,7 @@ export function SimpleTableEditorModal({
   
   const HEADER_HEIGHT = 52;
   
-  const { panelStyle, contentStyle } = useFullscreenModal({
+  const { panelProps, contentStyle } = useFullscreenModal({
     bgColor: '#111827',
     headerHeight: HEADER_HEIGHT,
     onCleanup: () => { if (undoTimerRef.current) clearTimeout(undoTimerRef.current); },
@@ -242,7 +242,7 @@ export function SimpleTableEditorModal({
       {/* Main modal */}
       <div
         className="fixed left-0 right-0 z-[2000] bg-gray-900 flex flex-col"
-        style={panelStyle}
+        {...panelProps}
       >
         {/* Header - full width bg, centered content */}
         <div 
@@ -632,7 +632,7 @@ export function MultiColumnTableEditorModal({
   
   const HEADER_HEIGHT = 52;
   
-  const { panelStyle, contentStyle } = useFullscreenModal({
+  const { panelProps, contentStyle } = useFullscreenModal({
     bgColor: '#111827',
     headerHeight: HEADER_HEIGHT,
     toolbarHeight: 40,
@@ -779,7 +779,7 @@ export function MultiColumnTableEditorModal({
       {/* Main modal */}
       <div
         className="fixed left-0 right-0 z-[2000] bg-gray-900 flex flex-col"
-        style={panelStyle}
+        {...panelProps}
       >
         {/* Header - full width bg, centered content */}
         <div 

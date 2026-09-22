@@ -40,7 +40,7 @@ export function ColorEditorModal({ entries: initialEntries, title, onSave, onCan
 
   const HEADER_HEIGHT = 52;
 
-  const { panelStyle, contentStyle } = useFullscreenModal({
+  const { panelProps, contentStyle } = useFullscreenModal({
     bgColor: '#111827',
     headerHeight: HEADER_HEIGHT,
   });
@@ -124,7 +124,7 @@ export function ColorEditorModal({ entries: initialEntries, title, onSave, onCan
       {/* Main modal */}
       <div
         className="fixed left-0 right-0 z-[2000] bg-gray-900 flex flex-col"
-        style={panelStyle}
+        {...panelProps}
       >
         {/* Header */}
         <div
