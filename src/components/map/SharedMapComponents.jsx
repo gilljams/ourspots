@@ -19,12 +19,13 @@
  */
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Navigation, Locate, X, Maximize2, Target } from 'lucide-react';
+import { Navigation, Locate, X, Maximize2, Target, Layers } from 'lucide-react';
 import { TileLayer, Marker, Tooltip, Polyline, Circle, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { createUserIcon } from '../../utils/mapIcons';
 import { getDistanceMeters, getBearing, formatDistanceMeters } from '../../utils/geoUtils';
 import { useToast } from '../../utils/useToast';
+import { STORAGE_KEYS } from '../../utils/storageKeys';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -37,6 +38,25 @@ export const CARTO_TILE_URL =
   + (CARTO_API_KEY ? `?api_key=${CARTO_API_KEY}` : '');
 export const CARTO_ATTRIBUTION = '&copy; <a href="https://carto.com/">CARTO</a>';
 
+export const MAP_LAYERS = [
+  {
+    id: 'voyager',
+    label: 'Standard',
+    description: 'Vägar och orter',
+    url: CARTO_TILE_URL,
+    attribution: CARTO_ATTRIBUTION,
+    maxZoom: 20,
+  },
+  {
+    id: 'topo',
+    label: 'Terräng',
+    description: 'Höjdkurvor och stigar',
+    url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; <a href="https://opentopomap.org/">OpenTopoMap</a> (CC-BY-SA)',
+    maxZoom: 17,
+  },
+];
+
 // ─── Standard button styles ───────────────────────────────────────────────────
 
 // Base map control button (44×44, dark glass, rounded-full)
@@ -47,12 +67,80 @@ const MAP_BTN_ACTIVE_GREEN = `${MAP_BTN_BASE} bg-green-500 text-white hover:bg-g
 
 // ─── Tile Layer ───────────────────────────────────────────────────────────────
 
+// Every map shares one choice, so the switch is broadcast rather than passed down
+const LAYER_CHANGE_EVENT = 'ourspots:maplayer';
+
+function storedLayerId() {
+  try {
+    return localStorage.getItem(STORAGE_KEYS.MAP_LAYER) || MAP_LAYERS[0].id;
+  } catch {
+    return MAP_LAYERS[0].id;
+  }
+}
+
+export function setMapLayer(id) {
+  try {
+    localStorage.setItem(STORAGE_KEYS.MAP_LAYER, id);
+  } catch {
+    // Private mode - the choice just will not survive a reload
+  }
+  window.dispatchEvent(new CustomEvent(LAYER_CHANGE_EVENT, { detail: id }));
+}
+
+export function useMapLayer() {
+  const [id, setId] = useState(storedLayerId);
+  useEffect(() => {
+    const onChange = (e) => setId(e.detail);
+    window.addEventListener(LAYER_CHANGE_EVENT, onChange);
+    return () => window.removeEventListener(LAYER_CHANGE_EVENT, onChange);
+  }, []);
+  return MAP_LAYERS.find(l => l.id === id) || MAP_LAYERS[0];
+}
+
 export function BaseTileLayer() {
+  const layer = useMapLayer();
   return (
     <TileLayer
-      attribution={CARTO_ATTRIBUTION}
-      url={CARTO_TILE_URL}
+      key={layer.id}
+      attribution={layer.attribution}
+      url={layer.url}
+      maxZoom={layer.maxZoom}
     />
+  );
+}
+
+export function MapLayerButton() {
+  const layer = useMapLayer();
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      <button
+        onClick={(e) => { e.stopPropagation(); setOpen(o => !o); }}
+        className={open ? MAP_BTN_ACTIVE_BLUE : MAP_BTN_DEFAULT}
+        title="Byt kartlager"
+        aria-label="Byt kartlager"
+      >
+        <Layers size={20} />
+      </button>
+
+      {open && (
+        <div className="absolute top-0 right-full mr-2 w-44 rounded-xl bg-black/85 backdrop-blur-sm border border-white/10 shadow-xl overflow-hidden">
+          {MAP_LAYERS.map(l => (
+            <button
+              key={l.id}
+              onClick={(e) => { e.stopPropagation(); setMapLayer(l.id); setOpen(false); }}
+              className={`w-full text-left px-3 py-2.5 transition-colors ${
+                l.id === layer.id ? 'bg-blue-500/25 text-white' : 'text-gray-300 hover:bg-white/10'
+              }`}
+            >
+              <div className="text-sm font-medium">{l.label}</div>
+              <div className="text-[11px] text-gray-400">{l.description}</div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

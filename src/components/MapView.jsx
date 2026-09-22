@@ -14,7 +14,8 @@ import {
   CenterOnLocationButton,
   TrackingToggleButton,
   InvalidateSizeOnChange,
-  MapControlStack
+  MapControlStack,
+  MapLayerButton
 } from './map/SharedMapComponents';
 
 // Extracted outside MapView to prevent unmount/remount on every parent render
@@ -246,6 +247,7 @@ function MapView({ objects, onSelectObject, currentUser, userLocation, categorie
         
         {/* Top-right control stack – consistent 2026 map UX layout */}
         <MapControlStack>
+          <MapLayerButton />
           <CenterOnLocationButton onLocationFound={setLiveUserLocation} />
           <TrackingToggleButton 
             isTracking={isGlobalTracking} 

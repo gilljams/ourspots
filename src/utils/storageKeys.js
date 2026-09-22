@@ -14,6 +14,7 @@ export const STORAGE_KEYS = {
   COMPACT_CARDS: 'compactCards',
   SHOW_DEMO_OBJECTS: 'showDemoObjects',
   CHILD_VIEW_MODE: 'ourspots-child-view-mode',
+  MAP_LAYER: 'ourspots_map_layer',
 
   // Quick-capture / GPS
   CAPTURES: 'ourspots_captures',

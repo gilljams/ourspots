@@ -19,8 +19,7 @@ import { MapContainer, Marker, Tooltip, Popup } from 'react-leaflet';
 import { createColoredIcon } from '../../utils/mapIcons';
 import { getTransformedImageUrl } from '../../utils/imageUtils';
 import {
-  BaseTileLayer,
-  UserLocationMarker,
+  BaseTileLayer,  UserLocationMarker,
   DirectionLine,
   NavigationInfoPanel,
   MapDragDetector,
@@ -29,7 +28,8 @@ import {
   FitAllButton,
   CenterOnLocationButton,
   AddLocationButton,
-  MapControlStack
+  MapControlStack,
+  MapLayerButton
 } from './SharedMapComponents';
 
 function CollectionMapView({ objects, categories, onSelectObject, userLocation, onAddLocation, pendingLocations = [] }) {
@@ -312,6 +312,7 @@ function CollectionMapView({ objects, categories, onSelectObject, userLocation, 
       
       {/* Top-right control stack – consistent layout */}
       <MapControlStack>
+        <MapLayerButton />
         <FitAllButton positions={allPositions} />
         <CenterOnLocationButton 
           onLocationFound={setCurrentUserLocation} 
