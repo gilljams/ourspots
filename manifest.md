@@ -292,6 +292,71 @@ Default block sets per typ/kategori (för enkelhet):
 - Markörfärger per kategori (🏡=grå, ☕=brun, 🏞️=grön, ⭐=gul, ✈️=blå) ✅
 - Visa egen position med användarikon på karta och kartväljare ✅
 
+### Snabbpinning / GPS-kö (Omarbetat 2026-09-22) ✅ NY
+Funktionen är gjord för att pinna svampställen i skogen: hög precision, ofta utan
+täckning, och ingen pinne får gå förlorad.
+
+**Positionen mäts när du pinnar.** Tidigare användes `userLocation`, som sattes
+**en gång vid appstart** med `getCurrentPosition()` utan `enableHighAccuracy`.
+Öppnade du appen vid bilen och pinnade en kilometer in i skogen sparades
+parkeringen. Nu används `useGPSCapture` (watchPosition, väntar på ±10 m, behåller
+bästa mätningen vid timeout). Noggrannheten sparas i platsblocket och visas i
+listan, med varning över ±25 m.
+⚠️ Precisionsläget tvingas här oavsett `preciseGPS`-inställningen, som har
+`false` som standard - annars vore vi tillbaka i låg noggrannhet.
+
+**En kö, inte två.** `src/utils/captureQueue.js` (`ourspots_capture_queue`) är
+enda lagringsplatsen. Ersatte `ourspots_captures` och `ourspots_pending_locations`;
+den senare hade **varken återförsök eller flush**, så pinnar kunde bli liggande
+osynliga för alltid. Gammal data migreras automatiskt vid första start.
+
+Poster med `targetObjectId` väntar på att skrivas till objektet, poster utan är
+lösa pinnar som användaren gör objekt av senare. Återförsök sker vid appstart,
+`online`-event och när appen blir synlig igen.
+
+**Två fällor som kostade tid att förstå:**
+
+1. `updateDoc()` offline **varken resolvar eller rejectar** - promisen blir
+   hängande tills uppkopplingen är tillbaka. Den gamla koden `await`:ade den och
+   visade toast efteråt, så offline hände ingenting alls: ingen sparning, inget
+   felmeddelande. **Kön måste därför skrivas till localStorage före
+   nätverksanropet**, aldrig efter.
+
+2. Skrivningen använder `arrayUnion` med ett stabilt `captureId` i blocket.
+   Det ger två saker: read-modify-write av hela `blocks` är borta (kunde radera
+   andras ändringar), och **återsändning blir ofarlig**. Det senare krävs
+   eftersom en omladdning tappar vår in-flight-promise medan Firestores egen
+   offline-kö kan skicka samma skrivning ändå. Identiskt block = arrayUnion
+   lägger inte till en andra kopia. Ändra inte blockets fält utan att tänka på
+   det - avviker de mellan försöken får du dubbletter.
+
+**Dubblettvarning.** Radie i burgermenyn under Snabbpinningar, 0-100 m, standard
+20 m, 0 = av. Jämför mot samma destination (objektets platser + köade pinnar dit,
+eller lösa mot lösa). Kontrollen sker **efter** mätningen - med startpositionen
+vore jämförelsen meningslös.
+ℹ️ 1-2 m låter rimligt men fångar inget: GPS under trädtak ligger på 5-20 m.
+
+**Kartan är primär ingång** för objekt med flera positioner, via
+`LocationsEntryCard` överst i objektet. Visar antal, väntande och avstånd till
+närmaste pinne.
+ℹ️ Riktning anges som väderstreck, inte pil. En pil antyder "håll telefonen så
+här", men utan kompassavläsning känner vi bara bäringen mot norr - pilen hade
+pekat fel så fort användaren vred sig.
+
+**Kartlager** väljs i kontrollstapeln: Standard (CARTO Voyager) eller Terräng
+(OpenTopoMap, höjdkurvor och stigar). Valet är globalt och delas av alla kartor
+via ett event. Definitioner i `SharedMapComponents.jsx`.
+⚠️ `maxZoom` skiljer sig per lager (OpenTopoMap slutar på 17) och `key={layer.id}`
+på TileLayer krävs - utan ommontering blir gamla rutor kvar vid byte.
+ℹ️ CARTO vattenmärker rutor med "API KEY REQUIRED" när anonym gratiskvot
+passeras. Sätt `VITE_CARTO_API_KEY` för att autentisera, eller använd Terräng
+som inte kräver nyckel.
+
+**Inte gjort:** service worker. Appen har Firestore-persistens (data överlever
+offline) men **inget appskal cachat** - en omladdning utan täckning gör appen
+otillgänglig. Medvetet uppskjutet eftersom det kräver en genomtänkt
+uppdateringsprompt; utan en sådan fastnar användare på gamla versioner.
+
 7. NÄSTA PRIORITERING (Q1 2026)
 ✅ Grundläggande sharing (v1.5)
   - ShareModal med email-input, rollväljare (viewer/editor)
