@@ -72,6 +72,15 @@ export function useFullscreenModal({
     window.addEventListener('resize', updateLayout);
     updateLayout();
 
+    // iOS does not reliably fire a visualViewport resize when the keyboard is
+    // dismissed, which would otherwise leave the modal stuck at keyboard height.
+    const remeasureTimers = [];
+    const handleFocusOut = () => {
+      remeasureTimers.push(setTimeout(updateLayout, 100));
+      remeasureTimers.push(setTimeout(updateLayout, 400));
+    };
+    document.addEventListener('focusout', handleFocusOut);
+
     // Lock body scroll
     scrollYRef.current = window.scrollY;
     const scrollY = scrollYRef.current;
@@ -104,6 +113,8 @@ export function useFullscreenModal({
         viewport.removeEventListener('scroll', updateLayout);
       }
       window.removeEventListener('resize', updateLayout);
+      document.removeEventListener('focusout', handleFocusOut);
+      remeasureTimers.forEach(clearTimeout);
 
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
 
