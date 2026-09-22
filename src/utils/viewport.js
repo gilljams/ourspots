@@ -21,6 +21,37 @@ function write() {
   const root = document.documentElement;
   root.style.setProperty('--app-vh', `${vp ? vp.height : window.innerHeight}px`);
   root.style.setProperty('--app-vt', `${vp ? vp.offsetTop : 0}px`);
+  if (debugEl) writeDebug(vp);
+}
+
+let debugEl = null;
+
+function writeDebug(vp) {
+  const active = document.activeElement;
+  debugEl.textContent = [
+    `vh ${vp ? Math.round(vp.height) : '-'}  vt ${vp ? Math.round(vp.offsetTop) : '-'}`,
+    `inner ${window.innerHeight}  scrollY ${Math.round(window.scrollY)}`,
+    `vpScroll ${vp ? Math.round(vp.pageTop) : '-'}  bodyPos ${document.body.style.position || 'static'}`,
+    `focus ${active ? active.tagName.toLowerCase() : 'none'}`,
+  ].join('\n');
+}
+
+function installDebugOverlay() {
+  debugEl = document.createElement('div');
+  debugEl.style.cssText = [
+    'position:fixed',
+    'left:4px',
+    'top:calc(var(--app-vt) + 4px)',
+    'z-index:99999',
+    'background:rgba(0,0,0,.8)',
+    'color:#0f0',
+    'font:11px/1.35 monospace',
+    'white-space:pre',
+    'padding:4px 6px',
+    'border-radius:4px',
+    'pointer-events:none',
+  ].join(';');
+  document.body.appendChild(debugEl);
 }
 
 function track(duration = 700) {
@@ -40,6 +71,11 @@ function track(duration = 700) {
 export function installViewportTracking() {
   if (installed) return;
   installed = true;
+
+  if (new URLSearchParams(window.location.search).has('vpdebug')) {
+    if (document.body) installDebugOverlay();
+    else document.addEventListener('DOMContentLoaded', installDebugOverlay, { once: true });
+  }
 
   write();
 
