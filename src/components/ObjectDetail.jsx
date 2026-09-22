@@ -1339,7 +1339,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                                 <div className="p-1.5 w-[18px]" />
                               </div>
                               <input
-                                ref={el => el && setTimeout(() => el.focus(), 50)}
+                                autoFocus
                                 type="text"
                                 value={editingNoteText}
                                 onChange={e => setEditingNoteText(e.target.value)}
@@ -1446,7 +1446,7 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                                 <div className="p-1.5 w-[18px]" />
                               </div>
                               <input
-                                ref={el => el && setTimeout(() => el.focus(), 50)}
+                                autoFocus
                                 type="text"
                                 value={editingNoteText}
                                 onChange={e => setEditingNoteText(e.target.value)}
