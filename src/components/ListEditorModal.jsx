@@ -357,9 +357,10 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel, ye
   
   const HEADER_HEIGHT = 52;
   
-  const { viewportHeight, viewportOffset } = useFullscreenModal({
+  const { panelStyle, contentStyle } = useFullscreenModal({
     bgColor: '#111827',
     headerHeight: HEADER_HEIGHT,
+    toolbarHeight: yearMode ? 44 : 0,
     onCleanup: () => { if (undoTimerRef.current) clearTimeout(undoTimerRef.current); },
   });
 
@@ -519,8 +520,6 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel, ye
     }
   };
   
-  const contentHeight = viewportHeight - HEADER_HEIGHT - (yearMode ? 44 : 0);
-  
   return (
     <>
       {/* Backdrop */}
@@ -529,10 +528,7 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel, ye
       {/* Main modal */}
       <div
         className="fixed left-0 right-0 z-[2000] bg-gray-900 flex flex-col"
-        style={{
-          top: `calc(${viewportOffset}px + env(safe-area-inset-top))`,
-          height: `calc(${viewportHeight}px - env(safe-area-inset-top))`
-        }}
+        style={panelStyle}
       >
         {/* Header - full width bg, centered content */}
         <div 
@@ -794,7 +790,7 @@ export function ListEditorModal({ rows: initialRows, title, onSave, onCancel, ye
         <div 
           ref={listRef}
           className="flex-1 overflow-y-auto"
-          style={{ height: `${contentHeight}px`, paddingBottom: '100px' }}
+          style={{ ...contentStyle, paddingBottom: '100px' }}
         >
           {rows.length === 0 ? (
             <div className="text-center py-16 text-gray-500">

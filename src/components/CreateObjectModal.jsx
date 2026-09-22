@@ -19,7 +19,7 @@ import { usePrompt } from '../utils/usePrompt';
 import { fetchCountryFacts, searchPlaces, fetchPlaceFacts } from '../utils/countryData';
 import { useDebounce } from '../utils/useDebounce';
 import { cascadesToChildren, buildInheritedShare } from '../utils/shareInheritance';
-import { useFullscreenModal } from '../utils/useFullscreenModal';
+import { useBodyScrollLock } from '../utils/useBodyScrollLock';
 
 // Demo users available when in demo mode for realistic examples
 const DEMO_USERS = {
@@ -498,18 +498,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
   // Track if form has been modified (simpler than deep comparison)
   const [formTouched, setFormTouched] = useState(false);
 
-  // iOS shrinks the visual viewport when the keyboard opens while the layout
-  // viewport stays put, which offsets tap targets in a plain `fixed inset-0` modal.
-  const { viewportHeight, viewportOffset } = useFullscreenModal();
-  const [isSmallScreen, setIsSmallScreen] = useState(() =>
-    typeof window !== 'undefined' && window.matchMedia('(max-width: 639px)').matches
-  );
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 639px)');
-    const onChange = (e) => setIsSmallScreen(e.matches);
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
-  }, []);
+  useBodyScrollLock();
 
   // With the body locked iOS cannot scroll the field into view itself
   useEffect(() => {
@@ -523,16 +512,6 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
     document.addEventListener('focusin', handleFocusIn);
     return () => document.removeEventListener('focusin', handleFocusIn);
   }, []);
-  const panelStyle = isSmallScreen
-    ? {
-        position: 'fixed',
-        top: `${viewportOffset}px`,
-        left: 0,
-        right: 0,
-        height: `${viewportHeight}px`,
-        touchAction: 'pan-y'
-      }
-    : { touchAction: 'pan-y' };
 
   // ========== ESCAPE KEY ==========
   useEffect(() => {
@@ -1328,8 +1307,8 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
       >
         {/* Modal */}
         <div 
-          className="bg-gray-900 sm:rounded-xl lg:rounded-2xl border-t sm:border border-white/10 w-full sm:max-w-2xl sm:w-[90%] lg:w-[45%] h-full sm:h-auto sm:max-h-[90vh] lg:h-[calc(100dvh-2rem)] lg:max-h-none overflow-hidden flex flex-col pt-[var(--sat)] sm:pt-0"
-          style={panelStyle}
+          className="bg-gray-900 sm:rounded-xl lg:rounded-2xl border-t sm:border border-white/10 w-full sm:max-w-2xl sm:w-[90%] lg:w-[45%] max-sm:fixed max-sm:left-0 max-sm:right-0 max-sm:top-[var(--app-vt)] max-sm:h-[var(--app-vh)] sm:h-auto sm:max-h-[90vh] lg:h-[calc(100dvh-2rem)] lg:max-h-none overflow-hidden flex flex-col pt-[var(--sat)] sm:pt-0"
+          style={{ touchAction: 'pan-y' }}
         >
           
           {/* Header */}

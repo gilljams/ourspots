@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Fallbacks until viewport.js takes its first measurement */
+:root {
+  --app-vh: 100dvh;
+  --app-vt: 0px;
+}
+
 /* Expand cell animation for planner */
 @keyframes expand-cell {
   from {

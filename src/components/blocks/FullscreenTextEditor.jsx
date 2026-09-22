@@ -15,11 +15,10 @@ function FullscreenTextEditor({ content, title, onSave, onCancel }) {
   const HEADER_HEIGHT = 48;
   const TOOLBAR_HEIGHT = 56;
   
-  const { viewportHeight, viewportOffset, contentHeight: availableHeight } = useFullscreenModal({
+  const { panelStyle } = useFullscreenModal({
     bgColor: '#111827',
     headerHeight: HEADER_HEIGHT,
     toolbarHeight: TOOLBAR_HEIGHT,
-    useRAF: true,
   });
 
   // Focus textarea after a short delay to open keyboard
@@ -124,10 +123,7 @@ function FullscreenTextEditor({ content, title, onSave, onCancel }) {
       <div 
         ref={containerRef}
         className="fixed left-0 right-0 z-[2000] bg-gray-900 flex flex-col"
-        style={{ 
-          top: `calc(${viewportOffset}px + env(safe-area-inset-top))`,
-          height: `calc(${viewportHeight}px - env(safe-area-inset-top))`
-        }}
+        style={panelStyle}
         onTouchMove={(e) => {
           // Only allow touchmove on the textarea
           if (e.target !== textareaRef.current) {

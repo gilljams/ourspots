@@ -5,6 +5,9 @@ import App from './App.jsx'
 import { ConfirmProvider } from './utils/useConfirm'
 import { ToastProvider } from './utils/useToast'
 import { PromptProvider } from './utils/usePrompt'
+import { installViewportTracking } from './utils/viewport'
+
+installViewportTracking()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

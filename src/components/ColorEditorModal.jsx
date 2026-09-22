@@ -40,7 +40,7 @@ export function ColorEditorModal({ entries: initialEntries, title, onSave, onCan
 
   const HEADER_HEIGHT = 52;
 
-  const { viewportHeight, viewportOffset } = useFullscreenModal({
+  const { panelStyle, contentStyle } = useFullscreenModal({
     bgColor: '#111827',
     headerHeight: HEADER_HEIGHT,
   });
@@ -116,8 +116,6 @@ export function ColorEditorModal({ entries: initialEntries, title, onSave, onCan
     onSave(cleaned);
   };
 
-  const contentHeight = viewportHeight - HEADER_HEIGHT;
-
   return (
     <>
       {/* Backdrop */}
@@ -126,10 +124,7 @@ export function ColorEditorModal({ entries: initialEntries, title, onSave, onCan
       {/* Main modal */}
       <div
         className="fixed left-0 right-0 z-[2000] bg-gray-900 flex flex-col"
-        style={{
-          top: `calc(${viewportOffset}px + env(safe-area-inset-top))`,
-          height: `calc(${viewportHeight}px - env(safe-area-inset-top))`,
-        }}
+        style={panelStyle}
       >
         {/* Header */}
         <div
@@ -159,7 +154,7 @@ export function ColorEditorModal({ entries: initialEntries, title, onSave, onCan
         <div
           ref={scrollRef}
           className="flex-1 overflow-y-auto"
-          style={{ height: `${contentHeight}px`, paddingBottom: '100px' }}
+          style={{ ...contentStyle, paddingBottom: '100px' }}
         >
           {/* Empty state */}
           {entries.length === 0 ? (
