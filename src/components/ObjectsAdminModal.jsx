@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { List, ChevronDown, RefreshCw, X, AlertTriangle, XCircle, RefreshCcw, Share2 } from 'lucide-react';
+import { List, ChevronDown, RefreshCw, X, AlertTriangle, XCircle, RefreshCcw, Share2, Wrench } from 'lucide-react';
 import { collection, onSnapshot, doc, updateDoc, deleteField, arrayUnion } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useSwipeToClose } from '../utils/useSwipeToClose';
@@ -21,6 +21,7 @@ function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onView
   const [repairing, setRepairing] = useState(false);
   const [repairPlan, setRepairPlan] = useState(null);
   const [repairResult, setRepairResult] = useState(null);
+  const [showMaintenance, setShowMaintenance] = useState(false);
   
   // Fetch ALL objects for admin view
   useEffect(() => {
@@ -375,83 +376,96 @@ function ObjectsAdminModal({ objects: passedObjects, categories, onClose, onView
                       Parent
                     </button>
                   </div>
-                  
-                  {/* Migration button */}
-                  <div className="pt-3 border-t border-white/10 space-y-3">
-                    <div>
-                      <p className="text-xs text-gray-500 mb-2">Synkar hierarki-index (parentPath + ancestorIds)</p>
-                      <button
-                        onClick={migrateParentPaths}
-                        disabled={migrating}
-                        className="w-full px-3 py-2 rounded-lg text-sm font-medium transition-all bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white border border-white/10 flex items-center justify-center gap-2 disabled:opacity-50"
-                      >
-                        <RefreshCw size={14} className={`${migrating ? 'animate-spin' : ''}`} />
-                        {migrating ? 'Synkar...' : 'Synka hierarki'}
-                      </button>
-                      {migrationResult && (
-                        <p className={`text-xs mt-2 ${migrationResult.success ? 'text-green-400' : 'text-red-400'}`}>
-                          {migrationResult.message}
-                        </p>
-                      )}
-                    </div>
-
-                    <div>
-                      <p className="text-xs text-gray-500 mb-2">Fyller på ärvda delningar som saknas på barn/barnbarn</p>
-                      <button
-                        onClick={analyzeShareRepairs}
-                        disabled={repairing}
-                        className="w-full px-3 py-2 rounded-lg text-sm font-medium transition-all bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white border border-white/10 flex items-center justify-center gap-2 disabled:opacity-50"
-                      >
-                        <Share2 size={14} />
-                        Analysera delningar
-                      </button>
-
-                      {repairPlan && repairPlan.length === 0 && (
-                        <p className="text-xs mt-2 text-green-400">Inga saknade delningar hittades.</p>
-                      )}
-
-                      {repairPlan && repairPlan.length > 0 && (
-                        <div className="mt-2 space-y-2">
-                          <p className="text-xs text-gray-400">
-                            {repairPlan.length} saknade delningar i {new Set(repairPlan.map(p => p.objId)).size} objekt:
-                          </p>
-                          <div className="max-h-40 overflow-y-auto overscroll-contain space-y-1 rounded-lg bg-black/30 border border-white/10 p-2">
-                            {repairPlan.slice(0, 50).map((p, i) => (
-                              <p key={`${p.objId}-${p.emailKey}-${i}`} className="text-[11px] text-gray-400 leading-snug">
-                                <span className="text-gray-200">{p.title}</span>
-                                {' ← '}{p.share.email}
-                                <span className="text-gray-600"> (från {p.originTitle})</span>
-                              </p>
-                            ))}
-                            {repairPlan.length > 50 && (
-                              <p className="text-[11px] text-gray-500">…och {repairPlan.length - 50} till</p>
-                            )}
-                          </div>
-                          <p className="text-[11px] text-orange-400/90 leading-snug">
-                            Obs: om någon medvetet uteslutits från ett underobjekt återfår den åtkomst.
-                          </p>
-                          <button
-                            onClick={applyShareRepairs}
-                            disabled={repairing}
-                            className="w-full px-3 py-2 rounded-lg text-sm font-medium transition-all bg-blue-500 text-white hover:bg-blue-400 flex items-center justify-center gap-2 disabled:opacity-50"
-                          >
-                            <RefreshCw size={14} className={`${repairing ? 'animate-spin' : ''}`} />
-                            {repairing ? 'Reparerar...' : `Reparera ${repairPlan.length} delningar`}
-                          </button>
-                        </div>
-                      )}
-
-                      {repairResult && (
-                        <p className={`text-xs mt-2 ${repairResult.success ? 'text-green-400' : 'text-red-400'}`}>
-                          {repairResult.message}
-                        </p>
-                      )}
-                    </div>
-                  </div>
                 </div>
               )}
             </div>
           )}
+
+          {/* Maintenance tools - global, so kept outside the per-user filter */}
+          <div className="mt-3 pt-3 border-t border-white/10">
+            <button
+              onClick={() => setShowMaintenance(!showMaintenance)}
+              className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors"
+            >
+              <ChevronDown size={16} className={`transition-transform ${showMaintenance ? '' : '-rotate-90'}`} />
+              <Wrench size={14} />
+              <span>Underhåll</span>
+            </button>
+
+            {showMaintenance && (
+              <div className="mt-3 space-y-3">
+                <div>
+                  <p className="text-xs text-gray-500 mb-2">Synkar hierarki-index (parentPath + ancestorIds)</p>
+                  <button
+                    onClick={migrateParentPaths}
+                    disabled={migrating}
+                    className="w-full px-3 py-2 rounded-lg text-sm font-medium transition-all bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white border border-white/10 flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    <RefreshCw size={14} className={`${migrating ? 'animate-spin' : ''}`} />
+                    {migrating ? 'Synkar...' : 'Synka hierarki'}
+                  </button>
+                  {migrationResult && (
+                    <p className={`text-xs mt-2 ${migrationResult.success ? 'text-green-400' : 'text-red-400'}`}>
+                      {migrationResult.message}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <p className="text-xs text-gray-500 mb-2">Fyller på ärvda delningar som saknas på barn/barnbarn</p>
+                  <button
+                    onClick={analyzeShareRepairs}
+                    disabled={repairing}
+                    className="w-full px-3 py-2 rounded-lg text-sm font-medium transition-all bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white border border-white/10 flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    <Share2 size={14} />
+                    Analysera delningar
+                  </button>
+
+                  {repairPlan && repairPlan.length === 0 && (
+                    <p className="text-xs mt-2 text-green-400">Inga saknade delningar hittades.</p>
+                  )}
+
+                  {repairPlan && repairPlan.length > 0 && (
+                    <div className="mt-2 space-y-2">
+                      <p className="text-xs text-gray-400">
+                        {repairPlan.length} saknade delningar i {new Set(repairPlan.map(p => p.objId)).size} objekt:
+                      </p>
+                      <div className="max-h-40 overflow-y-auto overscroll-contain space-y-1 rounded-lg bg-black/30 border border-white/10 p-2">
+                        {repairPlan.slice(0, 50).map((p, i) => (
+                          <p key={`${p.objId}-${p.emailKey}-${i}`} className="text-[11px] text-gray-400 leading-snug">
+                            <span className="text-gray-200">{p.title}</span>
+                            {' ← '}{p.share.email}
+                            <span className="text-gray-600"> (från {p.originTitle})</span>
+                          </p>
+                        ))}
+                        {repairPlan.length > 50 && (
+                          <p className="text-[11px] text-gray-500">…och {repairPlan.length - 50} till</p>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-orange-400/90 leading-snug">
+                        Obs: om någon medvetet uteslutits från ett underobjekt återfår den åtkomst.
+                      </p>
+                      <button
+                        onClick={applyShareRepairs}
+                        disabled={repairing}
+                        className="w-full px-3 py-2 rounded-lg text-sm font-medium transition-all bg-blue-500 text-white hover:bg-blue-400 flex items-center justify-center gap-2 disabled:opacity-50"
+                      >
+                        <RefreshCw size={14} className={`${repairing ? 'animate-spin' : ''}`} />
+                        {repairing ? 'Reparerar...' : `Reparera ${repairPlan.length} delningar`}
+                      </button>
+                    </div>
+                  )}
+
+                  {repairResult && (
+                    <p className={`text-xs mt-2 ${repairResult.success ? 'text-green-400' : 'text-red-400'}`}>
+                      {repairResult.message}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
         
         <div className="overflow-y-auto overscroll-contain flex-1 p-4 pb-8">
