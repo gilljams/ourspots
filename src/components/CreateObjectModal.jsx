@@ -511,9 +511,16 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
     mq.addEventListener('change', onChange);
     return () => mq.removeEventListener('change', onChange);
   }, []);
-  const viewportStyle = isSmallScreen
-    ? { top: `${viewportOffset}px`, height: `${viewportHeight}px`, bottom: 'auto' }
-    : undefined;
+  const panelStyle = isSmallScreen
+    ? {
+        position: 'fixed',
+        top: `${viewportOffset}px`,
+        left: 0,
+        right: 0,
+        height: `${viewportHeight}px`,
+        touchAction: 'pan-y'
+      }
+    : { touchAction: 'pan-y' };
 
   // ========== ESCAPE KEY ==========
   useEffect(() => {
@@ -1303,7 +1310,6 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
       {/* Backdrop */}
       <div 
         className="fixed inset-0 bg-black/80 sm:bg-black/70 lg:bg-black/50 z-[1000] flex items-end sm:items-center justify-center lg:justify-end sm:p-8"
-        style={viewportStyle}
         onClick={(e) => { 
           if (!saving && e.target === e.currentTarget) onClose(); 
         }}
@@ -1311,7 +1317,7 @@ function CreateObjectModal({ onClose, onSave, editObject, duplicateFromObject, s
         {/* Modal */}
         <div 
           className="bg-gray-900 sm:rounded-xl lg:rounded-2xl border-t sm:border border-white/10 w-full sm:max-w-2xl sm:w-[90%] lg:w-[45%] h-full sm:h-auto sm:max-h-[90vh] lg:h-[calc(100dvh-2rem)] lg:max-h-none overflow-hidden flex flex-col pt-[var(--sat)] sm:pt-0"
-          style={{ touchAction: 'pan-y' }}
+          style={panelStyle}
         >
           
           {/* Header */}
