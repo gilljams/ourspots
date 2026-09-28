@@ -1,5 +1,6 @@
 import { doc, updateDoc, arrayUnion, Timestamp } from 'firebase/firestore';
 import { STORAGE_KEYS } from './storageKeys';
+import { getDistanceMeters } from './geoUtils';
 
 /**
  * Durable queue for GPS pins.
@@ -128,6 +129,45 @@ export async function flushCaptures(db, { onChange } = {}) {
   }
 
   return { synced, failed };
+}
+
+/**
+ * Nearest pin already recorded for the same destination, queued ones included.
+ * Both the map button and the quick-capture FAB run this, so the two paths stay
+ * consistent - they drifted apart once already.
+ */
+export function findNearestPin(lat, lng, { targetObjectId = null, objectBlocks = [] } = {}) {
+  const candidates = [];
+
+  for (const b of objectBlocks) {
+    if (b.type === 'location' && b.data?.lat != null && b.data?.lng != null) {
+      candidates.push({ lat: b.data.lat, lng: b.data.lng, at: b.data.capturedAt ?? null });
+    }
+  }
+  for (const c of readCaptures()) {
+    if ((c.targetObjectId || null) === (targetObjectId || null)) {
+      candidates.push({ lat: c.lat, lng: c.lng, at: c.capturedAt });
+    }
+  }
+
+  let nearest = null;
+  for (const c of candidates) {
+    const distance = getDistanceMeters(lat, lng, c.lat, c.lng);
+    if (!nearest || distance < nearest.distance) nearest = { ...c, distance };
+  }
+  return nearest;
+}
+
+/**
+ * Message for the duplicate warning, or null when the pin is far enough away.
+ */
+export function duplicateWarning(nearest, radius, accuracy) {
+  if (!nearest || radius <= 0 || nearest.distance > radius) return null;
+  const when = nearest.at
+    ? new Date(nearest.at).toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' })
+    : null;
+  return `Du har redan en pinne ${Math.round(nearest.distance)} m härifrån${when ? ` (pinnad ${when})` : ''}.`
+    + (accuracy != null ? ` Din mätning just nu är ±${accuracy} m.` : '');
 }
 
 /**

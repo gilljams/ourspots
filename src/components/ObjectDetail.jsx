@@ -26,7 +26,8 @@ import CollectionMapView from './map/CollectionMapView';
 import { STORAGE_KEYS } from '../utils/storageKeys';
 import { usePrompt } from '../utils/usePrompt';
 import { useToast } from '../utils/useToast';
-import { addCapture, capturesForObject, flushCaptures } from '../utils/captureQueue';
+import { addCapture, capturesForObject, flushCaptures, findNearestPin, duplicateWarning } from '../utils/captureQueue';
+import { useConfirm } from '../utils/useConfirm';
 import LocationsEntryCard from './LocationsEntryCard';
 
 // Folder icon - we'll define it locally since it's only used here
@@ -39,6 +40,15 @@ const Folder = ({ size = 24, ...props }) => (
 function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockUpdate, currentUser, userDisplayName, userLocation, showQuickCapture, allObjects, onNavigate, onGoBack, previousObject, categories, isAdmin, onShowOnMap, onShare, onLeaveShare, collections, onAddToCollection, onRemoveFromCollection, onUpdateLinkedNote, onAddLinkedUrl, onUpdateLinkedUrl, onRemoveLinkedUrl, onReorderLinked, preciseGPS = true, openPlannerOnReturn, onClearPlannerReturn }) {
   const prompt = usePrompt();
   const toast = useToast();
+  const confirm = useConfirm();
+  const duplicateRadius = (() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.DUPLICATE_RADIUS);
+      return raw === null ? 20 : JSON.parse(raw);
+    } catch {
+      return 20;
+    }
+  })();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showManageSection, setShowManageSection] = useState(false);
   const [showCollectionPicker, setShowCollectionPicker] = useState(false);
@@ -2097,6 +2107,24 @@ function ObjectDetail({ object, onClose, onEdit, onDelete, onDuplicate, onBlockU
                 userLocation={userLocation}
                 pendingLocations={pendingLocations}
                 onAddLocation={showQuickCapture ? async (coords) => {
+                  if (duplicateRadius > 0) {
+                    const nearest = findNearestPin(coords.lat, coords.lng, {
+                      targetObjectId: object.id,
+                      objectBlocks: object.blocks || [],
+                    });
+                    const warning = duplicateWarning(nearest, duplicateRadius, coords.accuracy);
+                    if (warning) {
+                      const proceed = await confirm({
+                        title: 'Redan pinnat här?',
+                        message: warning,
+                        confirmText: 'Pinna ändå',
+                        cancelText: 'Avbryt',
+                        variant: 'warning'
+                      });
+                      if (!proceed) return;
+                    }
+                  }
+
                   // Always queue first, then let the queue deliver it
                   addCapture({
                     lat: coords.lat,

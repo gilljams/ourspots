@@ -13,7 +13,8 @@ import { STORAGE_KEYS } from './utils/storageKeys';
 import { usePersistedState } from './utils/usePersistedState';
 import { useGPSCapture } from './utils/useGPSCapture';
 import {
-  readCaptures, addCapture, removeCapture, flushCaptures, migrateLegacyStores
+  readCaptures, addCapture, removeCapture, flushCaptures, migrateLegacyStores,
+  findNearestPin, duplicateWarning
 } from './utils/captureQueue';
 import { useAuth } from './utils/useAuth';
 import { useObjects } from './utils/useObjects';
@@ -594,30 +595,6 @@ function App() {
   // start-up position, which can be kilometres away by the time you pin.
   const quickCaptureGPS = useGPSCapture({ preciseGPS: true, accuracyThreshold: 10, timeout: 15000 });
 
-  // Nearest pin already recorded for the same destination, queued ones included
-  const findNearbyPin = (lat, lng, targetId) => {
-    const candidates = [];
-
-    if (targetId) {
-      const target = objects.find(o => o.id === targetId);
-      (target?.blocks || []).forEach(b => {
-        if (b.type === 'location' && b.data?.lat != null && b.data?.lng != null) {
-          candidates.push({ lat: b.data.lat, lng: b.data.lng, at: b.data.capturedAt ?? null });
-        }
-      });
-    }
-    readCaptures()
-      .filter(c => (c.targetObjectId || null) === (targetId || null))
-      .forEach(c => candidates.push({ lat: c.lat, lng: c.lng, at: c.capturedAt }));
-
-    let nearest = null;
-    for (const c of candidates) {
-      const distance = getDistanceMeters(lat, lng, c.lat, c.lng);
-      if (!nearest || distance < nearest.distance) nearest = { ...c, distance };
-    }
-    return nearest;
-  };
-
   const handleQuickCapture = async () => {
     if (quickCaptureGPS.isCapturing) return;
 
@@ -637,15 +614,15 @@ function App() {
     }
 
     if (duplicateRadius > 0) {
-      const nearby = findNearbyPin(fix.lat, fix.lng, targetId);
-      if (nearby && nearby.distance <= duplicateRadius) {
-        const when = nearby.at
-          ? new Date(nearby.at).toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' })
-          : null;
+      const nearest = findNearestPin(fix.lat, fix.lng, {
+        targetObjectId: targetId,
+        objectBlocks: targetObject?.blocks || [],
+      });
+      const warning = duplicateWarning(nearest, duplicateRadius, fix.accuracy);
+      if (warning) {
         const proceed = await confirm({
           title: 'Redan pinnat här?',
-          message: `Du har redan en pinne ${Math.round(nearby.distance)} m härifrån${when ? ` (pinnad ${when})` : ''}.`
-            + (fix.accuracy != null ? ` Din mätning just nu är ±${fix.accuracy} m.` : ''),
+          message: warning,
           confirmText: 'Pinna ändå',
           cancelText: 'Avbryt',
           variant: 'warning'

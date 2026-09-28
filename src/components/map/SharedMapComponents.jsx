@@ -26,6 +26,7 @@ import { createUserIcon } from '../../utils/mapIcons';
 import { getDistanceMeters, getBearing, formatDistanceMeters } from '../../utils/geoUtils';
 import { useToast } from '../../utils/useToast';
 import { STORAGE_KEYS } from '../../utils/storageKeys';
+import { useGPSCapture } from '../../utils/useGPSCapture';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -563,48 +564,43 @@ export function TrackingToggleButton({ isTracking, onStart, onStop }) {
 export function AddLocationButton({ onAddLocation, onLocationUpdate, pendingCount = 0 }) {
   const map = useMap();
   const toast = useToast();
-  const [isAdding, setIsAdding] = useState(false);
-  
-  const handleAdd = () => {
-    if (!('geolocation' in navigator)) {
-      toast.error('Din enhet stöder inte platsåtkomst');
+  // Same precision as the quick-capture FAB: a single reading is not good
+  // enough to find the spot again under tree cover
+  const gps = useGPSCapture({ preciseGPS: true, accuracyThreshold: 10, timeout: 15000 });
+
+  const handleAdd = async () => {
+    let fix;
+    try {
+      fix = await gps.capture();
+    } catch (err) {
+      toast.error(err?.message || 'Kunde inte hämta din position');
       return;
     }
-    
-    setIsAdding(true);
-    
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        const newPos = { lat: latitude, lng: longitude };
-        if (onLocationUpdate) onLocationUpdate(newPos);
-        if (onAddLocation) onAddLocation(newPos);
-        map.setView([latitude, longitude], 14);
-        setIsAdding(false);
-      },
-      (error) => {
-        setIsAdding(false);
-        let message = 'Kunde inte hämta din position. ';
-        if (error.code === 1) message = 'Du nekade platsåtkomst.';
-        toast.error(message);
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-    );
+
+    const newPos = { lat: fix.lat, lng: fix.lng, accuracy: fix.accuracy };
+    if (onLocationUpdate) onLocationUpdate(newPos);
+    if (onAddLocation) await onAddLocation(newPos);
+    map.setView([fix.lat, fix.lng], 14);
   };
-  
+
   return (
     <button
       onClick={handleAdd}
-      disabled={isAdding}
+      disabled={gps.isCapturing}
       className={`absolute bottom-4 right-4 z-[1000] w-12 h-12 rounded-full shadow-lg transition-all flex items-center justify-center ${
-        isAdding 
+        gps.isCapturing
           ? 'bg-orange-400 text-white animate-pulse' 
           : 'bg-orange-500 hover:bg-orange-400 text-white'
       }`}
       title="Lägg till ny plats här"
     >
       <Target size={22} />
-      {pendingCount > 0 && (
+      {gps.isCapturing && gps.accuracy != null && (
+        <span className="absolute -top-7 right-0 text-[11px] font-medium text-orange-200 bg-black/70 px-1.5 py-0.5 rounded whitespace-nowrap">
+          ±{gps.accuracy} m
+        </span>
+      )}
+      {!gps.isCapturing && pendingCount > 0 && (
         <span className="absolute -top-1 -right-1 bg-yellow-500 text-black text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
           {pendingCount}
         </span>
