@@ -16,6 +16,9 @@ import {
   readCaptures, addCapture, removeCapture, flushCaptures, migrateLegacyStores,
   findNearestPin, duplicateWarning
 } from './utils/captureQueue';
+import {
+  collectAllPins, buildBackupJson, buildGpx, downloadFile, backupFilename, parseBackup, importPins
+} from './utils/locationBackup';
 import { useAuth } from './utils/useAuth';
 import { useObjects } from './utils/useObjects';
 import { useFavorites } from './utils/useFavorites';
@@ -654,6 +657,43 @@ function App() {
     setCaptures(readCaptures());
   };
 
+  const handleExportPinsJson = () => {
+    const pins = collectAllPins(objects);
+    if (pins.length === 0) { toast.info('Inga platser att exportera'); return; }
+    downloadFile(backupFilename('json'), 'application/json', buildBackupJson(pins));
+    toast.success(`${pins.length} platser exporterade`);
+  };
+
+  const handleExportPinsGpx = () => {
+    const pins = collectAllPins(objects);
+    if (pins.length === 0) { toast.info('Inga platser att exportera'); return; }
+    downloadFile(backupFilename('gpx'), 'application/gpx+xml', buildGpx(pins));
+    toast.success(`${pins.length} platser exporterade`);
+  };
+
+  const handleImportPins = async (file) => {
+    let pins;
+    try {
+      pins = parseBackup(await file.text());
+    } catch (err) {
+      toast.error(err?.message || 'Kunde inte läsa filen');
+      return;
+    }
+    if (pins.length === 0) { toast.info('Filen innehöll inga platser'); return; }
+
+    const ok = await confirm({
+      title: 'Återställ platser?',
+      message: `${pins.length} platser läggs till som lösa pinningar. Befintliga objekt påverkas inte.`,
+      confirmText: 'Återställ',
+      variant: 'info'
+    });
+    if (!ok) return;
+
+    importPins(pins);
+    setCaptures(readCaptures());
+    toast.success(`${pins.length} platser återställda`);
+  };
+
   const handleCreateFromCapture = (capture) => {
     setShowCaptures(false);
     setEditingObject({
@@ -1284,6 +1324,10 @@ function App() {
             setShowQuickCaptureObjectPicker(true);
           }}
           onShowCaptures={() => setShowCaptures(true)}
+          pinCount={collectAllPins(objects).length}
+          onExportPinsJson={handleExportPinsJson}
+          onExportPinsGpx={handleExportPinsGpx}
+          onImportPins={handleImportPins}
           onShowCategoryAdmin={() => { setShowCategoryAdmin(true); setShowObjectsAdmin(false); setShowUsersAdmin(false); }}
           onShowObjectsAdmin={() => { setShowObjectsAdmin(true); setShowCategoryAdmin(false); setShowUsersAdmin(false); }}
           onShowUsersAdmin={() => { setShowUsersAdmin(true); setShowCategoryAdmin(false); setShowObjectsAdmin(false); }}

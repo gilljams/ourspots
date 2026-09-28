@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   X, LogOut, ChevronDown, ChevronRight, Settings, Target, Users, Share2, Check, AlertTriangle, Eye,
-  MapPin, Navigation, Trash2, ExternalLink, Wrench, HelpCircle, Pencil, List
+  MapPin, Navigation, Trash2, ExternalLink, Wrench, HelpCircle, Pencil, List, HardDriveDownload
 } from 'lucide-react';
 import { db } from '../firebase';
 import { doc, updateDoc } from 'firebase/firestore';
@@ -48,6 +48,10 @@ export default function AppMenu({
   showUsersAdmin,
   // Contacts
   onShowContacts,
+  pinCount = 0,
+  onExportPinsJson,
+  onExportPinsGpx,
+  onImportPins,
   // Section expansion states
   menuAdminExpanded,
   setMenuAdminExpanded,
@@ -184,6 +188,46 @@ export default function AppMenu({
                     <Users size={16} className="text-gray-400" />
                     <span className="text-sm">Kontakter & delningar</span>
                   </button>
+                )}
+
+                {user && (
+                  <div className="rounded-lg bg-white/5 p-2.5">
+                    <div className="flex items-center gap-3 mb-2">
+                      <HardDriveDownload size={16} className="text-gray-400" />
+                      <span className="text-sm text-gray-300">Säkerhetskopiera platser</span>
+                      <span className="text-xs text-gray-500 ml-auto tabular-nums">{pinCount}</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={onExportPinsJson}
+                        className="flex-1 px-2 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-gray-300 hover:text-white transition-all"
+                      >
+                        Exportera JSON
+                      </button>
+                      <button
+                        onClick={onExportPinsGpx}
+                        className="flex-1 px-2 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-gray-300 hover:text-white transition-all"
+                      >
+                        Exportera GPX
+                      </button>
+                    </div>
+                    <label className="mt-2 block w-full px-2 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-dashed border-white/15 text-xs text-gray-400 hover:text-white text-center cursor-pointer transition-all">
+                      Återställ från fil
+                      <input
+                        type="file"
+                        accept=".json,.gpx,application/json,application/gpx+xml,text/xml"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          e.target.value = '';
+                          if (file) onImportPins(file);
+                        }}
+                      />
+                    </label>
+                    <p className="text-[11px] text-gray-500 mt-1.5 leading-snug">
+                      Återställda platser hamnar som lösa pinningar, inte direkt på objekten.
+                    </p>
+                  </div>
                 )}
 
                 {/* Mark my spot — toggle activates + expands */}
