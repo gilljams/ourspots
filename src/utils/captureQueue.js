@@ -63,6 +63,13 @@ export function capturesForObject(objectId) {
   return readCaptures().filter(c => c.targetObjectId === objectId);
 }
 
+// Only the loose ones - pins waiting to reach an object must not be dropped
+export function removeLooseCaptures() {
+  const remaining = readCaptures().filter(c => c.targetObjectId);
+  writeCaptures(remaining);
+  return remaining;
+}
+
 export function pendingSyncCount() {
   return readCaptures().filter(c => c.targetObjectId).length;
 }

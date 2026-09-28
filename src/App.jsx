@@ -14,7 +14,7 @@ import { usePersistedState } from './utils/usePersistedState';
 import { useGPSCapture } from './utils/useGPSCapture';
 import {
   readCaptures, addCapture, removeCapture, flushCaptures, migrateLegacyStores,
-  findNearestPin, duplicateWarning
+  findNearestPin, duplicateWarning, removeLooseCaptures
 } from './utils/captureQueue';
 import {
   collectAllPins, buildBackupJson, buildGpx, downloadFile, backupFilename, parseBackup, importPins
@@ -158,6 +158,7 @@ function App() {
   const [quickCaptureSearchQuery, setQuickCaptureSearchQuery] = useState('');
   const [preciseGPS, setPreciseGPS] = usePersistedState(STORAGE_KEYS.PRECISE_GPS, false);
   const [duplicateRadius, setDuplicateRadius] = usePersistedState(STORAGE_KEYS.DUPLICATE_RADIUS, 20, { type: 'json' });
+  const [exportScope, setExportScope] = useState('all');
   // Menu section collapse states with localStorage
   const [menuAdminExpanded, setMenuAdminExpanded] = usePersistedState(STORAGE_KEYS.MENU_ADMIN_EXPANDED, false);
   const [menuSettingsExpanded, setMenuSettingsExpanded] = usePersistedState(STORAGE_KEYS.MENU_SETTINGS_EXPANDED, false);
@@ -657,19 +658,51 @@ function App() {
     setCaptures(readCaptures());
   };
 
-  const handleExportPinsJson = () => {
+  const handleDeleteAllLoose = async () => {
+    const loose = captures.filter(c => !c.targetObjectId).length;
+    const ok = await confirm({
+      title: 'Rensa olänkade pinningar?',
+      message: `${loose} pinningar tas bort. Pinningar som väntar på att skickas till ett objekt behålls.`,
+      confirmText: 'Rensa',
+      variant: 'danger'
+    });
+    if (!ok) return;
+    removeLooseCaptures();
+    setCaptures(readCaptures());
+    toast.success(`${loose} pinningar rensade`);
+  };
+
+  // Pins grouped by destination, for choosing what to export
+  const pinGroups = useMemo(() => {
     const pins = collectAllPins(objects);
+    const map = new Map();
+    for (const p of pins) {
+      const key = p.objectId || '__loose__';
+      if (!map.has(key)) map.set(key, { id: key, name: p.objectName, count: 0 });
+      map.get(key).count++;
+    }
+    return {
+      total: pins.length,
+      groups: [...map.values()].sort((a, b) => a.name.localeCompare(b.name, 'sv')),
+    };
+  }, [objects, captures]);
+
+  const pinsForScope = () => {
+    const pins = collectAllPins(objects);
+    if (exportScope === 'all') return pins;
+    if (exportScope === '__loose__') return pins.filter(p => !p.objectId);
+    return pins.filter(p => p.objectId === exportScope);
+  };
+
+  const exportPins = (extension, mimeType, build) => {
+    const pins = pinsForScope();
     if (pins.length === 0) { toast.info('Inga platser att exportera'); return; }
-    downloadFile(backupFilename('json'), 'application/json', buildBackupJson(pins));
+    downloadFile(backupFilename(extension), mimeType, build(pins));
     toast.success(`${pins.length} platser exporterade`);
   };
 
-  const handleExportPinsGpx = () => {
-    const pins = collectAllPins(objects);
-    if (pins.length === 0) { toast.info('Inga platser att exportera'); return; }
-    downloadFile(backupFilename('gpx'), 'application/gpx+xml', buildGpx(pins));
-    toast.success(`${pins.length} platser exporterade`);
-  };
+  const handleExportPinsJson = () => exportPins('json', 'application/json', buildBackupJson);
+  const handleExportPinsGpx = () => exportPins('gpx', 'application/gpx+xml', buildGpx);
 
   const handleImportPins = async (file) => {
     let pins;
@@ -1290,6 +1323,7 @@ function App() {
           captures={captures}
           objects={objects}
           onDeleteCapture={handleDeleteCapture}
+          onDeleteAllLoose={handleDeleteAllLoose}
           onCreateFromCapture={handleCreateFromCapture}
           onClose={() => setShowCaptures(false)}
         />
@@ -1324,7 +1358,9 @@ function App() {
             setShowQuickCaptureObjectPicker(true);
           }}
           onShowCaptures={() => setShowCaptures(true)}
-          pinCount={collectAllPins(objects).length}
+          pinGroups={pinGroups}
+          exportScope={exportScope}
+          setExportScope={setExportScope}
           onExportPinsJson={handleExportPinsJson}
           onExportPinsGpx={handleExportPinsGpx}
           onImportPins={handleImportPins}

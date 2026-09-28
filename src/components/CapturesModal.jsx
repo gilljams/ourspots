@@ -4,8 +4,9 @@ import { X, Plus, Trash2, Target, Lightbulb, MapPin, CloudUpload, Crosshair } fr
 /**
  * Slide-in panel showing saved GPS captures with create/delete actions.
  */
-export default function CapturesModal({ captures, objects = [], onDeleteCapture, onCreateFromCapture, onClose }) {
+export default function CapturesModal({ captures, objects = [], onDeleteCapture, onDeleteAllLoose, onCreateFromCapture, onClose }) {
   const waitingCount = captures.filter(c => c.targetObjectId).length;
+  const looseCount = captures.length - waitingCount;
   const objectName = (id) => {
     const obj = objects.find(o => o.id === id);
     return obj?.blocks?.find(b => b.type === 'title')?.data?.text || 'objektet';
@@ -52,6 +53,16 @@ export default function CapturesModal({ captures, objects = [], onDeleteCapture,
               <CloudUpload size={16} className="flex-shrink-0" />
               <span>{waitingCount} {waitingCount === 1 ? 'pinning väntar' : 'pinningar väntar'} på att skickas. De ligger kvar tills de kommit fram.</span>
             </div>
+          )}
+
+          {looseCount > 1 && (
+            <button
+              onClick={onDeleteAllLoose}
+              className="mb-4 w-full py-2 px-3 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 text-red-300 hover:text-red-200 text-sm font-medium transition-all flex items-center justify-center gap-2"
+            >
+              <Trash2 size={15} />
+              Rensa alla {looseCount} olänkade pinningar
+            </button>
           )}
 
           {captures.length === 0 ? (
